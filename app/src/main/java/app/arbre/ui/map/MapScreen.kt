@@ -8,26 +8,37 @@ import android.location.Location
 import android.view.ViewGroup
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.Image
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -40,7 +51,10 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -48,16 +62,15 @@ import androidx.lifecycle.createSavedStateHandle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import app.arbre.ArbresApp
 import app.arbre.R
 import app.arbre.data.rememberArbreRepository
 import app.arbre.data.rememberCaptureRepository
 import app.arbre.data.rememberSpeciesIndex
 import app.arbre.ui.detail.ArbreDetailContent
 import app.arbre.util.LocationProvider
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import org.maplibre.android.camera.CameraPosition
 import org.maplibre.android.camera.CameraUpdateFactory
 import org.maplibre.android.geometry.LatLng
@@ -89,7 +102,6 @@ private const val ARBRES_SOURCE_ID = "arbres-source"
 private const val POINTS_LAYER_ID = "arbres-points"
 private const val CLUSTERS_LAYER_ID = "arbres-clusters"
 private const val CLUSTER_COUNT_LAYER_ID = "arbres-cluster-count"
-private const val ARBRES_ASSET_PATH = "arbres-paris.geojson"
 private const val PIN_GREEN = "#2E7D32"
 private const val PIN_ORANGE = "#FB8C00"
 private const val PIN_GREY = "#9E9E9E"
@@ -118,6 +130,7 @@ private suspend fun computeInitialCamera(ctx: Context): CameraPosition {
 @Composable
 fun MapScreen(onArboretumClick: () -> Unit = {}) {
     val ctx = LocalContext.current
+    val app = ctx.applicationContext as ArbresApp
     val styleUrl = stringResource(R.string.map_style_url)
     val repo = rememberArbreRepository()
     val captureRepo = rememberCaptureRepository()
@@ -143,6 +156,7 @@ fun MapScreen(onArboretumClick: () -> Unit = {}) {
     }
     var mapRef by remember { mutableStateOf<MapLibreMap?>(null) }
     var styleRef by remember { mutableStateOf<Style?>(null) }
+    var arbresPrets by remember { mutableStateOf(false) }
     val snackbar = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
 
@@ -200,6 +214,12 @@ fun MapScreen(onArboretumClick: () -> Unit = {}) {
     }
 
     DisposableEffect(Unit) {
+        val tStart = android.os.SystemClock.elapsedRealtime()
+        val tProcess = app.processStartElapsedMs
+        android.util.Log.i(
+            "MapScreen",
+            "MapView init (process+${tStart - tProcess}ms)",
+        )
         mapView.onCreate(null)
         mapView.onStart()
         mapView.onResume()
@@ -209,22 +229,30 @@ fun MapScreen(onArboretumClick: () -> Unit = {}) {
                 map.cameraPosition = viewModel.lastCamera ?: computeInitialCamera(ctx)
 
                 map.setStyle(Style.Builder().fromUri(styleUrl)) { style ->
+                    val tStyle = android.os.SystemClock.elapsedRealtime()
+                    android.util.Log.i(
+                        "MapScreen",
+                        "Style prêt (process+${tStyle - tProcess}ms)",
+                    )
                     if (LocationProvider.hasFineLocationPermission(ctx)) {
                         enableLocationPin(map, style)
                     }
                     scope.launch {
                         try {
-                            val json = withContext(Dispatchers.IO) {
-                                ctx.assets.open(ARBRES_ASSET_PATH).bufferedReader()
-                                    .use { it.readText() }
-                            }
+                            val json = app.arbresGeoJsonAsync.await()
+                            val tJson = android.os.SystemClock.elapsedRealtime()
                             android.util.Log.i(
                                 "MapScreen",
-                                "GeoJSON chargé : ${json.length / 1_000_000} Mo, premier caractère=${json.firstOrNull()}",
+                                "GeoJSON disponible (process+${tJson - tProcess}ms, ${json.length / 1_000_000}Mo)",
                             )
                             addArbresLayers(style, json)
                             styleRef = style
-                            android.util.Log.i("MapScreen", "Source + layers ajoutées")
+                            arbresPrets = true
+                            val tLayers = android.os.SystemClock.elapsedRealtime()
+                            android.util.Log.i(
+                                "MapScreen",
+                                "Layers posées (process+${tLayers - tProcess}ms, total cold start)",
+                            )
                         } catch (e: Throwable) {
                             android.util.Log.e("MapScreen", "Échec chargement arbres", e)
                         }
@@ -327,6 +355,18 @@ fun MapScreen(onArboretumClick: () -> Unit = {}) {
             hostState = snackbar,
             modifier = Modifier.align(Alignment.BottomCenter),
         )
+
+        // Splash overlay : reste au-dessus de la carte tant que les layers
+        // d'arbres ne sont pas posées. Couleurs et icône alignées avec le
+        // splash natif (themes.xml) pour une transition sans flicker.
+        AnimatedVisibility(
+            visible = !arbresPrets,
+            enter = androidx.compose.animation.EnterTransition.None,
+            exit = fadeOut(animationSpec = tween(durationMillis = 350)),
+            modifier = Modifier.fillMaxSize(),
+        ) {
+            ColdStartSplash()
+        }
 
         val capturer = rememberCaptureController(
             viewModel = viewModel,
@@ -479,4 +519,37 @@ private fun buildDiscoveryExpression(
         remarquableExpr,
         speciesExpr,
     )
+}
+
+@Composable
+private fun ColdStartSplash() {
+    // Couleur identique à @color/ic_launcher_background (utilisée par le
+    // splash natif). Doit rester en sync ; en cas de changement, mettre les
+    // deux à jour ensemble pour éviter un flash de couleur à la transition.
+    val splashGreen = Color(0xFF2E7D32)
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(splashGreen),
+        contentAlignment = Alignment.Center,
+    ) {
+        androidx.compose.foundation.layout.Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Image(
+                painter = painterResource(R.drawable.ic_launcher_foreground),
+                contentDescription = null,
+                colorFilter = ColorFilter.tint(Color.White),
+                modifier = Modifier.size(160.dp),
+            )
+            Spacer(Modifier.height(16.dp))
+            Text(
+                text = "Réveil des 217 855 arbres parisiens…",
+                color = Color.White,
+                style = MaterialTheme.typography.bodyLarge,
+            )
+            Spacer(Modifier.height(24.dp))
+            CircularProgressIndicator(color = Color.White)
+        }
+    }
 }

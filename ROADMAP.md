@@ -68,24 +68,25 @@ Issus du test sur GrapheneOS de fin de Sprint C. Livrés 2026-04-29.
 
 À traiter après Sprint D, avant Phase 3.
 
-- [ ] **Cold start sub-10 s** — actuellement 40-50 s entre lancement et carte+arbres affichés. Causes probables : parse du GeoJSON 32 Mo en RAM (synchrone), init MapLibre, fetch des tuiles OpenFreeMap. Pistes : splash écran avec progress, parse asynchrone, voir si PMTiles / format binaire raccourcit l'asset load, lazy-add des layers arbres une fois la map prête.
-- [ ] **Fiche-espèce dans l'Arboretum** — tap sur une card d'espèce ouvre une page dédiée avec : (a) infos génériques Wikipedia/Wikidata (nom, étymologie, description), (b) stats parisiennes (proportion du dataset, hauteur médiane, circonférence médiane, arrondissements où l'espèce est sur-représentée), (c) mini-carte avec uniquement cette espèce pinnée. **Premier endroit où l'app appelle un service externe** (Wikipedia API), à arbitrer en démarrage de phase.
-- [ ] **Effet « waouh » à la capture d'une espèce** — couplé à la fiche-espèce ci-dessus. Au moment du tap Capturer qui débloque une nouvelle espèce : transition animée vers la fiche-espèce, animation pin gris → vert, peut-être un son court. Exclure la 1re capture d'une espèce déjà découverte (pas de waouh à la 2e photo de la même espèce).
+- [x] **Cold start masqué et raccourci** — 40-50 s d'écran blanc avant la carte au démarrage. Triple traitement livré 2026-04-29 :
+  1. **Pré-chargement parallèle du GeoJSON 32 Mo** : `ArbresApp.arbresGeoJsonAsync` (`Deferred<String>` sur `Dispatchers.IO`) déclenché dans `onCreate`, en vol pendant l'init MapLibre + Compose + setStyle réseau. `MapScreen` `await` au lieu de relire le fichier après setStyle, ce qui le sortait du chemin critique.
+  2. **Splash écran natif** (`androidx.core:core-splashscreen` 1.0.1) : sapin blanc sur fond vert via `Theme.Arbres.Splash`, `installSplashScreen()` dans `MainActivity` avant `super.onCreate()`. Remplace l'écran blanc pendant `Application.onCreate` + premier frame Compose, supporté API 26+.
+  3. **Splash overlay Compose** dans `MapScreen` : couvre la carte tant que les layers d'arbres ne sont pas posées (`arbresPrets == false`). Couleurs et icône alignées avec le splash natif pour transition sans flicker, fadeOut 350 ms à la disparition. Texte « Réveil des 217 855 arbres parisiens… ».
+  - Logs de timing ajoutés (`MapView init`, `Style prêt`, `GeoJSON disponible`, `Layers posées`) pour mesurer sur device. PMTiles et lazy-add écartés : effort démesuré pour app perso, le splash de qualité couvre le reste de la latence côté UX.
+- [ ] **Fiche-espèce dans l'Arboretum** — tap sur une card d'espèce ouvre une page dédiée avec : (a) infos génériques Wikipedia/Wikidata (nom, étymologie, description), (b) stats parisiennes (proportion du dataset, hauteur médiane, circonférence médiane, arrondissements où l'espèce est sur-représentée), (c) carte avec uniquement cette espèce pinnée. Ces infos ne sont pas calculées / API à la volée, mais déjà préparés en amont (élargissement du build_dataset.py, à première vue)
+- [ ] **Fiche individuelle d'un arbre** — La fiche peut être enrichie avec : (a) un lien vers la fiche Arboretum correspondante, (b) situé l'arbre parmi les autres représentants de l'espèce à Paris (eg taille vs les autres)
+- [ ] **Petit effet « waouh » à la capture d'une espèce** — couplé à la fiche-espèce ci-dessus. Au moment du tap Capturer qui débloque une nouvelle espèce : transition vers la fiche-espèce avec message de félicitations ! Exclure la 1re capture d'une espèce déjà découverte (pas de waouh à la 2e photo de la même espèce).
 - [ ] **Disposition Pokédex de l'Arboretum** — vue alternative en grille numérotée par index d'espèce (« annuaire »), avec toggle entre la vue actuelle (cards triées par capture) et la vue Pokédex (grille triée par numéro). Cases vides pour les espèces non encore capturées (sans révéler leur identité).
 
-## Phase 3 — Saisonnalité et profondeur
+## Phase 3 — Revue graphique
+
+- [ ] Revue et amélioration d'ensemble des designs / aspects graphiques de l'app, dont le splash screen de 30 sec qui doit être animé à peu de frais.
+
+## Phase 4 — Saisonnalité et profondeur
 
 - [ ] 4 « formes » saisonnières par espèce → la même espèce capturée en hiver et en mai compte comme 2 entrées (la colonne `season` est déjà sur la table `capture`, sch.-ready)
-- [ ] Quêtes géographiques (« le tour des marronniers du Luxembourg », « les 10 plus vieux arbres du 5e »)
+- [ ] Quêtes géographiques (« le tour des marronniers du Luxembourg », « les 10 plus grands arbres du 5e »)
 - [ ] **Page Badges & succès dédiée** — entrée nav distincte de l'Arboretum. Badges narratifs (« Tu as visité 100 arbres > 100 ans », « Les 10 remarquables du 5e », « 1re capture en hiver »). Pas d'XP, pas de classement.
-- [ ] Mode parrainage : suivre un arbre, alerte si chantier signalé par la Ville
-- [ ] Fiches naturalistes (feuille / écorce / fruit) en complément des données OpenData
-
-## Phase 3 — Saisonnalité et profondeur
-
-- [ ] 4 « formes » saisonnières par espèce → la même espèce capturée en hiver et en mai compte comme 2 entrées
-- [ ] Quêtes géographiques (« le tour des marronniers du Luxembourg », « les 10 plus vieux arbres du 5e »)
-- [ ] Mode parrainage : suivre un arbre, alerte si chantier signalé par la Ville
 - [ ] Fiches naturalistes (feuille / écorce / fruit) en complément des données OpenData
 
 ## Phase 4 — Famille et amis
@@ -99,4 +100,3 @@ Issus du test sur GrapheneOS de fin de Sprint C. Livrés 2026-04-29.
 - Reconnaissance d'espèce via PlantNet API quand la photo est ambigüe
 - Open Tree Map (Boston, NYC) pour étendre hors Paris une fois le moteur stable
 - Mode « patrimoine » : superposer les vieilles photos IGN avec les arbres actuels
-- Gamification douce : badges narratifs (« Tu as visité 100 arbres > 100 ans »), pas de XP / classement

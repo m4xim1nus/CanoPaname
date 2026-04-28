@@ -3,4 +3,15 @@
         <item name="android:statusBarColor" tools:targetApi="l">@android:color/transparent</item>
         <item name="android:windowLightStatusBar" tools:targetApi="m">true</item>
     </style>
+
+    <!-- Splash écran de lancement : sapin blanc sur fond vert. Sert à masquer
+         le démarrage du process (Application.onCreate, init MapLibre, premier
+         frame Compose). androidx.core:core-splashscreen back-porte l'API 31+
+         vers API 26+. postSplashScreenTheme bascule vers le theme normal
+         dès que l'Activity est prête. -->
+    <style name="Theme.Arbres.Splash" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/ic_launcher_background</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>
+        <item name="postSplashScreenTheme">@style/Theme.Arbres</item>
+    </style>
 </resources>
