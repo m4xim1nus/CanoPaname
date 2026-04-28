@@ -2,6 +2,7 @@ package app.arbre.ui.map
 
 import android.Manifest
 import android.annotation.SuppressLint
+import android.content.Context
 import android.graphics.RectF
 import android.view.ViewGroup
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -11,10 +12,13 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MyLocation
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
@@ -31,6 +35,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.viewmodel.compose.viewModel
 import app.arbre.R
 import app.arbre.data.rememberArbreRepository
+import app.arbre.ui.detail.ArbreDetailContent
 import app.arbre.util.LocationProvider
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -56,15 +61,37 @@ import org.maplibre.android.style.sources.GeoJsonOptions
 import org.maplibre.android.style.sources.GeoJsonSource
 
 private val PARIS = LatLng(48.8566, 2.3522)
+private const val PARIS_ZOOM = 13.0
+private const val USER_ZOOM = 16.0
 private const val ARBRES_SOURCE_ID = "arbres-source"
 private const val POINTS_LAYER_ID = "arbres-points"
 private const val CLUSTERS_LAYER_ID = "arbres-clusters"
 private const val CLUSTER_COUNT_LAYER_ID = "arbres-cluster-count"
 private const val ARBRES_ASSET_PATH = "arbres-paris.geojson"
 
+private fun parisCamera(): CameraPosition =
+    CameraPosition.Builder().target(PARIS).zoom(PARIS_ZOOM).build()
+
+/**
+ * Caméra à utiliser au tout premier rendu de la carte. Si la permission est
+ * déjà accordée et qu'un fix (frais ou last-known) est disponible, on ouvre
+ * directement sur la position de l'utilisateur. Sinon on retombe sur Paris z13.
+ *
+ * On ne déclenche jamais de demande de permission ici : c'est le rôle du FAB.
+ */
+private suspend fun computeInitialCamera(ctx: Context): CameraPosition {
+    if (!LocationProvider.hasFineLocationPermission(ctx)) return parisCamera()
+    val loc = LocationProvider.currentOrLastKnown(ctx) ?: return parisCamera()
+    return CameraPosition.Builder()
+        .target(LatLng(loc.latitude, loc.longitude))
+        .zoom(USER_ZOOM)
+        .build()
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
 @SuppressLint("MissingPermission")
 @Composable
-fun MapScreen(onArbreClick: (Long) -> Unit) {
+fun MapScreen() {
     val ctx = LocalContext.current
     val styleUrl = stringResource(R.string.map_style_url)
     val repo = rememberArbreRepository()
@@ -109,7 +136,7 @@ fun MapScreen(onArbreClick: (Long) -> Unit) {
             return
         }
         mapRef?.animateCamera(
-            CameraUpdateFactory.newLatLngZoom(LatLng(loc.latitude, loc.longitude), 16.0)
+            CameraUpdateFactory.newLatLngZoom(LatLng(loc.latitude, loc.longitude), USER_ZOOM)
         )
         mapRef?.style?.let { enableLocationPin(mapRef!!, it) }
     }
@@ -130,53 +157,54 @@ fun MapScreen(onArbreClick: (Long) -> Unit) {
         mapView.onResume()
         mapView.getMapAsync { map ->
             mapRef = map
-            map.cameraPosition = viewModel.lastCamera
-                ?: CameraPosition.Builder().target(PARIS).zoom(13.0).build()
+            scope.launch {
+                map.cameraPosition = viewModel.lastCamera ?: computeInitialCamera(ctx)
 
-            map.setStyle(Style.Builder().fromUri(styleUrl)) { style ->
-                if (LocationProvider.hasFineLocationPermission(ctx)) {
-                    enableLocationPin(map, style)
-                }
-                scope.launch {
-                    try {
-                        val json = withContext(Dispatchers.IO) {
-                            ctx.assets.open(ARBRES_ASSET_PATH).bufferedReader()
-                                .use { it.readText() }
+                map.setStyle(Style.Builder().fromUri(styleUrl)) { style ->
+                    if (LocationProvider.hasFineLocationPermission(ctx)) {
+                        enableLocationPin(map, style)
+                    }
+                    scope.launch {
+                        try {
+                            val json = withContext(Dispatchers.IO) {
+                                ctx.assets.open(ARBRES_ASSET_PATH).bufferedReader()
+                                    .use { it.readText() }
+                            }
+                            android.util.Log.i(
+                                "MapScreen",
+                                "GeoJSON chargé : ${json.length / 1_000_000} Mo, premier caractère=${json.firstOrNull()}",
+                            )
+                            addArbresLayers(style, json)
+                            android.util.Log.i("MapScreen", "Source + layers ajoutées")
+                        } catch (e: Throwable) {
+                            android.util.Log.e("MapScreen", "Échec chargement arbres", e)
                         }
-                        android.util.Log.i(
-                            "MapScreen",
-                            "GeoJSON chargé : ${json.length / 1_000_000} Mo, premier caractère=${json.firstOrNull()}",
-                        )
-                        addArbresLayers(style, json)
-                        android.util.Log.i("MapScreen", "Source + layers ajoutées")
-                    } catch (e: Throwable) {
-                        android.util.Log.e("MapScreen", "Échec chargement arbres", e)
                     }
                 }
-            }
 
-            map.addOnCameraIdleListener { viewModel.rememberCamera(map.cameraPosition) }
+                map.addOnCameraIdleListener { viewModel.rememberCamera(map.cameraPosition) }
 
-            map.addOnMapClickListener { latLng ->
-                val pixel = map.projection.toScreenLocation(latLng)
-                val touch = RectF(pixel.x - 20f, pixel.y - 20f, pixel.x + 20f, pixel.y + 20f)
+                map.addOnMapClickListener { latLng ->
+                    val pixel = map.projection.toScreenLocation(latLng)
+                    val touch = RectF(pixel.x - 20f, pixel.y - 20f, pixel.x + 20f, pixel.y + 20f)
 
-                val clusters = map.queryRenderedFeatures(touch, CLUSTERS_LAYER_ID)
-                if (clusters.isNotEmpty()) {
-                    val source = map.style?.getSourceAs<GeoJsonSource>(ARBRES_SOURCE_ID)
-                    val zoom = source?.getClusterExpansionZoom(clusters.first())?.toDouble()
-                        ?: (map.cameraPosition.zoom + 2.0)
-                    map.animateCamera(CameraUpdateFactory.newLatLngZoom(latLng, zoom))
-                    return@addOnMapClickListener true
-                }
+                    val clusters = map.queryRenderedFeatures(touch, CLUSTERS_LAYER_ID)
+                    if (clusters.isNotEmpty()) {
+                        val source = map.style?.getSourceAs<GeoJsonSource>(ARBRES_SOURCE_ID)
+                        val zoom = source?.getClusterExpansionZoom(clusters.first())?.toDouble()
+                            ?: (map.cameraPosition.zoom + 2.0)
+                        map.animateCamera(CameraUpdateFactory.newLatLngZoom(latLng, zoom))
+                        return@addOnMapClickListener true
+                    }
 
-                val points = map.queryRenderedFeatures(touch, POINTS_LAYER_ID)
-                val id = points.firstOrNull()?.getNumberProperty("id")?.toLong()
-                if (id != null) {
-                    onArbreClick(id)
-                    true
-                } else {
-                    false
+                    val points = map.queryRenderedFeatures(touch, POINTS_LAYER_ID)
+                    val id = points.firstOrNull()?.getNumberProperty("id")?.toLong()
+                    if (id != null) {
+                        viewModel.openDetail(id)
+                        true
+                    } else {
+                        false
+                    }
                 }
             }
         }
@@ -207,6 +235,17 @@ fun MapScreen(onArbreClick: (Long) -> Unit) {
             hostState = snackbar,
             modifier = Modifier.align(Alignment.BottomCenter),
         )
+
+        val openedArbre = viewModel.openedArbre
+        if (openedArbre != null) {
+            val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+            ModalBottomSheet(
+                onDismissRequest = { viewModel.closeDetail() },
+                sheetState = sheetState,
+            ) {
+                ArbreDetailContent(arbre = openedArbre)
+            }
+        }
     }
 }
 

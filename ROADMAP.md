@@ -32,8 +32,16 @@ Objectif : afficher la position de l'utilisateur et les arbres réels de Paris s
 
 ### Améliorations non prioritaires identifiées en fin de phase
 
-- [ ] Au retour de la fiche détail, la carte recharge ses tiles (~1-2 s de latence visuelle). La position est bien préservée mais l'expérience n'est pas instantanée. Cause : `MapView` recréé à chaque entrée Compose ; le fix propre est de hisser le `MapView` au niveau Activity ou utiliser un fragment retainé.
-- [ ] Au démarrage de l'app, ouvrir directement zoomé sur la dernière position GPS connue (si permission accordée) plutôt que sur PARIS z13. Réduit le « voyage » initial du dezoom Paris vers le 5e.
+- [ ] Au retour de la fiche détail, la carte recharge ses tiles (~1-2 s de latence visuelle). La position est bien préservée mais l'expérience n'est pas instantanée. Cause : `MapView` recréé à chaque entrée Compose ; le fix propre est de hisser le `MapView` au niveau Activity ou utiliser un fragment retainé. → traité en Phase 1.5 / Sprint A via passage de la fiche en `ModalBottomSheet`.
+- [ ] Au démarrage de l'app, ouvrir directement zoomé sur la dernière position GPS connue (si permission accordée) plutôt que sur PARIS z13. Réduit le « voyage » initial du dezoom Paris vers le 5e. → traité en Phase 1.5 / Sprint A.
+
+## Phase 1.5 — Polish carte (avant phase 2)
+
+Décidé après phase 1 : consolider l'UX carte avant d'empiler la phase 2 (capture + collection) dessus. Inspiration produit pour la phase 2 validée : **Pokémon GO épuré** (capture par proximité GPS + Pokédex/Arboretum, sans combats, raids, social, anti-cheat). Plan d'exécution détaillé : `~/.claude/plans/planifions-la-suite-logical-horizon.md`.
+
+- [x] **Sprint A** — zoom auto sur dernière position GPS connue au lancement + fiche détail en `ModalBottomSheet` (élimine la recharge tiles). Validé sur GrapheneOS.
+- [ ] **Sprint B** — note `docs/vision-jeu.md` arbitrant ce qu'on garde / jette de Pokémon GO et les spécificités arbre à exploiter.
+- [ ] **Sprint C** — bascule sur Phase 2 ci-dessous, planifiée finement à ce moment-là.
 
 ## Phase 2 — « Capture » et collection
 
