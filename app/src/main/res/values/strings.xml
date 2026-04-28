@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">Arbres</string>
+    <string name="permission_location_rationale">L\'app a besoin de votre position pour afficher les arbres autour de vous.</string>
+    <string name="map_style_url">https://demotiles.maplibre.org/style.json</string>
+</resources>
