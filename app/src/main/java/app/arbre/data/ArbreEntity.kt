@@ -10,8 +10,8 @@ import androidx.room.PrimaryKey
 )
 data class ArbreEntity(
     @PrimaryKey val id: Long,
-    val genre: String?,
-    val espece: String?,
+    val genre: String,
+    val espece: String,
     val varieteCultivar: String?,
     val nomCommun: String?,
     val hauteurM: Int?,

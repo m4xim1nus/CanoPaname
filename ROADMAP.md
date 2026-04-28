@@ -40,18 +40,45 @@ Objectif : afficher la position de l'utilisateur et les arbres réels de Paris s
 Décidé après phase 1 : consolider l'UX carte avant d'empiler la phase 2 (capture + collection) dessus. Inspiration produit pour la phase 2 validée : **Pokémon GO épuré** (capture par proximité GPS + Pokédex/Arboretum, sans combats, raids, social, anti-cheat). Plan d'exécution détaillé : `~/.claude/plans/planifions-la-suite-logical-horizon.md`.
 
 - [x] **Sprint A** — zoom auto sur dernière position GPS connue au lancement + fiche détail en `ModalBottomSheet` (élimine la recharge tiles). Validé sur GrapheneOS.
-- [ ] **Sprint B** — note `docs/vision-jeu.md` arbitrant ce qu'on garde / jette de Pokémon GO et les spécificités arbre à exploiter.
-- [ ] **Sprint C** — bascule sur Phase 2 ci-dessous, planifiée finement à ce moment-là.
+- [x] **Sprint B** — note `docs/vision-jeu.md` arbitrant ce qu'on garde / jette de Pokémon GO, les spécificités arbre à exploiter, la nature de la capture (photo + GPS au tap) et la boucle de jeu côté UX (carte = hub, pas de radar). Livré 2026-04-28.
+- [x] **Sprint C** — phase 2 livrée 2026-04-28 (validation device sur GrapheneOS faite). Plan détaillé dans `~/.claude/plans/swirling-frolicking-unicorn.md`.
+- [ ] **Sprint D** — correctifs critiques relevés au test du Sprint C (cf. ci-dessous).
 
-## Phase 2 — « Capture » et collection
+## Phase 2 — « Capture » et collection ✅
 
 Objectif : la dimension jeu commence ici.
 
-- [ ] Capture d'arbre : photo (caméra) + GPS + EXIF, stockée localement
-- [ ] Validation par proximité (par ex. < 30 m de la position OpenData de l'arbre)
-- [ ] Écran « Arboretum » : liste des espèces capturées, % de complétion
-- [ ] Mise en avant des arbres remarquables (icône ★, filtre dédié)
-- [ ] Notifications de proximité (« arbre remarquable à 80 m »)
+- [x] Capture d'arbre : photo (caméra) + GPS device + Room (table `capture`, migration v1→v2). Pas d'EXIF, GPS lu au moment du tap Capturer.
+- [x] Validation par proximité (< 30 m de la position OpenData) + GPS frais (< 30 s) au moment du tap.
+- [x] Écran Arboretum : « X / Y espèces découvertes » + cards par espèce (count Paris, photos, 1re capture) + section remarquables individuelle.
+- [x] Découverte par espèce : pins gris par défaut, expression MapLibre `case + match` reconstruite à chaque capture. Limite assumée : clusters restent verts (pas de progression à dezoom).
+- [x] Remarquables traités à part : pin gris jusqu'à capture personnelle, bouton ★ overlay → snackbar « Plus proche remarquable non découvert : X m ».
+- [ ] Notifications de proximité (« arbre remarquable à 80 m ») → écarté du MVP capture par `docs/vision-jeu.md` §5.5, à reprendre plus tard.
+
+## Sprint D — correctifs critiques Sprint C (prochaine étape)
+
+Issus du test sur GrapheneOS de fin de Sprint C. À traiter avant tout polish.
+
+- [ ] **🐛 Pins ne basculent pas verts à la capture** — la fiche, elle, bascule bien en mode « découvert » (preuve que le Flow `capturedSpeciesIndices` émet). Bug isolé côté layer/expression MapLibre. Pistes : le `LaunchedEffect(styleRef)` ne re-collecte pas, le `setProperties(circleColor)` ne déclenche pas de redraw, ou l'expression `match(get("sk"), …)` rejette les ints assignés. Reproductible 100 % au tap debug. **Bloquant pour l'usage réel.**
+- [ ] **Bouton « Capturer » désactivé / message clair quand inutilisable** — actuellement le bouton paraît cliquable même à 200 m d'un arbre inconnu, et le tap ne fait rien (ou snackbar discrète). Désactiver le bouton selon GPS frais < 30 m, et afficher la distance restante (« trop loin : 187 m ») dans le sheet ou le label du bouton. Pas un bug fatal, mais première friction utilisateur.
+- [ ] **FABs ★ et Arboretum descendus** — actuellement collés au top, en collision avec la status bar / les éléments OS GrapheneOS. À padder avec `WindowInsets.statusBars` ou un `Spacer` adéquat.
+
+## Phase 2.5 — Profondeur Arboretum et performance
+
+À traiter après Sprint D, avant Phase 3.
+
+- [ ] **Cold start sub-10 s** — actuellement 40-50 s entre lancement et carte+arbres affichés. Causes probables : parse du GeoJSON 32 Mo en RAM (synchrone), init MapLibre, fetch des tuiles OpenFreeMap. Pistes : splash écran avec progress, parse asynchrone, voir si PMTiles / format binaire raccourcit l'asset load, lazy-add des layers arbres une fois la map prête.
+- [ ] **Fiche-espèce dans l'Arboretum** — tap sur une card d'espèce ouvre une page dédiée avec : (a) infos génériques Wikipedia/Wikidata (nom, étymologie, description), (b) stats parisiennes (proportion du dataset, hauteur médiane, circonférence médiane, arrondissements où l'espèce est sur-représentée), (c) mini-carte avec uniquement cette espèce pinnée. **Premier endroit où l'app appelle un service externe** (Wikipedia API), à arbitrer en démarrage de phase.
+- [ ] **Effet « waouh » à la capture d'une espèce** — couplé à la fiche-espèce ci-dessus. Au moment du tap Capturer qui débloque une nouvelle espèce : transition animée vers la fiche-espèce, animation pin gris → vert, peut-être un son court. Exclure la 1re capture d'une espèce déjà découverte (pas de waouh à la 2e photo de la même espèce).
+- [ ] **Disposition Pokédex de l'Arboretum** — vue alternative en grille numérotée par index d'espèce (« annuaire »), avec toggle entre la vue actuelle (cards triées par capture) et la vue Pokédex (grille triée par numéro). Cases vides pour les espèces non encore capturées (sans révéler leur identité).
+
+## Phase 3 — Saisonnalité et profondeur
+
+- [ ] 4 « formes » saisonnières par espèce → la même espèce capturée en hiver et en mai compte comme 2 entrées (la colonne `season` est déjà sur la table `capture`, sch.-ready)
+- [ ] Quêtes géographiques (« le tour des marronniers du Luxembourg », « les 10 plus vieux arbres du 5e »)
+- [ ] **Page Badges & succès dédiée** — entrée nav distincte de l'Arboretum. Badges narratifs (« Tu as visité 100 arbres > 100 ans », « Les 10 remarquables du 5e », « 1re capture en hiver »). Pas d'XP, pas de classement.
+- [ ] Mode parrainage : suivre un arbre, alerte si chantier signalé par la Ville
+- [ ] Fiches naturalistes (feuille / écorce / fruit) en complément des données OpenData
 
 ## Phase 3 — Saisonnalité et profondeur
 

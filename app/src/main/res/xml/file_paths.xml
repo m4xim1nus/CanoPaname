@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <!-- Photos de capture sous getExternalFilesDir(null)/captures. Privé à
+         l'app, effacé à la désinstallation, exposé via FileProvider à la
+         caméra système le temps d'écrire le JPG. -->
+    <external-files-path name="captures" path="captures/" />
+</paths>

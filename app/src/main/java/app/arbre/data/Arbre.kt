@@ -6,8 +6,8 @@ package app.arbre.data
  */
 data class Arbre(
     val id: Long,
-    val genre: String?,
-    val espece: String?,
+    val genre: String,
+    val espece: String,
     val varieteCultivar: String?,
     val nomCommun: String?,
     val hauteurM: Int?,
@@ -18,6 +18,5 @@ data class Arbre(
     val longitude: Double,
 ) {
     val nomAffichage: String
-        get() = nomCommun
-            ?: listOfNotNull(genre, espece).joinToString(" ").ifBlank { "Arbre #$id" }
+        get() = nomCommun ?: "$genre $espece"
 }

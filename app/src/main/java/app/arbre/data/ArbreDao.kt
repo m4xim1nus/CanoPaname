@@ -25,4 +25,10 @@ interface ArbreDao {
 
     @Query("SELECT * FROM arbre WHERE id = :id")
     suspend fun arbreParId(id: Long): ArbreEntity?
+
+    @Query("SELECT * FROM arbre WHERE remarquable = 1")
+    suspend fun arbresRemarquables(): List<ArbreEntity>
+
+    @Query("SELECT COUNT(*) FROM arbre WHERE genre = :genre AND espece = :espece")
+    suspend fun compterParEspece(genre: String, espece: String): Int
 }

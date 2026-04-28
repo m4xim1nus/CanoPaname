@@ -23,6 +23,12 @@ class ArbreRepository(private val dao: ArbreDao) {
 
     suspend fun arbreParId(id: Long): Arbre? = dao.arbreParId(id)?.toArbre()
 
+    suspend fun arbresRemarquables(): List<Arbre> =
+        dao.arbresRemarquables().map(ArbreEntity::toArbre)
+
+    suspend fun compterParEspece(genre: String, espece: String): Int =
+        dao.compterParEspece(genre, espece)
+
     companion object {
         // Plafond pour éviter de déverser une bbox trop large dans la carte.
         // À z14+ sur Paris une bbox visible contient typiquement < 2000 arbres.
