@@ -1,10 +1,7 @@
 package app.arbre.ui.arboretum
 
-import android.graphics.BitmapFactory
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -34,9 +31,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import app.arbre.data.Arbre
 import app.arbre.data.Capture
@@ -45,14 +39,16 @@ import app.arbre.data.rememberArbreRepository
 import app.arbre.data.rememberCaptureRepository
 import app.arbre.data.rememberDatasetStats
 import app.arbre.data.rememberSpeciesIndex
+import app.arbre.ui.common.PhotoThumbnail
 import java.text.DateFormat
 import java.util.Date
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ArboretumScreen(onBack: () -> Unit) {
+fun ArboretumScreen(
+    onBack: () -> Unit,
+    onSpeciesClick: (Int) -> Unit = {},
+) {
     val captureRepo = rememberCaptureRepository()
     val speciesIndex = rememberSpeciesIndex()
     val stats = rememberDatasetStats()
@@ -100,7 +96,11 @@ fun ArboretumScreen(onBack: () -> Unit) {
                     SectionHeader("Espèces (${speciesGroups.size}/${stats.totalEspeces})")
                 }
                 items(speciesGroups, key = { it.entry.index }) { group ->
-                    SpeciesCard(group, arbreRepo::compterParEspece)
+                    SpeciesCard(
+                        group = group,
+                        countParEspece = arbreRepo::compterParEspece,
+                        onClick = { onSpeciesClick(group.entry.index) },
+                    )
                 }
             }
 
@@ -164,6 +164,7 @@ private fun SectionHeader(label: String) {
 private fun SpeciesCard(
     group: SpeciesGroup,
     countParEspece: suspend (String, String) -> Int,
+    onClick: () -> Unit,
 ) {
     val first = group.captures.first()
     val firstChrono = group.captures.last() // 1re capture = la plus ancienne
@@ -172,7 +173,11 @@ private fun SpeciesCard(
         countInDataset = countParEspece(group.entry.genre, group.entry.espece)
     }
 
-    Card(modifier = Modifier.fillMaxWidth()) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
+    ) {
         Row(
             modifier = Modifier.padding(12.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -263,35 +268,6 @@ private fun EmptyState() {
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
-    }
-}
-
-@Composable
-private fun PhotoThumbnail(photoPath: String, modifier: Modifier = Modifier) {
-    var bitmap by remember(photoPath) { mutableStateOf<ImageBitmap?>(null) }
-    LaunchedEffect(photoPath) {
-        bitmap = withContext(Dispatchers.IO) {
-            // Downsample agressif : la grille affiche 72×72 dp.
-            val opts = BitmapFactory.Options().apply { inSampleSize = 4 }
-            try {
-                BitmapFactory.decodeFile(photoPath, opts)?.asImageBitmap()
-            } catch (e: Throwable) {
-                null
-            }
-        }
-    }
-    val bm = bitmap
-    if (bm != null) {
-        Image(
-            bitmap = bm,
-            contentDescription = null,
-            contentScale = ContentScale.Crop,
-            modifier = modifier,
-        )
-    } else {
-        Box(
-            modifier = modifier.background(MaterialTheme.colorScheme.surfaceVariant),
-        )
     }
 }
 

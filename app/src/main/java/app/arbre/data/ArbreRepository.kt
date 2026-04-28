@@ -29,6 +29,9 @@ class ArbreRepository(private val dao: ArbreDao) {
     suspend fun compterParEspece(genre: String, espece: String): Int =
         dao.compterParEspece(genre, espece)
 
+    suspend fun unArbreParEspece(genre: String, espece: String): Arbre? =
+        dao.unArbreParEspece(genre, espece)?.toArbre()
+
     companion object {
         // Plafond pour éviter de déverser une bbox trop large dans la carte.
         // À z14+ sur Paris une bbox visible contient typiquement < 2000 arbres.

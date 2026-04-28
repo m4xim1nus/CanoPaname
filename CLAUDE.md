@@ -62,14 +62,16 @@ Projet mono-module `:app`. Structure (package racine `app.arbre`) :
 - `data/` —
   - **Lecture seule** : `Arbre` (modèle), `ArbreEntity` + `ArbreDao` + `ArbreDatabase` (Room v2), `ArbreRepository`. Base pré-cuite dans `assets/databases/arbres-paris.db` et copiée par `Room.createFromAsset(...)` au 1er lancement. API : `arbresDansBbox(...)` (Flow), `arbreParId(...)` (suspend), `arbresRemarquables()`, `compterParEspece(...)`.
   - **Écriture** : `Capture`/`CaptureEntity` + `CaptureDao` + `CaptureRepository`. La table `capture` est ajoutée par `MIGRATION_1_2` à la 1re ouverture (l'asset DB ship en v1 sans cette table). Flows clés : `capturedSpeciesIndices: Flow<Set<Int>>`, `capturedRemarquableIds: Flow<Set<Long>>`.
-  - **Lookup statique** : `SpeciesIndex.kt` charge `assets/species-index.json` une fois (entrée `(genre, espece) -> int`). `DatasetStats.kt` charge `assets/dataset-stats.json` (totaux pour les compteurs Arboretum). Les deux sont singletons dans `ArbresApp`.
-- `ui/` — Compose par écran. `ArbresNavHost` (`Routes.MAP`, `Routes.ARBORETUM`).
+  - **Lookup statique** : `SpeciesIndex.kt` charge `assets/species-index.json` une fois (entrée `(genre, espece) -> int`). `DatasetStats.kt` charge `assets/dataset-stats.json` (totaux pour les compteurs Arboretum). `SpeciesInfo.kt` charge `assets/species-info.json` (texte Wikipedia FR + stats Paris par espèce, pour la fiche-espèce). Les trois sont singletons dans `ArbresApp`.
+- `ui/` — Compose par écran. `ArbresNavHost` (`Routes.MAP`, `Routes.ARBORETUM`, `Routes.SPECIES`).
   - `ui/map/` — `MapScreen` (la carte + le hub : FAB GPS, FAB ★ remarquable proche, FAB Arboretum, sheet détail), `MapViewModel` (caméra + `openedArbre` + `pendingCapture` via `SavedStateHandle`), `CaptureLauncher.kt` (pipeline FileProvider + caméra + GPS guard), `PendingCapture.kt` (data class persisté).
   - `ui/detail/ArbreDetailScreen.kt` — `ModalBottomSheet` qui split « Arbre inconnu » / fiche complète selon `isDiscovered`.
-  - `ui/arboretum/ArboretumScreen.kt` — header `X/Y espèces`, cards par espèce (count Paris, photos, 1re capture), section remarquables individuelle, thumbnails via `BitmapFactory` + `LaunchedEffect`.
+  - `ui/arboretum/ArboretumScreen.kt` — header `X/Y espèces`, cards par espèce (count Paris, photos, 1re capture), section remarquables individuelle. Cards d'espèce cliquables → `Routes.SPECIES`.
+  - `ui/species/` — `SpeciesDetailScreen` (fiche-espèce : identité, galerie photos user, summary Wikipedia + lien externe, stats Paris, mini-carte filtrée) ; `SpeciesMiniMap` (composable carte non-clusterisée filtrée sur `sk`).
+  - `ui/common/PhotoThumbnail.kt` — composable partagé (Arboretum + fiche-espèce) qui décode un fichier image local avec downsample paramétrable.
 - `ui/theme/` — `ArbresTheme` (Material3, palette verte/brune).
 - `util/LocationProvider` — wrapper autour de `LocationManager` natif (sans GMS).
-- `tools/build_dataset.py` — génère `arbres-paris.db` (Room) **et** `arbres-paris.geojson` (MapLibre, propriétés `id`/`remarquable`/`sk`) **et** `species-index.json` **et** `dataset-stats.json` à partir du CSV OpenData. Filtre les rows sans `genre`/`espece`. Préserve les `speciesIndex` entre runs (lit le `species-index.json` existant) — sans ça, regénérer casserait les captures déjà stockées en Room (qui réfèrent l'espèce par int). Le schéma SQL doit rester rigoureusement aligné avec celui que Room produit pour `ArbreEntity`.
+- `tools/build_dataset.py` — génère `arbres-paris.db` (Room) **et** `arbres-paris.geojson` (MapLibre, propriétés `id`/`remarquable`/`sk`) **et** `species-index.json` **et** `dataset-stats.json` **et** `species-info.json` (fiches Wikipedia FR + stats Paris par espèce) à partir du CSV OpenData. Filtre les rows sans `genre`/`espece`. Préserve les `speciesIndex` entre runs (lit le `species-index.json` existant) — sans ça, regénérer casserait les captures déjà stockées en Room (qui réfèrent l'espèce par int). Le schéma SQL doit rester rigoureusement aligné avec celui que Room produit pour `ArbreEntity`. Les ~907 appels Wikipedia REST sont cachés dans `tools/.wikipedia-cache/{sk}.json` (incluant les misses) pour rendre les builds suivants instantanés.
 
 Conventions :
 - **MapView intégrée via `AndroidView`** dans `MapScreen`. Toujours passer par `DisposableEffect` pour relayer les `onCreate/onStart/onResume/onPause/onStop/onDestroy` du `MapView` — sans ça, fuites mémoire ou crashes en navigation.
@@ -86,9 +88,9 @@ Conventions :
 
 - **Style de carte** : OpenFreeMap (`https://tiles.openfreemap.org/styles/liberty`) — gratuit, sans clé, OSM. Référence dans `res/values/strings.xml` → `map_style_url`. Dépendance externe gentille mais sans SLA ; à terme, prévoir un fallback (Versatiles, Protomaps self-host) si OpenFreeMap tombe.
 - **MapLibre Android 11.11.0** — choisi pour le 16 KB page-size alignment côté `libmaplibre.so`. Warning résiduel possible sur `libandroidx.graphics.path.so` (tiré par Compose) : indépendant de MapLibre, à régler via bump du Compose BOM si encore visible.
-- **Pas de Hilt / DI framework** au MVP. Singletons exposés via `ArbresApp` (`arbreRepository`, `captureRepository`, `speciesIndex`, `datasetStats`). Helpers Compose : `rememberArbreRepository()`, `rememberCaptureRepository()`, `rememberSpeciesIndex()`, `rememberDatasetStats()`.
+- **Pas de Hilt / DI framework** au MVP. Singletons exposés via `ArbresApp` (`arbreRepository`, `captureRepository`, `speciesIndex`, `datasetStats`, `speciesInfoRepository`). Helpers Compose : `rememberArbreRepository()`, `rememberCaptureRepository()`, `rememberSpeciesIndex()`, `rememberDatasetStats()`, `rememberSpeciesInfoRepository()`.
 - **Pas de feature flags, pas d'A/B**. C'est une app perso.
-- **Pas de service externe** au runtime au MVP. La fiche-espèce de l'Arboretum (Phase 2.5) sera le 1er endroit où l'app appellera Wikipedia/Wikidata.
+- **Pas de service externe au runtime.** La fiche-espèce (Phase 2.5) ne fait pas exception : tout est pré-baké dans `assets/species-info.json` (texte Wikipedia FR + stats Paris) à build-time par `tools/build_dataset.py`. Les images Wikipedia sont volontairement absentes — les photos des captures utilisateur servent d'illustration.
 
 ## Quand tu travailles ici
 

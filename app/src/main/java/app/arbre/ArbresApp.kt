@@ -8,6 +8,7 @@ import app.arbre.data.ArbreRepository
 import app.arbre.data.CaptureRepository
 import app.arbre.data.DatasetStats
 import app.arbre.data.SpeciesIndex
+import app.arbre.data.SpeciesInfoRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
@@ -31,6 +32,7 @@ class ArbresApp : Application() {
 
     val speciesIndex: SpeciesIndex by lazy { SpeciesIndex.load(this) }
     val datasetStats: DatasetStats by lazy { DatasetStats.load(this) }
+    val speciesInfoRepository: SpeciesInfoRepository by lazy { SpeciesInfoRepository.load(this) }
 
     /** Démarrage du process. Sert de t0 pour les logs de timing du cold start. */
     val processStartElapsedMs: Long = SystemClock.elapsedRealtime()

@@ -4,96 +4,64 @@ App perso, pas de calendrier engageant. Phases ordonnées du plus pragmatique au
 
 ## Phase 0 — Scaffold ✅
 
-- [x] Squelette Gradle/Kotlin/Compose, single-Activity + NavHost
-- [x] Écran carte (MapLibre) centré sur Paris, écran détail
-- [x] Repo `Arbre` stub avec un échantillon en mémoire
-- [x] Docs (README, CLAUDE.md, ROADMAP)
-- [x] Icône adaptive (sapin sur fond vert)
-- [x] Build & install validés sur GrapheneOS via ADB + Android Studio Panda4 (AGP 8.7.3)
-- [x] Carte OpenFreeMap qui charge correctement, pan/zoom OK
+Squelette Gradle/Kotlin/Compose single-Activity + NavHost, écran carte (MapLibre) + écran détail stub, repo `Arbre` en mémoire, docs initiales (README, CLAUDE.md, ROADMAP), icône adaptive sapin, build/install validés sur GrapheneOS via ADB et Android Studio (AGP 8.7.3), carte OpenFreeMap qui charge.
 
 ## Phase 1 — MVP « voir les arbres autour de moi » ✅
 
-Objectif : afficher la position de l'utilisateur et les arbres réels de Paris sur la carte. Pouvoir taper un arbre précis pour voir sa fiche.
+Style OpenFreeMap tous-zooms, MapLibre Android 11.11.0 (16 KB page-size). Géoloc native runtime (`LocationManager`, sans Google Play Services). Schéma Room avec index `(latitude, longitude)`, dataset pré-baké via `tools/build_dataset.py` (SQLite + GeoJSON dans `app/src/main/assets/`). Couche MapLibre clusterisée (3 layers : clusters / count / points) avec source GeoJSON chargée en RAM puis `setGeoJson(jsonString)` pour clustering Supercluster global. Hit-test à deux niveaux (cluster → expansion zoom ; point → fiche). `LocationComponent` halo bleu pulsant. Caméra hissée dans `MapViewModel`. Fiche arbre complète : nom commun, taxonomie, hauteur, circonférence, adresse, badge ★ remarquable.
 
-- [x] Style de carte tous-zooms (OpenFreeMap)
-- [x] Bump MapLibre Android 11.5.2 → 11.11.0 (16 KB page-size alignment côté `libmaplibre.so` — warning résiduel sur `libandroidx.graphics.path.so` à traiter via bump Compose si encore visible)
-- [x] Géoloc : permission runtime + bouton « me localiser » qui recentre la carte
-- [x] `LocationManager` natif uniquement (sans Google Play Services) — `play-services-location` retiré
-- [x] Schéma Room : table `arbre` avec index composite `(latitude, longitude)`
-- [x] Pré-baked SQLite + GeoJSON dans `app/src/main/assets/`, générés par `tools/build_dataset.py`
-- [x] Couche MapLibre clusterisée : 3 layers (clusters / count / points individuels), source GeoJSON chargée en RAM puis `setGeoJson(jsonString)` pour clustering Supercluster global
-- [x] Hit-test : tap cluster → `getClusterExpansionZoom` + zoom in ; tap point → fiche arbre
-- [x] `LocationComponent` MapLibre avec halo bleu pulsant (pin position utilisateur)
-- [x] Caméra préservée entre `MapScreen` et fiche détail (hissée dans `MapViewModel`)
-- [x] Fiche arbre complète : nom commun (`libellefrancais`), taxonomie (genre/espèce/cultivar), hauteur, circonférence, adresse, badge ★ remarquable
+**Critère atteint** : 217 855 arbres réels de Paris affichés et tappables.
 
-**Critère de fin de phase atteint** : la carte montre 217 855 arbres réels de Paris, clusterisés à dezoom, ouvrables individuellement à zoom haut.
+## Phase 1.5 — Polish carte ✅
 
-### Améliorations non prioritaires identifiées en fin de phase
+Décidé après Phase 1 pour consolider l'UX avant Phase 2. Inspiration produit posée : **Pokémon GO épuré** (capture par proximité GPS + Pokédex/Arboretum, sans combats, raids, social, anti-cheat).
 
-- [ ] Au retour de la fiche détail, la carte recharge ses tiles (~1-2 s de latence visuelle). La position est bien préservée mais l'expérience n'est pas instantanée. Cause : `MapView` recréé à chaque entrée Compose ; le fix propre est de hisser le `MapView` au niveau Activity ou utiliser un fragment retainé. → traité en Phase 1.5 / Sprint A via passage de la fiche en `ModalBottomSheet`.
-- [ ] Au démarrage de l'app, ouvrir directement zoomé sur la dernière position GPS connue (si permission accordée) plutôt que sur PARIS z13. Réduit le « voyage » initial du dezoom Paris vers le 5e. → traité en Phase 1.5 / Sprint A.
+- **Sprint A** ✅ — zoom auto sur dernière position GPS connue au lancement + fiche détail en `ModalBottomSheet` (élimine la recharge tiles).
+- **Sprint B** ✅ — note `docs/vision-jeu.md` arbitrant ce qu'on garde / jette de Pokémon GO, capture = photo + GPS au tap, carte = hub. Livré 2026-04-28.
 
-## Phase 1.5 — Polish carte (avant phase 2)
+## Phase 2 — Capture et collection ✅
 
-Décidé après phase 1 : consolider l'UX carte avant d'empiler la phase 2 (capture + collection) dessus. Inspiration produit pour la phase 2 validée : **Pokémon GO épuré** (capture par proximité GPS + Pokédex/Arboretum, sans combats, raids, social, anti-cheat). Plan d'exécution détaillé : `~/.claude/plans/planifions-la-suite-logical-horizon.md`.
+La dimension jeu commence ici. Livré 2026-04-28, validé device.
 
-- [x] **Sprint A** — zoom auto sur dernière position GPS connue au lancement + fiche détail en `ModalBottomSheet` (élimine la recharge tiles). Validé sur GrapheneOS.
-- [x] **Sprint B** — note `docs/vision-jeu.md` arbitrant ce qu'on garde / jette de Pokémon GO, les spécificités arbre à exploiter, la nature de la capture (photo + GPS au tap) et la boucle de jeu côté UX (carte = hub, pas de radar). Livré 2026-04-28.
-- [x] **Sprint C** — phase 2 livrée 2026-04-28 (validation device sur GrapheneOS faite). Plan détaillé dans `~/.claude/plans/swirling-frolicking-unicorn.md`.
-- [x] **Sprint D** — correctifs critiques relevés au test du Sprint C livrés 2026-04-29 (cf. ci-dessous). Plan détaillé dans `~/.claude/plans/go-sprint-d-je-hidden-bonbon.md`.
+- **Sprint C** ✅ — capture (photo caméra + GPS device + Room, table `capture` via `MIGRATION_1_2`), validation par proximité (< 30 m) et fraîcheur GPS (< 30 s) au moment du tap. Écran Arboretum « X / Y espèces » + cards par espèce + section remarquables. Découverte par espèce : pins gris par défaut, expression MapLibre `case + match` reconstruite à chaque capture (limite assumée : clusters restent verts au dezoom). Remarquables traités à part : pin gris jusqu'à capture personnelle, FAB ★ → snackbar « plus proche remarquable non découvert : X m ». Plan : `~/.claude/plans/swirling-frolicking-unicorn.md`.
+- **Sprint D** ✅ 2026-04-29 — correctifs critiques du test Sprint C. (1) Bug `Expression.match()` MapLibre : default doit être en DERNIER position, sinon expression silencieusement rejetée — fix dans `buildDiscoveryExpression`. (2) Bouton Capturer désactivé sauf en `Ready` via sealed class `CaptureAvailability { Ready / NoGps / TooFar(meters) }`, label reflète la raison. (3) FABs `windowInsetsPadding(statusBars / navigationBars)`. (4) Bonus : pin orange `#FB8C00` pour remarquables capturés, vert pour normaux capturés.
 
-## Phase 2 — « Capture » et collection ✅
+## Phase 2.5 — Profondeur Arboretum ⏳
 
-Objectif : la dimension jeu commence ici.
+- **Cold start masqué et raccourci** ✅ 2026-04-29 — était à 40-50 s d'écran blanc. Triple traitement : (1) `ArbresApp.arbresGeoJsonAsync` (`Deferred<String>` sur `Dispatchers.IO`) déclenché dans `onCreate`, en vol pendant init MapLibre + Compose + setStyle réseau ; (2) splash natif via `androidx.core:core-splashscreen` 1.0.1 (`installSplashScreen()` avant `super.onCreate()`) ; (3) splash overlay Compose dans `MapScreen` qui couvre la carte tant que les layers ne sont pas posées (`arbresPrets`), fadeOut 350 ms. Logs de timing ajoutés. PMTiles et lazy-add écartés (effort démesuré pour app perso).
 
-- [x] Capture d'arbre : photo (caméra) + GPS device + Room (table `capture`, migration v1→v2). Pas d'EXIF, GPS lu au moment du tap Capturer.
-- [x] Validation par proximité (< 30 m de la position OpenData) + GPS frais (< 30 s) au moment du tap.
-- [x] Écran Arboretum : « X / Y espèces découvertes » + cards par espèce (count Paris, photos, 1re capture) + section remarquables individuelle.
-- [x] Découverte par espèce : pins gris par défaut, expression MapLibre `case + match` reconstruite à chaque capture. Limite assumée : clusters restent verts (pas de progression à dezoom).
-- [x] Remarquables traités à part : pin gris jusqu'à capture personnelle, bouton ★ overlay → snackbar « Plus proche remarquable non découvert : X m ».
-- [ ] Notifications de proximité (« arbre remarquable à 80 m ») → écarté du MVP capture par `docs/vision-jeu.md` §5.5, à reprendre plus tard.
+- **Fiche-espèce dans l'Arboretum** ✅ 2026-04-29 — route `species/{sk}` ouverte par tap sur la card. Contenu : identité (nom commun + binomial italique), galerie des captures utilisateur, summary Wikipedia FR + lien externe, stats Paris (count, proportion, médianes hauteur/circ, top 3 arr en absolu + en sur-représentation), mini-carte filtrée. Tout pré-calculé à build-time via `tools/build_dataset.py` → `assets/species-info.json`. Pas d'image Wikipedia (les photos user font l'illustration). Pipeline data : Wikidata SPARQL batched (P225, VALUES de 50) pour résoudre `(genre, espece) → (qid, fr_wiki_title)`, puis fetch summary REST sur le titre canonique. **528 / 907 espèces** avec summary FR, **703 / 907** résolues (QID) ; convergence en une passe, pas de cascade 429. Cache `tools/.wikidata-cache/{sk}.json` (hit / `{qid, noFr}` / `{miss: true}`). Plan : `~/.claude/plans/quiet-petting-river.md`.
 
-## Sprint D — correctifs critiques Sprint C ✅
+### Sprint E — correctifs Phase 2.5 et confort Arboretum (prochaine étape)
 
-Issus du test sur GrapheneOS de fin de Sprint C. Livrés 2026-04-29.
+Issus du test 2026-04-29 + items 2.5 restants.
 
-- [x] **🐛 Pins ne basculent pas verts à la capture** — root cause : ordre des arguments de `Expression.match()` MapLibre inversé dans `buildDiscoveryExpression`. La spec attend `[input, label1, out1, …, default]` avec default en DERNIER ; le code plaçait `PIN_GREY` en 2e position, donc l'expression était silencieusement rejetée. Fix : append `literal(PIN_GREY)` aux stops puis `match(get("sk"), *stops.toTypedArray())`.
-- [x] **Bouton « Capturer » désactivé / message clair quand inutilisable** — sealed class `CaptureAvailability { Ready / NoGps / TooFar(meters) }` calculée à l'ouverture du sheet via `LaunchedEffect`. Le bouton est désactivé sauf en `Ready` et son label reflète la raison (« Active le GPS », « Trop loin (X m) »).
-- [x] **FABs ★ et Arboretum descendus** — `windowInsetsPadding(WindowInsets.statusBars)` sur le Row TopEnd, `windowInsetsPadding(WindowInsets.navigationBars)` sur le FAB GPS BottomEnd.
-- [x] **Bonus : pin orange pour remarquables capturés** — nouvelle constante `PIN_ORANGE = "#FB8C00"` (Material Orange 600) dans la branche remarquable du `match`. Vert reste pour les normaux capturés. Lisible d'un coup d'œil sur la carte.
-
-## Phase 2.5 — Profondeur Arboretum et performance
-
-À traiter après Sprint D, avant Phase 3.
-
-- [x] **Cold start masqué et raccourci** — 40-50 s d'écran blanc avant la carte au démarrage. Triple traitement livré 2026-04-29 :
-  1. **Pré-chargement parallèle du GeoJSON 32 Mo** : `ArbresApp.arbresGeoJsonAsync` (`Deferred<String>` sur `Dispatchers.IO`) déclenché dans `onCreate`, en vol pendant l'init MapLibre + Compose + setStyle réseau. `MapScreen` `await` au lieu de relire le fichier après setStyle, ce qui le sortait du chemin critique.
-  2. **Splash écran natif** (`androidx.core:core-splashscreen` 1.0.1) : sapin blanc sur fond vert via `Theme.Arbres.Splash`, `installSplashScreen()` dans `MainActivity` avant `super.onCreate()`. Remplace l'écran blanc pendant `Application.onCreate` + premier frame Compose, supporté API 26+.
-  3. **Splash overlay Compose** dans `MapScreen` : couvre la carte tant que les layers d'arbres ne sont pas posées (`arbresPrets == false`). Couleurs et icône alignées avec le splash natif pour transition sans flicker, fadeOut 350 ms à la disparition. Texte « Réveil des 217 855 arbres parisiens… ».
-  - Logs de timing ajoutés (`MapView init`, `Style prêt`, `GeoJSON disponible`, `Layers posées`) pour mesurer sur device. PMTiles et lazy-add écartés : effort démesuré pour app perso, le splash de qualité couvre le reste de la latence côté UX.
-- [ ] **Fiche-espèce dans l'Arboretum** — tap sur une card d'espèce ouvre une page dédiée avec : (a) infos génériques Wikipedia/Wikidata (nom, étymologie, description), (b) stats parisiennes (proportion du dataset, hauteur médiane, circonférence médiane, arrondissements où l'espèce est sur-représentée), (c) carte avec uniquement cette espèce pinnée. Ces infos ne sont pas calculées / API à la volée, mais déjà préparés en amont (élargissement du build_dataset.py, à première vue)
-- [ ] **Fiche individuelle d'un arbre** — La fiche peut être enrichie avec : (a) un lien vers la fiche Arboretum correspondante, (b) situé l'arbre parmi les autres représentants de l'espèce à Paris (eg taille vs les autres)
-- [ ] **Petit effet « waouh » à la capture d'une espèce** — couplé à la fiche-espèce ci-dessus. Au moment du tap Capturer qui débloque une nouvelle espèce : transition vers la fiche-espèce avec message de félicitations ! Exclure la 1re capture d'une espèce déjà découverte (pas de waouh à la 2e photo de la même espèce).
-- [ ] **Disposition Pokédex de l'Arboretum** — vue alternative en grille numérotée par index d'espèce (« annuaire »), avec toggle entre la vue actuelle (cards triées par capture) et la vue Pokédex (grille triée par numéro). Cases vides pour les espèces non encore capturées (sans révéler leur identité).
+- [ ] **🐛 Mini-carte embarquée bug la fiche-espèce** — symptôme : la mini-carte rendue inline dans `SpeciesDetailScreen` perturbe la fiche. **Fix retenu** : retirer l'embed, remplacer par un lien « Voir sur la carte » qui ouvre la grande carte (`MapScreen`) en mode filtré sur l'espèce (réutilise la logique pin-color existante, pas de nouveau composable map à maintenir). Suppression de `SpeciesMiniMap.kt`.
+- [ ] **Fiche individuelle d'un arbre → fiche-espèce** — depuis `ArbreDetailContent` (le sheet du tap pin), bouton « En savoir plus sur l'espèce » qui ouvre `SpeciesDetailScreen`. Aussi : situer l'arbre parmi ses pairs (taille vs médiane de l'espèce, percentile de circonférence).
+- [ ] **Petit effet « waouh » à la 1re capture d'une espèce** — au moment du tap Capturer qui débloque une nouvelle espèce, transition vers la fiche-espèce avec message de félicitations. Exclure la 2e capture d'une espèce déjà découverte. Couplé à la fiche-espèce.
+- [ ] **Disposition Pokédex de l'Arboretum** — vue alternative en grille numérotée par speciesIndex (« annuaire »), toggle avec la vue actuelle (cards triées par capture). Cases vides pour les espèces non encore capturées (sans révéler leur identité).
+- [ ] **Améliorer la couverture Wikipedia** — 204 espèces sans QID Wikidata + 175 avec QID mais sans page FR. Option : pass LLM offline (Claude Code) sur les rejetés pour mapper vers un binôme parent ou marquer « pas de page possible ». Cible : >700 / 907 avec summary.
+- [ ] **Lien Wikidata pour les espèces sans page FR** — pour les 175 avec QID mais sans `frTitle`, afficher dans la fiche un lien `https://www.wikidata.org/wiki/{qid}` plutôt que le placeholder pur.
 
 ## Phase 3 — Revue graphique
 
-- [ ] Revue et amélioration d'ensemble des designs / aspects graphiques de l'app, dont le splash screen de 30 sec qui doit être animé à peu de frais.
+- [ ] Revue d'ensemble des designs / aspects graphiques de l'app
+- [ ] Splash screen animé à peu de frais (l'actuel est statique pendant ~30 s en cold start non-cache)
+- [ ] Palette / typographie / iconographie cohérente entre les écrans
 
-## Phase 4 — Saisonnalité et profondeur
+## Phase 4 — Saisonnalité, quêtes, succès
 
-- [ ] 4 « formes » saisonnières par espèce → la même espèce capturée en hiver et en mai compte comme 2 entrées (la colonne `season` est déjà sur la table `capture`, sch.-ready)
-- [ ] Quêtes géographiques (« le tour des marronniers du Luxembourg », « les 10 plus grands arbres du 5e »)
-- [ ] **Page Badges & succès dédiée** — entrée nav distincte de l'Arboretum. Badges narratifs (« Tu as visité 100 arbres > 100 ans », « Les 10 remarquables du 5e », « 1re capture en hiver »). Pas d'XP, pas de classement.
-- [ ] Fiches naturalistes (feuille / écorce / fruit) en complément des données OpenData
+- [ ] **4 formes saisonnières par espèce** — hiver / printemps / été / automne ; même espèce capturée à deux saisons compte pour 2 entrées (la colonne `season` est déjà sur `capture`, schema-ready).
+- [ ] **Quêtes géographiques** — « le tour des marronniers du Luxembourg », « les 10 plus grands arbres du 5e », etc.
+- [ ] **Page Badges & succès dédiée** — entrée nav distincte de l'Arboretum. Badges narratifs (« 100 arbres > 100 ans visités », « les 10 remarquables du 5e », « 1re capture en hiver »). Pas d'XP, pas de classement.
+- [ ] **Fiches naturalistes** — feuille / écorce / fruit en complément des données OpenData.
+- [ ] **Notifications de proximité** (« arbre remarquable à 80 m ») — écarté du MVP capture par `docs/vision-jeu.md` §5.5, à reprendre ici.
 
-## Phase 4 — Famille et amis
+## Phase 5 — Famille et amis
 
 - [ ] Export / import JSON de l'arboretum (partage manuel — pas de backend)
 - [ ] Mode « lobby » local (Bluetooth ou QR code) pour partager une chasse
-- [ ] Éventuellement : un petit serveur partagé pour la famille, mais pas avant que le solo soit excellent
+- [ ] Éventuellement : petit serveur partagé pour la famille, mais pas avant que le solo soit excellent
 
 ## Idées en vrac
 
