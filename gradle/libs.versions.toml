@@ -8,9 +8,8 @@ activityCompose = "1.9.3"
 composeBom = "2025.01.00"
 navigationCompose = "2.8.5"
 room = "2.6.1"
-maplibre = "11.5.2"
+maplibre = "11.11.0"
 coroutines = "1.9.0"
-playServicesLocation = "21.3.0"
 moshi = "1.15.1"
 okhttp = "4.12.0"
 junit = "4.13.2"
@@ -35,7 +34,6 @@ androidx-room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = 
 androidx-room-compiler = { group = "androidx.room", name = "room-compiler", version.ref = "room" }
 maplibre-android = { group = "org.maplibre.gl", name = "android-sdk", version.ref = "maplibre" }
 kotlinx-coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref = "coroutines" }
-play-services-location = { group = "com.google.android.gms", name = "play-services-location", version.ref = "playServicesLocation" }
 moshi = { group = "com.squareup.moshi", name = "moshi-kotlin", version.ref = "moshi" }
 okhttp = { group = "com.squareup.okhttp3", name = "okhttp", version.ref = "okhttp" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }

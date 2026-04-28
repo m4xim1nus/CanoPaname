@@ -65,7 +65,6 @@ dependencies {
 
     implementation(libs.maplibre.android)
     implementation(libs.kotlinx.coroutines.android)
-    implementation(libs.play.services.location)
     implementation(libs.moshi)
     implementation(libs.okhttp)
 

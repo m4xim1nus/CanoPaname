@@ -12,22 +12,28 @@ App perso, pas de calendrier engageant. Phases ordonnées du plus pragmatique au
 - [x] Build & install validés sur GrapheneOS via ADB + Android Studio Panda4 (AGP 8.7.3)
 - [x] Carte OpenFreeMap qui charge correctement, pan/zoom OK
 
-## Phase 1 — MVP « voir les arbres autour de moi » (en cours)
+## Phase 1 — MVP « voir les arbres autour de moi » ✅
 
 Objectif : afficher la position de l'utilisateur et les arbres réels de Paris sur la carte. Pouvoir taper un arbre précis pour voir sa fiche.
 
-**Ordre de travail recommandé** (du plus rapide au plus lourd) : import dataset → couche carte → géoloc → hit-test → bump MapLibre.
+- [x] Style de carte tous-zooms (OpenFreeMap)
+- [x] Bump MapLibre Android 11.5.2 → 11.11.0 (16 KB page-size alignment côté `libmaplibre.so` — warning résiduel sur `libandroidx.graphics.path.so` à traiter via bump Compose si encore visible)
+- [x] Géoloc : permission runtime + bouton « me localiser » qui recentre la carte
+- [x] `LocationManager` natif uniquement (sans Google Play Services) — `play-services-location` retiré
+- [x] Schéma Room : table `arbre` avec index composite `(latitude, longitude)`
+- [x] Pré-baked SQLite + GeoJSON dans `app/src/main/assets/`, générés par `tools/build_dataset.py`
+- [x] Couche MapLibre clusterisée : 3 layers (clusters / count / points individuels), source GeoJSON chargée en RAM puis `setGeoJson(jsonString)` pour clustering Supercluster global
+- [x] Hit-test : tap cluster → `getClusterExpansionZoom` + zoom in ; tap point → fiche arbre
+- [x] `LocationComponent` MapLibre avec halo bleu pulsant (pin position utilisateur)
+- [x] Caméra préservée entre `MapScreen` et fiche détail (hissée dans `MapViewModel`)
+- [x] Fiche arbre complète : nom commun (`libellefrancais`), taxonomie (genre/espèce/cultivar), hauteur, circonférence, adresse, badge ★ remarquable
 
-- [x] Style de carte tous-zooms (OpenFreeMap) en remplacement de `demotiles`
-- [ ] Bumper MapLibre Android pour résoudre le warning **16 KB page-size alignment** sur Android 15+ / GrapheneOS récent (libs `libmaplibre.so` et `libandroidx.graphics.path.so` non alignées en 11.5.2)
-- [ ] Géoloc : permission runtime + bouton « me localiser » qui recentre la carte
-- [ ] Fallback `LocationManager` natif testé sur GrapheneOS (sans Google Play Services)
-- [ ] Schéma Room : table `arbre` avec index spatial (lat, lon) ou R*Tree
-- [ ] Import du dataset OpenData au premier lancement (download + parsing CSV/GeoJSON streamé) ou pré-baked SQLite dans `assets/`
-- [ ] Couche MapLibre `CircleLayer` (ou `SymbolLayer`) qui charge les arbres dans la bbox visible
-- [ ] Vrai hit-test sur le tap : `map.queryRenderedFeatures(...)` → ouvrir l'arbre sous le doigt (remplace le stub actuel qui ouvre toujours `SAMPLE.first()`)
+**Critère de fin de phase atteint** : la carte montre 217 855 arbres réels de Paris, clusterisés à dezoom, ouvrables individuellement à zoom haut.
 
-**Critère de fin de phase** : je marche dans le 5e, j'ouvre l'app, je vois des points sur la carte aux bons endroits.
+### Améliorations non prioritaires identifiées en fin de phase
+
+- [ ] Au retour de la fiche détail, la carte recharge ses tiles (~1-2 s de latence visuelle). La position est bien préservée mais l'expérience n'est pas instantanée. Cause : `MapView` recréé à chaque entrée Compose ; le fix propre est de hisser le `MapView` au niveau Activity ou utiliser un fragment retainé.
+- [ ] Au démarrage de l'app, ouvrir directement zoomé sur la dernière position GPS connue (si permission accordée) plutôt que sur PARIS z13. Réduit le « voyage » initial du dezoom Paris vers le 5e.
 
 ## Phase 2 — « Capture » et collection
 

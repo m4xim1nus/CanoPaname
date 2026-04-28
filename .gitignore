@@ -39,3 +39,7 @@ Thumbs.db
 /data/raw/
 *.geojson.gz
 les-arbres*.csv
+
+# Base SQLite + GeoJSON pré-cuits — régénérés par tools/build_dataset.py
+/app/src/main/assets/databases/*.db
+/app/src/main/assets/arbres-paris.geojson

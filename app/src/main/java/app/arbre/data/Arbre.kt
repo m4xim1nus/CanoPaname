@@ -9,6 +9,7 @@ data class Arbre(
     val genre: String?,
     val espece: String?,
     val varieteCultivar: String?,
+    val nomCommun: String?,
     val hauteurM: Int?,
     val circonferenceCm: Int?,
     val remarquable: Boolean,
@@ -17,5 +18,6 @@ data class Arbre(
     val longitude: Double,
 ) {
     val nomAffichage: String
-        get() = listOfNotNull(genre, espece).joinToString(" ").ifBlank { "Arbre #$id" }
+        get() = nomCommun
+            ?: listOfNotNull(genre, espece).joinToString(" ").ifBlank { "Arbre #$id" }
 }
