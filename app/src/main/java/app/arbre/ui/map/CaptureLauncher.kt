@@ -23,8 +23,43 @@ import java.io.File
 import java.util.UUID
 import kotlinx.coroutines.launch
 
-private const val MAX_GPS_AGE_MS = 30_000L
-private const val MAX_DISTANCE_M = 30f
+internal const val MAX_GPS_AGE_MS = 30_000L
+internal const val MAX_DISTANCE_M = 30f
+
+/**
+ * État du bouton « Capturer » du sheet, calculé une fois à l'ouverture pour ne
+ * pas laisser un bouton cliquable qui ne fait rien (cf. Sprint D). Les mêmes
+ * seuils sont vérifiés à nouveau dans [runCapture] comme garde-fou — si la
+ * position devenue stale entre l'ouverture du sheet et le tap, on renvoie
+ * simplement l'utilisateur via Snackbar.
+ */
+sealed class CaptureAvailability {
+    object Ready : CaptureAvailability()
+    object NoGps : CaptureAvailability()
+    data class TooFar(val meters: Int) : CaptureAvailability()
+}
+
+suspend fun captureAvailability(
+    ctx: Context,
+    arbre: Arbre,
+): CaptureAvailability {
+    val loc = LocationProvider.currentOrLastKnown(ctx)
+        ?: return CaptureAvailability.NoGps
+    val ageMs = System.currentTimeMillis() - loc.time
+    if (ageMs > MAX_GPS_AGE_MS) return CaptureAvailability.NoGps
+    val results = FloatArray(1)
+    Location.distanceBetween(
+        loc.latitude, loc.longitude,
+        arbre.latitude, arbre.longitude,
+        results,
+    )
+    val distance = results[0]
+    return if (distance > MAX_DISTANCE_M) {
+        CaptureAvailability.TooFar(distance.toInt())
+    } else {
+        CaptureAvailability.Ready
+    }
+}
 
 /**
  * Pipeline de capture : demande la permission caméra si besoin, lit le GPS

@@ -11,8 +11,12 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.MyLocation
@@ -87,6 +91,7 @@ private const val CLUSTERS_LAYER_ID = "arbres-clusters"
 private const val CLUSTER_COUNT_LAYER_ID = "arbres-cluster-count"
 private const val ARBRES_ASSET_PATH = "arbres-paris.geojson"
 private const val PIN_GREEN = "#2E7D32"
+private const val PIN_ORANGE = "#FB8C00"
 private const val PIN_GREY = "#9E9E9E"
 
 private fun parisCamera(): CameraPosition =
@@ -292,6 +297,7 @@ fun MapScreen(onArboretumClick: () -> Unit = {}) {
         Row(
             modifier = Modifier
                 .align(Alignment.TopEnd)
+                .windowInsetsPadding(WindowInsets.statusBars)
                 .padding(16.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
@@ -312,6 +318,7 @@ fun MapScreen(onArboretumClick: () -> Unit = {}) {
             },
             modifier = Modifier
                 .align(Alignment.BottomEnd)
+                .windowInsetsPadding(WindowInsets.navigationBars)
                 .padding(16.dp),
         ) {
             Icon(Icons.Default.MyLocation, contentDescription = "Me localiser")
@@ -339,6 +346,12 @@ fun MapScreen(onArboretumClick: () -> Unit = {}) {
             }
             val capturesArbre by captureRepo.capturesPourArbre(openedArbre.id)
                 .collectAsState(initial = emptyList())
+            var availability by remember(openedArbre.id) {
+                mutableStateOf<CaptureAvailability?>(null)
+            }
+            LaunchedEffect(openedArbre.id) {
+                availability = captureAvailability(ctx, openedArbre)
+            }
             ModalBottomSheet(
                 onDismissRequest = { viewModel.closeDetail() },
                 sheetState = sheetState,
@@ -348,6 +361,7 @@ fun MapScreen(onArboretumClick: () -> Unit = {}) {
                     isDiscovered = isDiscovered,
                     nbPhotos = capturesArbre.size,
                     onCapturer = { capturer(openedArbre) },
+                    captureAvailability = availability,
                 )
             }
         }
@@ -420,9 +434,14 @@ private fun applyDiscoveryColor(
 
 /**
  * `case(remarquable, match-id, match-sk)` :
- *   - pour un pin remarquable, vert ssi son `id` est dans le set capturé ;
- *   - sinon (pin normal), vert ssi son `sk` est dans le set capturé.
+ *   - pour un pin remarquable capturé, orange ssi son `id` est dans le set ;
+ *   - pour un pin normal capturé, vert ssi son `sk` est dans le set ;
  *   - défaut = gris.
+ *
+ * L'ordre des args du `match` est `[input, label1, out1, …, default]` — default
+ * en DERNIER (cf. spec MapLibre style). Ne pas inverser : un default placé en
+ * 2e position serait pris pour un label string et l'expression silencieusement
+ * ignorée (les pins resteraient à leur couleur initiale).
  *
  * Quand le set est vide, `match` ne tolère pas zéro stop : on retombe sur un
  * `literal(grey)` direct.
@@ -439,7 +458,8 @@ private fun buildDiscoveryExpression(
             stops += literal(sk)
             stops += literal(PIN_GREEN)
         }
-        match(get("sk"), literal(PIN_GREY), *stops.toTypedArray())
+        stops += literal(PIN_GREY)
+        match(get("sk"), *stops.toTypedArray())
     }
     val remarquableExpr = if (capturedRemarquables.isEmpty()) {
         literal(PIN_GREY)
@@ -449,9 +469,10 @@ private fun buildDiscoveryExpression(
             // Cast Int : tous les `idbase` parisiens tiennent dans 32 bits,
             // évite les quirks de boxing Long de l'API Java MapLibre.
             stops += literal(id.toInt())
-            stops += literal(PIN_GREEN)
+            stops += literal(PIN_ORANGE)
         }
-        match(get("id"), literal(PIN_GREY), *stops.toTypedArray())
+        stops += literal(PIN_GREY)
+        match(get("id"), *stops.toTypedArray())
     }
     return switchCase(
         eq(get("remarquable"), literal(true)),

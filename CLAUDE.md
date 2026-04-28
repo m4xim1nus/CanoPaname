@@ -27,6 +27,11 @@ Données : OpenData Paris [`les-arbres`](https://opendata.paris.fr/explore/datas
 - Android SDK installé par Studio dans `~/Android/Sdk` (API 35).
 - Le wrapper Gradle a été généré au premier import par Studio.
 - Téléphone GrapheneOS branché en USB, debug ADB activé, autorisation persistante accordée à cet ordinateur.
+- **JDK** : le système n'a que **Java 25** (`/usr/bin/java`), trop récent pour Gradle 8.10.2 + Kotlin embedded (échec `IllegalArgumentException: 25.0.2` au parse de version). Utiliser le JDK 21 bundlé d'Android Studio :
+  ```bash
+  JAVA_HOME=/opt/android-studio/jbr ./gradlew assembleDebug
+  ```
+  Studio le gère automatiquement.
 
 ## Commandes
 

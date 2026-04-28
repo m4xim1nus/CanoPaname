@@ -13,6 +13,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import app.arbre.data.Arbre
+import app.arbre.ui.map.CaptureAvailability
 
 /**
  * Trois rendus possibles du sheet en fonction de l'état de découverte :
@@ -31,6 +32,7 @@ fun ArbreDetailContent(
     isDiscovered: Boolean,
     nbPhotos: Int = 0,
     onCapturer: (() -> Unit)? = null,
+    captureAvailability: CaptureAvailability? = null,
 ) {
     Column(
         modifier = Modifier
@@ -42,7 +44,7 @@ fun ArbreDetailContent(
         if (isDiscovered) {
             DiscoveredContent(arbre, nbPhotos)
         } else {
-            UnknownContent(arbre, onCapturer)
+            UnknownContent(arbre, onCapturer, captureAvailability)
         }
     }
 }
@@ -87,7 +89,11 @@ private fun DiscoveredContent(arbre: Arbre, nbPhotos: Int) {
 }
 
 @Composable
-private fun UnknownContent(arbre: Arbre, onCapturer: (() -> Unit)?) {
+private fun UnknownContent(
+    arbre: Arbre,
+    onCapturer: (() -> Unit)?,
+    availability: CaptureAvailability?,
+) {
     Text(
         "Arbre inconnu",
         style = MaterialTheme.typography.headlineSmall,
@@ -103,11 +109,17 @@ private fun UnknownContent(arbre: Arbre, onCapturer: (() -> Unit)?) {
     )
 
     Spacer(Modifier.height(8.dp))
+    val label = when (availability) {
+        CaptureAvailability.Ready -> "Capturer"
+        CaptureAvailability.NoGps -> "Active le GPS"
+        is CaptureAvailability.TooFar -> "Trop loin (${availability.meters} m)"
+        null -> "Capturer"
+    }
     Button(
         onClick = { onCapturer?.invoke() },
-        enabled = onCapturer != null,
+        enabled = onCapturer != null && availability is CaptureAvailability.Ready,
         modifier = Modifier.fillMaxWidth(),
     ) {
-        Text("Capturer")
+        Text(label)
     }
 }

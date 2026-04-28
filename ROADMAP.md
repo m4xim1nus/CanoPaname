@@ -42,7 +42,7 @@ Décidé après phase 1 : consolider l'UX carte avant d'empiler la phase 2 (capt
 - [x] **Sprint A** — zoom auto sur dernière position GPS connue au lancement + fiche détail en `ModalBottomSheet` (élimine la recharge tiles). Validé sur GrapheneOS.
 - [x] **Sprint B** — note `docs/vision-jeu.md` arbitrant ce qu'on garde / jette de Pokémon GO, les spécificités arbre à exploiter, la nature de la capture (photo + GPS au tap) et la boucle de jeu côté UX (carte = hub, pas de radar). Livré 2026-04-28.
 - [x] **Sprint C** — phase 2 livrée 2026-04-28 (validation device sur GrapheneOS faite). Plan détaillé dans `~/.claude/plans/swirling-frolicking-unicorn.md`.
-- [ ] **Sprint D** — correctifs critiques relevés au test du Sprint C (cf. ci-dessous).
+- [x] **Sprint D** — correctifs critiques relevés au test du Sprint C livrés 2026-04-29 (cf. ci-dessous). Plan détaillé dans `~/.claude/plans/go-sprint-d-je-hidden-bonbon.md`.
 
 ## Phase 2 — « Capture » et collection ✅
 
@@ -55,13 +55,14 @@ Objectif : la dimension jeu commence ici.
 - [x] Remarquables traités à part : pin gris jusqu'à capture personnelle, bouton ★ overlay → snackbar « Plus proche remarquable non découvert : X m ».
 - [ ] Notifications de proximité (« arbre remarquable à 80 m ») → écarté du MVP capture par `docs/vision-jeu.md` §5.5, à reprendre plus tard.
 
-## Sprint D — correctifs critiques Sprint C (prochaine étape)
+## Sprint D — correctifs critiques Sprint C ✅
 
-Issus du test sur GrapheneOS de fin de Sprint C. À traiter avant tout polish.
+Issus du test sur GrapheneOS de fin de Sprint C. Livrés 2026-04-29.
 
-- [ ] **🐛 Pins ne basculent pas verts à la capture** — la fiche, elle, bascule bien en mode « découvert » (preuve que le Flow `capturedSpeciesIndices` émet). Bug isolé côté layer/expression MapLibre. Pistes : le `LaunchedEffect(styleRef)` ne re-collecte pas, le `setProperties(circleColor)` ne déclenche pas de redraw, ou l'expression `match(get("sk"), …)` rejette les ints assignés. Reproductible 100 % au tap debug. **Bloquant pour l'usage réel.**
-- [ ] **Bouton « Capturer » désactivé / message clair quand inutilisable** — actuellement le bouton paraît cliquable même à 200 m d'un arbre inconnu, et le tap ne fait rien (ou snackbar discrète). Désactiver le bouton selon GPS frais < 30 m, et afficher la distance restante (« trop loin : 187 m ») dans le sheet ou le label du bouton. Pas un bug fatal, mais première friction utilisateur.
-- [ ] **FABs ★ et Arboretum descendus** — actuellement collés au top, en collision avec la status bar / les éléments OS GrapheneOS. À padder avec `WindowInsets.statusBars` ou un `Spacer` adéquat.
+- [x] **🐛 Pins ne basculent pas verts à la capture** — root cause : ordre des arguments de `Expression.match()` MapLibre inversé dans `buildDiscoveryExpression`. La spec attend `[input, label1, out1, …, default]` avec default en DERNIER ; le code plaçait `PIN_GREY` en 2e position, donc l'expression était silencieusement rejetée. Fix : append `literal(PIN_GREY)` aux stops puis `match(get("sk"), *stops.toTypedArray())`.
+- [x] **Bouton « Capturer » désactivé / message clair quand inutilisable** — sealed class `CaptureAvailability { Ready / NoGps / TooFar(meters) }` calculée à l'ouverture du sheet via `LaunchedEffect`. Le bouton est désactivé sauf en `Ready` et son label reflète la raison (« Active le GPS », « Trop loin (X m) »).
+- [x] **FABs ★ et Arboretum descendus** — `windowInsetsPadding(WindowInsets.statusBars)` sur le Row TopEnd, `windowInsetsPadding(WindowInsets.navigationBars)` sur le FAB GPS BottomEnd.
+- [x] **Bonus : pin orange pour remarquables capturés** — nouvelle constante `PIN_ORANGE = "#FB8C00"` (Material Orange 600) dans la branche remarquable du `match`. Vert reste pour les normaux capturés. Lisible d'un coup d'œil sur la carte.
 
 ## Phase 2.5 — Profondeur Arboretum et performance
 
