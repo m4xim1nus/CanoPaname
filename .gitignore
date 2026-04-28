@@ -14,6 +14,13 @@ captures/
 # Build outputs
 /app/build/
 /app/release/
+
+# Kotlin incremental compilation cache
+.kotlin/
+
+# Build logs collés à la racine pendant le debug (pas à versionner)
+Studio Log.txt
+*.log
 *.apk
 *.aab
 *.ap_

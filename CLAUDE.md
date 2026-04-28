@@ -21,9 +21,16 @@ Conséquences directes pour les choix techniques :
 
 Données : OpenData Paris [`les-arbres`](https://opendata.paris.fr/explore/dataset/les-arbres/) (~210 k arbres) + [`arbresremarquablesparis`](https://opendata.paris.fr/explore/dataset/arbresremarquablesparis/). Embarquées dans l'APK ou téléchargées au premier lancement (voir ROADMAP).
 
+## Setup (déjà fait sur cette machine)
+
+- Android Studio installé dans `/opt/android-studio`, lancement par `studio` (PATH ajouté à `~/.bashrc`).
+- Android SDK installé par Studio dans `~/Android/Sdk` (API 35).
+- Le wrapper Gradle a été généré au premier import par Studio.
+- Téléphone GrapheneOS branché en USB, debug ADB activé, autorisation persistante accordée à cet ordinateur.
+
 ## Commandes
 
-Le wrapper Gradle n'est pas committé en binaire — bootstrap une fois :
+Le wrapper Gradle n'est pas committé en binaire — si on repart de zéro :
 ```bash
 # Avec Android Studio : ouvrir le dossier, il génère le wrapper automatiquement.
 # Sinon, depuis une install Gradle ≥ 8.10 :
@@ -59,13 +66,22 @@ Conventions :
 
 ## Décisions à connaître
 
-- **Style de carte** : pour l'instant `demotiles.maplibre.org` (faible qualité, suffisant pour debug). À remplacer par un style OSM correct (Protomaps, MapTiler key gratuite, ou tuiles vectorielles self-host) avant la phase « usage réel ». Référence dans `res/values/strings.xml` → `map_style_url`.
+- **Style de carte** : OpenFreeMap (`https://tiles.openfreemap.org/styles/liberty`) — gratuit, sans clé, OSM. Référence dans `res/values/strings.xml` → `map_style_url`. C'est de la dépendance externe gentille mais sans SLA ; à terme, prévoir un fallback (Versatiles, Protomaps self-host) si OpenFreeMap tombe.
+- **Warning Android 16 KB page-size** sur GrapheneOS / Android 15+ avec MapLibre 11.5.2 : non bloquant (juste un dialog au lancement, l'app fonctionne). Sera corrigé en bumpant MapLibre vers une version qui livre des libs natives 16 KB-aligned. Voir ROADMAP Phase 1.
 - **Pas de Hilt / DI framework** au MVP. Si l'arbre des dépendances grossit, introduire Hilt avant que ça pourrisse — pas avant.
 - **Pas de feature flags, pas d'A/B**. C'est une app perso.
+
+## État actuel (fin de Phase 0)
+
+- L'app build et tourne sur GrapheneOS. Carte OpenFreeMap visible, pan/zoom fonctionnels.
+- 3 arbres en dur dans `ArbreRepository.SAMPLE` (Platane Tournelle, Marronnier Luxembourg, Chêne Viviani).
+- Tap sur la carte → ouvre **systématiquement** le premier arbre du SAMPLE. **C'est volontaire**, pas un bug : il n'y a pas encore de couche de symboles donc pas de hit-test possible. Voir `MapScreen.kt:addOnMapClickListener` et le commentaire associé.
+- Warning au lancement « Android app compatibility / 16 KB-aligned » → cosmétique, à corriger en bumpant MapLibre. Listé dans ROADMAP Phase 1.
 
 ## Quand tu travailles ici
 
 - Avant de toucher au build, regarde `gradle/libs.versions.toml` — c'est la source de vérité des versions.
 - N'introduis pas de dépendance Google/Firebase/AdMob/Analytics. Le projet doit rester installable et utilisable sans Google Play Services.
 - Si tu remplaces le stub `ArbreRepository`, mets à jour la même API publique et adapte `MapScreen`/`ArbreDetailScreen` en conséquence.
+- Quand tu poses une couche d'arbres sur la carte (Phase 1), supprime le stub `addOnMapClickListener` actuel et remplace-le par un vrai `queryRenderedFeatures`.
 - Mets à jour `ROADMAP.md` quand tu termines une étape ou quand tu changes le périmètre d'une phase.

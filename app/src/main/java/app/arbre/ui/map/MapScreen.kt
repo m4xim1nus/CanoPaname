@@ -49,8 +49,10 @@ fun MapScreen(onArbreClick: (Long) -> Unit) {
                 @Suppress("UNUSED_VARIABLE")
                 val sample = ArbreRepository.SAMPLE
             }
-            map.addOnMapClickListener { latLng ->
-                // Stub: clic sur la carte → ouvre le premier arbre échantillon.
+            map.addOnMapClickListener { _ ->
+                // STUB MVP : tant qu'il n'y a pas de couche de symboles d'arbres,
+                // n'importe quel tap ouvre toujours le premier arbre de l'échantillon.
+                // Phase 1 : ajouter une CircleLayer + queryRenderedFeatures pour un vrai hit-test.
                 ArbreRepository.SAMPLE.firstOrNull()?.let { onArbreClick(it.id) }
                 true
             }

@@ -8,18 +8,24 @@ App perso, pas de calendrier engageant. Phases ordonnées du plus pragmatique au
 - [x] Écran carte (MapLibre) centré sur Paris, écran détail
 - [x] Repo `Arbre` stub avec un échantillon en mémoire
 - [x] Docs (README, CLAUDE.md, ROADMAP)
+- [x] Icône adaptive (sapin sur fond vert)
+- [x] Build & install validés sur GrapheneOS via ADB + Android Studio Panda4 (AGP 8.7.3)
+- [x] Carte OpenFreeMap qui charge correctement, pan/zoom OK
 
-## Phase 1 — MVP « voir les arbres autour de moi »
+## Phase 1 — MVP « voir les arbres autour de moi » (en cours)
 
-Objectif : sortir une APK installable sur le téléphone, qui affiche la position et les arbres réels de Paris.
+Objectif : afficher la position de l'utilisateur et les arbres réels de Paris sur la carte. Pouvoir taper un arbre précis pour voir sa fiche.
 
+**Ordre de travail recommandé** (du plus rapide au plus lourd) : import dataset → couche carte → géoloc → hit-test → bump MapLibre.
+
+- [x] Style de carte tous-zooms (OpenFreeMap) en remplacement de `demotiles`
+- [ ] Bumper MapLibre Android pour résoudre le warning **16 KB page-size alignment** sur Android 15+ / GrapheneOS récent (libs `libmaplibre.so` et `libandroidx.graphics.path.so` non alignées en 11.5.2)
 - [ ] Géoloc : permission runtime + bouton « me localiser » qui recentre la carte
 - [ ] Fallback `LocationManager` natif testé sur GrapheneOS (sans Google Play Services)
 - [ ] Schéma Room : table `arbre` avec index spatial (lat, lon) ou R*Tree
 - [ ] Import du dataset OpenData au premier lancement (download + parsing CSV/GeoJSON streamé) ou pré-baked SQLite dans `assets/`
-- [ ] Couche MapLibre `symbol` ou `circle` qui charge les arbres dans la bbox visible
-- [ ] Tap sur un arbre → écran détail avec les vraies données
-- [ ] Style de carte décent (Protomaps / MapTiler / tuiles self-host) en remplacement du `demotiles`
+- [ ] Couche MapLibre `CircleLayer` (ou `SymbolLayer`) qui charge les arbres dans la bbox visible
+- [ ] Vrai hit-test sur le tap : `map.queryRenderedFeatures(...)` → ouvrir l'arbre sous le doigt (remplace le stub actuel qui ouvre toujours `SAMPLE.first()`)
 
 **Critère de fin de phase** : je marche dans le 5e, j'ouvre l'app, je vois des points sur la carte aux bons endroits.
 
