@@ -53,6 +53,12 @@ fun rememberSeasonStore(): SeasonStore {
 }
 
 @Composable
+fun rememberOnboardingStore(): OnboardingStore {
+    val ctx = LocalContext.current
+    return remember(ctx) { ctx.app().onboardingStore }
+}
+
+@Composable
 fun rememberBackupExporter(): BackupExporter {
     val ctx = LocalContext.current
     return remember(ctx) { ctx.app().backupExporter }
@@ -71,3 +77,4 @@ fun Context.datasetStats(): DatasetStats = app().datasetStats
 fun Context.speciesInfoRepository(): SpeciesInfoRepository = app().speciesInfoRepository
 fun Context.remarquableInfoRepository(): RemarquableInfoRepository = app().remarquableInfoRepository
 fun Context.seasonStore(): SeasonStore = app().seasonStore
+fun Context.onboardingStore(): OnboardingStore = app().onboardingStore

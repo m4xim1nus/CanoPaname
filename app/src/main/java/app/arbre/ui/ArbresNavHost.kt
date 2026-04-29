@@ -1,20 +1,28 @@
 package app.arbre.ui
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import app.arbre.data.rememberOnboardingStore
 import app.arbre.ui.arboretum.ArboretumScreen
 import app.arbre.ui.badges.BadgesScreen
 import app.arbre.ui.map.MapScreen
+import app.arbre.ui.onboarding.WelcomeScreen
 import app.arbre.ui.profile.ProfileScreen
 import app.arbre.ui.remarquables.RemarquableDetailScreen
 import app.arbre.ui.remarquables.RemarquablesScreen
 import app.arbre.ui.species.SpeciesDetailScreen
+import kotlinx.coroutines.launch
 
 object Routes {
+    const val WELCOME = "welcome"
+    const val WELCOME_REPLAY = "welcome_replay"
     const val MAP = "map"
     const val ARBORETUM = "arboretum"
     const val PROFILE = "profile"
@@ -39,7 +47,36 @@ object Routes {
 @Composable
 fun ArbresNavHost() {
     val nav = rememberNavController()
-    NavHost(navController = nav, startDestination = Routes.MAP) {
+    val onboardingStore = rememberOnboardingStore()
+    val coScope = rememberCoroutineScope()
+    // initial = null pendant le 1er round-trip DataStore (quelques ms). Pendant
+    // ce délai, le splash overlay du MapScreen précédent couvre déjà l'écran —
+    // pas de flicker visible.
+    val onboardingDone by onboardingStore.onboardingDone.collectAsState(initial = null)
+    val start = when (onboardingDone) {
+        null -> Routes.MAP // fallback transitoire ; l'utilisateur arrivera sur la carte
+        true -> Routes.MAP
+        false -> Routes.WELCOME
+    }
+
+    NavHost(navController = nav, startDestination = start) {
+        composable(Routes.WELCOME) {
+            WelcomeScreen(
+                onContinue = {
+                    coScope.launch { onboardingStore.markDone() }
+                    nav.navigate(Routes.MAP) {
+                        popUpTo(Routes.WELCOME) { inclusive = true }
+                    }
+                },
+            )
+        }
+        composable(Routes.WELCOME_REPLAY) {
+            WelcomeScreen(
+                readOnly = true,
+                onContinue = {},
+                onClose = { nav.popBackStack() },
+            )
+        }
         composable(Routes.MAP) {
             MapScreen(
                 onArboretumClick = { nav.navigate(Routes.ARBORETUM) },
@@ -55,6 +92,7 @@ fun ArbresNavHost() {
             ProfileScreen(
                 onBack = { nav.popBackStack() },
                 onBadgesClick = { nav.navigate(Routes.BADGES) },
+                onHowToPlayClick = { nav.navigate(Routes.WELCOME_REPLAY) },
             )
         }
         composable(Routes.BADGES) {

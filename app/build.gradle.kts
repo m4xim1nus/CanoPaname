@@ -68,6 +68,7 @@ dependencies {
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.moshi)
     implementation(libs.okhttp)
+    implementation(libs.androidx.datastore.preferences)
 
     debugImplementation(libs.androidx.compose.ui.tooling)
 

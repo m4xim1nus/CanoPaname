@@ -24,6 +24,7 @@ import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.EmojiEvents
+import androidx.compose.material.icons.outlined.HelpOutline
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.Upload
 import androidx.compose.material3.Card
@@ -75,6 +76,7 @@ import java.util.concurrent.TimeUnit
 fun ProfileScreen(
     onBack: () -> Unit,
     onBadgesClick: () -> Unit = {},
+    onHowToPlayClick: () -> Unit = {},
 ) {
     val captureRepo = rememberCaptureRepository()
     val backupExporter = rememberBackupExporter()
@@ -211,6 +213,9 @@ fun ProfileScreen(
                 AllBadgesEntry(onClick = onBadgesClick)
             }
             item {
+                HowToPlayEntry(onClick = onHowToPlayClick)
+            }
+            item {
                 Text(
                     "Sauvegarde",
                     style = MaterialTheme.typography.titleLarge,
@@ -236,6 +241,37 @@ fun ProfileScreen(
                     },
                 )
             }
+        }
+    }
+}
+
+@Composable
+private fun HowToPlayEntry(onClick: () -> Unit) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant,
+        ),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            Icon(Icons.Outlined.HelpOutline, contentDescription = null)
+            Text(
+                "Comment jouer",
+                style = MaterialTheme.typography.titleSmall,
+                modifier = Modifier.weight(1f),
+            )
+            Icon(
+                Icons.AutoMirrored.Outlined.KeyboardArrowRight,
+                contentDescription = null,
+            )
         }
     }
 }
