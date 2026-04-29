@@ -77,6 +77,10 @@ Constat : un nouvel utilisateur arrivait sur une carte 100 % grise sans explicat
 - **Search / filtres dans l'Arboretum** — barre de recherche (nom commun, binomial) + filtres (capturé / non, remarquable, par famille). Confort à 907 espèces.
 - **Timeline des captures** — écran liste par date décroissante (photo + espèce + lieu).
 - **Stats avancées Profil** — heatmap calendaire, top arrondissements parcourus, graphes par saison.
+- **Recadrage du pitch « Pokémon GO »** — la métaphore promet du social/compétitif que le scope single-player ne tient pas. Reformuler en « carnet de bord naturaliste gamifié » dans README + accroche WelcomeScreen, aligner la copy de l'onboarding et le ton des célébrations. Décision d'identité produit, pas de code.
+- **Calendrier 12 cases pour le badge « Année complète »** — rendre la progression visible passivement dans le Profil (case par mois, ✓ si une capture existe dans le bucket YearMonth). Sans notif système, juste un état affiché. Capitalise sur le seul critère qui force la rétention long-terme.
+- **Animation 1re capture d'une espèce** — micro-célébration ~1 s sur la transition silhouette grise → silhouette colorée (cascade fade+scale par feuilles, ou spread de couleur centré sur le tap). Capitalise sur l'identité visuelle Fraunces/feuilleSombre déjà posée. ~1-2 j de boulot, gros levier émotionnel.
+- **Refactor du hub navigation carte** — aujourd'hui 3 FABs (GPS, ★, Arboretum) + Profil TopStart + SeasonSelector + ArchiveBanner. Capacité presque saturée. Avant la prochaine grosse feature, prévoir une bottom bar à 3 entrées (Carte / Arboretum / Profil) ou un drawer, plutôt que d'empiler un 4e bouton. À faire à froid, pas en panique.
 
 ## Phase 6 — Hygiène projet ✅
 
