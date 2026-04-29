@@ -1,6 +1,7 @@
 package app.arbre.ui.profile
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -18,6 +19,7 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.EmojiEvents
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material3.Card
@@ -54,7 +56,10 @@ import java.util.concurrent.TimeUnit
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ProfileScreen(onBack: () -> Unit) {
+fun ProfileScreen(
+    onBack: () -> Unit,
+    onBadgesClick: () -> Unit = {},
+) {
     val captureRepo = rememberCaptureRepository()
     // Saison vive seule comptée pour la stat « Saison courante » : pas de
     // sélecteur de saison ici, un toggle binaire suffit (cf. ROADMAP I).
@@ -81,17 +86,11 @@ fun ProfileScreen(onBack: () -> Unit) {
     val nbRemarquables = if (scope == ProfileScope.GLOBAL) capturedRemarquablesGlobal.size else capturedRemarquablesSeason.size
 
     // Le badge « 1re capture » reste global — la 1re capture est unique
-    // dans la vie du joueur, indépendante de la saison.
-    val badges = remember(firstCaptureTs) {
-        BadgeCatalog.ALL.map { def ->
-            BadgeState(
-                def = def,
-                unlockedAt = when (def.id) {
-                    BadgeCatalog.FIRST_CAPTURE.id -> firstCaptureTs
-                    else -> null
-                },
-            )
-        }
+    // dans la vie du joueur, indépendante de la saison. La vue dédiée
+    // (`BadgesScreen`) montre les 15 badges et leur état complet ; ici
+    // on garde uniquement le highlight pour ne pas surcharger le profil.
+    val firstCaptureBadge = remember(firstCaptureTs) {
+        BadgeState(def = BadgeCatalog.FIRST_CAPTURE, unlockedAt = firstCaptureTs)
     }
 
     Scaffold(
@@ -137,7 +136,10 @@ fun ProfileScreen(onBack: () -> Unit) {
                 )
             }
             item {
-                BadgeGrid(badges = badges)
+                BadgeGrid(badges = listOf(firstCaptureBadge))
+            }
+            item {
+                AllBadgesEntry(onClick = onBadgesClick)
             }
         }
     }
@@ -322,6 +324,40 @@ private fun BadgeCell(state: BadgeState) {
                     textAlign = TextAlign.Center,
                 )
             }
+        }
+    }
+}
+
+/**
+ * Card cliquable qui mène à `BadgesScreen`. Volontairement discrète : la
+ * fiche dédiée existe pour explorer les 15 badges, le profil reste centré
+ * sur le highlight (« 1re capture ») et les stats.
+ */
+@Composable
+private fun AllBadgesEntry(onClick: () -> Unit) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant,
+        ),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Text(
+                "Voir tous les badges",
+                style = MaterialTheme.typography.titleSmall,
+            )
+            Icon(
+                Icons.AutoMirrored.Outlined.KeyboardArrowRight,
+                contentDescription = null,
+            )
         }
     }
 }

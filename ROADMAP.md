@@ -40,19 +40,14 @@ Branche `claude/phase-3-design-update-hKgD6` (en attente de merge dans `main`).
 
 Icône launcher platane parisien + variante monochrome Themed Icons. Tokens couleur centralisés dans `theme/Color.kt` + `ArbresColors` (or, écorce, feuille…) via `staticCompositionLocalOf`. Fraunces SemiBold (~70 Ko OFL) sur display/headline/titleLarge. Splash cold-start animé pure Compose (sway sinusoïdal + cascade fade+scale + wordmark). `FilterSplash` dédié `MAP_FILTERED` (« Filtrage de {nom}… »). Iconographie homogène Outlined. Tinting saisonnier discret du surface (light + dark).
 
-## Phase 4 — Page Badges & succès dédiée
+## Phase 4 — Page Badges & succès dédiée ✅
 
-Entrée nav distincte du Profil (le Profil garde son badge unique « 1re capture » de Sprint H). Pas d'XP, pas de classement.
+Entrée nav distincte du Profil (le Profil garde son badge unique « 1re capture » de Sprint H et expose un lien « Voir tous les badges → »). Pas d'XP, pas de classement.
 
-- [ ] **Catalogue de badges** — déclarations data class côté Kotlin, calculés à la volée à partir des captures (pas de table Room). Cible 12-15 badges, ni gadget ni pléthorique. Sélection proposée :
-  - Découverte : « Premier pas » (déjà), « Promenade » (10 captures), « Marcheur » (50 captures), « Centurion » (100 captures).
-  - Botanique : « Botaniste amateur » (50 espèces), « Botaniste confirmé » (200 espèces), « Espèce rare » (espèce avec < 100 individus à Paris).
-  - Géographie : « Tourneur de Paris » (captures dans 10 arrondissements), « Tour complet » (les 20 arrondissements).
-  - Remarquables : « Chasseur de remarquables » (10 remarquables), « Légende » (50 remarquables).
-  - Saisons : « Ronde des saisons » (1 capture dans chaque saison), « Année complète » (1 capture chaque mois sur 12 mois roulants).
-  - Démesure : « Géant » (arbre > 30 m de haut), « Vieux sage » (arbre > 4 m de circonférence).
-- [ ] **Écran `BadgesScreen`** — grille de cards (icône + libellé + critère + date d'obtention si débloqué, silhouette grise sinon). Section « Débloqués » au-dessus, « À débloquer » en dessous.
-- [ ] **Entrée nav** — soit bouton dédié dans le Profil, soit FAB depuis la carte (à décider à l'implémentation).
+- [x] **Catalogue de 15 badges** ✅ — déclarés en `BadgeDef` (id, label, description, `BadgeCategory`) dans `data/Badge.kt`, regroupés en 6 catégories (Découverte, Botanique, Géographie, Remarquables, Saisons, Démesure). Pas de table Room : tout est dérivé des captures à la volée par `BadgeEvaluator`.
+- [x] **`BadgeEvaluator` pure** ✅ — fonction `evaluate(captures, arbresById, speciesInfo): List<BadgeState>`. Balayage chronologique unique (O(n×b), n captures = quelques centaines en pratique, b = 15) qui maintient des accumulateurs (espèces vues, arrondissements, saisons, YearMonths, count, remarquables). Le timestamp de la capture qui fait basculer le critère est figé comme `unlockedAt`. « Année complète » = recherche d'une fenêtre 12 mois consécutifs dans les YearMonths capturées (zone Europe/Paris). Arrondissement parsé depuis `Arbre.adresse` via regex `, (\d+)(er|e)$` cohérente avec `tools/build_dataset.py:normalize_arr`.
+- [x] **Batch fetch arbres** ✅ — `ArbreDao.arbresParIds(ids)` + `ArbreRepository.arbresParIds(ids): Map<Long, Arbre>`. Évite N requêtes pour les badges qui dépendent des caractéristiques (Géant > 30 m, Vieux sage > 400 cm, arrondissements, espèce rare via `SpeciesInfo.stats.count < 100`).
+- [x] **Écran `BadgesScreen`** ✅ — route `Routes.BADGES`, accédée depuis le Profil via card `AllBadgesEntry`. Layout : un seul `LazyVerticalGrid` 3 colonnes avec items spans full-width pour l'en-tête (« X / 15 débloqués ») et les titres de section (« Débloqués » / « À débloquer »). Cards homogènes : icône Outlined par badge (mapping `BadgeDef.icon()` dans `ui/badges/BadgeIcons.kt`), libellé + critère toujours visibles, date d'obtention en bas si débloqué, silhouette `Lock` grise sinon. Couleurs cohérentes avec ProfileScreen : `tertiaryContainer` débloqué / `surfaceVariant` verrouillé.
 
 ## Phase 5 — Export / import (backup local)
 
@@ -75,7 +70,7 @@ Le seul moyen de ne pas tout perdre lors d'un changement de téléphone ou d'une
 
 ## Hygiène projet (à traiter en parallèle, pas une phase)
 
-- [ ] Merge `claude/phase-3-design-update-hKgD6` puis `claude/go-sprint-h-foH26` dans `main` (résolution `Season.kt` : garder version Sprint I, sur-ensemble). Tag `v0.2.0`.
-- [ ] Mettre à jour `CLAUDE.md` avec les conventions H/I/Phase 3 (`SeasonStore`, `ArbresColors` + `staticCompositionLocalOf`, Fraunces, `FilterSplash`).
+- [x] Branche `claude/phase-4-roadmap-update-qSpGh` consolidée ✅ — merges successifs `claude/review-roadmap-planning-rrUHS`, `claude/phase-3-design-update-hKgD6`, `claude/go-sprint-h-foH26`. Conflit `Season.kt` résolu en faveur de Sprint I (sur-ensemble) ; conflits ROADMAP en faveur de la version review-roadmap (post-arbitrage) ; conflits MapScreen / ProfileScreen alignés sur la convention Outlined de Phase 3. Reste à merger dans `main` puis tagger `v0.2.0` quand validé device.
+- [ ] Mettre à jour `CLAUDE.md` avec les conventions H/I/Phase 3/Phase 4 (`SeasonStore`, `ArbresColors` + `staticCompositionLocalOf`, Fraunces, `FilterSplash`, `BadgeEvaluator` + `BadgeCatalog`).
 - [ ] Refondre `README.md` post-merge : statut réel, 2-3 captures d'écran, mention LICENSE.
 - [ ] À la veille de la `v1.0.0` : générer keystore release, configurer signing hors-debug, pousser repo public sur GitHub, créer GitHub Release avec APK signé, exposer URL Obtainium.

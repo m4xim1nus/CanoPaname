@@ -26,6 +26,9 @@ interface ArbreDao {
     @Query("SELECT * FROM arbre WHERE id = :id")
     suspend fun arbreParId(id: Long): ArbreEntity?
 
+    @Query("SELECT * FROM arbre WHERE id IN (:ids)")
+    suspend fun arbresParIds(ids: List<Long>): List<ArbreEntity>
+
     @Query("SELECT * FROM arbre WHERE remarquable = 1")
     suspend fun arbresRemarquables(): List<ArbreEntity>
 

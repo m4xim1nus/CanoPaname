@@ -23,6 +23,14 @@ class ArbreRepository(private val dao: ArbreDao) {
 
     suspend fun arbreParId(id: Long): Arbre? = dao.arbreParId(id)?.toArbre()
 
+    /** Batch lookup : utile pour évaluer les badges qui dépendent des
+     *  caractéristiques des arbres capturés (hauteur, circ, arrondissement). */
+    suspend fun arbresParIds(ids: Collection<Long>): Map<Long, Arbre> {
+        if (ids.isEmpty()) return emptyMap()
+        return dao.arbresParIds(ids.toList())
+            .associate { it.id to it.toArbre() }
+    }
+
     suspend fun arbresRemarquables(): List<Arbre> =
         dao.arbresRemarquables().map(ArbreEntity::toArbre)
 
