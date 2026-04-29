@@ -6,7 +6,12 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material3.Button
+import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -33,6 +38,9 @@ fun ArbreDetailContent(
     nbPhotos: Int = 0,
     onCapturer: (() -> Unit)? = null,
     captureAvailability: CaptureAvailability? = null,
+    onSpeciesClick: (() -> Unit)? = null,
+    medianHeightM: Int? = null,
+    medianCircCm: Int? = null,
 ) {
     Column(
         modifier = Modifier
@@ -42,7 +50,13 @@ fun ArbreDetailContent(
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         if (isDiscovered) {
-            DiscoveredContent(arbre, nbPhotos)
+            DiscoveredContent(
+                arbre = arbre,
+                nbPhotos = nbPhotos,
+                medianHeightM = medianHeightM,
+                medianCircCm = medianCircCm,
+                onSpeciesClick = onSpeciesClick,
+            )
         } else {
             UnknownContent(arbre, onCapturer, captureAvailability)
         }
@@ -50,7 +64,13 @@ fun ArbreDetailContent(
 }
 
 @Composable
-private fun DiscoveredContent(arbre: Arbre, nbPhotos: Int) {
+private fun DiscoveredContent(
+    arbre: Arbre,
+    nbPhotos: Int,
+    medianHeightM: Int?,
+    medianCircCm: Int?,
+    onSpeciesClick: (() -> Unit)?,
+) {
     Text(
         arbre.nomAffichage,
         style = MaterialTheme.typography.headlineSmall,
@@ -75,8 +95,12 @@ private fun DiscoveredContent(arbre: Arbre, nbPhotos: Int) {
         )
     }
 
-    arbre.hauteurM?.let { Text("Hauteur : $it m") }
-    arbre.circonferenceCm?.let { Text("Circonférence : $it cm") }
+    arbre.hauteurM?.let { h ->
+        Text("Hauteur : $h m" + medianComparison(h, medianHeightM))
+    }
+    arbre.circonferenceCm?.let { c ->
+        Text("Circonférence : $c cm" + medianComparison(c, medianCircCm))
+    }
     arbre.adresse?.let { Text("Adresse : $it") }
     if (nbPhotos > 0) {
         Text(
@@ -86,6 +110,41 @@ private fun DiscoveredContent(arbre: Arbre, nbPhotos: Int) {
         )
     }
     Text("ID OpenData : ${arbre.id}", style = MaterialTheme.typography.bodySmall)
+
+    if (onSpeciesClick != null) {
+        Spacer(Modifier.height(8.dp))
+        FilledTonalButton(
+            onClick = onSpeciesClick,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Icon(
+                Icons.AutoMirrored.Filled.MenuBook,
+                contentDescription = null,
+                modifier = Modifier.size(20.dp),
+            )
+            Text(
+                "En savoir plus sur l'espèce",
+                modifier = Modifier.padding(start = 8.dp),
+            )
+        }
+    }
+}
+
+/**
+ * « (médiane X) » + indication relative. Volontairement court pour garder la
+ * fiche dense — pas de percentile ni d'intervalle, juste un repère.
+ */
+private fun medianComparison(value: Int, median: Int?): String {
+    if (median == null) return ""
+    val ratio = value.toDouble() / median
+    val tag = when {
+        ratio >= 1.5 -> "bien au-dessus"
+        ratio >= 1.15 -> "au-dessus"
+        ratio <= 0.66 -> "bien en dessous"
+        ratio <= 0.85 -> "en dessous"
+        else -> "proche"
+    }
+    return " · médiane $median ($tag)"
 }
 
 @Composable

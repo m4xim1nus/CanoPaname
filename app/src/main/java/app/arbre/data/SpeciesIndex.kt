@@ -16,8 +16,20 @@ data class SpeciesEntry(
     val index: Int,
     val genre: String,
     val espece: String,
+    /**
+     * Nom commun le plus fréquent pour cette (genre, espece) dans le dataset
+     * OpenData. Null si aucun arbre de l'espèce n'a de `libellefrancais`
+     * renseigné. Calculé à build-time par `tools/build_dataset.py`.
+     */
+    val nomCommun: String? = null,
 ) {
     val displayName: String get() = "$genre $espece"
+    /**
+     * Nom à afficher en primaire dans l'Arboretum (liste / Pokédex / fiche
+     * arbre). Tombe sur le binôme si le dataset n'expose pas de nom commun
+     * pour l'espèce.
+     */
+    val displayNomCommun: String get() = nomCommun ?: displayName
 }
 
 class SpeciesIndex(entries: List<SpeciesEntry>) {
@@ -25,6 +37,10 @@ class SpeciesIndex(entries: List<SpeciesEntry>) {
     private val byIndex: Map<Int, SpeciesEntry> = entries.associateBy { it.index }
     private val byKey: Map<Pair<String, String>, Int> =
         entries.associate { (it.genre to it.espece) to it.index }
+    // Ordre stable par speciesIndex croissant — c'est l'ordre « annuaire »
+    // qu'on expose dans la vue Pokédex de l'Arboretum. Le tri est fait une
+    // fois à l'init et conservé en mémoire.
+    private val ordered: List<SpeciesEntry> = entries.sortedBy { it.index }
 
     val total: Int get() = byIndex.size
 
@@ -33,6 +49,8 @@ class SpeciesIndex(entries: List<SpeciesEntry>) {
     fun indexOf(genre: String, espece: String): Int? = byKey[genre to espece]
 
     fun indexOf(arbre: Arbre): Int? = indexOf(arbre.genre, arbre.espece)
+
+    fun entries(): List<SpeciesEntry> = ordered
 
     companion object {
         fun load(context: Context, asset: String = "species-index.json"): SpeciesIndex {
@@ -46,6 +64,9 @@ class SpeciesIndex(entries: List<SpeciesEntry>) {
                             index = o.getInt("i"),
                             genre = o.getString("g"),
                             espece = o.getString("e"),
+                            nomCommun = if (o.has("nc") && !o.isNull("nc")) {
+                                o.optString("nc").takeIf { it.isNotEmpty() }
+                            } else null,
                         )
                     )
                 }

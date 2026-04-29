@@ -22,6 +22,7 @@ import app.arbre.util.LocationProvider
 import app.arbre.util.ageMs
 import java.io.File
 import java.util.UUID
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 internal const val MAX_GPS_AGE_MS = 30_000L
@@ -82,6 +83,7 @@ fun rememberCaptureController(
     speciesIndex: SpeciesIndex,
     snackbar: SnackbarHostState,
     onCaptured: () -> Unit = {},
+    onFirstSpeciesCapture: (Int) -> Unit = {},
 ): (Arbre) -> Unit {
     val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -102,6 +104,9 @@ fun rememberCaptureController(
                 snackbar.showSnackbar("Photo vide — caméra a échoué")
                 return@launch
             }
+            // Snapshot AVANT insert : sinon on lit le set qui contient déjà
+            // notre nouvelle espèce et on rate la transition « 1re capture ».
+            val previouslyCaptured = captureRepo.capturedSpeciesIndices().first()
             captureRepo.insertCapture(
                 arbreId = pending.arbreId,
                 speciesIndex = pending.speciesIndex,
@@ -112,6 +117,15 @@ fun rememberCaptureController(
                 timestamp = pending.captureTimestamp,
             )
             onCaptured()
+            // Effet « waouh » : uniquement si l'espèce vient juste d'être
+            // débloquée. On exclut les remarquables (le speciesIndex y est
+            // technique mais le set capturedSpeciesIndices ne les compte pas
+            // — cf. requête DAO `WHERE remarquable = 0`). Pour un remarquable
+            // dont l'espèce était inconnue, l'utilisateur verra la fiche
+            // standard et débloquera l'espèce à la prochaine capture normale.
+            if (!pending.remarquable && pending.speciesIndex !in previouslyCaptured) {
+                onFirstSpeciesCapture(pending.speciesIndex)
+            }
         }
     }
 

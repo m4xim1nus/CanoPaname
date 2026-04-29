@@ -4,13 +4,11 @@ import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -20,9 +18,12 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
+import androidx.compose.material.icons.filled.Map
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -59,8 +60,12 @@ import kotlinx.coroutines.flow.map
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SpeciesDetailScreen(speciesIndex: Int, onBack: () -> Unit) {
-    val ctx = LocalContext.current
+fun SpeciesDetailScreen(
+    speciesIndex: Int,
+    onBack: () -> Unit,
+    onShowOnMap: () -> Unit = {},
+    celebrate: Boolean = false,
+) {
     val speciesIndexRepo = rememberSpeciesIndex()
     val arbreRepo = rememberArbreRepository()
     val captureRepo = rememberCaptureRepository()
@@ -105,6 +110,10 @@ fun SpeciesDetailScreen(speciesIndex: Int, onBack: () -> Unit) {
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
+            if (celebrate) {
+                item { CelebrationBanner() }
+            }
+
             item { IdentityBlock(entry, arbreSample) }
 
             if (captures.isNotEmpty()) {
@@ -117,7 +126,63 @@ fun SpeciesDetailScreen(speciesIndex: Int, onBack: () -> Unit) {
                 item { StatsBlock(stats) }
             }
 
-            item { MiniMapBlock(speciesIndex) }
+            item { ShowOnMapButton(onShowOnMap) }
+        }
+    }
+}
+
+@Composable
+private fun ShowOnMapButton(onClick: () -> Unit) {
+    FilledTonalButton(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Icon(
+            Icons.Default.Map,
+            contentDescription = null,
+            modifier = Modifier.size(20.dp),
+        )
+        Text(
+            "Voir sur la carte",
+            modifier = Modifier.padding(start = 8.dp),
+        )
+    }
+}
+
+@Composable
+private fun CelebrationBanner() {
+    // Volontairement sobre : pas d'animation pétaradante, app perso. Le badge
+    // tonal + l'étoile suffisent à signaler la 1re capture sans rendre la
+    // navigation Arboretum→Espèce visuellement bruyante.
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+        ),
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Icon(
+                Icons.Default.Star,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onTertiaryContainer,
+                modifier = Modifier.size(32.dp),
+            )
+            Column {
+                Text(
+                    "Nouvelle espèce débloquée !",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onTertiaryContainer,
+                )
+                Text(
+                    "Ajoutée à ton Arboretum",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onTertiaryContainer,
+                )
+            }
         }
     }
 }
@@ -282,21 +347,6 @@ private fun ArrSection(
         )
         items.forEach { item ->
             Text(formatLine(item), style = MaterialTheme.typography.bodyMedium)
-        }
-    }
-}
-
-@Composable
-private fun MiniMapBlock(speciesIndex: Int) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text("Sur la carte", style = MaterialTheme.typography.titleMedium)
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(280.dp)
-                .clip(RoundedCornerShape(12.dp)),
-        ) {
-            SpeciesMiniMap(speciesIndex = speciesIndex, modifier = Modifier.fillMaxSize())
         }
     }
 }

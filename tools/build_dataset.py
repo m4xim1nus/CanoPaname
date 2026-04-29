@@ -544,6 +544,12 @@ def build(csv_path: Path, db_path: Path, geojson_path: Path) -> None:
     arr_by_sk: dict[int, dict[str, int]] = defaultdict(lambda: defaultdict(int))
     count_by_sk: dict[int, int] = defaultdict(int)
     arr_total: dict[str, int] = defaultdict(int)
+    # Pour species-index.json : on retient le nom commun (`libellefrancais`)
+    # le plus fréquent par espèce. Le CSV en colle plusieurs variantes ("Tilleul
+    # à grandes feuilles" / "Tilleul" / "" / null) sur des arbres de la même
+    # espèce, donc on prend la mode statistique. Les écrans Arboretum (liste
+    # et Pokédex) affichent ce nom plutôt que le binomial scientifique.
+    nom_commun_by_sk: dict[int, dict[str, int]] = defaultdict(lambda: defaultdict(int))
 
     # GeoJSON streamé : on écrit l'enveloppe à la main pour éviter de garder
     # 217k features en RAM avant un dump unique.
@@ -614,6 +620,8 @@ def build(csv_path: Path, db_path: Path, geojson_path: Path) -> None:
                     heights_by_sk[sk].append(hauteur)
                 if circonference is not None:
                     circs_by_sk[sk].append(circonference)
+                if nom_commun is not None:
+                    nom_commun_by_sk[sk][nom_commun] += 1
                 arr_norm = normalize_arr(row.get("arrondissement", ""))
                 if arr_norm:
                     arr_by_sk[sk][arr_norm] += 1
@@ -643,11 +651,25 @@ def build(csv_path: Path, db_path: Path, geojson_path: Path) -> None:
     cur.execute("VACUUM")
     con.close()
 
-    # species-index.json : trié par index pour un diff lisible.
-    species_entries = sorted(
-        ({"i": i, "g": g, "e": e} for (g, e), i in species_index.items()),
-        key=lambda e: e["i"],
-    )
+    # species-index.json : trié par index pour un diff lisible. Pour chaque
+    # entrée on injecte `nc` (nom commun) = la mode statistique des
+    # `libellefrancais` rencontrés ; clé absente si aucun arbre de l'espèce
+    # n'a de nom commun renseigné. Côté Kotlin, `SpeciesIndex` lit le champ
+    # via `optStringOrNull` — tolérant à l'absence.
+    def best_nom_commun(sk: int) -> str | None:
+        counts = nom_commun_by_sk.get(sk)
+        if not counts:
+            return None
+        return max(counts.items(), key=lambda kv: kv[1])[0]
+
+    species_entries = []
+    for (g, e), i in species_index.items():
+        entry: dict[str, object] = {"i": i, "g": g, "e": e}
+        nc = best_nom_commun(i)
+        if nc:
+            entry["nc"] = nc
+        species_entries.append(entry)
+    species_entries.sort(key=lambda e: e["i"])
     with OUT_SPECIES_INDEX.open("w", encoding="utf-8") as f:
         json.dump(species_entries, f, ensure_ascii=False, separators=(",", ":"))
 

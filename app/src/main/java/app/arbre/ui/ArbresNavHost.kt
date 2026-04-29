@@ -13,9 +13,18 @@ import app.arbre.ui.species.SpeciesDetailScreen
 object Routes {
     const val MAP = "map"
     const val ARBORETUM = "arboretum"
-    const val SPECIES = "species/{speciesIndex}"
+    // Le flag `celebrate` est passé en query param (compose-navigation gère
+    // les optionnels uniquement après `?`). Permet la transition « waouh »
+    // depuis CaptureLauncher sans dupliquer la destination.
+    const val SPECIES = "species/{speciesIndex}?celebrate={celebrate}"
+    // Carte filtrée sur une espèce — destination distincte de MAP pour avoir
+    // un MapViewModel propre (caméra à Paris z11, pas la dernière position
+    // mémorisée par l'écran principal) et une entrée séparée sur le backstack.
+    const val MAP_FILTERED = "map_filtered/{speciesIndex}"
 
-    fun species(speciesIndex: Int): String = "species/$speciesIndex"
+    fun species(speciesIndex: Int, celebrate: Boolean = false): String =
+        "species/$speciesIndex?celebrate=$celebrate"
+    fun mapFiltered(speciesIndex: Int): String = "map_filtered/$speciesIndex"
 }
 
 @Composable
@@ -23,7 +32,13 @@ fun ArbresNavHost() {
     val nav = rememberNavController()
     NavHost(navController = nav, startDestination = Routes.MAP) {
         composable(Routes.MAP) {
-            MapScreen(onArboretumClick = { nav.navigate(Routes.ARBORETUM) })
+            MapScreen(
+                onArboretumClick = { nav.navigate(Routes.ARBORETUM) },
+                onSpeciesClick = { sk -> nav.navigate(Routes.species(sk)) },
+                onFirstSpeciesCapture = { sk ->
+                    nav.navigate(Routes.species(sk, celebrate = true))
+                },
+            )
         }
         composable(Routes.ARBORETUM) {
             ArboretumScreen(
@@ -33,10 +48,34 @@ fun ArbresNavHost() {
         }
         composable(
             Routes.SPECIES,
+            arguments = listOf(
+                navArgument("speciesIndex") { type = NavType.IntType },
+                navArgument("celebrate") {
+                    type = NavType.BoolType
+                    defaultValue = false
+                },
+            ),
+        ) { entry ->
+            val sk = entry.arguments?.getInt("speciesIndex") ?: return@composable
+            val celebrate = entry.arguments?.getBoolean("celebrate") ?: false
+            SpeciesDetailScreen(
+                speciesIndex = sk,
+                onBack = { nav.popBackStack() },
+                onShowOnMap = { nav.navigate(Routes.mapFiltered(sk)) },
+                celebrate = celebrate,
+            )
+        }
+        composable(
+            Routes.MAP_FILTERED,
             arguments = listOf(navArgument("speciesIndex") { type = NavType.IntType }),
         ) { entry ->
             val sk = entry.arguments?.getInt("speciesIndex") ?: return@composable
-            SpeciesDetailScreen(speciesIndex = sk, onBack = { nav.popBackStack() })
+            MapScreen(
+                filterSpecies = sk,
+                onArboretumClick = { nav.navigate(Routes.ARBORETUM) },
+                onSpeciesClick = { other -> nav.navigate(Routes.species(other)) },
+                onBack = { nav.popBackStack() },
+            )
         }
     }
 }

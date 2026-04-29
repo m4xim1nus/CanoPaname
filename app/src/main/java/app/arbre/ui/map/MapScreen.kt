@@ -14,18 +14,23 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.Image
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.Star
@@ -38,6 +43,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
@@ -64,13 +70,17 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import app.arbre.ArbresApp
 import app.arbre.R
+import app.arbre.data.SpeciesEntry
 import app.arbre.data.rememberArbreRepository
 import app.arbre.data.rememberCaptureRepository
 import app.arbre.data.rememberSpeciesIndex
+import app.arbre.data.rememberSpeciesInfoRepository
 import app.arbre.ui.detail.ArbreDetailContent
 import app.arbre.util.LocationProvider
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.maplibre.android.camera.CameraPosition
 import org.maplibre.android.camera.CameraUpdateFactory
 import org.maplibre.android.geometry.LatLng
@@ -97,6 +107,9 @@ import org.maplibre.android.style.sources.GeoJsonSource
 
 private val PARIS = LatLng(48.8566, 2.3522)
 private const val PARIS_ZOOM = 13.0
+// Vue d'ensemble pour le mode filtré : zoom plus bas pour montrer la
+// distribution spatiale de l'espèce sur tout Paris.
+private const val PARIS_OVERVIEW_ZOOM = 11.5
 private const val USER_ZOOM = 16.0
 private const val ARBRES_SOURCE_ID = "arbres-source"
 private const val POINTS_LAYER_ID = "arbres-points"
@@ -106,8 +119,8 @@ private const val PIN_GREEN = "#2E7D32"
 private const val PIN_ORANGE = "#FB8C00"
 private const val PIN_GREY = "#9E9E9E"
 
-private fun parisCamera(): CameraPosition =
-    CameraPosition.Builder().target(PARIS).zoom(PARIS_ZOOM).build()
+private fun parisCamera(zoom: Double = PARIS_ZOOM): CameraPosition =
+    CameraPosition.Builder().target(PARIS).zoom(zoom).build()
 
 /**
  * Caméra à utiliser au tout premier rendu de la carte. Si la permission est
@@ -128,18 +141,28 @@ private suspend fun computeInitialCamera(ctx: Context): CameraPosition {
 @OptIn(ExperimentalMaterial3Api::class)
 @SuppressLint("MissingPermission")
 @Composable
-fun MapScreen(onArboretumClick: () -> Unit = {}) {
+fun MapScreen(
+    onArboretumClick: () -> Unit = {},
+    onSpeciesClick: (Int) -> Unit = {},
+    onFirstSpeciesCapture: (Int) -> Unit = {},
+    onBack: (() -> Unit)? = null,
+    filterSpecies: Int? = null,
+) {
     val ctx = LocalContext.current
     val app = ctx.applicationContext as ArbresApp
     val styleUrl = stringResource(R.string.map_style_url)
     val repo = rememberArbreRepository()
     val captureRepo = rememberCaptureRepository()
     val speciesIndex = rememberSpeciesIndex()
+    val speciesInfoRepo = rememberSpeciesInfoRepository()
     val viewModel: MapViewModel = viewModel(
         factory = viewModelFactory {
             initializer { MapViewModel(repo, createSavedStateHandle()) }
         }
     )
+
+    val filteredEntry = filterSpecies?.let { speciesIndex.get(it) }
+    val filteredCount = filterSpecies?.let { speciesInfoRepo.get(it)?.stats?.count }
 
     val capturedSpecies by captureRepo.capturedSpeciesIndices()
         .collectAsState(initial = emptySet())
@@ -229,7 +252,11 @@ fun MapScreen(onArboretumClick: () -> Unit = {}) {
         mapView.getMapAsync { map ->
             mapRef = map
             scope.launch {
-                map.cameraPosition = viewModel.lastCamera ?: computeInitialCamera(ctx)
+                map.cameraPosition = if (filterSpecies != null) {
+                    parisCamera(PARIS_OVERVIEW_ZOOM)
+                } else {
+                    viewModel.lastCamera ?: computeInitialCamera(ctx)
+                }
 
                 map.setStyle(Style.Builder().fromUri(styleUrl)) { style ->
                     val tStyle = android.os.SystemClock.elapsedRealtime()
@@ -242,12 +269,23 @@ fun MapScreen(onArboretumClick: () -> Unit = {}) {
                     }
                     scope.launch {
                         try {
-                            val json = app.arbresGeoJsonAsync.await()
+                            val rawJson = app.arbresGeoJsonAsync.await()
                             val tJson = android.os.SystemClock.elapsedRealtime()
                             android.util.Log.i(
                                 "MapScreen",
-                                "GeoJSON disponible (process+${tJson - tProcess}ms, ${json.length / 1_000_000}Mo)",
+                                "GeoJSON disponible (process+${tJson - tProcess}ms, ${rawJson.length / 1_000_000}Mo)",
                             )
+                            val json = if (filterSpecies != null) {
+                                withContext(Dispatchers.Default) {
+                                    filterGeoJsonBySpecies(rawJson, filterSpecies)
+                                }.also { filtered ->
+                                    val tFilter = android.os.SystemClock.elapsedRealtime()
+                                    android.util.Log.i(
+                                        "MapScreen",
+                                        "GeoJSON filtré sk=$filterSpecies (process+${tFilter - tProcess}ms, ${filtered.length / 1024}ko)",
+                                    )
+                                }
+                            } else rawJson
                             addArbresLayers(style, json)
                             styleRef = style
                             arbresPrets = true
@@ -327,18 +365,30 @@ fun MapScreen(onArboretumClick: () -> Unit = {}) {
 
     Box(modifier = Modifier.fillMaxSize()) {
         AndroidView(factory = { mapView })
-        Row(
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .windowInsetsPadding(WindowInsets.statusBars)
-                .padding(16.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            FloatingActionButton(onClick = ::onStarClick) {
-                Icon(Icons.Default.Star, contentDescription = "Plus proche remarquable")
-            }
-            FloatingActionButton(onClick = onArboretumClick) {
-                Icon(Icons.AutoMirrored.Filled.MenuBook, contentDescription = "Arboretum")
+        if (filteredEntry != null && onBack != null) {
+            FilterBanner(
+                entry = filteredEntry,
+                count = filteredCount,
+                onBack = onBack,
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .windowInsetsPadding(WindowInsets.statusBars)
+                    .padding(16.dp),
+            )
+        } else {
+            Row(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .windowInsetsPadding(WindowInsets.statusBars)
+                    .padding(16.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                FloatingActionButton(onClick = ::onStarClick) {
+                    Icon(Icons.Default.Star, contentDescription = "Plus proche remarquable")
+                }
+                FloatingActionButton(onClick = onArboretumClick) {
+                    Icon(Icons.AutoMirrored.Filled.MenuBook, contentDescription = "Arboretum")
+                }
             }
         }
         FloatingActionButton(
@@ -378,6 +428,10 @@ fun MapScreen(onArboretumClick: () -> Unit = {}) {
             captureRepo = captureRepo,
             speciesIndex = speciesIndex,
             snackbar = snackbar,
+            onFirstSpeciesCapture = { sk ->
+                viewModel.closeDetail()
+                onFirstSpeciesCapture(sk)
+            },
         )
 
         val openedArbre = viewModel.openedArbre
@@ -397,6 +451,9 @@ fun MapScreen(onArboretumClick: () -> Unit = {}) {
             LaunchedEffect(openedArbre.id) {
                 availability = captureAvailability(ctx, openedArbre)
             }
+            // Médianes de l'espèce pour situer l'arbre vs ses pairs. Le lookup
+            // est local en RAM (singleton dans ArbresApp), pas de coût IO.
+            val info = sk?.let { speciesInfoRepo.get(it) }
             ModalBottomSheet(
                 onDismissRequest = { viewModel.closeDetail() },
                 sheetState = sheetState,
@@ -407,6 +464,14 @@ fun MapScreen(onArboretumClick: () -> Unit = {}) {
                     nbPhotos = capturesArbre.size,
                     onCapturer = { capturer(openedArbre) },
                     captureAvailability = availability,
+                    onSpeciesClick = if (isDiscovered && sk != null) {
+                        {
+                            viewModel.closeDetail()
+                            onSpeciesClick(sk)
+                        }
+                    } else null,
+                    medianHeightM = info?.stats?.medianHeightM,
+                    medianCircCm = info?.stats?.medianCircCm,
                 )
             }
         }
@@ -463,6 +528,56 @@ private fun addArbresLayers(style: Style, json: String) {
     count.setFilter(has("point_count"))
     style.addLayer(count)
 }
+
+/**
+ * Pré-filtre le GeoJSON pour ne garder que les features dont `properties.sk`
+ * vaut `sk`. But : éviter le `std::bad_alloc` qu'on déclenchait côté natif
+ * MapLibre quand on tentait de servir 217k features non clusterisées au z11
+ * (crash reproduit 2026-04-29). Filtrer en amont ramène le corpus à ~max 38k
+ * (Platanus) ou bien moins pour la plupart des espèces, et permet de garder
+ * le clustering sur la source filtrée — donc une carte lisible avec
+ * clusters d'espèce au dezoom et pins individuels au z14+.
+ *
+ * Implémentation : la sortie de `tools/build_dataset.py` est très régulière
+ * (`json.dumps(separators=(",", ":"))`, ordre des clés stable), donc on peut
+ * tokeniser sur `,{"type":"Feature"` et tester le suffixe `"sk":N}}` au lieu
+ * de parser/reconstruire 32 Mo de JSON via `JSONObject` (qui exploserait la
+ * heap). Coût : un seul scan linéaire de la string + StringBuilder.
+ */
+private fun filterGeoJsonBySpecies(json: String, sk: Int): String {
+    val featureSeparator = ",{\"type\":\"Feature\""
+    val skSuffix = "\"sk\":$sk}}"
+    val featuresMarker = "\"features\":["
+    val openIdx = json.indexOf(featuresMarker).let {
+        if (it == -1) return EMPTY_GEOJSON else it + featuresMarker.length
+    }
+    val closeIdx = json.lastIndexOf("]}")
+    if (openIdx >= closeIdx) return EMPTY_GEOJSON
+
+    val sb = StringBuilder(64 * 1024)
+    sb.append("{\"type\":\"FeatureCollection\",\"features\":[")
+    var first = true
+    var pos = openIdx
+    while (pos < closeIdx) {
+        val nextSep = json.indexOf(featureSeparator, pos + 1)
+        val end = if (nextSep == -1 || nextSep >= closeIdx) closeIdx else nextSep
+        // `endsWith` est sûr : `sk` est la DERNIÈRE clé de `properties` dans
+        // le build script (Python 3.7+ préserve l'ordre d'insertion, et le
+        // dump JSON l'utilise). Si on change l'ordre côté Python, casser ce
+        // contrat ici se traduit par une carte filtrée vide — ne pas rater.
+        if (json.regionMatches(end - skSuffix.length, skSuffix, 0, skSuffix.length)) {
+            if (!first) sb.append(",")
+            sb.append(json, pos, end)
+            first = false
+        }
+        if (nextSep == -1 || nextSep >= closeIdx) break
+        pos = nextSep + 1
+    }
+    sb.append("]}")
+    return sb.toString()
+}
+
+private const val EMPTY_GEOJSON = "{\"type\":\"FeatureCollection\",\"features\":[]}"
 
 private fun applyDiscoveryColor(
     style: Style,
@@ -524,6 +639,52 @@ private fun buildDiscoveryExpression(
         remarquableExpr,
         speciesExpr,
     )
+}
+
+@Composable
+private fun FilterBanner(
+    entry: SpeciesEntry,
+    count: Int?,
+    onBack: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        modifier = modifier.widthIn(max = 320.dp),
+        shape = RoundedCornerShape(12.dp),
+        color = MaterialTheme.colorScheme.surface,
+        tonalElevation = 4.dp,
+        shadowElevation = 4.dp,
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(start = 4.dp, end = 12.dp, top = 4.dp, bottom = 4.dp),
+        ) {
+            IconButton(onClick = onBack) {
+                Icon(
+                    Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = "Retour à la fiche-espèce",
+                )
+            }
+            Column(
+                modifier = Modifier
+                    .padding(start = 4.dp)
+                    .fillMaxWidth(),
+            ) {
+                Text(
+                    entry.displayName,
+                    style = MaterialTheme.typography.titleMedium,
+                    maxLines = 1,
+                )
+                if (count != null) {
+                    Text(
+                        "$count arbre${if (count > 1) "s" else ""} dans Paris",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+        }
+    }
 }
 
 @Composable
