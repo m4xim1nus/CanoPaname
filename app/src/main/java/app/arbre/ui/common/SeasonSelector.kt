@@ -7,10 +7,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AcUnit
-import androidx.compose.material.icons.filled.LocalFlorist
-import androidx.compose.material.icons.filled.Park
-import androidx.compose.material.icons.filled.WbSunny
+import androidx.compose.material.icons.outlined.AcUnit
+import androidx.compose.material.icons.outlined.LocalFlorist
+import androidx.compose.material.icons.outlined.Park
+import androidx.compose.material.icons.outlined.WbSunny
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
@@ -91,8 +91,8 @@ fun SeasonSelector(
 }
 
 fun seasonIcon(season: Season): ImageVector = when (season) {
-    Season.WINTER -> Icons.Default.AcUnit
-    Season.SPRING -> Icons.Default.LocalFlorist
-    Season.SUMMER -> Icons.Default.WbSunny
-    Season.AUTUMN -> Icons.Default.Park
+    Season.WINTER -> Icons.Outlined.AcUnit
+    Season.SPRING -> Icons.Outlined.LocalFlorist
+    Season.SUMMER -> Icons.Outlined.WbSunny
+    Season.AUTUMN -> Icons.Outlined.Park
 }
