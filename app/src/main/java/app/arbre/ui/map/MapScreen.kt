@@ -9,8 +9,14 @@ import android.view.ViewGroup
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeOut
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -30,16 +36,17 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.Image
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.MenuBook
-import androidx.compose.material.icons.filled.MyLocation
-import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.MenuBook
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.outlined.MyLocation
+import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.SnackbarHost
@@ -58,11 +65,14 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.createSavedStateHandle
@@ -78,6 +88,7 @@ import app.arbre.data.rememberSpeciesIndex
 import app.arbre.data.rememberRemarquableInfoRepository
 import app.arbre.data.rememberSpeciesInfoRepository
 import app.arbre.ui.detail.ArbreDetailContent
+import app.arbre.ui.theme.arbresColors
 import app.arbre.util.LocationProvider
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.combine
@@ -117,9 +128,11 @@ private const val ARBRES_SOURCE_ID = "arbres-source"
 private const val POINTS_LAYER_ID = "arbres-points"
 private const val CLUSTERS_LAYER_ID = "arbres-clusters"
 private const val CLUSTER_COUNT_LAYER_ID = "arbres-cluster-count"
-private const val PIN_GREEN = "#2E7D32"
-private const val PIN_ORANGE = "#FB8C00"
-private const val PIN_GREY = "#9E9E9E"
+// Couleurs des pins centralisées dans `app.arbre.ui.theme.MapColors`. Aliases
+// privés pour ne pas polluer les sites d'usage avec un préfixe long.
+private val PIN_GREEN = app.arbre.ui.theme.MapColors.PIN_GREEN
+private val PIN_ORANGE = app.arbre.ui.theme.MapColors.PIN_ORANGE
+private val PIN_GREY = app.arbre.ui.theme.MapColors.PIN_GREY
 
 private fun parisCamera(zoom: Double = PARIS_ZOOM): CameraPosition =
     CameraPosition.Builder().target(PARIS).zoom(zoom).build()
@@ -388,10 +401,11 @@ fun MapScreen(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 FloatingActionButton(onClick = onRemarquablesClick) {
-                    Icon(Icons.Default.Star, contentDescription = "Remarquables")
+                    // Filled volontaire : signal de marque pour la cible "précieuse".
+                    Icon(Icons.Filled.Star, contentDescription = "Remarquables")
                 }
                 FloatingActionButton(onClick = onArboretumClick) {
-                    Icon(Icons.AutoMirrored.Filled.MenuBook, contentDescription = "Arboretum")
+                    Icon(Icons.AutoMirrored.Outlined.MenuBook, contentDescription = "Arboretum")
                 }
             }
             // FAB loupe (BottomStart) : recherche de la cible la plus proche.
@@ -404,7 +418,7 @@ fun MapScreen(
                     .windowInsetsPadding(WindowInsets.navigationBars)
                     .padding(16.dp),
             ) {
-                Icon(Icons.Default.Search, contentDescription = "Plus proche remarquable")
+                Icon(Icons.Outlined.Search, contentDescription = "Plus proche remarquable")
             }
         }
         FloatingActionButton(
@@ -420,7 +434,7 @@ fun MapScreen(
                 .windowInsetsPadding(WindowInsets.navigationBars)
                 .padding(16.dp),
         ) {
-            Icon(Icons.Default.MyLocation, contentDescription = "Me localiser")
+            Icon(Icons.Outlined.MyLocation, contentDescription = "Me localiser")
         }
         SnackbarHost(
             hostState = snackbar,
@@ -430,13 +444,19 @@ fun MapScreen(
         // Splash overlay : reste au-dessus de la carte tant que les layers
         // d'arbres ne sont pas posées. Couleurs et icône alignées avec le
         // splash natif (themes.xml) pour une transition sans flicker.
+        // En mode `MAP_FILTERED` on ne charge pas tout Paris, juste une
+        // espèce — copy + animation différents.
         AnimatedVisibility(
             visible = !arbresPrets,
             enter = androidx.compose.animation.EnterTransition.None,
             exit = fadeOut(animationSpec = tween(durationMillis = 350)),
             modifier = Modifier.fillMaxSize(),
         ) {
-            ColdStartSplash()
+            if (filteredEntry != null) {
+                FilterSplash(speciesLabel = filteredEntry.displayNomCommun)
+            } else {
+                ColdStartSplash()
+            }
         }
 
         val capturer = rememberCaptureController(
@@ -681,7 +701,7 @@ private fun FilterBanner(
         ) {
             IconButton(onClick = onBack) {
                 Icon(
-                    Icons.AutoMirrored.Filled.ArrowBack,
+                    Icons.AutoMirrored.Outlined.ArrowBack,
                     contentDescription = "Retour à la fiche-espèce",
                 )
             }
@@ -707,35 +727,119 @@ private fun FilterBanner(
     }
 }
 
+/**
+ * Splash overlay du cold start — superposé tant que `arbresPrets == false`.
+ * Couleur de fond synchronisée avec `@color/ic_launcher_background` du splash
+ * natif (themes.xml) pour ne pas faire flasher la transition.
+ *
+ * Animation pure Compose (pas de Lottie) :
+ * - Sway sinusoïdal ±3° de la silhouette d'arbre (rotation via graphicsLayer).
+ * - Cascade fade+scale à l'apparition (0→1 alpha + 0.85→1 scale, 600 ms).
+ * - LinearProgressIndicator or `arbresColors.or` (token de marque) plutôt que
+ *   le CircularProgressIndicator blanc générique.
+ */
 @Composable
 private fun ColdStartSplash() {
-    // Couleur identique à @color/ic_launcher_background (utilisée par le
-    // splash natif). Doit rester en sync ; en cas de changement, mettre les
-    // deux à jour ensemble pour éviter un flash de couleur à la transition.
-    val splashGreen = Color(0xFF2E7D32)
+    // Doit rester en sync avec @color/ic_launcher_background.
+    val splashGreen = MaterialTheme.colorScheme.primary
+    val arbresColors = MaterialTheme.arbresColors
+
+    val infinite = rememberInfiniteTransition(label = "sway")
+    val sway by infinite.animateFloat(
+        initialValue = -3f,
+        targetValue = 3f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 2400, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse,
+        ),
+        label = "swayAngle",
+    )
+    val intro by animateFloatAsState(
+        targetValue = 1f,
+        animationSpec = tween(durationMillis = 600, easing = FastOutSlowInEasing),
+        label = "intro",
+    )
+
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(splashGreen),
         contentAlignment = Alignment.Center,
     ) {
-        androidx.compose.foundation.layout.Column(
+        Column(
             horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.graphicsLayer { alpha = intro },
         ) {
             Image(
                 painter = painterResource(R.drawable.ic_launcher_foreground),
                 contentDescription = null,
-                colorFilter = ColorFilter.tint(Color.White),
-                modifier = Modifier.size(160.dp),
+                modifier = Modifier
+                    .size(168.dp)
+                    .scale(0.85f + intro * 0.15f)
+                    .graphicsLayer { rotationZ = sway },
             )
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(20.dp))
             Text(
-                text = "Réveil des 217 855 arbres parisiens…",
+                text = "Arbres",
                 color = Color.White,
-                style = MaterialTheme.typography.bodyLarge,
+                style = MaterialTheme.typography.displayMedium,
             )
-            Spacer(Modifier.height(24.dp))
-            CircularProgressIndicator(color = Color.White)
+            Spacer(Modifier.height(8.dp))
+            Text(
+                text = "Réveil des 217 855 arbres parisiens",
+                color = Color.White.copy(alpha = 0.85f),
+                style = MaterialTheme.typography.bodyMedium,
+            )
+            Spacer(Modifier.height(28.dp))
+            LinearProgressIndicator(
+                color = arbresColors.or,
+                trackColor = Color.White.copy(alpha = 0.18f),
+                modifier = Modifier
+                    .widthIn(max = 200.dp)
+                    .fillMaxWidth(0.45f),
+            )
+        }
+    }
+}
+
+/**
+ * Splash overlay dédié au mode `MAP_FILTERED` : on ne charge pas 217k arbres,
+ * juste une espèce filtrée (pré-filtre Kotlin < 1 s + setStyle MapLibre 1-3 s).
+ * Pas de silhouette d'arbre (pas un boot), pas d'animation infinie — juste
+ * un voile bref pour éviter le flash de carte vide.
+ */
+@Composable
+private fun FilterSplash(speciesLabel: String) {
+    val splashGreen = MaterialTheme.colorScheme.primary
+    val intro by animateFloatAsState(
+        targetValue = 1f,
+        animationSpec = tween(durationMillis = 350, easing = FastOutSlowInEasing),
+        label = "filterIntro",
+    )
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(splashGreen),
+        contentAlignment = Alignment.Center,
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier
+                .padding(horizontal = 48.dp)
+                .graphicsLayer { alpha = intro },
+        ) {
+            Text(
+                text = "Filtrage de $speciesLabel…",
+                color = Color.White,
+                style = MaterialTheme.typography.titleMedium,
+                textAlign = TextAlign.Center,
+            )
+            Spacer(Modifier.height(20.dp))
+            CircularProgressIndicator(
+                color = Color.White,
+                strokeWidth = 2.5.dp,
+                modifier = Modifier.size(28.dp),
+            )
         }
     }
 }

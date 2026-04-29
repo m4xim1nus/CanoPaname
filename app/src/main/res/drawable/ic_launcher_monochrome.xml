@@ -1,10 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Silhouette de platane parisien stylisée pour l'icône adaptive.
-  Viewport 108x108, safe zone centrale ~66x66 (de 21,21 à 87,87).
-  Canopée à 4 lobes subtils (taillée en parasol typique des platanes
-  parisiens), tronc court visible. Off-white #F5F1E6 sur fond vert
-  pour évoquer la naturaliste plutôt que le pictogramme clinique.
+  Variante monochrome (Themed Icons, Android 13+).
+  Même silhouette que ic_launcher_foreground, mais en blanc pur :
+  Android applique son propre tint sur le monochrome, donc la couleur
+  est ignorée au runtime — seule la forme compte.
 -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
@@ -12,6 +11,6 @@
     android:viewportWidth="108"
     android:viewportHeight="108">
     <path
-        android:fillColor="#F5F1E6"
+        android:fillColor="#FFFFFFFF"
         android:pathData="M48,90 L48,66 C38,66 30,62 26,54 C22,52 22,44 24,38 C22,30 28,22 36,22 C38,16 46,12 54,12 C62,12 70,16 72,22 C80,22 86,30 84,38 C86,44 86,52 82,54 C78,62 70,66 60,66 L60,90 Z" />
 </vector>

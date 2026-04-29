@@ -9,7 +9,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.MenuBook
+import androidx.compose.material.icons.automirrored.outlined.MenuBook
 import androidx.compose.material3.Button
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
@@ -18,13 +18,13 @@ import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import app.arbre.data.Arbre
 import app.arbre.data.RemarquableInfo
 import app.arbre.ui.map.CaptureAvailability
+import app.arbre.ui.theme.arbresColors
 
 /**
  * Trois rendus possibles du sheet en fonction de l'état de découverte :
@@ -128,7 +128,7 @@ private fun DiscoveredContent(
             modifier = Modifier.fillMaxWidth(),
         ) {
             Icon(
-                Icons.AutoMirrored.Filled.MenuBook,
+                Icons.AutoMirrored.Outlined.MenuBook,
                 contentDescription = null,
                 modifier = Modifier.size(20.dp),
             )
@@ -157,18 +157,18 @@ private fun medianComparison(value: Int, median: Int?): String {
     return " · médiane $median ($tag)"
 }
 
-// Or doré assumé hors theme : signal visuel d'exceptionnalité pour les ~180
-// arbres remarquables. Cohérent avec l'orange vif des pins remarquables capturés.
-private val RemarquableGold = Color(0xFFC9A227)
-
+// Or token (`arbresColors.or`) : signal visuel d'exceptionnalité pour les
+// ~180 arbres remarquables. Cohérent avec l'orange vif des pins remarquables
+// capturés et avec l'accent or du splash.
 @Composable
 private fun RemarquableBlock(info: RemarquableInfo) {
     if (info.qualification == null && info.resume == null && info.description == null &&
         info.datePlantation == null && info.cultivar == null) return
     val title = info.qualification?.let { "Classement : $it" } ?: "Pourquoi cet arbre est remarquable"
+    val gold = MaterialTheme.arbresColors.or
     OutlinedCard(
         modifier = Modifier.fillMaxWidth(),
-        border = BorderStroke(1.5.dp, RemarquableGold),
+        border = BorderStroke(1.5.dp, gold),
     ) {
         Column(
             modifier = Modifier.padding(12.dp),

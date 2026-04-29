@@ -16,11 +16,11 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.OpenInNew
-import androidx.compose.material.icons.filled.Map
-import androidx.compose.material.icons.filled.PictureAsPdf
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.OpenInNew
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.outlined.Map
+import androidx.compose.material.icons.outlined.PictureAsPdf
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -98,7 +98,7 @@ fun SpeciesDetailScreen(
                 title = { Text(title) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Retour")
+                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Retour")
                     }
                 },
             )
@@ -143,7 +143,7 @@ private fun ShowOnMapButton(onClick: () -> Unit) {
         modifier = Modifier.fillMaxWidth(),
     ) {
         Icon(
-            Icons.Default.Map,
+            Icons.Outlined.Map,
             contentDescription = null,
             modifier = Modifier.size(20.dp),
         )
@@ -281,7 +281,7 @@ private fun WikipediaBlock(info: SpeciesInfo?) {
                             color = MaterialTheme.colorScheme.primary,
                         )
                         Icon(
-                            Icons.AutoMirrored.Filled.OpenInNew,
+                            Icons.AutoMirrored.Outlined.OpenInNew,
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(16.dp),
@@ -311,7 +311,7 @@ private fun EssencePdfBlock(pdfUrl: String) {
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Icon(
-                Icons.Default.PictureAsPdf,
+                Icons.Outlined.PictureAsPdf,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.size(24.dp),
@@ -328,7 +328,7 @@ private fun EssencePdfBlock(pdfUrl: String) {
                 )
             }
             Icon(
-                Icons.AutoMirrored.Filled.OpenInNew,
+                Icons.AutoMirrored.Outlined.OpenInNew,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.size(20.dp),
