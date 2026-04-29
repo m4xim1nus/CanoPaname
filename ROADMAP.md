@@ -55,6 +55,29 @@ Profondeur narrative pour les ~185 arbres remarquables de Paris (vs le millier d
 - [x] **Pokédex remarquables dédié** ✅ 2026-04-29 — nouvel écran `RemarquablesScreen` (Liste + Pokédex grille 3 colonnes des 183 arbres remarquables) accessible via le FAB ★ de la carte (qui n'affiche plus de snackbar). La logique « plus proche remarquable non découvert » est déplacée sur un nouveau FAB 🔍 (Loupe) en BottomStart. Tap sur cellule découverte → `RemarquableDetailScreen` plein-écran qui réutilise `ArbreDetailContent`. Mode Liste : section « Découverts (N/183) » uniquement, vide tant qu'on n'a rien capturé (cohérent avec l'Arboretum ; un `EmptyState` invite à utiliser la loupe). Mode Pokédex : 183 cellules silhouettes « ? / ??? » qui se révèlent à mesure des captures. La section Remarquables de l'Arboretum a été retirée (pas de doublon). FAB 🔍 désactivé en mode `MAP_FILTERED`.
 - [x] **Lien fiche PDF Ville de Paris dans la fiche-espèce** ✅ 2026-04-29 — pipeline `tools/build_dataset.py` étendu : `fetch_essences()` (API V2 paginée, cache disque par `pdf_id` dans `tools/.essences-cache/`) + `_parse_essence_taxon` qui extrait `(genre, espece)` du `nom_latin` (gère hybrides `Genre x espece` → `("Genre","x espece")` cohérent avec species-index, skip cultivars sans espèce nominale type `Ulmus 'Sapporo'`, skip hybrides intergénériques `X Chitalpa`) + `_build_essences_index` qui choisit le record le plus générique quand plusieurs cultivars partagent une mère. **Couverture 169/907 espèces** (174 taxons distincts dans le dataset, 5 ratés sur espèces non plantées à Paris ou variation orthographique `dioicus/dioica` — pas de heuristique fragile). Champ `pdf` injecté dans `species-info.json` (URL stable, le permalink API OpenData fait office de download direct). Côté UI : `SpeciesInfo.pdfUrl` ajouté, nouveau composable `EssencePdfBlock` dans `SpeciesDetailScreen` (Card clickable avec icône `PictureAsPdf` + texte « Fiche essence Ville de Paris » + chevron `OpenInNew`), inséré entre `WikipediaBlock` et `StatsBlock`. No-op gracieux pour les ~738 espèces sans PDF (la card n'apparaît simplement pas).
 
+### Sprint H — Profil et premiers badges
+
+Premier vrai écran « méta » centré sur l'utilisateur. Volontairement minimal : on installe le contenant, on en garnit le strict nécessaire pour valider l'UX, on enrichira en Phase 4.
+
+- [ ] **Bouton Profil en TopStart de la carte** — nouveau FAB (ou IconButton sur top-bar transparente) en haut à gauche, ouvre l'écran Profil. Cohérence avec les FABs existants (GPS BottomEnd, Arboretum BottomEnd-up, ★ Remarquables TopEnd, 🔍 Loupe BottomStart).
+- [ ] **Écran Profil minimal** — nouvelle route `Routes.PROFILE`. Stats de base : (1) jours depuis la 1re capture (`min(capture.timestamp)`), (2) # espèces distinctes capturées (réutilise `capturedSpeciesIndices.size`), (3) # arbres remarquables distincts capturés (réutilise `capturedRemarquableIds.size`). Stats globales toutes saisons confondues à ce stade — la bascule saisonnière arrivera en Sprint I.
+- [ ] **Liste de badges minimale** — section dédiée sous les stats. Une seule entrée pour le test : badge **« 1re capture »**, débloqué dès qu'au moins une capture existe. Affichage : grille ou liste avec icône + libellé + date d'obtention si débloqué, silhouette grise + libellé masqué si non. Architecture pensée pour ajouter facilement d'autres badges en Phase 4 (déclarations en data class côté Kotlin, pas besoin de table Room — le déblocage se calcule à partir des captures existantes).
+
+### Sprint I — Saisonnalité (4 formes par espèce)
+
+Refonte UX majeure : la saison courante est l'instance « vive » du jeu, les 3 autres sont des archives consultables. Quand la saison change, l'Arbo et les Remarquables se vident, la carte redevient grise — mais l'année suivante, retour en arrière sur les progrès historiques de cette saison.
+
+**Modèle** : la `season` est un bucket parmi 4 (`WINTER` / `SPRING` / `SUMMER` / `AUTUMN`), indépendante de l'année. Découpage **calendaire fixe** : déc-fév / mar-mai / juin-août / sep-nov. La même espèce capturée à 2 saisons compte pour 2 entrées dans le Pokédex saisonnier ; les captures s'accumulent au fil des années dans le bucket de leur saison.
+
+- [ ] **Stockage** — la colonne `season` est déjà sur `capture` (schema-ready). À l'INSERT, calculer la saison à partir de `timestamp` (ou de l'instant courant) côté `CaptureRepository`. Helper `Season.fromInstant(Instant): Season` dans `data/Season.kt`.
+- [ ] **Saison courante calculée à la volée** — `Season.current()` (singleton `Clock.systemDefaultZone()`). Pas de mise en cache : le coût est nul et on évite les bugs de bascule à minuit.
+- [ ] **Flows scopés saison** — `capturedSpeciesIndices(season: Season)` et `capturedRemarquableIds(season: Season)` ; les versions sans paramètre restent disponibles pour le profil (stats globales). Carte / Arboretum / Remarquables consomment par défaut `Season.current()`.
+- [ ] **Bascule de saison consultative** — sélecteur de saison **en top-bar persistante** sur Arboretum / Remarquables / carte, mais **discret** : petit bouton (icône + saison courante) qui ouvre une feuille / un menu avec les 4 saisons et un libellé visible (« Printemps », « Été », etc.). Ne pas charger la top-bar avec 4 segments side-by-side. Affordance évidente sans dominer.
+- [ ] **Mode archive read-only** — quand la saison sélectionnée ≠ `Season.current()`, bandeau permanent en haut de l'écran « **{Saison} — figé** » (sans année, vu qu'on cumule toutes les années dans le même bucket). Conséquences : (1) pas de capture possible (FAB Capturer désactivé sur la carte ou sheet de capture grisé), (2) FAB 🔍 « plus proche remarquable non découvert » désactivé en archive (la notion n'a pas de sens hors saison vive), (3) couleur des pins reflète l'état figé de cette saison.
+- [ ] **Profil saisonnier** — bascule « Global / Saison courante » dans le Profil (issue du Sprint H), affecte les 3 stats. Le badge « 1re capture » reste global (la 1re capture est unique).
+- [ ] **Carte : recoloration au changement de saison sélectionnée** — `buildDiscoveryExpression` doit relire les sets de la saison sélectionnée. À la bascule, recalcul + `setProperties(circleColor(...))`. Coût négligeable (les sets restent petits côté user).
+- [ ] **Cas limite : 1re capture jamais faite dans la saison courante** — l'écran d'accueil de la saison vive est légitimement « tout gris, Arbo vide ». Pas de cas d'erreur, c'est l'UX voulue. Petit message d'amorçage type « Premier {saison} ? Va capturer ton 1er arbre. » dans l'EmptyState de l'Arbo si capturedSpeciesIndices(currentSeason).isEmpty().
+
 ## Phase 3 — Revue graphique
 
 - [ ] Revue d'ensemble des designs / aspects graphiques de l'app
@@ -62,11 +85,10 @@ Profondeur narrative pour les ~185 arbres remarquables de Paris (vs le millier d
 - [ ] **Splash dédié pour la carte filtrée espèce** — actuellement `MapScreen` réutilise le `ColdStartSplash` (« Réveil des 217 855 arbres parisiens… ») même en mode `MAP_FILTERED`, ce qui est incohérent (on ne charge pas tout Paris, juste une espèce, et le pré-filtre Kotlin prend < 1 s). Variante : copy explicite « Filtrage de l'espèce X… » + spinner court, ou simplement un fond neutre sans la phrase d'attente.
 - [ ] Palette / typographie / iconographie cohérente entre les écrans
 
-## Phase 4 — Saisonnalité, quêtes, succès
+## Phase 4 — Quêtes, succès, fiches naturalistes
 
-- [ ] **4 formes saisonnières par espèce** — hiver / printemps / été / automne ; même espèce capturée à deux saisons compte pour 2 entrées (la colonne `season` est déjà sur `capture`, schema-ready).
 - [ ] **Quêtes géographiques** — « le tour des marronniers du Luxembourg », « les 10 plus grands arbres du 5e », etc.
-- [ ] **Page Badges & succès dédiée** — entrée nav distincte de l'Arboretum. Badges narratifs (« 100 arbres > 100 ans visités », « les 10 remarquables du 5e », « 1re capture en hiver »). Pas d'XP, pas de classement.
+- [ ] **Page Badges & succès dédiée** — entrée nav distincte du Profil. Badges narratifs (« 100 arbres > 100 ans visités », « les 10 remarquables du 5e », « 1re capture en hiver »). Pas d'XP, pas de classement.
 - [ ] **Fiches naturalistes** — feuille / écorce / fruit en complément des données OpenData.
 - [ ] **Notifications de proximité** (« arbre remarquable à 80 m ») — écarté du MVP capture par `docs/vision-jeu.md` §5.5, à reprendre ici.
 
