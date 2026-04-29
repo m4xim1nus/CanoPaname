@@ -27,6 +27,10 @@ class CaptureRepository(private val dao: CaptureDao) {
     fun capturesRemarquables(): Flow<List<Capture>> =
         dao.capturesRemarquables().map { rows -> rows.map(CaptureEntity::toCapture) }
 
+    fun firstCaptureTimestamp(): Flow<Long?> = dao.firstCaptureTimestamp()
+
+    fun captureCount(): Flow<Int> = dao.captureCount()
+
     suspend fun insertCapture(
         arbreId: Long,
         speciesIndex: Int,

@@ -25,4 +25,10 @@ interface CaptureDao {
 
     @Query("SELECT * FROM capture WHERE remarquable = 1 ORDER BY timestamp DESC")
     fun capturesRemarquables(): Flow<List<CaptureEntity>>
+
+    @Query("SELECT MIN(timestamp) FROM capture")
+    fun firstCaptureTimestamp(): Flow<Long?>
+
+    @Query("SELECT COUNT(*) FROM capture")
+    fun captureCount(): Flow<Int>
 }

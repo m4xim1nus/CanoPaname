@@ -8,6 +8,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import app.arbre.ui.arboretum.ArboretumScreen
 import app.arbre.ui.map.MapScreen
+import app.arbre.ui.profile.ProfileScreen
 import app.arbre.ui.remarquables.RemarquableDetailScreen
 import app.arbre.ui.remarquables.RemarquablesScreen
 import app.arbre.ui.species.SpeciesDetailScreen
@@ -15,6 +16,7 @@ import app.arbre.ui.species.SpeciesDetailScreen
 object Routes {
     const val MAP = "map"
     const val ARBORETUM = "arboretum"
+    const val PROFILE = "profile"
     const val REMARQUABLES = "remarquables"
     const val REMARQUABLE_DETAIL = "remarquable_detail/{arbreId}"
     // Le flag `celebrate` est passé en query param (compose-navigation gère
@@ -40,11 +42,15 @@ fun ArbresNavHost() {
             MapScreen(
                 onArboretumClick = { nav.navigate(Routes.ARBORETUM) },
                 onRemarquablesClick = { nav.navigate(Routes.REMARQUABLES) },
+                onProfileClick = { nav.navigate(Routes.PROFILE) },
                 onSpeciesClick = { sk -> nav.navigate(Routes.species(sk)) },
                 onFirstSpeciesCapture = { sk ->
                     nav.navigate(Routes.species(sk, celebrate = true))
                 },
             )
+        }
+        composable(Routes.PROFILE) {
+            ProfileScreen(onBack = { nav.popBackStack() })
         }
         composable(Routes.ARBORETUM) {
             ArboretumScreen(

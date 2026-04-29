@@ -33,6 +33,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.MyLocation
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.CircularProgressIndicator
@@ -146,6 +147,7 @@ private suspend fun computeInitialCamera(ctx: Context): CameraPosition {
 fun MapScreen(
     onArboretumClick: () -> Unit = {},
     onRemarquablesClick: () -> Unit = {},
+    onProfileClick: () -> Unit = {},
     onSpeciesClick: (Int) -> Unit = {},
     onFirstSpeciesCapture: (Int) -> Unit = {},
     onBack: (() -> Unit)? = null,
@@ -380,6 +382,15 @@ fun MapScreen(
                     .padding(16.dp),
             )
         } else {
+            FloatingActionButton(
+                onClick = onProfileClick,
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .windowInsetsPadding(WindowInsets.statusBars)
+                    .padding(16.dp),
+            ) {
+                Icon(Icons.Default.Person, contentDescription = "Profil")
+            }
             Row(
                 modifier = Modifier
                     .align(Alignment.TopEnd)
