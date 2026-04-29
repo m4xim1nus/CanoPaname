@@ -5,6 +5,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 import app.arbre.ArbresApp
+import app.arbre.backup.BackupExporter
+import app.arbre.backup.BackupImporter
 
 private fun Context.app(): ArbresApp = applicationContext as ArbresApp
 
@@ -48,6 +50,18 @@ fun rememberRemarquableInfoRepository(): RemarquableInfoRepository {
 fun rememberSeasonStore(): SeasonStore {
     val ctx = LocalContext.current
     return remember(ctx) { ctx.app().seasonStore }
+}
+
+@Composable
+fun rememberBackupExporter(): BackupExporter {
+    val ctx = LocalContext.current
+    return remember(ctx) { ctx.app().backupExporter }
+}
+
+@Composable
+fun rememberBackupImporter(): BackupImporter {
+    val ctx = LocalContext.current
+    return remember(ctx) { ctx.app().backupImporter }
 }
 
 fun Context.arbreRepository(): ArbreRepository = app().arbreRepository

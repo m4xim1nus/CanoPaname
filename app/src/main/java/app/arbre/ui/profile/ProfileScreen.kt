@@ -1,5 +1,7 @@
 package app.arbre.ui.profile
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -20,18 +22,23 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
+import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.EmojiEvents
 import androidx.compose.material.icons.outlined.Lock
+import androidx.compose.material.icons.outlined.Upload
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -39,17 +46,26 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import app.arbre.backup.ExportResult
+import app.arbre.backup.ImportError
+import app.arbre.backup.ImportResult
+import app.arbre.backup.defaultExportFilename
 import app.arbre.data.BadgeCatalog
 import app.arbre.data.BadgeState
 import app.arbre.data.Season
+import app.arbre.data.rememberBackupExporter
+import app.arbre.data.rememberBackupImporter
 import app.arbre.data.rememberCaptureRepository
+import kotlinx.coroutines.launch
 import java.text.DateFormat
 import java.util.Date
 import java.util.concurrent.TimeUnit
@@ -61,6 +77,58 @@ fun ProfileScreen(
     onBadgesClick: () -> Unit = {},
 ) {
     val captureRepo = rememberCaptureRepository()
+    val backupExporter = rememberBackupExporter()
+    val backupImporter = rememberBackupImporter()
+    val coScope = rememberCoroutineScope()
+    val snackbar = remember { SnackbarHostState() }
+    var backupBusy by remember { mutableStateOf<BackupBusy>(BackupBusy.Idle) }
+
+    val exportLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("application/zip")
+    ) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        backupBusy = BackupBusy.Exporting
+        coScope.launch {
+            val result = backupExporter.export(uri)
+            backupBusy = BackupBusy.Idle
+            val msg = when (result) {
+                is ExportResult.Success -> "Sauvegarde exportée (${result.captureCount} captures)"
+                is ExportResult.Failure -> "Échec de l'export"
+            }
+            snackbar.showSnackbar(msg)
+        }
+    }
+    val importLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        backupBusy = BackupBusy.Importing
+        coScope.launch {
+            val result = backupImporter.import(uri)
+            backupBusy = BackupBusy.Idle
+            val msg = when (result) {
+                is ImportResult.Success -> buildString {
+                    append("${result.imported} ajoutée${if (result.imported > 1) "s" else ""}, ")
+                    append("${result.skipped} déjà présente${if (result.skipped > 1) "s" else ""}")
+                    if (result.photosMissing > 0) {
+                        append(", ${result.photosMissing} photo")
+                        if (result.photosMissing > 1) append("s")
+                        append(" manquante")
+                        if (result.photosMissing > 1) append("s")
+                    }
+                }
+                is ImportResult.Failure -> when (result.reason) {
+                    ImportError.CORRUPT_ZIP -> "Fichier illisible"
+                    ImportError.META_MISSING -> "meta.json absent — fichier non reconnu"
+                    ImportError.CAPTURES_MISSING -> "captures.json absent — fichier non reconnu"
+                    ImportError.SCHEMA_TOO_NEW -> "Backup créé avec une version plus récente de l'app"
+                    ImportError.IO_ERROR -> "Erreur de lecture, réessaie"
+                }
+            }
+            snackbar.showSnackbar(msg)
+        }
+    }
+
     // Saison vive seule comptée pour la stat « Saison courante » : pas de
     // sélecteur de saison ici, un toggle binaire suffit (cf. ROADMAP I).
     val currentSeason = Season.current()
@@ -104,6 +172,7 @@ fun ProfileScreen(
                 },
             )
         },
+        snackbarHost = { SnackbarHost(snackbar) },
     ) { padding ->
         LazyColumn(
             modifier = Modifier
@@ -140,6 +209,77 @@ fun ProfileScreen(
             }
             item {
                 AllBadgesEntry(onClick = onBadgesClick)
+            }
+            item {
+                Text(
+                    "Sauvegarde",
+                    style = MaterialTheme.typography.titleLarge,
+                )
+            }
+            item {
+                BackupActionCard(
+                    title = "Exporter mes captures",
+                    icon = Icons.Outlined.Upload,
+                    busy = backupBusy is BackupBusy.Exporting,
+                    enabled = backupBusy is BackupBusy.Idle,
+                    onClick = { exportLauncher.launch(defaultExportFilename()) },
+                )
+            }
+            item {
+                BackupActionCard(
+                    title = "Importer un backup",
+                    icon = Icons.Outlined.Download,
+                    busy = backupBusy is BackupBusy.Importing,
+                    enabled = backupBusy is BackupBusy.Idle,
+                    onClick = {
+                        importLauncher.launch(arrayOf("application/zip", "application/octet-stream"))
+                    },
+                )
+            }
+        }
+    }
+}
+
+private sealed class BackupBusy {
+    object Idle : BackupBusy()
+    object Exporting : BackupBusy()
+    object Importing : BackupBusy()
+}
+
+@Composable
+private fun BackupActionCard(
+    title: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    busy: Boolean,
+    enabled: Boolean,
+    onClick: () -> Unit,
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .alpha(if (enabled) 1f else 0.4f)
+            .clickable(enabled = enabled, onClick = onClick),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant,
+        ),
+    ) {
+        Column {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp, vertical = 16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+            ) {
+                Icon(icon, contentDescription = null)
+                Text(
+                    title,
+                    style = MaterialTheme.typography.titleSmall,
+                    modifier = Modifier.weight(1f),
+                )
+            }
+            if (busy) {
+                LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
             }
         }
     }

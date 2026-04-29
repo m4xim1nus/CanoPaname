@@ -37,4 +37,11 @@ interface CaptureDao {
 
     @Query("SELECT COUNT(*) FROM capture")
     fun captureCount(): Flow<Int>
+
+    /** Snapshot one-shot pour l'export — pas un Flow, on fige une vue cohérente. */
+    @Query("SELECT * FROM capture ORDER BY timestamp ASC")
+    suspend fun allCapturesSnapshot(): List<CaptureEntity>
+
+    @Query("SELECT EXISTS(SELECT 1 FROM capture WHERE arbreId = :arbreId AND timestamp = :timestamp)")
+    suspend fun captureExists(arbreId: Long, timestamp: Long): Boolean
 }

@@ -3,6 +3,8 @@ package app.arbre
 import android.app.Application
 import android.os.SystemClock
 import android.util.Log
+import app.arbre.backup.BackupExporter
+import app.arbre.backup.BackupImporter
 import app.arbre.data.ArbreDatabase
 import app.arbre.data.ArbreRepository
 import app.arbre.data.CaptureRepository
@@ -40,6 +42,14 @@ class ArbresApp : Application() {
     }
 
     val seasonStore: SeasonStore = SeasonStore()
+
+    val backupExporter: BackupExporter by lazy {
+        BackupExporter(this, database.captureDao())
+    }
+
+    val backupImporter: BackupImporter by lazy {
+        BackupImporter(this, database.captureDao())
+    }
 
     /** Démarrage du process. Sert de t0 pour les logs de timing du cold start. */
     val processStartElapsedMs: Long = SystemClock.elapsedRealtime()
