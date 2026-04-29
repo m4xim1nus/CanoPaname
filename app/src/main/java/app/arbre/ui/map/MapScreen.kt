@@ -33,6 +33,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.MyLocation
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -144,6 +145,7 @@ private suspend fun computeInitialCamera(ctx: Context): CameraPosition {
 @Composable
 fun MapScreen(
     onArboretumClick: () -> Unit = {},
+    onRemarquablesClick: () -> Unit = {},
     onSpeciesClick: (Int) -> Unit = {},
     onFirstSpeciesCapture: (Int) -> Unit = {},
     onBack: (() -> Unit)? = null,
@@ -336,7 +338,7 @@ fun MapScreen(
         }
     }
 
-    fun onStarClick() {
+    fun onNearestRemarquableClick() {
         scope.launch {
             val loc = LocationProvider.currentLocation.value
                 ?: LocationProvider.currentOrLastKnown(ctx)
@@ -385,12 +387,24 @@ fun MapScreen(
                     .padding(16.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                FloatingActionButton(onClick = ::onStarClick) {
-                    Icon(Icons.Default.Star, contentDescription = "Plus proche remarquable")
+                FloatingActionButton(onClick = onRemarquablesClick) {
+                    Icon(Icons.Default.Star, contentDescription = "Remarquables")
                 }
                 FloatingActionButton(onClick = onArboretumClick) {
                     Icon(Icons.AutoMirrored.Filled.MenuBook, contentDescription = "Arboretum")
                 }
+            }
+            // FAB loupe (BottomStart) : recherche de la cible la plus proche.
+            // Réservé au mode non-filtré — en mode `MAP_FILTERED` l'utilisateur
+            // chasse une espèce, pas un remarquable.
+            FloatingActionButton(
+                onClick = ::onNearestRemarquableClick,
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .windowInsetsPadding(WindowInsets.navigationBars)
+                    .padding(16.dp),
+            ) {
+                Icon(Icons.Default.Search, contentDescription = "Plus proche remarquable")
             }
         }
         FloatingActionButton(

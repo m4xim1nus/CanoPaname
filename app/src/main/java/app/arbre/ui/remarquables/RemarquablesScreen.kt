@@ -1,4 +1,4 @@
-package app.arbre.ui.arboretum
+package app.arbre.ui.remarquables
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -47,49 +47,60 @@ import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import app.arbre.data.Capture
-import app.arbre.data.SpeciesEntry
-import app.arbre.data.SpeciesIndex
+import app.arbre.data.Arbre
 import app.arbre.data.rememberArbreRepository
 import app.arbre.data.rememberCaptureRepository
-import app.arbre.data.rememberDatasetStats
-import app.arbre.data.rememberSpeciesIndex
 import app.arbre.ui.common.PhotoThumbnail
 import java.text.DateFormat
 import java.util.Date
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ArboretumScreen(
+fun RemarquablesScreen(
     onBack: () -> Unit,
-    onSpeciesClick: (Int) -> Unit = {},
+    onRemarquableClick: (Long) -> Unit = {},
 ) {
-    val captureRepo = rememberCaptureRepository()
-    val speciesIndex = rememberSpeciesIndex()
-    val stats = rememberDatasetStats()
     val arbreRepo = rememberArbreRepository()
+    val captureRepo = rememberCaptureRepository()
 
-    // Captures non-remarquables : les remarquables ont leur propre écran
-    // (RemarquablesScreen) accessible depuis le FAB ★ de la carte.
-    val captures by captureRepo.toutesLesCaptures().collectAsState(initial = emptyList())
+    // Liste statique des 183 arbres remarquables — chargée une seule fois.
+    // Pas de Flow : le set ne change pas après le premier launch.
+    var tousRemarquables by remember { mutableStateOf<List<Arbre>>(emptyList()) }
+    LaunchedEffect(Unit) {
+        tousRemarquables = arbreRepo.arbresRemarquables()
+    }
 
-    val speciesGroups: List<SpeciesGroup> = captures
-        .filter { !it.remarquable }
-        .groupBy { it.speciesIndex }
-        .mapNotNull { (sk, caps) ->
-            val entry = speciesIndex.get(sk) ?: return@mapNotNull null
-            SpeciesGroup(entry, caps.sortedByDescending { it.timestamp })
-        }
-        .sortedByDescending { it.captures.first().timestamp }
+    val capturesRemarquables by captureRepo.capturesRemarquables()
+        .collectAsState(initial = emptyList())
+    val capturedIds by captureRepo.capturedRemarquableIds()
+        .collectAsState(initial = emptySet())
 
-    // `rememberSaveable` pour conserver le mode au retour de la fiche-espèce —
-    // aller-retour Pokédex → fiche → Pokédex sans flash sur la vue Liste.
-    var viewMode by rememberSaveable { mutableStateOf(ArboretumViewMode.LISTE) }
+    // 1re photo (la plus ancienne) par arbre remarquable. Cohérent avec
+    // l'Arboretum qui utilise la 1re capture chronologique pour la fiche.
+    val firstPhotoByArbreId: Map<Long, String> = remember(capturesRemarquables) {
+        capturesRemarquables
+            .groupBy { it.arbreId }
+            .mapValues { (_, caps) -> caps.minBy { it.timestamp }.photoPath }
+    }
+    // Pour le tri en mode Liste : date de la plus récente capture par arbre.
+    val lastCaptureTsByArbreId: Map<Long, Long> = remember(capturesRemarquables) {
+        capturesRemarquables
+            .groupBy { it.arbreId }
+            .mapValues { (_, caps) -> caps.maxOf { it.timestamp } }
+    }
+
+    val total = tousRemarquables.size
+    val nbDecouverts = tousRemarquables.count { it.id in capturedIds }
+
+    // `rememberSaveable` pour conserver le mode au retour de la fiche-arbre —
+    // miroir de l'Arboretum (cf. ArboretumScreen.kt : aller-retour Pokédex →
+    // fiche → Pokédex sans flash sur la vue Liste).
+    var viewMode by rememberSaveable { mutableStateOf(RemarquablesViewMode.LISTE) }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Arboretum") },
+                title = { Text("Remarquables") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Retour")
@@ -104,8 +115,8 @@ fun ArboretumScreen(
                 .padding(padding),
         ) {
             HeaderCard(
-                speciesGroups.size,
-                stats.totalEspeces,
+                nbDecouverts = nbDecouverts,
+                total = total,
                 modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 16.dp),
             )
             ViewModeSelector(
@@ -116,39 +127,41 @@ fun ArboretumScreen(
                     .padding(horizontal = 16.dp, vertical = 12.dp),
             )
             when (viewMode) {
-                ArboretumViewMode.LISTE -> ListeView(
-                    speciesGroups = speciesGroups,
-                    totalEspeces = stats.totalEspeces,
-                    arbreRepo = arbreRepo,
-                    onSpeciesClick = onSpeciesClick,
+                RemarquablesViewMode.LISTE -> ListeView(
+                    tousRemarquables = tousRemarquables,
+                    capturedIds = capturedIds,
+                    firstPhotoByArbreId = firstPhotoByArbreId,
+                    lastCaptureTsByArbreId = lastCaptureTsByArbreId,
+                    onRemarquableClick = onRemarquableClick,
                 )
-                ArboretumViewMode.POKEDEX -> PokedexView(
-                    speciesIndex = speciesIndex,
-                    speciesGroups = speciesGroups,
-                    onSpeciesClick = onSpeciesClick,
+                RemarquablesViewMode.POKEDEX -> PokedexView(
+                    tousRemarquables = tousRemarquables,
+                    capturedIds = capturedIds,
+                    firstPhotoByArbreId = firstPhotoByArbreId,
+                    onRemarquableClick = onRemarquableClick,
                 )
             }
         }
     }
 }
 
-private enum class ArboretumViewMode { LISTE, POKEDEX }
+private enum class RemarquablesViewMode { LISTE, POKEDEX }
 
 @Composable
 private fun ViewModeSelector(
-    current: ArboretumViewMode,
-    onSelect: (ArboretumViewMode) -> Unit,
+    current: RemarquablesViewMode,
+    onSelect: (RemarquablesViewMode) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     SingleChoiceSegmentedButtonRow(modifier = modifier) {
         SegmentedButton(
-            selected = current == ArboretumViewMode.LISTE,
-            onClick = { onSelect(ArboretumViewMode.LISTE) },
+            selected = current == RemarquablesViewMode.LISTE,
+            onClick = { onSelect(RemarquablesViewMode.LISTE) },
             shape = SegmentedButtonDefaults.itemShape(0, 2),
         ) { Text("Liste") }
         SegmentedButton(
-            selected = current == ArboretumViewMode.POKEDEX,
-            onClick = { onSelect(ArboretumViewMode.POKEDEX) },
+            selected = current == RemarquablesViewMode.POKEDEX,
+            onClick = { onSelect(RemarquablesViewMode.POKEDEX) },
             shape = SegmentedButtonDefaults.itemShape(1, 2),
         ) { Text("Pokédex") }
     }
@@ -156,27 +169,34 @@ private fun ViewModeSelector(
 
 @Composable
 private fun ListeView(
-    speciesGroups: List<SpeciesGroup>,
-    totalEspeces: Int,
-    arbreRepo: app.arbre.data.ArbreRepository,
-    onSpeciesClick: (Int) -> Unit,
+    tousRemarquables: List<Arbre>,
+    capturedIds: Set<Long>,
+    firstPhotoByArbreId: Map<Long, String>,
+    lastCaptureTsByArbreId: Map<Long, Long>,
+    onRemarquableClick: (Long) -> Unit,
 ) {
+    val decouverts = remember(tousRemarquables, capturedIds) {
+        tousRemarquables.filter { it.id in capturedIds }
+            .sortedByDescending { lastCaptureTsByArbreId[it.id] ?: 0L }
+    }
+
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        if (speciesGroups.isNotEmpty()) {
-            item {
-                SectionHeader("Espèces (${speciesGroups.size}/$totalEspeces)")
-            }
-            items(speciesGroups, key = { it.entry.index }) { group ->
-                SpeciesCard(
-                    group = group,
-                    countParEspece = arbreRepo::compterParEspece,
-                    onClick = { onSpeciesClick(group.entry.index) },
+        if (decouverts.isNotEmpty()) {
+            item { SectionHeader("Découverts (${decouverts.size}/${tousRemarquables.size})") }
+            items(decouverts, key = { it.id }) { arbre ->
+                DiscoveredCard(
+                    arbre = arbre,
+                    photoPath = firstPhotoByArbreId[arbre.id],
+                    captureTs = lastCaptureTsByArbreId[arbre.id],
+                    onClick = { onRemarquableClick(arbre.id) },
                 )
             }
+        } else if (tousRemarquables.isEmpty()) {
+            item { LoadingState() }
         } else {
             item { EmptyState() }
         }
@@ -184,32 +204,28 @@ private fun ListeView(
 }
 
 /**
- * Vue annuaire : grille 3 colonnes ordonnée par speciesIndex. Les espèces
- * capturées révèlent leur photo et leur nom ; les autres restent en
- * silhouette « ??? » avec leur numéro pour donner une idée de l'avancement
- * sans spoiler l'identité (cf. ROADMAP : « cases vides pour les espèces non
- * encore capturées »).
+ * Vue annuaire : grille 3 colonnes ordonnée alphabétiquement par (genre, espèce, id).
+ * Les remarquables capturés révèlent leur photo et leur nom ; les autres restent
+ * en silhouette « ??? » avec leur numéro pour donner une idée de l'avancement.
  *
- * Pas de section remarquables ici : le speciesIndex est partagé avec les
- * arbres normaux, donc l'annuaire représente l'inventaire des espèces
- * tout court — pertinent autant pour les remarquables que les autres.
+ * Variante de la vue Pokédex Arboretum : ici le numéro est stable (chaque
+ * remarquable a son rang fixe dans la liste), tandis que pour les espèces le
+ * numéro est juste un rang d'affichage.
  */
 @Composable
 private fun PokedexView(
-    speciesIndex: SpeciesIndex,
-    speciesGroups: List<SpeciesGroup>,
-    onSpeciesClick: (Int) -> Unit,
+    tousRemarquables: List<Arbre>,
+    capturedIds: Set<Long>,
+    firstPhotoByArbreId: Map<Long, String>,
+    onRemarquableClick: (Long) -> Unit,
 ) {
-    val firstPhotoBySk: Map<Int, String> = remember(speciesGroups) {
-        speciesGroups.associate { it.entry.index to it.captures.first().photoPath }
-    }
-    // Ordre Pokédex : alphabétique par (genre, espece). Regroupe les espèces
-    // d'un même genre (Acer platanoides, Acer pseudoplatanus, …) côte à côte
-    // — l'ordre par speciesIndex (sk) reflèterait l'ordre d'ingestion CSV
-    // qui est lié à l'ordre des captures et n'a pas de sens pour l'utilisateur.
-    val ordered = remember(speciesIndex) {
-        speciesIndex.entries().sortedWith(
-            compareBy({ it.genre.lowercase() }, { it.espece.lowercase() })
+    val ordered = remember(tousRemarquables) {
+        tousRemarquables.sortedWith(
+            compareBy(
+                { it.genre.lowercase() },
+                { it.espece.lowercase() },
+                { it.id },
+            )
         )
     }
 
@@ -220,17 +236,16 @@ private fun PokedexView(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        itemsIndexed(ordered, key = { _, e -> e.index }) { position, entry ->
-            val photoPath = firstPhotoBySk[entry.index]
+        itemsIndexed(ordered, key = { _, a -> a.id }) { position, arbre ->
+            val discovered = arbre.id in capturedIds
+            val photoPath = if (discovered) firstPhotoByArbreId[arbre.id] else null
             PokedexCell(
-                // Numéro 1-based — c'est un rang d'affichage, distinct du
-                // speciesIndex stocké en Room (qui peut être 0 et reflète
-                // l'ordre d'ingestion).
                 displayNumber = position + 1,
-                entry = entry,
+                arbre = arbre,
                 photoPath = photoPath,
-                onClick = if (photoPath != null) {
-                    { onSpeciesClick(entry.index) }
+                discovered = discovered,
+                onClick = if (discovered) {
+                    { onRemarquableClick(arbre.id) }
                 } else null,
             )
         }
@@ -240,11 +255,11 @@ private fun PokedexView(
 @Composable
 private fun PokedexCell(
     displayNumber: Int,
-    entry: SpeciesEntry,
+    arbre: Arbre,
     photoPath: String?,
+    discovered: Boolean,
     onClick: (() -> Unit)?,
 ) {
-    val discovered = photoPath != null
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -295,7 +310,7 @@ private fun PokedexCell(
                 }
             }
             Text(
-                if (discovered) entry.displayNomCommun else "???",
+                if (discovered) arbre.nomAffichage else "???",
                 style = MaterialTheme.typography.bodySmall,
                 color = if (discovered) {
                     MaterialTheme.colorScheme.onSurface
@@ -310,15 +325,10 @@ private fun PokedexCell(
     }
 }
 
-private data class SpeciesGroup(
-    val entry: SpeciesEntry,
-    val captures: List<Capture>,
-)
-
 @Composable
 private fun HeaderCard(
-    nbEspeces: Int,
-    totalEspeces: Int,
+    nbDecouverts: Int,
+    total: Int,
     modifier: Modifier = Modifier,
 ) {
     Card(
@@ -329,7 +339,11 @@ private fun HeaderCard(
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(
-                "$nbEspeces / $totalEspeces espèces découvertes",
+                if (total > 0) {
+                    "$nbDecouverts / $total remarquables découverts"
+                } else {
+                    "Chargement…"
+                },
                 style = MaterialTheme.typography.titleLarge,
             )
         }
@@ -346,18 +360,12 @@ private fun SectionHeader(label: String) {
 }
 
 @Composable
-private fun SpeciesCard(
-    group: SpeciesGroup,
-    countParEspece: suspend (String, String) -> Int,
+private fun DiscoveredCard(
+    arbre: Arbre,
+    photoPath: String?,
+    captureTs: Long?,
     onClick: () -> Unit,
 ) {
-    val first = group.captures.first()
-    val firstChrono = group.captures.last() // 1re capture = la plus ancienne
-    var countInDataset by remember(group.entry) { mutableStateOf(-1) }
-    LaunchedEffect(group.entry) {
-        countInDataset = countParEspece(group.entry.genre, group.entry.espece)
-    }
-
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -367,46 +375,66 @@ private fun SpeciesCard(
             modifier = Modifier.padding(12.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            PhotoThumbnail(
-                photoPath = first.photoPath,
-                modifier = Modifier
-                    .size(72.dp)
-                    .clip(RoundedCornerShape(8.dp)),
-            )
-            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(
-                    group.entry.displayNomCommun,
-                    style = MaterialTheme.typography.titleMedium,
+            if (photoPath != null) {
+                PhotoThumbnail(
+                    photoPath = photoPath,
+                    modifier = Modifier
+                        .size(72.dp)
+                        .clip(RoundedCornerShape(8.dp)),
                 )
-                // Sous-titre binomial italique tant que le nom commun est
-                // disponible — utile pour discriminer Acer platanoides /
-                // pseudoplatanus qui partagent l'étiquette « Erable ».
-                if (group.entry.nomCommun != null) {
+            } else {
+                PlaceholderThumbnail(modifier = Modifier.size(72.dp))
+            }
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(arbre.nomAffichage, style = MaterialTheme.typography.titleMedium)
+                if (arbre.nomCommun != null) {
                     Text(
-                        group.entry.displayName,
-                        style = MaterialTheme.typography.bodySmall.copy(
-                            fontStyle = FontStyle.Italic,
-                        ),
+                        "${arbre.genre} ${arbre.espece}",
+                        style = MaterialTheme.typography.bodySmall.copy(fontStyle = FontStyle.Italic),
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
-                if (countInDataset > 0) {
+                Text(
+                    "★ Remarquable",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+                arbre.adresse?.let {
+                    Text(it, style = MaterialTheme.typography.bodySmall)
+                }
+                captureTs?.let {
                     Text(
-                        "$countInDataset arbre${if (countInDataset > 1) "s" else ""} dans Paris",
+                        "Capture : ${formatDate(it)}",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
-                Text(
-                    "${group.captures.size} photo${if (group.captures.size > 1) "s" else ""}",
-                    style = MaterialTheme.typography.bodySmall,
-                )
-                Text(
-                    "1re capture : ${formatDate(firstChrono.timestamp)}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
             }
+        }
+    }
+}
+
+@Composable
+private fun PlaceholderThumbnail(modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(8.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainerHighest),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            "?",
+            style = MaterialTheme.typography.headlineMedium,
+            color = MaterialTheme.colorScheme.outline,
+        )
+    }
+}
+
+@Composable
+private fun LoadingState() {
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(24.dp)) {
+            Text("Chargement des arbres remarquables…")
         }
     }
 }
@@ -418,9 +446,12 @@ private fun EmptyState() {
             modifier = Modifier.padding(24.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Text("Aucune capture pour l'instant.", style = MaterialTheme.typography.titleMedium)
             Text(
-                "Approche-toi d'un arbre, tape son pin gris et capture-le pour révéler son espèce.",
+                "Aucun remarquable capturé pour l'instant.",
+                style = MaterialTheme.typography.titleMedium,
+            )
+            Text(
+                "Pars à la chasse : la loupe en bas-gauche de la carte t'indique la distance au plus proche.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

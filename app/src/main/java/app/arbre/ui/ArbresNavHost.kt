@@ -8,11 +8,15 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import app.arbre.ui.arboretum.ArboretumScreen
 import app.arbre.ui.map.MapScreen
+import app.arbre.ui.remarquables.RemarquableDetailScreen
+import app.arbre.ui.remarquables.RemarquablesScreen
 import app.arbre.ui.species.SpeciesDetailScreen
 
 object Routes {
     const val MAP = "map"
     const val ARBORETUM = "arboretum"
+    const val REMARQUABLES = "remarquables"
+    const val REMARQUABLE_DETAIL = "remarquable_detail/{arbreId}"
     // Le flag `celebrate` est passé en query param (compose-navigation gère
     // les optionnels uniquement après `?`). Permet la transition « waouh »
     // depuis CaptureLauncher sans dupliquer la destination.
@@ -25,6 +29,7 @@ object Routes {
     fun species(speciesIndex: Int, celebrate: Boolean = false): String =
         "species/$speciesIndex?celebrate=$celebrate"
     fun mapFiltered(speciesIndex: Int): String = "map_filtered/$speciesIndex"
+    fun remarquableDetail(arbreId: Long): String = "remarquable_detail/$arbreId"
 }
 
 @Composable
@@ -34,6 +39,7 @@ fun ArbresNavHost() {
         composable(Routes.MAP) {
             MapScreen(
                 onArboretumClick = { nav.navigate(Routes.ARBORETUM) },
+                onRemarquablesClick = { nav.navigate(Routes.REMARQUABLES) },
                 onSpeciesClick = { sk -> nav.navigate(Routes.species(sk)) },
                 onFirstSpeciesCapture = { sk ->
                     nav.navigate(Routes.species(sk, celebrate = true))
@@ -44,6 +50,22 @@ fun ArbresNavHost() {
             ArboretumScreen(
                 onBack = { nav.popBackStack() },
                 onSpeciesClick = { sk -> nav.navigate(Routes.species(sk)) },
+            )
+        }
+        composable(Routes.REMARQUABLES) {
+            RemarquablesScreen(
+                onBack = { nav.popBackStack() },
+                onRemarquableClick = { id -> nav.navigate(Routes.remarquableDetail(id)) },
+            )
+        }
+        composable(
+            Routes.REMARQUABLE_DETAIL,
+            arguments = listOf(navArgument("arbreId") { type = NavType.LongType }),
+        ) { entry ->
+            val arbreId = entry.arguments?.getLong("arbreId") ?: return@composable
+            RemarquableDetailScreen(
+                arbreId = arbreId,
+                onBack = { nav.popBackStack() },
             )
         }
         composable(
