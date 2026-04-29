@@ -48,9 +48,13 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.arbre.data.Arbre
+import app.arbre.data.Season
 import app.arbre.data.rememberArbreRepository
 import app.arbre.data.rememberCaptureRepository
+import app.arbre.data.rememberSeasonStore
+import app.arbre.ui.common.ArchiveBanner
 import app.arbre.ui.common.PhotoThumbnail
+import app.arbre.ui.common.SeasonSelector
 import java.text.DateFormat
 import java.util.Date
 
@@ -62,6 +66,10 @@ fun RemarquablesScreen(
 ) {
     val arbreRepo = rememberArbreRepository()
     val captureRepo = rememberCaptureRepository()
+    val seasonStore = rememberSeasonStore()
+    val selectedSeason by seasonStore.selected.collectAsState()
+    val currentSeason = Season.current()
+    val isArchive = selectedSeason != currentSeason
 
     // Liste statique des 183 arbres remarquables — chargée une seule fois.
     // Pas de Flow : le set ne change pas après le premier launch.
@@ -72,19 +80,22 @@ fun RemarquablesScreen(
 
     val capturesRemarquables by captureRepo.capturesRemarquables()
         .collectAsState(initial = emptyList())
-    val capturedIds by captureRepo.capturedRemarquableIds()
+    // Set scopé sur la saison sélectionnée — un même remarquable capturé
+    // en hiver et en été compte 2 fois dans le Pokédex saisonnier.
+    val capturedIds by captureRepo.capturedRemarquableIds(selectedSeason)
         .collectAsState(initial = emptySet())
 
-    // 1re photo (la plus ancienne) par arbre remarquable. Cohérent avec
-    // l'Arboretum qui utilise la 1re capture chronologique pour la fiche.
-    val firstPhotoByArbreId: Map<Long, String> = remember(capturesRemarquables) {
-        capturesRemarquables
+    // 1re photo de la saison sélectionnée pour chaque arbre.
+    val capturesInSeason = remember(capturesRemarquables, selectedSeason) {
+        capturesRemarquables.filter { it.season == selectedSeason }
+    }
+    val firstPhotoByArbreId: Map<Long, String> = remember(capturesInSeason) {
+        capturesInSeason
             .groupBy { it.arbreId }
             .mapValues { (_, caps) -> caps.minBy { it.timestamp }.photoPath }
     }
-    // Pour le tri en mode Liste : date de la plus récente capture par arbre.
-    val lastCaptureTsByArbreId: Map<Long, Long> = remember(capturesRemarquables) {
-        capturesRemarquables
+    val lastCaptureTsByArbreId: Map<Long, Long> = remember(capturesInSeason) {
+        capturesInSeason
             .groupBy { it.arbreId }
             .mapValues { (_, caps) -> caps.maxOf { it.timestamp } }
     }
@@ -106,6 +117,14 @@ fun RemarquablesScreen(
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Retour")
                     }
                 },
+                actions = {
+                    SeasonSelector(
+                        selected = selectedSeason,
+                        onSelect = { seasonStore.select(it) },
+                        isCurrent = !isArchive,
+                        modifier = Modifier.padding(end = 8.dp),
+                    )
+                },
             )
         },
     ) { padding ->
@@ -114,9 +133,13 @@ fun RemarquablesScreen(
                 .fillMaxSize()
                 .padding(padding),
         ) {
+            if (isArchive) {
+                ArchiveBanner(season = selectedSeason)
+            }
             HeaderCard(
                 nbDecouverts = nbDecouverts,
                 total = total,
+                season = selectedSeason,
                 modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 16.dp),
             )
             ViewModeSelector(
@@ -329,6 +352,7 @@ private fun PokedexCell(
 private fun HeaderCard(
     nbDecouverts: Int,
     total: Int,
+    season: Season,
     modifier: Modifier = Modifier,
 ) {
     Card(
@@ -345,6 +369,11 @@ private fun HeaderCard(
                     "Chargement…"
                 },
                 style = MaterialTheme.typography.titleLarge,
+            )
+            Text(
+                "en ${season.label.lowercase()}",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onPrimaryContainer,
             )
         }
     }
@@ -447,7 +476,7 @@ private fun EmptyState() {
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Text(
-                "Aucun remarquable capturé pour l'instant.",
+                "Aucun remarquable capturé dans cette saison.",
                 style = MaterialTheme.typography.titleMedium,
             )
             Text(

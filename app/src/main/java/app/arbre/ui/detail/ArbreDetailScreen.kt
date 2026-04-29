@@ -233,6 +233,7 @@ private fun UnknownContent(
         CaptureAvailability.Ready -> "Capturer"
         CaptureAvailability.NoGps -> "Active le GPS"
         is CaptureAvailability.TooFar -> "Trop loin (${availability.meters} m)"
+        CaptureAvailability.Archived -> "Saison archivée"
         null -> "Capturer"
     }
     Button(

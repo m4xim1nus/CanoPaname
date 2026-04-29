@@ -17,6 +17,7 @@ import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import app.arbre.data.Arbre
 import app.arbre.data.CaptureRepository
+import app.arbre.data.Season
 import app.arbre.data.SpeciesIndex
 import app.arbre.util.LocationProvider
 import app.arbre.util.ageMs
@@ -39,6 +40,8 @@ sealed class CaptureAvailability {
     object Ready : CaptureAvailability()
     object NoGps : CaptureAvailability()
     data class TooFar(val meters: Int) : CaptureAvailability()
+    /** Saison sélectionnée ≠ saison vive : capture désactivée (cf. Sprint I). */
+    object Archived : CaptureAvailability()
 }
 
 suspend fun captureAvailability(
@@ -106,7 +109,10 @@ fun rememberCaptureController(
             }
             // Snapshot AVANT insert : sinon on lit le set qui contient déjà
             // notre nouvelle espèce et on rate la transition « 1re capture ».
-            val previouslyCaptured = captureRepo.capturedSpeciesIndices().first()
+            // Scopé sur la saison de la capture pour le Pokédex saisonnier
+            // (cf. Sprint I) : la même espèce capturée 2 saisons compte 2 fois.
+            val captureSeason = Season.fromTimestamp(pending.captureTimestamp)
+            val previouslyCaptured = captureRepo.capturedSpeciesIndices(captureSeason).first()
             captureRepo.insertCapture(
                 arbreId = pending.arbreId,
                 speciesIndex = pending.speciesIndex,

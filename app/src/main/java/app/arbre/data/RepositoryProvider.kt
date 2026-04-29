@@ -44,9 +44,16 @@ fun rememberRemarquableInfoRepository(): RemarquableInfoRepository {
     return remember(ctx) { ctx.app().remarquableInfoRepository }
 }
 
+@Composable
+fun rememberSeasonStore(): SeasonStore {
+    val ctx = LocalContext.current
+    return remember(ctx) { ctx.app().seasonStore }
+}
+
 fun Context.arbreRepository(): ArbreRepository = app().arbreRepository
 fun Context.captureRepository(): CaptureRepository = app().captureRepository
 fun Context.speciesIndex(): SpeciesIndex = app().speciesIndex
 fun Context.datasetStats(): DatasetStats = app().datasetStats
 fun Context.speciesInfoRepository(): SpeciesInfoRepository = app().speciesInfoRepository
 fun Context.remarquableInfoRepository(): RemarquableInfoRepository = app().remarquableInfoRepository
+fun Context.seasonStore(): SeasonStore = app().seasonStore

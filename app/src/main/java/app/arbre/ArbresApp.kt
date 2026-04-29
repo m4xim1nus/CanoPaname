@@ -8,6 +8,7 @@ import app.arbre.data.ArbreRepository
 import app.arbre.data.CaptureRepository
 import app.arbre.data.DatasetStats
 import app.arbre.data.RemarquableInfoRepository
+import app.arbre.data.SeasonStore
 import app.arbre.data.SpeciesIndex
 import app.arbre.data.SpeciesInfoRepository
 import kotlinx.coroutines.CoroutineScope
@@ -37,6 +38,8 @@ class ArbresApp : Application() {
     val remarquableInfoRepository: RemarquableInfoRepository by lazy {
         RemarquableInfoRepository.load(this)
     }
+
+    val seasonStore: SeasonStore = SeasonStore()
 
     /** Démarrage du process. Sert de t0 pour les logs de timing du cold start. */
     val processStartElapsedMs: Long = SystemClock.elapsedRealtime()
