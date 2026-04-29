@@ -18,6 +18,7 @@ data class SpeciesInfo(
     val wikipediaTitle: String?,
     val wikidataQid: String?,
     val summary: String?,
+    val pdfUrl: String?,
     val stats: SpeciesStats,
 )
 
@@ -74,6 +75,7 @@ class SpeciesInfoRepository(private val byIndex: Map<Int, SpeciesInfo>) {
                 wikipediaTitle = o.optStringOrNull("wp"),
                 wikidataQid = o.optStringOrNull("qid"),
                 summary = o.optStringOrNull("summary"),
+                pdfUrl = o.optStringOrNull("pdf"),
                 stats = stats,
             )
         }

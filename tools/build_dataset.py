@@ -60,6 +60,13 @@ REMARQUABLES_URL = (
 REMARQUABLES_CACHE_DIR = ROOT / "tools" / ".remarquables-cache"
 REMARQUABLES_PAGE_SIZE = 100  # API V2 plafonne à 100 par page
 
+ESSENCES_URL = (
+    "https://opendata.paris.fr/api/explore/v2.1/catalog/datasets/"
+    "fiches-essences-du-guide-des-essences-de-paris/records"
+)
+ESSENCES_CACHE_DIR = ROOT / "tools" / ".essences-cache"
+ESSENCES_PAGE_SIZE = 100
+
 WIKI_USER_AGENT = "arbre-app-build/0.1 (personal Android app, https://github.com/local/arbre-app)"
 WIKIDATA_CACHE_DIR = ROOT / "tools" / ".wikidata-cache"
 WIKIDATA_SPARQL_URL = "https://query.wikidata.org/sparql"
@@ -384,6 +391,7 @@ def _build_species_entry(
     arr_total: dict[str, int],
     total_arbres: int,
     wiki: dict | None,
+    pdf_url: str | None,
 ) -> dict:
     """Calcule stats locales + assemble les champs Wikipedia déjà fetchés."""
     stats: dict = {
@@ -420,6 +428,8 @@ def _build_species_entry(
             entry["qid"] = wiki["qid"]
         if wiki.get("summary"):
             entry["summary"] = wiki["summary"]
+    if pdf_url:
+        entry["pdf"] = pdf_url
     return entry
 
 
@@ -431,6 +441,7 @@ def write_species_info(
     arr_by_sk: dict[int, dict[str, int]],
     arr_total: dict[str, int],
     total_arbres: int,
+    essences_pdf: dict[tuple[str, str], str],
 ) -> None:
     WIKIDATA_CACHE_DIR.mkdir(parents=True, exist_ok=True)
     print(
@@ -455,8 +466,10 @@ def write_species_info(
     # 3. Pour chaque espèce, fetch summary (cache disque géré dans la fonction).
     entries: list[dict] = []
     wiki_hit = 0
+    pdf_hit = 0
     for (genre, espece), sk in species_index.items():
         wiki = fetch_species_info(sk, genre, espece, wikidata_resolution)
+        pdf_url = essences_pdf.get((genre, espece))
         entry = _build_species_entry(
             sk=sk,
             genre=genre,
@@ -468,9 +481,12 @@ def write_species_info(
             arr_total=arr_total,
             total_arbres=total_arbres,
             wiki=wiki,
+            pdf_url=pdf_url,
         )
         if "summary" in entry:
             wiki_hit += 1
+        if "pdf" in entry:
+            pdf_hit += 1
         entries.append(entry)
         if len(entries) % 100 == 0:
             print(f"[wp ] {len(entries)}/{len(species_index)} traités, {wiki_hit} avec summary")
@@ -481,6 +497,7 @@ def write_species_info(
 
     info_kb = OUT_SPECIES_INFO.stat().st_size // 1024
     print(f"[wp ] {wiki_hit}/{len(species_index)} espèces avec summary Wikipedia")
+    print(f"[ess ] {pdf_hit}/{len(species_index)} espèces avec fiche PDF Ville de Paris")
     print(f"       → {OUT_SPECIES_INFO.name} ({info_kb} Ko)")
 
 
@@ -640,6 +657,118 @@ def write_remarquables_info(records: list[dict], ids_in_csv: set[int]) -> None:
     if orphans:
         print(f"        - {orphans} orphelins ignorés (idbase absent du CSV)")
     print(f"        → {OUT_REMARQUABLES_INFO.name} ({info_kb} Ko)")
+
+
+def _fetch_essences_page(offset: int, limit: int) -> dict:
+    params = urllib.parse.urlencode({
+        "limit": limit,
+        "offset": offset,
+        "select": "nom_latin,nom_commun,nom_fichier_pdf_associe",
+    })
+    url = f"{ESSENCES_URL}?{params}"
+    req = urllib.request.Request(url, headers={"User-Agent": WIKI_USER_AGENT})
+    with urllib.request.urlopen(req, timeout=30) as resp:
+        return json.loads(resp.read())
+
+
+def fetch_essences() -> list[dict]:
+    """Fetch les ~200 fiches PDF du dataset `fiches-essences-du-guide-des-essences-de-paris`.
+
+    Cache disque par `pdf_id` (id de fichier OpenData) dans
+    `tools/.essences-cache/{pdf_id}.json` — payload OpenData brut. La liste
+    paginée est refetchée à chaque run (cheap, 2 pages), mais les records sont
+    relus depuis le cache si présents. Records sans PDF associé skippés.
+    """
+    ESSENCES_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+    records: list[dict] = []
+    offset = 0
+    total: int | None = None
+    print(f"[ess ] fetch fiches-essences (cache: {ESSENCES_CACHE_DIR.relative_to(ROOT)})")
+
+    while True:
+        page = _fetch_essences_page(offset, ESSENCES_PAGE_SIZE)
+        if total is None:
+            total = int(page.get("total_count", 0))
+            print(f"[ess ] total_count={total}")
+        page_records = page.get("results", [])
+        if not page_records:
+            break
+        for rec in page_records:
+            pdf = rec.get("nom_fichier_pdf_associe") or {}
+            pdf_id = pdf.get("id")
+            if not pdf_id:
+                continue
+            cache_path = ESSENCES_CACHE_DIR / f"{pdf_id}.json"
+            if cache_path.exists():
+                with cache_path.open("r", encoding="utf-8") as f:
+                    records.append(json.load(f))
+            else:
+                with cache_path.open("w", encoding="utf-8") as f:
+                    json.dump(rec, f, ensure_ascii=False)
+                records.append(rec)
+        offset += len(page_records)
+        if total is not None and offset >= total:
+            break
+    print(f"[ess ] {len(records)} fiches récupérées")
+    return records
+
+
+def _parse_essence_taxon(nom_latin: str) -> tuple[str, str] | None:
+    """Extrait `(genre, espece)` d'un `nom_latin` du dataset essences.
+
+    Format général : `Genre espece [...trailing cultivar/subsp...]`.
+    Conventions à reproduire pour matcher `species-index.json` :
+    - Hybrides « Genre x espece » → `e = "x espece"` (espace après le x),
+      cohérent avec la sortie de `tools/build_dataset.py` sur le CSV
+      les-arbres (cf. `Platanus`/`x hispanica`).
+    - Hybrides intergénériques « X Genre espece » (ex: « X Chitalpa
+      tashkentensis ») : skippés, le species-index ne les contient pas.
+    - Cultivars (`'Globosum'`, `subsp. nigra`, etc.) : ignorés ; on retombe
+      sur l'espèce mère, plusieurs records peuvent matcher la même paire et
+      `_build_essences_index` choisit le PDF le plus générique.
+    """
+    parts = (nom_latin or "").strip().split()
+    if not parts:
+        return None
+    if parts[0] in ("X", "×") and len(parts) >= 3:
+        return None
+    if len(parts) < 2:
+        return None
+    genre = parts[0]
+    if len(parts) >= 3 and parts[1] in ("x", "×"):
+        espece = f"x {parts[2]}"
+    else:
+        espece = parts[1]
+    # Skipper « Ulmus 'Sapporo' » & co — cultivar sans nom d'espèce parent,
+    # impossible à matcher contre species-index (qui exige `(genre, espece)`).
+    if espece[:1] in ("'", '"', "‘", "’"):
+        return None
+    return (genre, espece)
+
+
+def _build_essences_index(records: list[dict]) -> dict[tuple[str, str], str]:
+    """`(genre, espece) → url_pdf`, en privilégiant le record le plus générique.
+
+    Plusieurs fiches peuvent partager une même paire `(genre, espece)` (ex:
+    `Acer platanoides` et plusieurs cultivars `Acer platanoides 'Globosum'`).
+    On garde la fiche au `nom_latin` le plus court — c'est l'espèce nue, pas
+    un cultivar. Égalité → premier rencontré.
+    """
+    chosen: dict[tuple[str, str], tuple[int, str]] = {}
+    for rec in records:
+        nom_latin = (rec.get("nom_latin") or "").strip()
+        taxon = _parse_essence_taxon(nom_latin)
+        if taxon is None:
+            continue
+        pdf = rec.get("nom_fichier_pdf_associe") or {}
+        url = pdf.get("url")
+        if not url:
+            continue
+        score = len(nom_latin)
+        prev = chosen.get(taxon)
+        if prev is None or score < prev[0]:
+            chosen[taxon] = (score, url)
+    return {k: v[1] for k, v in chosen.items()}
 
 
 SCHEMA_SQL = [
@@ -848,8 +977,17 @@ def build(csv_path: Path, db_path: Path, geojson_path: Path) -> None:
     with OUT_DATASET_STATS.open("w", encoding="utf-8") as f:
         json.dump(stats, f, ensure_ascii=False, indent=2)
 
+    essences_records = fetch_essences()
+    essences_pdf = _build_essences_index(essences_records)
+    matched = sum(1 for k in essences_pdf if k in species_index)
+    print(
+        f"[ess ] {len(essences_pdf)} taxons distincts dans le dataset, "
+        f"{matched} matchent une espèce du species-index"
+    )
+
     write_species_info(species_index, count_by_sk, heights_by_sk, circs_by_sk,
-                       arr_by_sk, arr_total, total_arbres=inserted)
+                       arr_by_sk, arr_total, total_arbres=inserted,
+                       essences_pdf=essences_pdf)
 
     remarquables_records = fetch_remarquables()
     write_remarquables_info(remarquables_records, ids_in_csv=seen_ids)

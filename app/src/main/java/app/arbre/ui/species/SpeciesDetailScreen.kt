@@ -19,6 +19,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.Map
+import androidx.compose.material.icons.filled.PictureAsPdf
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -121,6 +122,10 @@ fun SpeciesDetailScreen(
             }
 
             item { WikipediaBlock(info) }
+
+            info?.pdfUrl?.let { pdfUrl ->
+                item { EssencePdfBlock(pdfUrl) }
+            }
 
             info?.stats?.let { stats ->
                 item { StatsBlock(stats) }
@@ -284,6 +289,50 @@ private fun WikipediaBlock(info: SpeciesInfo?) {
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun EssencePdfBlock(pdfUrl: String) {
+    val ctx = LocalContext.current
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable {
+                runCatching {
+                    ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(pdfUrl)))
+                }
+            },
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Icon(
+                Icons.Default.PictureAsPdf,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(24.dp),
+            )
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    "Fiche essence Ville de Paris",
+                    style = MaterialTheme.typography.titleSmall,
+                )
+                Text(
+                    "Document PDF officiel",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Icon(
+                Icons.AutoMirrored.Filled.OpenInNew,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(20.dp),
+            )
         }
     }
 }
