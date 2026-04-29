@@ -15,8 +15,16 @@ class CaptureRepository(private val dao: CaptureDao) {
     fun capturedSpeciesIndices(): Flow<Set<Int>> =
         dao.capturedSpeciesIndices().map { it.toSet() }
 
+    /** Set scopé sur une saison (toutes années cumulées). */
+    fun capturedSpeciesIndices(season: Season): Flow<Set<Int>> =
+        dao.capturedSpeciesIndicesForSeason(season.storedValue).map { it.toSet() }
+
     fun capturedRemarquableIds(): Flow<Set<Long>> =
         dao.capturedRemarquableIds().map { it.toSet() }
+
+    /** Set scopé sur une saison (toutes années cumulées). */
+    fun capturedRemarquableIds(season: Season): Flow<Set<Long>> =
+        dao.capturedRemarquableIdsForSeason(season.storedValue).map { it.toSet() }
 
     fun capturesPourArbre(arbreId: Long): Flow<List<Capture>> =
         dao.capturesPourArbre(arbreId).map { rows -> rows.map(CaptureEntity::toCapture) }
@@ -26,6 +34,10 @@ class CaptureRepository(private val dao: CaptureDao) {
 
     fun capturesRemarquables(): Flow<List<Capture>> =
         dao.capturesRemarquables().map { rows -> rows.map(CaptureEntity::toCapture) }
+
+    fun firstCaptureTimestamp(): Flow<Long?> = dao.firstCaptureTimestamp()
+
+    fun captureCount(): Flow<Int> = dao.captureCount()
 
     suspend fun insertCapture(
         arbreId: Long,
@@ -44,7 +56,7 @@ class CaptureRepository(private val dao: CaptureDao) {
             latitudeDevice = latitudeDevice,
             longitudeDevice = longitudeDevice,
             photoPath = photoPath,
-            season = Season.fromTimestamp(timestamp),
+            season = Season.fromTimestamp(timestamp).storedValue,
         )
     )
 }

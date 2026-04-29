@@ -40,6 +40,7 @@ import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.MenuBook
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.MyLocation
+import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -81,12 +82,16 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import app.arbre.ArbresApp
 import app.arbre.R
+import app.arbre.data.Season
 import app.arbre.data.SpeciesEntry
 import app.arbre.data.rememberArbreRepository
 import app.arbre.data.rememberCaptureRepository
+import app.arbre.data.rememberSeasonStore
 import app.arbre.data.rememberSpeciesIndex
 import app.arbre.data.rememberRemarquableInfoRepository
 import app.arbre.data.rememberSpeciesInfoRepository
+import app.arbre.ui.common.ArchiveBanner
+import app.arbre.ui.common.SeasonSelector
 import app.arbre.ui.detail.ArbreDetailContent
 import app.arbre.ui.theme.arbresColors
 import app.arbre.util.LocationProvider
@@ -159,6 +164,7 @@ private suspend fun computeInitialCamera(ctx: Context): CameraPosition {
 fun MapScreen(
     onArboretumClick: () -> Unit = {},
     onRemarquablesClick: () -> Unit = {},
+    onProfileClick: () -> Unit = {},
     onSpeciesClick: (Int) -> Unit = {},
     onFirstSpeciesCapture: (Int) -> Unit = {},
     onBack: (() -> Unit)? = null,
@@ -181,9 +187,17 @@ fun MapScreen(
     val filteredEntry = filterSpecies?.let { speciesIndex.get(it) }
     val filteredCount = filterSpecies?.let { speciesInfoRepo.get(it)?.stats?.count }
 
-    val capturedSpecies by captureRepo.capturedSpeciesIndices()
+    val seasonStore = rememberSeasonStore()
+    val selectedSeason by seasonStore.selected.collectAsState()
+    // `Season.current()` est calculée à la volée à chaque recomposition —
+    // le coût est nul et on évite les bugs de bascule à minuit. Si on
+    // recompose à 23h59 puis à 00h01, la valeur change naturellement.
+    val currentSeason = Season.current()
+    val isArchive = selectedSeason != currentSeason
+
+    val capturedSpecies by captureRepo.capturedSpeciesIndices(selectedSeason)
         .collectAsState(initial = emptySet())
-    val capturedRemarquables by captureRepo.capturedRemarquableIds()
+    val capturedRemarquables by captureRepo.capturedRemarquableIds(selectedSeason)
         .collectAsState(initial = emptySet())
 
     val mapView = remember {
@@ -200,11 +214,11 @@ fun MapScreen(
     val snackbar = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
 
-    LaunchedEffect(styleRef) {
+    LaunchedEffect(styleRef, selectedSeason) {
         val style = styleRef ?: return@LaunchedEffect
         combine(
-            captureRepo.capturedSpeciesIndices(),
-            captureRepo.capturedRemarquableIds(),
+            captureRepo.capturedSpeciesIndices(selectedSeason),
+            captureRepo.capturedRemarquableIds(selectedSeason),
         ) { species, remarquables -> species to remarquables }
             .collect { (species, remarquables) ->
                 applyDiscoveryColor(style, species, remarquables)
@@ -393,11 +407,42 @@ fun MapScreen(
                     .padding(16.dp),
             )
         } else {
+            // Bandeau « {Saison} — figé » plein écran en haut quand la saison
+            // sélectionnée n'est pas la saison vive ; les FABs descendent en
+            // dessous. Saison vive : pas de bandeau, FABs en haut comme avant.
+            if (isArchive) {
+                ArchiveBanner(
+                    season = selectedSeason,
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .windowInsetsPadding(WindowInsets.statusBars),
+                )
+            }
+            val fabTopPadding = if (isArchive) 56.dp else 16.dp
+            // Row TopStart : Profile FAB + sélecteur de saison (pill compacte
+            // alignée verticalement sur le FAB pour rester discret).
+            Row(
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .windowInsetsPadding(WindowInsets.statusBars)
+                    .padding(start = 16.dp, top = fabTopPadding, end = 16.dp, bottom = 16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                FloatingActionButton(onClick = onProfileClick) {
+                    Icon(Icons.Outlined.Person, contentDescription = "Profil")
+                }
+                SeasonSelector(
+                    selected = selectedSeason,
+                    onSelect = { seasonStore.select(it) },
+                    isCurrent = !isArchive,
+                )
+            }
             Row(
                 modifier = Modifier
                     .align(Alignment.TopEnd)
                     .windowInsetsPadding(WindowInsets.statusBars)
-                    .padding(16.dp),
+                    .padding(start = 16.dp, top = fabTopPadding, end = 16.dp, bottom = 16.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 FloatingActionButton(onClick = onRemarquablesClick) {
@@ -409,16 +454,20 @@ fun MapScreen(
                 }
             }
             // FAB loupe (BottomStart) : recherche de la cible la plus proche.
-            // Réservé au mode non-filtré — en mode `MAP_FILTERED` l'utilisateur
-            // chasse une espèce, pas un remarquable.
-            FloatingActionButton(
-                onClick = ::onNearestRemarquableClick,
-                modifier = Modifier
-                    .align(Alignment.BottomStart)
-                    .windowInsetsPadding(WindowInsets.navigationBars)
-                    .padding(16.dp),
-            ) {
-                Icon(Icons.Outlined.Search, contentDescription = "Plus proche remarquable")
+            // Réservé au mode non-filtré — en `MAP_FILTERED` l'utilisateur
+            // chasse une espèce, pas un remarquable. Désactivé aussi en
+            // archive saisonnière : la notion de « plus proche non découvert »
+            // n'a pas de sens hors saison vive (cf. ROADMAP Sprint I).
+            if (!isArchive) {
+                FloatingActionButton(
+                    onClick = ::onNearestRemarquableClick,
+                    modifier = Modifier
+                        .align(Alignment.BottomStart)
+                        .windowInsetsPadding(WindowInsets.navigationBars)
+                        .padding(16.dp),
+                ) {
+                    Icon(Icons.Outlined.Search, contentDescription = "Plus proche remarquable")
+                }
             }
         }
         FloatingActionButton(
@@ -481,11 +530,15 @@ fun MapScreen(
             }
             val capturesArbre by captureRepo.capturesPourArbre(openedArbre.id)
                 .collectAsState(initial = emptyList())
-            var availability by remember(openedArbre.id) {
+            var availability by remember(openedArbre.id, isArchive) {
                 mutableStateOf<CaptureAvailability?>(null)
             }
-            LaunchedEffect(openedArbre.id) {
-                availability = captureAvailability(ctx, openedArbre)
+            LaunchedEffect(openedArbre.id, isArchive) {
+                availability = if (isArchive) {
+                    CaptureAvailability.Archived
+                } else {
+                    captureAvailability(ctx, openedArbre)
+                }
             }
             // Médianes de l'espèce pour situer l'arbre vs ses pairs. Le lookup
             // est local en RAM (singleton dans ArbresApp), pas de coût IO.

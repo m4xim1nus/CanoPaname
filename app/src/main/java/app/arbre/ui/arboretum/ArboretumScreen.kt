@@ -48,13 +48,17 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.arbre.data.Capture
+import app.arbre.data.Season
 import app.arbre.data.SpeciesEntry
 import app.arbre.data.SpeciesIndex
 import app.arbre.data.rememberArbreRepository
 import app.arbre.data.rememberCaptureRepository
 import app.arbre.data.rememberDatasetStats
+import app.arbre.data.rememberSeasonStore
 import app.arbre.data.rememberSpeciesIndex
+import app.arbre.ui.common.ArchiveBanner
 import app.arbre.ui.common.PhotoThumbnail
+import app.arbre.ui.common.SeasonSelector
 import java.text.DateFormat
 import java.util.Date
 
@@ -68,13 +72,19 @@ fun ArboretumScreen(
     val speciesIndex = rememberSpeciesIndex()
     val stats = rememberDatasetStats()
     val arbreRepo = rememberArbreRepository()
+    val seasonStore = rememberSeasonStore()
+    val selectedSeason by seasonStore.selected.collectAsState()
+    val currentSeason = Season.current()
+    val isArchive = selectedSeason != currentSeason
 
-    // Captures non-remarquables : les remarquables ont leur propre écran
-    // (RemarquablesScreen) accessible depuis le FAB ★ de la carte.
     val captures by captureRepo.toutesLesCaptures().collectAsState(initial = emptyList())
 
+    // Captures non-remarquables filtrées sur la saison sélectionnée. Les
+    // remarquables ont leur propre écran (RemarquablesScreen). Les captures
+    // s'accumulent au fil des années dans le bucket de leur saison
+    // (cf. ROADMAP Sprint I).
     val speciesGroups: List<SpeciesGroup> = captures
-        .filter { !it.remarquable }
+        .filter { !it.remarquable && it.season == selectedSeason }
         .groupBy { it.speciesIndex }
         .mapNotNull { (sk, caps) ->
             val entry = speciesIndex.get(sk) ?: return@mapNotNull null
@@ -82,8 +92,6 @@ fun ArboretumScreen(
         }
         .sortedByDescending { it.captures.first().timestamp }
 
-    // `rememberSaveable` pour conserver le mode au retour de la fiche-espèce —
-    // aller-retour Pokédex → fiche → Pokédex sans flash sur la vue Liste.
     var viewMode by rememberSaveable { mutableStateOf(ArboretumViewMode.LISTE) }
 
     Scaffold(
@@ -95,6 +103,14 @@ fun ArboretumScreen(
                         Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Retour")
                     }
                 },
+                actions = {
+                    SeasonSelector(
+                        selected = selectedSeason,
+                        onSelect = { seasonStore.select(it) },
+                        isCurrent = !isArchive,
+                        modifier = Modifier.padding(end = 8.dp),
+                    )
+                },
             )
         },
     ) { padding ->
@@ -103,9 +119,13 @@ fun ArboretumScreen(
                 .fillMaxSize()
                 .padding(padding),
         ) {
+            if (isArchive) {
+                ArchiveBanner(season = selectedSeason)
+            }
             HeaderCard(
                 speciesGroups.size,
                 stats.totalEspeces,
+                season = selectedSeason,
                 modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 16.dp),
             )
             ViewModeSelector(
@@ -121,6 +141,8 @@ fun ArboretumScreen(
                     totalEspeces = stats.totalEspeces,
                     arbreRepo = arbreRepo,
                     onSpeciesClick = onSpeciesClick,
+                    selectedSeason = selectedSeason,
+                    isArchive = isArchive,
                 )
                 ArboretumViewMode.POKEDEX -> PokedexView(
                     speciesIndex = speciesIndex,
@@ -160,6 +182,8 @@ private fun ListeView(
     totalEspeces: Int,
     arbreRepo: app.arbre.data.ArbreRepository,
     onSpeciesClick: (Int) -> Unit,
+    selectedSeason: Season,
+    isArchive: Boolean,
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -178,7 +202,7 @@ private fun ListeView(
                 )
             }
         } else {
-            item { EmptyState() }
+            item { EmptyState(season = selectedSeason, isArchive = isArchive) }
         }
     }
 }
@@ -319,6 +343,7 @@ private data class SpeciesGroup(
 private fun HeaderCard(
     nbEspeces: Int,
     totalEspeces: Int,
+    season: Season,
     modifier: Modifier = Modifier,
 ) {
     Card(
@@ -331,6 +356,11 @@ private fun HeaderCard(
             Text(
                 "$nbEspeces / $totalEspeces espèces découvertes",
                 style = MaterialTheme.typography.titleLarge,
+            )
+            Text(
+                "en ${season.label.lowercase()}",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onPrimaryContainer,
             )
         }
     }
@@ -412,15 +442,20 @@ private fun SpeciesCard(
 }
 
 @Composable
-private fun EmptyState() {
+private fun EmptyState(season: Season, isArchive: Boolean) {
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(
             modifier = Modifier.padding(24.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Text("Aucune capture pour l'instant.", style = MaterialTheme.typography.titleMedium)
             Text(
-                "Approche-toi d'un arbre, tape son pin gris et capture-le pour révéler son espèce.",
+                if (isArchive) "Aucune capture en ${season.label.lowercase()}."
+                else "Premier ${season.label.lowercase()} ? Va capturer ton premier arbre.",
+                style = MaterialTheme.typography.titleMedium,
+            )
+            Text(
+                if (isArchive) "Reviens à la saison vive pour capturer."
+                else "Approche-toi d'un arbre, tape son pin gris et capture-le pour révéler son espèce.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

@@ -14,8 +14,14 @@ interface CaptureDao {
     @Query("SELECT DISTINCT speciesIndex FROM capture WHERE remarquable = 0")
     fun capturedSpeciesIndices(): Flow<List<Int>>
 
+    @Query("SELECT DISTINCT speciesIndex FROM capture WHERE remarquable = 0 AND season = :season")
+    fun capturedSpeciesIndicesForSeason(season: Int): Flow<List<Int>>
+
     @Query("SELECT DISTINCT arbreId FROM capture WHERE remarquable = 1")
     fun capturedRemarquableIds(): Flow<List<Long>>
+
+    @Query("SELECT DISTINCT arbreId FROM capture WHERE remarquable = 1 AND season = :season")
+    fun capturedRemarquableIdsForSeason(season: Int): Flow<List<Long>>
 
     @Query("SELECT * FROM capture WHERE arbreId = :arbreId ORDER BY timestamp DESC")
     fun capturesPourArbre(arbreId: Long): Flow<List<CaptureEntity>>
@@ -25,4 +31,10 @@ interface CaptureDao {
 
     @Query("SELECT * FROM capture WHERE remarquable = 1 ORDER BY timestamp DESC")
     fun capturesRemarquables(): Flow<List<CaptureEntity>>
+
+    @Query("SELECT MIN(timestamp) FROM capture")
+    fun firstCaptureTimestamp(): Flow<Long?>
+
+    @Query("SELECT COUNT(*) FROM capture")
+    fun captureCount(): Flow<Int>
 }
