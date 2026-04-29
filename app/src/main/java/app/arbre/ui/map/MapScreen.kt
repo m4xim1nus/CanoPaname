@@ -192,7 +192,8 @@ fun MapScreen(onArboretumClick: () -> Unit = {}) {
     }
 
     suspend fun centerOnUser() {
-        val loc = LocationProvider.currentOrLastKnown(ctx)
+        val loc = LocationProvider.currentLocation.value
+            ?: LocationProvider.currentOrLastKnown(ctx)
         if (loc == null) {
             snackbar.showSnackbar("Position indisponible (GPS désactivé ?)")
             return
@@ -207,6 +208,7 @@ fun MapScreen(onArboretumClick: () -> Unit = {}) {
         ActivityResultContracts.RequestPermission()
     ) { granted ->
         if (granted) {
+            LocationProvider.start(ctx)
             scope.launch { centerOnUser() }
         } else {
             scope.launch { snackbar.showSnackbar("Permission de localisation refusée") }
@@ -220,6 +222,7 @@ fun MapScreen(onArboretumClick: () -> Unit = {}) {
             "MapScreen",
             "MapView init (process+${tStart - tProcess}ms)",
         )
+        LocationProvider.start(ctx)
         mapView.onCreate(null)
         mapView.onStart()
         mapView.onResume()
@@ -289,12 +292,14 @@ fun MapScreen(onArboretumClick: () -> Unit = {}) {
             mapView.onPause()
             mapView.onStop()
             mapView.onDestroy()
+            LocationProvider.stop()
         }
     }
 
     fun onStarClick() {
         scope.launch {
-            val loc = LocationProvider.currentOrLastKnown(ctx)
+            val loc = LocationProvider.currentLocation.value
+                ?: LocationProvider.currentOrLastKnown(ctx)
             if (loc == null) {
                 snackbar.showSnackbar("Position indisponible (active le GPS)")
                 return@launch

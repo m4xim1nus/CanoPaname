@@ -19,6 +19,7 @@ import app.arbre.data.Arbre
 import app.arbre.data.CaptureRepository
 import app.arbre.data.SpeciesIndex
 import app.arbre.util.LocationProvider
+import app.arbre.util.ageMs
 import java.io.File
 import java.util.UUID
 import kotlinx.coroutines.launch
@@ -43,10 +44,10 @@ suspend fun captureAvailability(
     ctx: Context,
     arbre: Arbre,
 ): CaptureAvailability {
-    val loc = LocationProvider.currentOrLastKnown(ctx)
+    val loc = LocationProvider.currentLocation.value
+        ?: LocationProvider.currentOrLastKnown(ctx)
         ?: return CaptureAvailability.NoGps
-    val ageMs = System.currentTimeMillis() - loc.time
-    if (ageMs > MAX_GPS_AGE_MS) return CaptureAvailability.NoGps
+    if (loc.ageMs() > MAX_GPS_AGE_MS) return CaptureAvailability.NoGps
     val results = FloatArray(1)
     Location.distanceBetween(
         loc.latitude, loc.longitude,
@@ -157,13 +158,13 @@ private suspend fun runCapture(
         return
     }
 
-    val loc = LocationProvider.currentOrLastKnown(ctx)
+    val loc = LocationProvider.currentLocation.value
+        ?: LocationProvider.currentOrLastKnown(ctx)
     if (loc == null) {
         snackbar.showSnackbar("Position indisponible (active le GPS)")
         return
     }
-    val ageMs = System.currentTimeMillis() - loc.time
-    if (ageMs > MAX_GPS_AGE_MS) {
+    if (loc.ageMs() > MAX_GPS_AGE_MS) {
         snackbar.showSnackbar("Position trop ancienne, attends un nouveau fix")
         return
     }

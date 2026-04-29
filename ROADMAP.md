@@ -36,12 +36,25 @@ La dimension jeu commence ici. Livré 2026-04-28, validé device.
 
 Issus du test 2026-04-29 + items 2.5 restants.
 
+- [x] **🐛 Drift de position pour le calcul de distance aux arbres** ✅ 2026-04-29 — symptôme : le pin Location MapLibre était juste, mais `captureAvailability` (et le check dans `runCapture`) utilisait une position décalée de 30 à 200 m, basculant le bouton en `TooFar` alors qu'on était devant l'arbre. **Cause racine** : `LocationProvider.currentOrLastKnown` faisait du one-shot, et le check d'âge basé sur `loc.time` laissait passer un fix « jeune par timestamp » mais spatialement figé (l'OS rafraîchit `loc.time` sans nouveau fix réel quand l'app n'est pas souscrite aux updates). **Fix retenu** : `LocationProvider` souscrit en continu via `LocationManager.requestLocationUpdates` (GPS + NETWORK, intervalle 2 s, distance 1 m), expose un `StateFlow<Location?>` ; `isBetterFix` empêche NETWORK d'écraser un GPS plus précis (sinon yo-yo). Check d'âge migré sur `elapsedRealtimeNanos` (monotonique). Start/stop branchés sur le `DisposableEffect` de `MapScreen` + restart après obtention de la permission. `currentOrLastKnown` conservé en fallback bootstrap (caméra initiale, première seconde TTFF).
 - [ ] **🐛 Mini-carte embarquée bug la fiche-espèce** — symptôme : la mini-carte rendue inline dans `SpeciesDetailScreen` perturbe la fiche. **Fix retenu** : retirer l'embed, remplacer par un lien « Voir sur la carte » qui ouvre la grande carte (`MapScreen`) en mode filtré sur l'espèce (réutilise la logique pin-color existante, pas de nouveau composable map à maintenir). Suppression de `SpeciesMiniMap.kt`.
 - [ ] **Fiche individuelle d'un arbre → fiche-espèce** — depuis `ArbreDetailContent` (le sheet du tap pin), bouton « En savoir plus sur l'espèce » qui ouvre `SpeciesDetailScreen`. Aussi : situer l'arbre parmi ses pairs (taille vs médiane de l'espèce, percentile de circonférence).
 - [ ] **Petit effet « waouh » à la 1re capture d'une espèce** — au moment du tap Capturer qui débloque une nouvelle espèce, transition vers la fiche-espèce avec message de félicitations. Exclure la 2e capture d'une espèce déjà découverte. Couplé à la fiche-espèce.
 - [ ] **Disposition Pokédex de l'Arboretum** — vue alternative en grille numérotée par speciesIndex (« annuaire »), toggle avec la vue actuelle (cards triées par capture). Cases vides pour les espèces non encore capturées (sans révéler leur identité).
 - [ ] **Améliorer la couverture Wikipedia** — 204 espèces sans QID Wikidata + 175 avec QID mais sans page FR. Option : pass LLM offline (Claude Code) sur les rejetés pour mapper vers un binôme parent ou marquer « pas de page possible ». Cible : >700 / 907 avec summary.
 - [ ] **Lien Wikidata pour les espèces sans page FR** — pour les 175 avec QID mais sans `frTitle`, afficher dans la fiche un lien `https://www.wikidata.org/wiki/{qid}` plutôt que le placeholder pur.
+
+### Sprint F — fiche enrichie pour les arbres remarquables
+
+Profondeur narrative pour les ~200 arbres remarquables de Paris (vs le millier de fiches espèces génériques de Sprint E). Même philosophie pré-bake que `species-info.json` : tout dans un asset JSON, zéro appel runtime.
+
+- [ ] **Pipeline `tools/build_remarquables.py` (ou extension de `build_dataset.py`)** :
+  1. **Source primaire OpenData** : ingérer `arbresremarquablesparis` ([opendata.paris.fr](https://opendata.paris.fr/explore/dataset/arbresremarquablesparis/)) — joindre par `idbase` au dataset général. À inspecter en premier : ce dataset a souvent des champs riches (date de plantation, variété, **complément d'observations / anecdote**, raison du classement). Si suffisant, on s'arrête là.
+  2. **Source secondaire (si OpenData incomplet)** : agent Sonnet par arbre via Claude API (~200 appels max, raisonnable pour app perso, cache disque dans `tools/.remarquables-cache/{idbase}.json` pour idempotence). Prompt structuré : nom + binôme + adresse + dimensions → recherche web (WebSearch), résume en 3-5 phrases factuelles le caractère remarquable (âge, histoire, particularité botanique, événement associé). Refus explicite si rien trouvé (vaut mieux silence que hallucination).
+  3. Sortie : `assets/remarquables-info.json` indexé par `idbase` (`{ idbase: { source: "opendata"|"llm"|"both", description: "...", sources: ["url1", ...] } }`).
+- [ ] **Repository + helper** : `RemarquableInfoRepository` chargé une fois dans `ArbresApp` (~200 entrées, qq ko, pas besoin de Room).
+- [ ] **UI dans `ArbreDetailContent`** : si `arbre.remarquable && isDiscovered`, section dédiée « Pourquoi cet arbre est remarquable » avec la description et les liens sources. Style visuel distinct (bordure dorée ?) pour marquer le caractère exceptionnel.
+- [ ] **Ouvert** : si on garde l'appel LLM, faut-il ajouter une attribution discrète « résumé généré » ? Probablement oui, pour la transparence honnête.
 
 ## Phase 3 — Revue graphique
 
