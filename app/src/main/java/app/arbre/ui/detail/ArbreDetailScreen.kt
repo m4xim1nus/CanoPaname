@@ -1,5 +1,6 @@
 package app.arbre.ui.detail
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -13,11 +14,16 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import app.arbre.data.Arbre
+import app.arbre.data.RemarquableInfo
 import app.arbre.ui.map.CaptureAvailability
 
 /**
@@ -41,6 +47,7 @@ fun ArbreDetailContent(
     onSpeciesClick: (() -> Unit)? = null,
     medianHeightM: Int? = null,
     medianCircCm: Int? = null,
+    remarquableInfo: RemarquableInfo? = null,
 ) {
     Column(
         modifier = Modifier
@@ -56,6 +63,7 @@ fun ArbreDetailContent(
                 medianHeightM = medianHeightM,
                 medianCircCm = medianCircCm,
                 onSpeciesClick = onSpeciesClick,
+                remarquableInfo = remarquableInfo,
             )
         } else {
             UnknownContent(arbre, onCapturer, captureAvailability)
@@ -70,6 +78,7 @@ private fun DiscoveredContent(
     medianHeightM: Int?,
     medianCircCm: Int?,
     onSpeciesClick: (() -> Unit)?,
+    remarquableInfo: RemarquableInfo?,
 ) {
     Text(
         arbre.nomAffichage,
@@ -82,6 +91,7 @@ private fun DiscoveredContent(
             style = MaterialTheme.typography.titleMedium,
             color = MaterialTheme.colorScheme.primary,
         )
+        remarquableInfo?.let { RemarquableBlock(it) }
     }
 
     val taxonomie = listOfNotNull(arbre.genre, arbre.espece, arbre.varieteCultivar)
@@ -145,6 +155,57 @@ private fun medianComparison(value: Int, median: Int?): String {
         else -> "proche"
     }
     return " · médiane $median ($tag)"
+}
+
+// Or doré assumé hors theme : signal visuel d'exceptionnalité pour les ~180
+// arbres remarquables. Cohérent avec l'orange vif des pins remarquables capturés.
+private val RemarquableGold = Color(0xFFC9A227)
+
+@Composable
+private fun RemarquableBlock(info: RemarquableInfo) {
+    if (info.qualification == null && info.resume == null && info.description == null &&
+        info.datePlantation == null && info.cultivar == null) return
+    val title = info.qualification?.let { "Classement : $it" } ?: "Pourquoi cet arbre est remarquable"
+    OutlinedCard(
+        modifier = Modifier.fillMaxWidth(),
+        border = BorderStroke(1.5.dp, RemarquableGold),
+    ) {
+        Column(
+            modifier = Modifier.padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            Text(
+                title,
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.primary,
+            )
+            info.resume?.let {
+                Text(
+                    it,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold,
+                )
+            }
+            info.description?.let {
+                Text(it, style = MaterialTheme.typography.bodySmall)
+            }
+            info.datePlantation?.let {
+                Text(
+                    "Planté en $it",
+                    style = MaterialTheme.typography.labelSmall,
+                    fontStyle = FontStyle.Italic,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            info.cultivar?.let {
+                Text(
+                    "Variété : $it",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+    }
 }
 
 @Composable

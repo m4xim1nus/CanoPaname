@@ -24,6 +24,7 @@ Stdlib uniquement (urllib + csv + sqlite3 + json), aucun pip install requis.
 from __future__ import annotations
 
 import csv
+import html
 import json
 import re
 import sqlite3
@@ -50,6 +51,14 @@ OUT_GEOJSON = ASSETS_DIR / "arbres-paris.geojson"
 OUT_SPECIES_INDEX = ASSETS_DIR / "species-index.json"
 OUT_DATASET_STATS = ASSETS_DIR / "dataset-stats.json"
 OUT_SPECIES_INFO = ASSETS_DIR / "species-info.json"
+OUT_REMARQUABLES_INFO = ASSETS_DIR / "remarquables-info.json"
+
+REMARQUABLES_URL = (
+    "https://opendata.paris.fr/api/explore/v2.1/catalog/datasets/"
+    "arbresremarquablesparis/records"
+)
+REMARQUABLES_CACHE_DIR = ROOT / "tools" / ".remarquables-cache"
+REMARQUABLES_PAGE_SIZE = 100  # API V2 plafonne à 100 par page
 
 WIKI_USER_AGENT = "arbre-app-build/0.1 (personal Android app, https://github.com/local/arbre-app)"
 WIKIDATA_CACHE_DIR = ROOT / "tools" / ".wikidata-cache"
@@ -475,6 +484,164 @@ def write_species_info(
     print(f"       → {OUT_SPECIES_INFO.name} ({info_kb} Ko)")
 
 
+_HTML_TAG_RE = re.compile(r"<[^>]+>")
+_WS_RE = re.compile(r"\s+")
+
+
+def strip_html(s: str | None) -> str | None:
+    """Strip HTML tags + decode entities + collapse whitespace.
+
+    OpenData glisse parfois des `<p>`, `<br/>` ou `&nbsp;` dans `com_descriptif`
+    — on normalise au build pour livrer du texte plat à Kotlin (pas de Html.fromHtml
+    côté UI).
+    """
+    if not s:
+        return None
+    text = _HTML_TAG_RE.sub(" ", s)
+    text = html.unescape(text)
+    text = _WS_RE.sub(" ", text).strip()
+    return text or None
+
+
+def _fetch_remarquables_page(offset: int, limit: int) -> dict:
+    params = urllib.parse.urlencode({"limit": limit, "offset": offset})
+    url = f"{REMARQUABLES_URL}?{params}"
+    req = urllib.request.Request(url, headers={"User-Agent": WIKI_USER_AGENT})
+    with urllib.request.urlopen(req, timeout=30) as resp:
+        return json.loads(resp.read())
+
+
+def _record_idbase(rec: dict) -> int | None:
+    """Extrait `arbres_idbase` (parfois sérialisé en float `2002385.0`)."""
+    raw = rec.get("arbres_idbase")
+    if raw is None:
+        return None
+    try:
+        return int(float(raw))
+    except (ValueError, TypeError):
+        return None
+
+
+def fetch_remarquables() -> list[dict]:
+    """Fetch tous les arbres remarquables via l'API V2 OpenData.
+
+    Cache disque par `idbase` dans `tools/.remarquables-cache/{idbase}.json`
+    (record OpenData brut). On refetch systématiquement la liste paginée
+    (cheap, ~2 pages pour 185 records), mais on lit le payload depuis le
+    cache si présent — idempotent et résistant aux re-runs.
+    """
+    REMARQUABLES_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+
+    records: list[dict] = []
+    offset = 0
+    total: int | None = None
+    print(f"[rmq ] fetch arbresremarquablesparis (cache: {REMARQUABLES_CACHE_DIR.relative_to(ROOT)})")
+
+    while True:
+        page = _fetch_remarquables_page(offset, REMARQUABLES_PAGE_SIZE)
+        if total is None:
+            total = int(page.get("total_count", 0))
+            print(f"[rmq ] total_count={total}")
+        page_records = page.get("results", [])
+        if not page_records:
+            break
+        for rec in page_records:
+            idbase = _record_idbase(rec)
+            if idbase is None:
+                continue
+            cache_path = REMARQUABLES_CACHE_DIR / f"{idbase}.json"
+            if cache_path.exists():
+                with cache_path.open("r", encoding="utf-8") as f:
+                    records.append(json.load(f))
+            else:
+                with cache_path.open("w", encoding="utf-8") as f:
+                    json.dump(rec, f, ensure_ascii=False)
+                records.append(rec)
+        offset += len(page_records)
+        if total is not None and offset >= total:
+            break
+    print(f"[rmq ] {len(records)} records récupérés")
+    return records
+
+
+def _annee_plantation(rec: dict) -> str | None:
+    """Année de plantation propre.
+
+    `com_annee_plantation` contient soit "1860", soit "Inconnue", soit None.
+    `arbres_dateplantation` synthétise `1700-01-01T00:09:21+00:00` pour les
+    inconnues — inutilisable. On préfère `com_annee_plantation` filtré.
+    """
+    raw = to_str_or_none(rec.get("com_annee_plantation", ""))
+    if raw is None:
+        return None
+    if raw.lower().startswith("inconn"):
+        return None
+    return raw
+
+
+def write_remarquables_info(records: list[dict], ids_in_csv: set[int]) -> None:
+    """Filtre + transforme + écrit `remarquables-info.json`.
+
+    On ne garde que les idbase présents dans la DB Room (sinon fiche inatteignable).
+    Champs vides/null omis pour compresser la sortie.
+    """
+    entries: list[dict] = []
+    orphans = 0
+    with_resume = 0
+    with_desc = 0
+    with_date = 0
+    with_qualif = 0
+
+    for rec in records:
+        idbase = _record_idbase(rec)
+        if idbase is None:
+            continue
+        if idbase not in ids_in_csv:
+            orphans += 1
+            continue
+
+        resume = to_str_or_none(rec.get("com_resume", ""))
+        desc = strip_html(rec.get("com_descriptif"))
+        annee = _annee_plantation(rec)
+        cultivar = to_str_or_none(rec.get("arbres_varieteoucultivar", ""))
+        qualif = to_str_or_none(rec.get("com_qualification_rem", ""))
+
+        entry: dict = {"id": idbase}
+        if qualif:
+            entry["qualif"] = qualif
+            with_qualif += 1
+        if resume:
+            entry["resume"] = resume
+            with_resume += 1
+        if desc:
+            entry["desc"] = desc
+            with_desc += 1
+        if annee:
+            entry["plante"] = annee
+            with_date += 1
+        if cultivar:
+            entry["cultivar"] = cultivar
+
+        # Skip si tout vide : la fiche affichera juste le badge ★ sans card.
+        if len(entry) == 1:
+            continue
+        entries.append(entry)
+
+    entries.sort(key=lambda e: e["id"])
+    with OUT_REMARQUABLES_INFO.open("w", encoding="utf-8") as f:
+        json.dump(entries, f, ensure_ascii=False, separators=(",", ":"))
+
+    info_kb = OUT_REMARQUABLES_INFO.stat().st_size // 1024
+    print(f"[rmq ] {len(entries)} arbres remarquables enrichis")
+    print(f"        - avec qualification: {with_qualif}")
+    print(f"        - avec resume: {with_resume}")
+    print(f"        - avec desc:   {with_desc}")
+    print(f"        - avec annee plantation: {with_date}")
+    if orphans:
+        print(f"        - {orphans} orphelins ignorés (idbase absent du CSV)")
+    print(f"        → {OUT_REMARQUABLES_INFO.name} ({info_kb} Ko)")
+
+
 SCHEMA_SQL = [
     # Schéma identique à celui que Room produit pour `ArbreEntity` —
     # ordre des colonnes, types, nullabilités et nom d'index doivent matcher.
@@ -684,6 +851,9 @@ def build(csv_path: Path, db_path: Path, geojson_path: Path) -> None:
     write_species_info(species_index, count_by_sk, heights_by_sk, circs_by_sk,
                        arr_by_sk, arr_total, total_arbres=inserted)
 
+    remarquables_records = fetch_remarquables()
+    write_remarquables_info(remarquables_records, ids_in_csv=seen_ids)
+
     db_mb = db_path.stat().st_size // 1_000_000
     gj_mb = geojson_path.stat().st_size // 1_000_000
     print(
@@ -694,6 +864,7 @@ def build(csv_path: Path, db_path: Path, geojson_path: Path) -> None:
     print(f"       → {geojson_path.name} ({gj_mb} Mo)")
     print(f"       → {OUT_SPECIES_INDEX.name} ({len(species_index)} espèces)")
     print(f"       → {OUT_DATASET_STATS.name} ({remarquables} remarquables)")
+    print(f"       → {OUT_REMARQUABLES_INFO.name}")
 
 
 def main() -> int:

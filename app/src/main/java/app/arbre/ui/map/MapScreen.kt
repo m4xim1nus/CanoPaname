@@ -74,6 +74,7 @@ import app.arbre.data.SpeciesEntry
 import app.arbre.data.rememberArbreRepository
 import app.arbre.data.rememberCaptureRepository
 import app.arbre.data.rememberSpeciesIndex
+import app.arbre.data.rememberRemarquableInfoRepository
 import app.arbre.data.rememberSpeciesInfoRepository
 import app.arbre.ui.detail.ArbreDetailContent
 import app.arbre.util.LocationProvider
@@ -155,6 +156,7 @@ fun MapScreen(
     val captureRepo = rememberCaptureRepository()
     val speciesIndex = rememberSpeciesIndex()
     val speciesInfoRepo = rememberSpeciesInfoRepository()
+    val remarquableInfoRepo = rememberRemarquableInfoRepository()
     val viewModel: MapViewModel = viewModel(
         factory = viewModelFactory {
             initializer { MapViewModel(repo, createSavedStateHandle()) }
@@ -454,6 +456,9 @@ fun MapScreen(
             // Médianes de l'espèce pour situer l'arbre vs ses pairs. Le lookup
             // est local en RAM (singleton dans ArbresApp), pas de coût IO.
             val info = sk?.let { speciesInfoRepo.get(it) }
+            val remarquableInfo = if (openedArbre.remarquable) {
+                remarquableInfoRepo.get(openedArbre.id)
+            } else null
             ModalBottomSheet(
                 onDismissRequest = { viewModel.closeDetail() },
                 sheetState = sheetState,
@@ -472,6 +477,7 @@ fun MapScreen(
                     } else null,
                     medianHeightM = info?.stats?.medianHeightM,
                     medianCircCm = info?.stats?.medianCircCm,
+                    remarquableInfo = remarquableInfo,
                 )
             }
         }
