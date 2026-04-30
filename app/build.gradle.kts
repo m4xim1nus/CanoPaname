@@ -27,8 +27,8 @@ android {
         applicationId = "app.arbre"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = 7
+        versionName = "0.7.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables { useSupportLibrary = true }
     }
@@ -67,6 +67,11 @@ android {
     }
     kotlinOptions { jvmTarget = "17" }
     buildFeatures { compose = true }
+    testOptions {
+        // Neutralise les exceptions android.util.Log dans les tests JVM purs
+        // (BackupImporter logue erreurs sans qu'on veuille tirer Robolectric).
+        unitTests.isReturnDefaultValues = true
+    }
     packaging {
         resources.excludes += setOf(
             "/META-INF/{AL2.0,LGPL2.1}",
@@ -95,8 +100,6 @@ dependencies {
 
     implementation(libs.maplibre.android)
     implementation(libs.kotlinx.coroutines.android)
-    implementation(libs.moshi)
-    implementation(libs.okhttp)
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.lottie.compose)
 

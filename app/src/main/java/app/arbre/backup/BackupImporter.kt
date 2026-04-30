@@ -10,8 +10,11 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
 import java.io.IOException
+import java.io.InputStream
 import java.util.zip.ZipException
 import java.util.zip.ZipInputStream
+
+private const val TAG = "BackupImporter"
 
 enum class ImportError {
     CORRUPT_ZIP,
@@ -55,119 +58,128 @@ class BackupImporter(
     private val captureDao: CaptureDao,
 ) {
     suspend fun import(source: Uri): ImportResult = withContext(Dispatchers.IO) {
-        var meta: BackupMeta? = null
-        var capturesJson: String? = null
-        val photoBytes = HashMap<String, ByteArray>()
-        try {
-            val inStream = context.contentResolver.openInputStream(source)
-                ?: return@withContext ImportResult.Failure(ImportError.IO_ERROR)
-            ZipInputStream(inStream.buffered()).use { zip ->
-                while (true) {
-                    val entry = zip.nextEntry ?: break
-                    val name = entry.name
-                    if (entry.isDirectory) {
-                        zip.closeEntry()
-                        continue
-                    }
-                    when {
-                        name == META_JSON -> meta = parseMeta(zip.readBytes())
-                        name == CAPTURES_JSON -> capturesJson = String(zip.readBytes())
-                        name.startsWith(PHOTOS_DIR) -> {
-                            val basename = name.removePrefix(PHOTOS_DIR)
-                            if (basename.isNotEmpty() && !basename.contains('/')) {
-                                photoBytes[basename] = zip.readBytes()
-                            }
+        val inStream = context.contentResolver.openInputStream(source)
+            ?: return@withContext ImportResult.Failure(ImportError.IO_ERROR)
+        val photosDir = File(context.getExternalFilesDir(null), "captures").apply { mkdirs() }
+        importStream(inStream, photosDir, captureDao)
+    }
+}
+
+/**
+ * Cœur logique de l'import, isolé de `Context` / `Uri` pour permettre des
+ * tests JVM purs. Top-level `internal` pour rester appelable depuis le
+ * dossier `test/` sans instance de [BackupImporter].
+ */
+internal suspend fun importStream(
+    input: InputStream,
+    photosDir: File,
+    captureDao: CaptureDao,
+): ImportResult = withContext(Dispatchers.IO) {
+    var meta: BackupMeta? = null
+    var capturesJson: String? = null
+    val photoBytes = HashMap<String, ByteArray>()
+    try {
+        ZipInputStream(input.buffered()).use { zip ->
+            while (true) {
+                val entry = zip.nextEntry ?: break
+                val name = entry.name
+                if (entry.isDirectory) {
+                    zip.closeEntry()
+                    continue
+                }
+                when {
+                    name == META_JSON -> meta = parseMeta(zip.readBytes())
+                    name == CAPTURES_JSON -> capturesJson = String(zip.readBytes())
+                    name.startsWith(PHOTOS_DIR) -> {
+                        val basename = name.removePrefix(PHOTOS_DIR)
+                        if (basename.isNotEmpty() && !basename.contains('/')) {
+                            photoBytes[basename] = zip.readBytes()
                         }
                     }
-                    zip.closeEntry()
                 }
+                zip.closeEntry()
             }
-        } catch (e: ZipException) {
-            Log.e(TAG, "Zip corrompu", e)
-            return@withContext ImportResult.Failure(ImportError.CORRUPT_ZIP)
-        } catch (e: IOException) {
-            Log.e(TAG, "IO error en import", e)
-            return@withContext ImportResult.Failure(ImportError.IO_ERROR)
-        } catch (t: Throwable) {
-            Log.e(TAG, "Échec lecture zip", t)
-            return@withContext ImportResult.Failure(ImportError.CORRUPT_ZIP)
         }
+    } catch (e: ZipException) {
+        Log.e(TAG, "Zip corrompu", e)
+        return@withContext ImportResult.Failure(ImportError.CORRUPT_ZIP)
+    } catch (e: IOException) {
+        Log.e(TAG, "IO error en import", e)
+        return@withContext ImportResult.Failure(ImportError.IO_ERROR)
+    } catch (t: Throwable) {
+        Log.e(TAG, "Échec lecture zip", t)
+        return@withContext ImportResult.Failure(ImportError.CORRUPT_ZIP)
+    }
 
-        val resolvedMeta = meta ?: return@withContext ImportResult.Failure(ImportError.META_MISSING)
-        val resolvedCaptures = capturesJson
-            ?: return@withContext ImportResult.Failure(ImportError.CAPTURES_MISSING)
-        if (resolvedMeta.schemaVersion > CURRENT_SCHEMA_VERSION) {
-            return@withContext ImportResult.Failure(ImportError.SCHEMA_TOO_NEW)
+    val resolvedMeta = meta ?: return@withContext ImportResult.Failure(ImportError.META_MISSING)
+    val resolvedCaptures = capturesJson
+        ?: return@withContext ImportResult.Failure(ImportError.CAPTURES_MISSING)
+    if (resolvedMeta.schemaVersion > CURRENT_SCHEMA_VERSION) {
+        return@withContext ImportResult.Failure(ImportError.SCHEMA_TOO_NEW)
+    }
+
+    val captures = try {
+        parseCaptures(resolvedCaptures)
+    } catch (t: Throwable) {
+        Log.e(TAG, "captures.json illisible", t)
+        return@withContext ImportResult.Failure(ImportError.CAPTURES_MISSING)
+    }
+
+    var imported = 0
+    var skipped = 0
+    var photosMissing = 0
+
+    for (capture in captures) {
+        if (captureDao.captureExists(capture.arbreId, capture.timestamp)) {
+            skipped++
+            continue
         }
-
-        val captures = try {
-            parseCaptures(resolvedCaptures)
-        } catch (t: Throwable) {
-            Log.e(TAG, "captures.json illisible", t)
-            return@withContext ImportResult.Failure(ImportError.CAPTURES_MISSING)
-        }
-
-        val capturesDir = File(context.getExternalFilesDir(null), "captures").apply { mkdirs() }
-        var imported = 0
-        var skipped = 0
-        var photosMissing = 0
-
-        for (capture in captures) {
-            if (captureDao.captureExists(capture.arbreId, capture.timestamp)) {
-                skipped++
-                continue
-            }
-            val bytes = photoBytes[capture.photoFilename]
-            if (bytes != null) {
-                runCatching {
-                    File(capturesDir, capture.photoFilename).writeBytes(bytes)
-                }.onFailure {
-                    Log.w(TAG, "Échec écriture photo ${capture.photoFilename}", it)
-                    photosMissing++
-                }
-            } else {
+        val bytes = photoBytes[capture.photoFilename]
+        if (bytes != null) {
+            runCatching {
+                File(photosDir, capture.photoFilename).writeBytes(bytes)
+            }.onFailure {
+                Log.w(TAG, "Échec écriture photo ${capture.photoFilename}", it)
                 photosMissing++
             }
-            captureDao.insert(capture.toEntity(capturesDir))
-            imported++
+        } else {
+            photosMissing++
         }
-
-        ImportResult.Success(imported = imported, skipped = skipped, photosMissing = photosMissing)
+        captureDao.insert(capture.toEntity(photosDir))
+        imported++
     }
 
-    private fun parseMeta(bytes: ByteArray): BackupMeta {
-        val o = JSONObject(String(bytes))
-        return BackupMeta(
-            appVersionCode = o.optInt("appVersionCode"),
-            appVersionName = o.optString("appVersionName"),
-            schemaVersion = o.getInt("schemaVersion"),
-            captureCount = o.optInt("captureCount"),
-            exportedAt = o.optLong("exportedAt"),
-        )
-    }
+    ImportResult.Success(imported = imported, skipped = skipped, photosMissing = photosMissing)
+}
 
-    private fun parseCaptures(json: String): List<CaptureExport> {
-        val arr = JSONArray(json)
-        return buildList(arr.length()) {
-            for (i in 0 until arr.length()) {
-                val o = arr.getJSONObject(i)
-                add(
-                    CaptureExport(
-                        arbreId = o.getLong("arbreId"),
-                        speciesIndex = o.getInt("speciesIndex"),
-                        remarquable = o.getBoolean("remarquable"),
-                        timestamp = o.getLong("timestamp"),
-                        latitudeDevice = o.getDouble("latitudeDevice"),
-                        longitudeDevice = o.getDouble("longitudeDevice"),
-                        photoFilename = o.getString("photoFilename"),
-                        season = o.getInt("season"),
-                    )
+private fun parseMeta(bytes: ByteArray): BackupMeta {
+    val o = JSONObject(String(bytes))
+    return BackupMeta(
+        appVersionCode = o.optInt("appVersionCode"),
+        appVersionName = o.optString("appVersionName"),
+        schemaVersion = o.getInt("schemaVersion"),
+        captureCount = o.optInt("captureCount"),
+        exportedAt = o.optLong("exportedAt"),
+    )
+}
+
+private fun parseCaptures(json: String): List<CaptureExport> {
+    val arr = JSONArray(json)
+    return buildList(arr.length()) {
+        for (i in 0 until arr.length()) {
+            val o = arr.getJSONObject(i)
+            add(
+                CaptureExport(
+                    arbreId = o.getLong("arbreId"),
+                    speciesIndex = o.getInt("speciesIndex"),
+                    remarquable = o.getBoolean("remarquable"),
+                    timestamp = o.getLong("timestamp"),
+                    latitudeDevice = o.getDouble("latitudeDevice"),
+                    longitudeDevice = o.getDouble("longitudeDevice"),
+                    photoFilename = o.getString("photoFilename"),
+                    season = o.getInt("season"),
                 )
-            }
+            )
         }
-    }
-
-    private companion object {
-        const val TAG = "BackupImporter"
     }
 }
