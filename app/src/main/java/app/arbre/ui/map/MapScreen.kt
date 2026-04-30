@@ -9,50 +9,29 @@ import android.view.ViewGroup
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeOut
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.Image
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.MenuBook
 import androidx.compose.material.icons.outlined.MyLocation
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Search
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -65,14 +44,9 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.scale
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ColorFilter
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.createSavedStateHandle
@@ -82,7 +56,6 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import app.arbre.ArbresApp
 import app.arbre.R
 import app.arbre.data.Season
-import app.arbre.data.SpeciesEntry
 import app.arbre.data.rememberArbreRepository
 import app.arbre.data.rememberCaptureRepository
 import app.arbre.data.rememberSeasonStore
@@ -93,7 +66,6 @@ import app.arbre.ui.common.ArchiveBanner
 import app.arbre.ui.common.SeasonAmbience
 import app.arbre.ui.common.SeasonSelector
 import app.arbre.ui.detail.ArbreDetailContent
-import app.arbre.ui.theme.arbresColors
 import app.arbre.ui.theme.arbresMotion
 import app.arbre.util.LocationProvider
 import kotlinx.coroutines.Dispatchers
@@ -110,18 +82,6 @@ import org.maplibre.android.location.modes.RenderMode
 import org.maplibre.android.maps.MapLibreMap
 import org.maplibre.android.maps.MapView
 import org.maplibre.android.maps.Style
-import org.maplibre.android.style.expressions.Expression
-import org.maplibre.android.style.expressions.Expression.eq
-import org.maplibre.android.style.expressions.Expression.get
-import org.maplibre.android.style.expressions.Expression.has
-import org.maplibre.android.style.expressions.Expression.literal
-import org.maplibre.android.style.expressions.Expression.match
-import org.maplibre.android.style.expressions.Expression.not
-import org.maplibre.android.style.expressions.Expression.switchCase
-import org.maplibre.android.style.layers.CircleLayer
-import org.maplibre.android.style.layers.PropertyFactory
-import org.maplibre.android.style.layers.SymbolLayer
-import org.maplibre.android.style.sources.GeoJsonOptions
 import org.maplibre.android.style.sources.GeoJsonSource
 
 private val PARIS = LatLng(48.8566, 2.3522)
@@ -130,15 +90,10 @@ private const val PARIS_ZOOM = 13.0
 // distribution spatiale de l'espèce sur tout Paris.
 private const val PARIS_OVERVIEW_ZOOM = 11.5
 private const val USER_ZOOM = 16.0
-private const val ARBRES_SOURCE_ID = "arbres-source"
-private const val POINTS_LAYER_ID = "arbres-points"
-private const val CLUSTERS_LAYER_ID = "arbres-clusters"
-private const val CLUSTER_COUNT_LAYER_ID = "arbres-cluster-count"
-// Couleurs des pins centralisées dans `app.arbre.ui.theme.MapColors`. Aliases
-// privés pour ne pas polluer les sites d'usage avec un préfixe long.
-private val PIN_GREEN = app.arbre.ui.theme.MapColors.PIN_GREEN
-private val PIN_ORANGE = app.arbre.ui.theme.MapColors.PIN_ORANGE
-private val PIN_GREY = app.arbre.ui.theme.MapColors.PIN_GREY
+
+// Constantes layers + couleurs pins déplacées dans `MapLayers.kt` (visibilité
+// internal pour l'usage cross-fichier ici). Composables splash + bandeau filtré
+// déplacés dans `MapOverlays.kt`.
 
 private fun parisCamera(zoom: Double = PARIS_ZOOM): CameraPosition =
     CameraPosition.Builder().target(PARIS).zoom(zoom).build()
@@ -580,334 +535,6 @@ fun MapScreen(
                     remarquableInfo = remarquableInfo,
                 )
             }
-        }
-    }
-}
-
-private fun addArbresLayers(style: Style, json: String) {
-    val source = GeoJsonSource(
-        ARBRES_SOURCE_ID,
-        json,
-        GeoJsonOptions()
-            .withCluster(true)
-            .withClusterMaxZoom(14)
-            .withClusterRadius(60),
-    )
-    style.addSource(source)
-
-    // Points individuels (pas dans un cluster). Couleur initiale = gris : la
-    // vraie expression case/match est appliquée par `applyDiscoveryColor` dès
-    // que le LaunchedEffect collecte les Flows captures (sub-frame).
-    val points = CircleLayer(POINTS_LAYER_ID, ARBRES_SOURCE_ID).withProperties(
-        PropertyFactory.circleRadius(5f),
-        PropertyFactory.circleColor(PIN_GREY),
-        PropertyFactory.circleStrokeColor("#FFFFFF"),
-        PropertyFactory.circleStrokeWidth(1f),
-    )
-    points.setFilter(not(has("point_count")))
-    style.addLayer(points)
-
-    // Bulles de clusters : rayon fixe pour démarrer, on graduera après.
-    // Limite assumée : la couleur cluster ne reflète pas la progression.
-    val clusters = CircleLayer(CLUSTERS_LAYER_ID, ARBRES_SOURCE_ID).withProperties(
-        PropertyFactory.circleColor(PIN_GREEN),
-        PropertyFactory.circleStrokeColor("#FFFFFF"),
-        PropertyFactory.circleStrokeWidth(2f),
-        PropertyFactory.circleOpacity(0.85f),
-        PropertyFactory.circleRadius(20f),
-    )
-    clusters.setFilter(has("point_count"))
-    style.addLayer(clusters)
-
-    // Compte du cluster, en blanc, centré.
-    // textFont DOIT pointer une fontstack que le style sert : OpenFreeMap
-    // "liberty" sert "Noto Sans Regular". Une fontstack absente déclenche un
-    // 404 sur /fonts/ qui invalide le rendu de toute la source côté natif.
-    val count = SymbolLayer(CLUSTER_COUNT_LAYER_ID, ARBRES_SOURCE_ID).withProperties(
-        PropertyFactory.textField(Expression.toString(get("point_count"))),
-        PropertyFactory.textFont(arrayOf("Noto Sans Regular")),
-        PropertyFactory.textSize(12f),
-        PropertyFactory.textColor("#FFFFFF"),
-        PropertyFactory.textAllowOverlap(true),
-        PropertyFactory.textIgnorePlacement(true),
-    )
-    count.setFilter(has("point_count"))
-    style.addLayer(count)
-}
-
-/**
- * Pré-filtre le GeoJSON pour ne garder que les features dont `properties.sk`
- * vaut `sk`. But : éviter le `std::bad_alloc` qu'on déclenchait côté natif
- * MapLibre quand on tentait de servir 217k features non clusterisées au z11
- * (crash reproduit 2026-04-29). Filtrer en amont ramène le corpus à ~max 38k
- * (Platanus) ou bien moins pour la plupart des espèces, et permet de garder
- * le clustering sur la source filtrée — donc une carte lisible avec
- * clusters d'espèce au dezoom et pins individuels au z14+.
- *
- * Implémentation : la sortie de `tools/build_dataset.py` est très régulière
- * (`json.dumps(separators=(",", ":"))`, ordre des clés stable), donc on peut
- * tokeniser sur `,{"type":"Feature"` et tester le suffixe `"sk":N}}` au lieu
- * de parser/reconstruire 32 Mo de JSON via `JSONObject` (qui exploserait la
- * heap). Coût : un seul scan linéaire de la string + StringBuilder.
- */
-private fun filterGeoJsonBySpecies(json: String, sk: Int): String {
-    val featureSeparator = ",{\"type\":\"Feature\""
-    val skSuffix = "\"sk\":$sk}}"
-    val featuresMarker = "\"features\":["
-    val openIdx = json.indexOf(featuresMarker).let {
-        if (it == -1) return EMPTY_GEOJSON else it + featuresMarker.length
-    }
-    val closeIdx = json.lastIndexOf("]}")
-    if (openIdx >= closeIdx) return EMPTY_GEOJSON
-
-    val sb = StringBuilder(64 * 1024)
-    sb.append("{\"type\":\"FeatureCollection\",\"features\":[")
-    var first = true
-    var pos = openIdx
-    while (pos < closeIdx) {
-        val nextSep = json.indexOf(featureSeparator, pos + 1)
-        val end = if (nextSep == -1 || nextSep >= closeIdx) closeIdx else nextSep
-        // `endsWith` est sûr : `sk` est la DERNIÈRE clé de `properties` dans
-        // le build script (Python 3.7+ préserve l'ordre d'insertion, et le
-        // dump JSON l'utilise). Si on change l'ordre côté Python, casser ce
-        // contrat ici se traduit par une carte filtrée vide — ne pas rater.
-        if (json.regionMatches(end - skSuffix.length, skSuffix, 0, skSuffix.length)) {
-            if (!first) sb.append(",")
-            sb.append(json, pos, end)
-            first = false
-        }
-        if (nextSep == -1 || nextSep >= closeIdx) break
-        pos = nextSep + 1
-    }
-    sb.append("]}")
-    return sb.toString()
-}
-
-private const val EMPTY_GEOJSON = "{\"type\":\"FeatureCollection\",\"features\":[]}"
-
-private fun applyDiscoveryColor(
-    style: Style,
-    capturedSpecies: Set<Int>,
-    capturedRemarquables: Set<Long>,
-) {
-    val pointsLayer = style.getLayer(POINTS_LAYER_ID) as? CircleLayer ?: return
-    pointsLayer.setProperties(
-        PropertyFactory.circleColor(
-            buildDiscoveryExpression(capturedSpecies, capturedRemarquables)
-        )
-    )
-}
-
-/**
- * `case(remarquable, match-id, match-sk)` :
- *   - pour un pin remarquable capturé, orange ssi son `id` est dans le set ;
- *   - pour un pin normal capturé, vert ssi son `sk` est dans le set ;
- *   - défaut = gris.
- *
- * L'ordre des args du `match` est `[input, label1, out1, …, default]` — default
- * en DERNIER (cf. spec MapLibre style). Ne pas inverser : un default placé en
- * 2e position serait pris pour un label string et l'expression silencieusement
- * ignorée (les pins resteraient à leur couleur initiale).
- *
- * Quand le set est vide, `match` ne tolère pas zéro stop : on retombe sur un
- * `literal(grey)` direct.
- */
-private fun buildDiscoveryExpression(
-    capturedSpecies: Set<Int>,
-    capturedRemarquables: Set<Long>,
-): Expression {
-    val speciesExpr = if (capturedSpecies.isEmpty()) {
-        literal(PIN_GREY)
-    } else {
-        val stops = mutableListOf<Expression>()
-        for (sk in capturedSpecies) {
-            stops += literal(sk)
-            stops += literal(PIN_GREEN)
-        }
-        stops += literal(PIN_GREY)
-        match(get("sk"), *stops.toTypedArray())
-    }
-    val remarquableExpr = if (capturedRemarquables.isEmpty()) {
-        literal(PIN_GREY)
-    } else {
-        val stops = mutableListOf<Expression>()
-        for (id in capturedRemarquables) {
-            // Cast Int : tous les `idbase` parisiens tiennent dans 32 bits,
-            // évite les quirks de boxing Long de l'API Java MapLibre.
-            stops += literal(id.toInt())
-            stops += literal(PIN_ORANGE)
-        }
-        stops += literal(PIN_GREY)
-        match(get("id"), *stops.toTypedArray())
-    }
-    return switchCase(
-        eq(get("remarquable"), literal(true)),
-        remarquableExpr,
-        speciesExpr,
-    )
-}
-
-@Composable
-private fun FilterBanner(
-    entry: SpeciesEntry,
-    count: Int?,
-    onBack: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Surface(
-        modifier = modifier.widthIn(max = 320.dp),
-        shape = RoundedCornerShape(12.dp),
-        color = MaterialTheme.colorScheme.surface,
-        tonalElevation = 4.dp,
-        shadowElevation = 4.dp,
-    ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.padding(start = 4.dp, end = 12.dp, top = 4.dp, bottom = 4.dp),
-        ) {
-            IconButton(onClick = onBack) {
-                Icon(
-                    Icons.AutoMirrored.Outlined.ArrowBack,
-                    contentDescription = "Retour à la fiche-espèce",
-                )
-            }
-            Column(
-                modifier = Modifier
-                    .padding(start = 4.dp)
-                    .fillMaxWidth(),
-            ) {
-                Text(
-                    entry.displayName,
-                    style = MaterialTheme.typography.titleMedium,
-                    maxLines = 1,
-                )
-                if (count != null) {
-                    Text(
-                        "$count arbre${if (count > 1) "s" else ""} dans Paris",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            }
-        }
-    }
-}
-
-/**
- * Splash overlay du cold start — superposé tant que `arbresPrets == false`.
- * Couleur de fond synchronisée avec `@color/ic_launcher_background` du splash
- * natif (themes.xml) pour ne pas faire flasher la transition.
- *
- * Animation pure Compose (pas de Lottie) :
- * - Sway sinusoïdal ±3° de la silhouette d'arbre (rotation via graphicsLayer).
- * - Cascade fade+scale à l'apparition (0→1 alpha + 0.85→1 scale, 600 ms).
- * - LinearProgressIndicator or `arbresColors.or` (token de marque) plutôt que
- *   le CircularProgressIndicator blanc générique.
- */
-@Composable
-private fun ColdStartSplash() {
-    // Doit rester en sync avec @color/ic_launcher_background.
-    val splashGreen = MaterialTheme.colorScheme.primary
-    val arbresColors = MaterialTheme.arbresColors
-    val motion = MaterialTheme.arbresMotion
-
-    val infinite = rememberInfiniteTransition(label = "sway")
-    val sway by infinite.animateFloat(
-        initialValue = -3f,
-        targetValue = 3f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = motion.sway, easing = motion.swayEasing),
-            repeatMode = RepeatMode.Reverse,
-        ),
-        label = "swayAngle",
-    )
-    val intro by animateFloatAsState(
-        targetValue = 1f,
-        animationSpec = tween(durationMillis = motion.medium, easing = motion.swayEasing),
-        label = "intro",
-    )
-
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(splashGreen),
-        contentAlignment = Alignment.Center,
-    ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.graphicsLayer { alpha = intro },
-        ) {
-            Image(
-                painter = painterResource(R.drawable.ic_launcher_foreground),
-                contentDescription = null,
-                modifier = Modifier
-                    .size(168.dp)
-                    .scale(0.85f + intro * 0.15f)
-                    .graphicsLayer { rotationZ = sway },
-            )
-            Spacer(Modifier.height(20.dp))
-            Text(
-                text = "Arbres",
-                color = Color.White,
-                style = MaterialTheme.typography.displayMedium,
-            )
-            Spacer(Modifier.height(8.dp))
-            Text(
-                text = "Réveil des 217 855 arbres parisiens",
-                color = Color.White.copy(alpha = 0.85f),
-                style = MaterialTheme.typography.bodyMedium,
-            )
-            Spacer(Modifier.height(28.dp))
-            LinearProgressIndicator(
-                color = arbresColors.or,
-                trackColor = Color.White.copy(alpha = 0.18f),
-                modifier = Modifier
-                    .widthIn(max = 200.dp)
-                    .fillMaxWidth(0.45f),
-            )
-        }
-    }
-}
-
-/**
- * Splash overlay dédié au mode `MAP_FILTERED` : on ne charge pas 217k arbres,
- * juste une espèce filtrée (pré-filtre Kotlin < 1 s + setStyle MapLibre 1-3 s).
- * Pas de silhouette d'arbre (pas un boot), pas d'animation infinie — juste
- * un voile bref pour éviter le flash de carte vide.
- */
-@Composable
-private fun FilterSplash(speciesLabel: String) {
-    val splashGreen = MaterialTheme.colorScheme.primary
-    val motion = MaterialTheme.arbresMotion
-    val intro by animateFloatAsState(
-        targetValue = 1f,
-        animationSpec = tween(durationMillis = motion.short, easing = motion.swayEasing),
-        label = "filterIntro",
-    )
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(splashGreen),
-        contentAlignment = Alignment.Center,
-    ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier
-                .padding(horizontal = 48.dp)
-                .graphicsLayer { alpha = intro },
-        ) {
-            Text(
-                text = "Filtrage de $speciesLabel…",
-                color = Color.White,
-                style = MaterialTheme.typography.titleMedium,
-                textAlign = TextAlign.Center,
-            )
-            Spacer(Modifier.height(20.dp))
-            CircularProgressIndicator(
-                color = Color.White,
-                strokeWidth = 2.5.dp,
-                modifier = Modifier.size(28.dp),
-            )
         }
     }
 }

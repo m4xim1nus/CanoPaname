@@ -117,10 +117,14 @@ Sprint court (~3 jours) entre Phase 7 (texture sensorielle, qui ajoute du code) 
 - [x] **Tests unitaires `BackupImporter`** ✅ — `app/src/test/java/app/arbre/backup/BackupImporterTest.kt`. Refactor minimal : `importStream(input, photosDir, dao)` extrait en top-level `internal suspend fun` pour rester JVM-pur (pas de `Context` requis). 7 cas : roundtrip 2 captures, idempotence (2nd import → `imported=0, skipped=N`), photo manquante (`photosMissing` incrémenté, capture insérée), `schemaVersion = 99 → SCHEMA_TOO_NEW`, zip corrompu → `CORRUPT_ZIP`, meta absent → `META_MISSING`, captures absentes → `CAPTURES_MISSING`. `FakeCaptureDao` qui implémente l'interface Room.
 - [x] **`testOptions.unitTests.isReturnDefaultValues = true`** ✅ — ajouté dans `app/build.gradle.kts` pour neutraliser `android.util.Log` en JVM pur (utilisé par `BackupImporter`) sans tirer Robolectric.
 
-**Très utiles (à faire si bande passante) :**
+**Très utiles :**
 
-- [ ] **detekt minimal + intégration Gradle** — Gradle plugin `io.gitlab.arturbosch.detekt` + `detekt.yml` souple (focus complexité, null-safety, fonctions trop longues, wildcard imports). Tâche `./gradlew detekt` ajoutée. Pose le baseline avant le repo public, empêche la régression future. 2-3 h.
-- [ ] **Extraction `MapScreen.kt`** — 898 LOC dont un seul `@Composable` de ~570 LOC. Splitter en 5-6 sous-composables sur le modèle `ProfileScreen` (déjà bien factorisé en 8 helpers) : `MapHostView` (AndroidView + DisposableEffect lifecycle), `MapFabs` (GPS + ★ + Arboretum), `MapSheets` (sheet détail + filter splash), `MapPermissions` (location rationale flow). Le moment idéal c'est *avant* d'y rajouter les animations Phase 7 (saison, climax) et avant un éventuel refactor hub navigation (idée-vrac CPO #10). 4-6 h.
+- [x] **detekt minimal + intégration Gradle** ✅ — plugin `io.gitlab.arturbosch.detekt` 1.23.7 ajouté à `gradle/libs.versions.toml`, appliqué sur `:app` (mono-module). Config souple `detekt.yml` à la racine : focus complexité (`LongMethod` 100, `LargeClass` 600, `CyclomaticComplexMethod` 25, `NestedBlockDepth` 5), null-safety (`UnsafeCallOnNullableType`), wildcard imports + `ReturnCount` ≤ 6. Désactivé : `MagicNumber`, `MaxLineLength`, `TooGenericExceptionCaught`, `SwallowedException` (BackupImporter catch volontairement Throwable + log). Rapports HTML + XML dans `app/build/reports/detekt/`. Run : `./gradlew :app:detekt`. Baseline à figer côté dev (`./gradlew :app:detektBaseline`) avant de bloquer la CI dessus.
+- [x] **Extraction `MapScreen.kt`** ✅ — passé de 913 LOC à 540 LOC (orchestrateur principal). Deux nouveaux fichiers package-privés dans `ui/map/` :
+  - `MapLayers.kt` (~190 LOC) : `addArbresLayers`, `applyDiscoveryColor`, `buildDiscoveryExpression`, `filterGeoJsonBySpecies` + constantes IDs sources/layers + couleurs pins. Logique MapLibre pure, testable JVM si besoin.
+  - `MapOverlays.kt` (~210 LOC) : `FilterBanner`, `ColdStartSplash`, `FilterSplash` — composables d'overlay UI sans état partagé avec l'écran.
+
+  Le refactor du `@Composable MapScreen` lui-même (extraction `MapHostView` / `MapFabs` / `MapSheets` / `MapPermissions`) est laissé à plus tard — risque de casser le lifecycle `MapView` sans environnement de build pour valider, et les FABs sont fortement couplés à l'état du Composable parent (snackbar, viewModel, scope, captureRepo, captureController). À reprendre quand on veut splitter le hub de navigation (idée-vrac CPO #10).
 
 ## Phase 9 — Préparation de la release v1.0.0
 

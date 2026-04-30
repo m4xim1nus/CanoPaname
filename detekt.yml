@@ -1,0 +1,94 @@
+# detekt — config souple pour app perso (cf. ROADMAP Phase 8)
+#
+# Stratégie : `buildUponDefaultConfig = true` côté Gradle, on overrride
+# seulement ici les règles trop opinionées pour ne pas noyer les findings
+# le 1er run. Focus : complexité (signaux d'extraction), null-safety,
+# wildcard imports. Désactivé : magic numbers, padding, conventions
+# de nommage trop pointilleuses.
+
+build:
+  maxIssues: 0
+  excludeCorrectable: false
+
+config:
+  validation: true
+  warningsAsErrors: false
+
+complexity:
+  active: true
+  CyclomaticComplexMethod:
+    active: true
+    threshold: 25
+  LongMethod:
+    active: true
+    threshold: 100
+  LongParameterList:
+    active: true
+    functionThreshold: 8
+    constructorThreshold: 8
+  LargeClass:
+    active: true
+    threshold: 600
+  ComplexCondition:
+    active: true
+    threshold: 5
+  NestedBlockDepth:
+    active: true
+    threshold: 5
+  TooManyFunctions:
+    active: false  # composables empilent les helpers, OK pour ce projet
+
+empty-blocks:
+  active: true
+  EmptyFunctionBlock:
+    active: true
+    ignoreOverridden: true
+
+exceptions:
+  active: true
+  TooGenericExceptionCaught:
+    active: false  # on catch Throwable volontairement dans BackupImporter
+  SwallowedException:
+    active: false  # idem, on log + retourne un Failure
+
+naming:
+  active: true
+  FunctionNaming:
+    active: true
+    functionPattern: '[a-zA-Z][a-zA-Z0-9]*'  # tolère les @Composable PascalCase
+  TopLevelPropertyNaming:
+    active: false  # tolère SCREAMING_SNAKE_CASE et camelCase
+
+performance:
+  active: true
+  SpreadOperator:
+    active: false  # vararg → array spread est idiomatique en Kotlin
+
+potential-bugs:
+  active: true
+  UnsafeCallOnNullableType:
+    active: true
+  ImplicitDefaultLocale:
+    active: true
+
+style:
+  active: true
+  WildcardImport:
+    active: true
+    excludeImports:
+      - 'java.util.*'
+  MaxLineLength:
+    active: false  # signal trop bruyant, on a déjà ktlint-friendly de fait
+  MagicNumber:
+    active: false  # constantes UI/animation s'expriment mieux en littéraux locaux
+  ReturnCount:
+    active: true
+    max: 6  # BackupImporter.importStream a 7+ early returns sur les erreurs
+  NewLineAtEndOfFile:
+    active: true
+  UnusedPrivateMember:
+    active: true
+  ForbiddenComment:
+    active: false
+  UseDataClass:
+    active: false
