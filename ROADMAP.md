@@ -107,6 +107,23 @@ Capitaliser sur l'identité visuelle posée en Phase 3 (Fraunces, `ArbresColors`
 - [ ] **Iconographie remarquable inspirée des plaques officielles Paris** — l'étoile actuelle (★) est générique. Les arbres remarquables de Paris ont des plaques métalliques vertes spécifiques (vert sombre, lettrage condensé, coin chanfreiné). Reproduire cette esthétique comme marqueur visuel pour les remarquables capturés (point sur la carte + icône `RemarquablesScreen` + détail). Ancrage hyper-local fort.
 - [ ] **Onboarding animé** — remplacer les 4 BulletCards textuelles du `WelcomeScreen` par une boucle animée 3-4 s (Lottie : silhouette grise d'arbre → personnage qui s'approche → tap → silhouette qui se colorie en feuilles → repeat). Lottie Compose (`airbnb/lottie-android`, ~50 Ko). Texte restant = légende, pas explication.
 
-## Phase 8 — Préparation de la release v1.0.0
+## Phase 8 — Hygiène pré-release
 
+Sprint court (~3 jours) entre Phase 7 (texture sensorielle, qui ajoute du code) et Phase 9 (release publique). Met des garde-fous *autour* du code complet plutôt qu'autour de code qui va bouger. Pas de feature, juste de la dette technique avant que le repo passe public.
+
+**Bloquants v1.0 :**
+
+- [ ] **Bump `versionCode` / `versionName`** — actuellement `1` / `0.1.0` dans `app/build.gradle.kts:30-31` malgré la livraison des phases 0 → 7. Aligner sur l'avancement réel : `versionCode = 7` / `versionName = "0.7.0"` après Phase 7, puis bump méthodique avant chaque APK signé. Critique avant la 1re release publique (Play Store ou Obtainium refusent un downgrade silencieux).
+- [ ] **Nettoyage des dépendances mortes** — `libs.versions.toml` déclare `moshi-kotlin` (1.15.1) et `okhttp` (4.12.0). CLAUDE.md dit explicitement « JSON via `org.json` » et « pas de service externe au runtime ». Vérifier avec `grep -r "com.squareup.moshi\|okhttp3"` puis : si non utilisées → supprimer (gain ~1 Mo APK + surface d'attaque réduite + ProGuard simplifié) ; si utilisées → ajouter les keep rules ProGuard manquantes pour `@Json` (sinon crash en release minifiée).
+- [ ] **Tests unitaires `BadgeEvaluator`** — fonction pure dans `data/BadgeEvaluator.kt`, candidat idéal. Couvrir les 15 badges + edges : `parseArrondissement` (regex `, (\d+)(er|e)$`), `yearMonthOf` (zone Europe/Paris), `hasTwelveConsecutiveMonths` avec gap, espèce rare via `SpeciesInfo.stats.count < 100`, captures hors-Paris (arrondissement null), `unlockedAt` figé sur la capture déclenchante. ~12-15 cas, junit4 vanilla, 4-6 h. ROI massif : la gamification est le cœur émotionnel de l'app.
+- [ ] **Tests unitaires `BackupImporter`** — `backup/BackupImporter.kt`. Couvrir : roundtrip export → import idempotent (le même zip réimporté ne crée pas de doublon via `(arbreId, timestamp)`), photo manquante du zip → capture insérée + `photosMissing` incrémenté, `meta.json.schemaVersion > CURRENT_SCHEMA_VERSION` → refus dur, ZIP corrompu → `ImportError.CORRUPT_ZIP`. 3-4 h.
+
+**Très utiles (à faire si bande passante) :**
+
+- [ ] **detekt minimal + intégration Gradle** — Gradle plugin `io.gitlab.arturbosch.detekt` + `detekt.yml` souple (focus complexité, null-safety, fonctions trop longues, wildcard imports). Tâche `./gradlew detekt` ajoutée. Pose le baseline avant le repo public, empêche la régression future. 2-3 h.
+- [ ] **Extraction `MapScreen.kt`** — 898 LOC dont un seul `@Composable` de ~570 LOC. Splitter en 5-6 sous-composables sur le modèle `ProfileScreen` (déjà bien factorisé en 8 helpers) : `MapHostView` (AndroidView + DisposableEffect lifecycle), `MapFabs` (GPS + ★ + Arboretum), `MapSheets` (sheet détail + filter splash), `MapPermissions` (location rationale flow). Le moment idéal c'est *avant* d'y rajouter les animations Phase 7 (saison, climax) et avant un éventuel refactor hub navigation (idée-vrac CPO #10). 4-6 h.
+
+## Phase 9 — Préparation de la release v1.0.0
+
+- [ ] **CI GitHub Actions** — workflow `.github/workflows/build.yml` qui exécute `./gradlew assembleDebug test detekt` sur push et PR (le test passera grâce à Phase 8, detekt aussi). Job de release optionnel sur tag `v*` qui produit l'APK signé via secrets GitHub (keystore + passwords stockés en `secrets.RELEASE_KEYSTORE_BASE64` etc.). 1-2 h de setup.
 - [ ] À la veille de la `v1.0.0` : générer keystore release prod, pousser repo public sur GitHub, créer GitHub Release avec APK signé, exposer URL Obtainium. La machinerie côté `build.gradle.kts` est prête (Phase 6) — ne reste plus qu'à provisionner le keystore et le rendre public.
