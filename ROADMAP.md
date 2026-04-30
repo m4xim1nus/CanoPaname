@@ -126,7 +126,24 @@ Sprint court (~3 jours) entre Phase 7 (texture sensorielle, qui ajoute du code) 
 
   Le refactor du `@Composable MapScreen` lui-même (extraction `MapHostView` / `MapFabs` / `MapSheets` / `MapPermissions`) est laissé à plus tard — risque de casser le lifecycle `MapView` sans environnement de build pour valider, et les FABs sont fortement couplés à l'état du Composable parent (snackbar, viewModel, scope, captureRepo, captureController). À reprendre quand on veut splitter le hub de navigation (idée-vrac CPO #10).
 
-## Phase 9 — Préparation de la release v1.0.0
+## Phase 9 — Build et tests manuels device
+
+Première session devant le téléphone GrapheneOS depuis longtemps : on a accumulé 8 phases (Sprints H/I, Phase 3 → 8) sans validation device, donc une grosse séance de smoke + régression avant de penser à la release publique.
+
+Objectifs : (a) confirmer que la branche `claude/phase-8-dev-YGxnL` build proprement sur la machine du dev (debug + release), (b) que les tests JVM de Phase 8 passent (`./gradlew test` → `BadgeEvaluatorTest` + `BackupImporterTest`, 30 cas), (c) que `./gradlew detekt` sort un baseline raisonnable, (d) que toutes les features livrées entre `main` et la branche tournent réellement sur device.
+
+Le détail du protocole de test est dans **`TESTS.md`** à la racine du repo : 100+ items à cocher, organisés par flow utilisateur (onboarding → carte → capture → Arboretum → fiche-espèce → remarquables → profil → badges → backup → saisonnalité → motion / haptiques / empty states), avec côté à côté les commandes build et les attendus précis.
+
+Pendant cette session, Claude Code peut être réquisitionné en parallèle pour exécuter des `./gradlew …` ou `adb …`, lire des logs, fabriquer des données de test (ex. `BackupImporter` avec un zip généré), comparer des sorties — voir `TESTS.md` § « Ce que Claude peut faire à tes côtés ».
+
+- [ ] **Build debug + install device** — `./gradlew installDebug`, app se lance sur GrapheneOS, splash natif visible, transition vers le splash custom Compose sans flicker.
+- [ ] **Tests JVM verts** — `./gradlew :app:testDebugUnitTest` doit passer (30 cas répartis sur `BadgeEvaluator` et `BackupImporter`).
+- [ ] **detekt baseline** — `./gradlew :app:detektBaseline` puis `./gradlew :app:detekt` doit sortir 0 issue. Commiter `detekt-baseline.xml` à la racine ou sous `app/`.
+- [ ] **Build release** — `./gradlew assembleRelease` (fallback signing debug si pas de `local.properties`). Vérifier que le minify ProGuard ne casse rien (smoke onboarding + capture sur APK release).
+- [ ] **Run TESTS.md à fond** — cocher tous les items, noter les bugs dans une nouvelle section « Bugs Phase 9 » de la ROADMAP. À traiter en hotfix avant Phase 10.
+- [ ] **Bump versionCode → 8 / versionName → "0.8.0"** une fois Phase 9 close — ouvre la voie à Phase 10 / release publique.
+
+## Phase 10 — Préparation de la release v1.0.0
 
 - [ ] **CI GitHub Actions** — workflow `.github/workflows/build.yml` qui exécute `./gradlew assembleDebug test detekt` sur push et PR (le test passera grâce à Phase 8, detekt aussi). Job de release optionnel sur tag `v*` qui produit l'APK signé via secrets GitHub (keystore + passwords stockés en `secrets.RELEASE_KEYSTORE_BASE64` etc.). 1-2 h de setup.
 - [ ] À la veille de la `v1.0.0` : générer keystore release prod, pousser repo public sur GitHub, créer GitHub Release avec APK signé, exposer URL Obtainium. La machinerie côté `build.gradle.kts` est prête (Phase 6) — ne reste plus qu'à provisionner le keystore et le rendre public.
