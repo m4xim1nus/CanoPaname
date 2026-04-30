@@ -44,6 +44,10 @@ import app.arbre.data.BadgeState
 import app.arbre.data.rememberArbreRepository
 import app.arbre.data.rememberCaptureRepository
 import app.arbre.data.rememberSpeciesInfoRepository
+import app.arbre.R
+import app.arbre.ui.common.EmptyState
+import androidx.compose.foundation.Image
+import androidx.compose.ui.res.painterResource
 import java.text.DateFormat
 import java.util.Date
 
@@ -105,6 +109,21 @@ fun BadgesScreen(onBack: () -> Unit) {
                     "${unlocked.size} / ${BadgeCatalog.ALL.size} débloqués",
                     style = MaterialTheme.typography.titleMedium,
                 )
+            }
+            if (unlocked.isEmpty()) {
+                item(span = { GridItemSpan(maxLineSpan) }) {
+                    EmptyState(
+                        title = "Aucun badge débloqué",
+                        body = "Capture ton premier arbre pour débloquer ton premier badge. Quinze succès t'attendent au fil des saisons et des arrondissements.",
+                        illustration = {
+                            Image(
+                                painter = painterResource(R.drawable.illus_empty_badges),
+                                contentDescription = null,
+                                modifier = Modifier.fillMaxSize(),
+                            )
+                        },
+                    )
+                }
             }
             if (unlocked.isNotEmpty()) {
                 item(span = { GridItemSpan(maxLineSpan) }) {

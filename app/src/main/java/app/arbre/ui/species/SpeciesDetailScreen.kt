@@ -2,13 +2,18 @@ package app.arbre.ui.species
 
 import android.content.Intent
 import android.net.Uri
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -18,8 +23,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.OpenInNew
-import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.Map
+import androidx.compose.material.icons.outlined.Park
 import androidx.compose.material.icons.outlined.PictureAsPdf
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -41,9 +46,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import app.arbre.ui.theme.arbresColors
+import app.arbre.ui.theme.arbresMotion
 import app.arbre.data.Arbre
 import app.arbre.data.ArrCount
 import app.arbre.data.Capture
@@ -112,7 +121,7 @@ fun SpeciesDetailScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             if (celebrate) {
-                item { CelebrationBanner() }
+                item { CelebrationHero(entry) }
             }
 
             item { IdentityBlock(entry, arbreSample) }
@@ -154,38 +163,69 @@ private fun ShowOnMapButton(onClick: () -> Unit) {
     }
 }
 
+/**
+ * Climax « 1re capture » sur la fiche-espèce. Cascade fade+scale sur
+ * 1.8 s : fond → silhouette espèce → nom binomial → label de confirmation.
+ * Réutilise la grammaire du splash cold-start (sway sinusoïdal léger).
+ */
 @Composable
-private fun CelebrationBanner() {
-    // Volontairement sobre : pas d'animation pétaradante, app perso. Le badge
-    // tonal + l'étoile suffisent à signaler la 1re capture sans rendre la
-    // navigation Arboretum→Espèce visuellement bruyante.
+private fun CelebrationHero(entry: SpeciesEntry) {
+    val arbresColors = MaterialTheme.arbresColors
+    val motion = MaterialTheme.arbresMotion
+    val progress = remember { Animatable(0f) }
+    LaunchedEffect(Unit) {
+        progress.animateTo(1f, tween(durationMillis = motion.celebration, easing = motion.swayEasing))
+    }
+    val p = progress.value
+    val bgAlpha = ((p / 0.17f).coerceIn(0f, 1f)) * 0.10f
+    val silhouetteAlpha = ((p - 0.17f) / 0.33f).coerceIn(0f, 1f)
+    val silhouetteScale = 0.85f + silhouetteAlpha * 0.15f
+    val binomialAlpha = ((p - 0.5f) / 0.28f).coerceIn(0f, 1f)
+    val labelAlpha = ((p - 0.78f) / 0.22f).coerceIn(0f, 1f)
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(280.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+            containerColor = arbresColors.feuilleSombre.copy(alpha = bgAlpha + 0.04f),
         ),
     ) {
-        Row(
-            modifier = Modifier.padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center,
         ) {
-            Icon(
-                Icons.Default.Star,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onTertiaryContainer,
-                modifier = Modifier.size(32.dp),
-            )
-            Column {
-                Text(
-                    "Nouvelle espèce débloquée !",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onTertiaryContainer,
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center,
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.Park,
+                    contentDescription = null,
+                    tint = arbresColors.feuilleSombre,
+                    modifier = Modifier
+                        .size(120.dp)
+                        .graphicsLayer {
+                            alpha = silhouetteAlpha
+                            scaleX = silhouetteScale
+                            scaleY = silhouetteScale
+                        },
                 )
+                Spacer(Modifier.height(16.dp))
                 Text(
-                    "Ajoutée à ton Arboretum",
+                    text = entry.displayName,
+                    style = MaterialTheme.typography.titleLarge.copy(
+                        fontWeight = FontWeight.SemiBold,
+                        fontStyle = FontStyle.Italic,
+                    ),
+                    color = arbresColors.feuilleSombre,
+                    modifier = Modifier.graphicsLayer { alpha = binomialAlpha },
+                )
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    text = "Nouvelle espèce dans ton Arboretum",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onTertiaryContainer,
+                    color = arbresColors.ecorce,
+                    modifier = Modifier.graphicsLayer { alpha = labelAlpha },
                 )
             }
         }

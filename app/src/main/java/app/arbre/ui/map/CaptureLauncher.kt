@@ -21,6 +21,7 @@ import app.arbre.data.Season
 import app.arbre.data.SpeciesIndex
 import app.arbre.util.LocationProvider
 import app.arbre.util.ageMs
+import app.arbre.util.rememberCaptureHaptic
 import java.io.File
 import java.util.UUID
 import kotlinx.coroutines.flow.first
@@ -91,6 +92,7 @@ fun rememberCaptureController(
     val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
     val pendingArbre = remember { mutableStateOf<Arbre?>(null) }
+    val captureHaptic = rememberCaptureHaptic()
 
     val takePictureLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.TakePicture()
@@ -122,6 +124,7 @@ fun rememberCaptureController(
                 photoPath = pending.photoPath,
                 timestamp = pending.captureTimestamp,
             )
+            captureHaptic()
             onCaptured()
             // Effet « waouh » : uniquement si l'espèce vient juste d'être
             // débloquée. On exclut les remarquables (le speciesIndex y est

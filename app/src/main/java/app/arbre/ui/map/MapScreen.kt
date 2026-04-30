@@ -38,7 +38,6 @@ import androidx.compose.foundation.Image
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.MenuBook
-import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.MyLocation
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Search
@@ -91,9 +90,11 @@ import app.arbre.data.rememberSpeciesIndex
 import app.arbre.data.rememberRemarquableInfoRepository
 import app.arbre.data.rememberSpeciesInfoRepository
 import app.arbre.ui.common.ArchiveBanner
+import app.arbre.ui.common.SeasonAmbience
 import app.arbre.ui.common.SeasonSelector
 import app.arbre.ui.detail.ArbreDetailContent
 import app.arbre.ui.theme.arbresColors
+import app.arbre.ui.theme.arbresMotion
 import app.arbre.util.LocationProvider
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.combine
@@ -396,6 +397,12 @@ fun MapScreen(
 
     Box(modifier = Modifier.fillMaxSize()) {
         AndroidView(factory = { mapView })
+        SeasonAmbience(season = selectedSeason)
+        CaptureCelebrationOverlay(
+            captureRepo = captureRepo,
+            mapRef = mapRef,
+            speciesIndex = speciesIndex,
+        )
         if (filteredEntry != null && onBack != null) {
             FilterBanner(
                 entry = filteredEntry,
@@ -446,8 +453,14 @@ fun MapScreen(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 FloatingActionButton(onClick = onRemarquablesClick) {
-                    // Filled volontaire : signal de marque pour la cible "précieuse".
-                    Icon(Icons.Filled.Star, contentDescription = "Remarquables")
+                    // Plaque inspirée des plaques officielles « Arbre remarquable
+                    // Ville de Paris ». Tint Unspecified pour préserver la
+                    // bichromie verte/crème de l'asset.
+                    Icon(
+                        painter = painterResource(R.drawable.ic_remarquable_plaque),
+                        contentDescription = "Remarquables",
+                        tint = androidx.compose.ui.graphics.Color.Unspecified,
+                    )
                 }
                 FloatingActionButton(onClick = onArboretumClick) {
                     Icon(Icons.AutoMirrored.Outlined.MenuBook, contentDescription = "Arboretum")
@@ -498,7 +511,7 @@ fun MapScreen(
         AnimatedVisibility(
             visible = !arbresPrets,
             enter = androidx.compose.animation.EnterTransition.None,
-            exit = fadeOut(animationSpec = tween(durationMillis = 350)),
+            exit = fadeOut(animationSpec = tween(durationMillis = MaterialTheme.arbresMotion.short)),
             modifier = Modifier.fillMaxSize(),
         ) {
             if (filteredEntry != null) {
@@ -796,20 +809,21 @@ private fun ColdStartSplash() {
     // Doit rester en sync avec @color/ic_launcher_background.
     val splashGreen = MaterialTheme.colorScheme.primary
     val arbresColors = MaterialTheme.arbresColors
+    val motion = MaterialTheme.arbresMotion
 
     val infinite = rememberInfiniteTransition(label = "sway")
     val sway by infinite.animateFloat(
         initialValue = -3f,
         targetValue = 3f,
         animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 2400, easing = FastOutSlowInEasing),
+            animation = tween(durationMillis = motion.sway, easing = motion.swayEasing),
             repeatMode = RepeatMode.Reverse,
         ),
         label = "swayAngle",
     )
     val intro by animateFloatAsState(
         targetValue = 1f,
-        animationSpec = tween(durationMillis = 600, easing = FastOutSlowInEasing),
+        animationSpec = tween(durationMillis = motion.medium, easing = motion.swayEasing),
         label = "intro",
     )
 
@@ -864,9 +878,10 @@ private fun ColdStartSplash() {
 @Composable
 private fun FilterSplash(speciesLabel: String) {
     val splashGreen = MaterialTheme.colorScheme.primary
+    val motion = MaterialTheme.arbresMotion
     val intro by animateFloatAsState(
         targetValue = 1f,
-        animationSpec = tween(durationMillis = 350, easing = FastOutSlowInEasing),
+        animationSpec = tween(durationMillis = motion.short, easing = motion.swayEasing),
         label = "filterIntro",
     )
     Box(

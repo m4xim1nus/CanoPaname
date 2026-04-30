@@ -98,6 +98,7 @@ dependencies {
     implementation(libs.moshi)
     implementation(libs.okhttp)
     implementation(libs.androidx.datastore.preferences)
+    implementation(libs.lottie.compose)
 
     debugImplementation(libs.androidx.compose.ui.tooling)
 

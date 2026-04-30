@@ -8,23 +8,17 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material.icons.outlined.Park
-import androidx.compose.material.icons.outlined.Star
-import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -33,7 +27,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
@@ -41,6 +34,10 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import app.arbre.R
 import app.arbre.ui.theme.arbresColors
+import com.airbnb.lottie.compose.LottieAnimation
+import com.airbnb.lottie.compose.LottieCompositionSpec
+import com.airbnb.lottie.compose.LottieConstants
+import com.airbnb.lottie.compose.rememberLottieComposition
 
 /**
  * Écran de bienvenue + explication minimale du jeu, montré une seule fois
@@ -94,21 +91,13 @@ fun WelcomeScreen(
                 textAlign = TextAlign.Center,
             )
 
-            BulletCard(
-                icon = Icons.Outlined.Visibility,
-                text = stringResource(R.string.welcome_bullet_grey),
-            )
-            BulletCard(
-                icon = Icons.Outlined.LocationOn,
-                text = stringResource(R.string.welcome_bullet_proximity),
-            )
-            BulletCard(
-                icon = Icons.Outlined.Park,
-                text = stringResource(R.string.welcome_bullet_species),
-            )
-            BulletCard(
-                icon = Icons.Outlined.Star,
-                text = stringResource(R.string.welcome_bullet_remarquables),
+            WelcomeAnimation()
+
+            Text(
+                stringResource(R.string.welcome_caption),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+                textAlign = TextAlign.Center,
             )
 
             Text(
@@ -168,31 +157,27 @@ private fun HeroLogo() {
     }
 }
 
+/**
+ * Boucle Lottie qui montre la mécanique : silhouette grise → coloration verte
+ * → reset (4 s, repeat infini). Le composable charge l'asset et masque
+ * gracieusement si la composition échoue (placeholder vide même hauteur).
+ */
 @Composable
-private fun BulletCard(icon: ImageVector, text: String) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant,
-        ),
+private fun WelcomeAnimation() {
+    val composition by rememberLottieComposition(
+        LottieCompositionSpec.Asset("animations/welcome_loop.json")
+    )
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(220.dp),
+        contentAlignment = Alignment.Center,
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 14.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(28.dp),
-            )
-            Text(
-                text,
-                style = MaterialTheme.typography.bodyLarge,
-                modifier = Modifier.weight(1f),
+        if (composition != null) {
+            LottieAnimation(
+                composition = composition,
+                iterations = LottieConstants.IterateForever,
+                modifier = Modifier.size(220.dp),
             )
         }
     }

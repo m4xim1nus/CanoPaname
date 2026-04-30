@@ -52,9 +52,13 @@ import app.arbre.data.Season
 import app.arbre.data.rememberArbreRepository
 import app.arbre.data.rememberCaptureRepository
 import app.arbre.data.rememberSeasonStore
+import app.arbre.R
 import app.arbre.ui.common.ArchiveBanner
+import app.arbre.ui.common.EmptyState
 import app.arbre.ui.common.PhotoThumbnail
 import app.arbre.ui.common.SeasonSelector
+import androidx.compose.foundation.Image
+import androidx.compose.ui.res.painterResource
 import java.text.DateFormat
 import java.util.Date
 
@@ -221,7 +225,7 @@ private fun ListeView(
         } else if (tousRemarquables.isEmpty()) {
             item { LoadingState() }
         } else {
-            item { EmptyState() }
+            item { RemarquablesEmptyState() }
         }
     }
 }
@@ -423,11 +427,21 @@ private fun DiscoveredCard(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
-                Text(
-                    "★ Remarquable",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.primary,
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    Image(
+                        painter = painterResource(R.drawable.ic_remarquable_plaque),
+                        contentDescription = null,
+                        modifier = Modifier.size(14.dp),
+                    )
+                    Text(
+                        "Remarquable",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                }
                 arbre.adresse?.let {
                     Text(it, style = MaterialTheme.typography.bodySmall)
                 }
@@ -469,23 +483,18 @@ private fun LoadingState() {
 }
 
 @Composable
-private fun EmptyState() {
-    Card(modifier = Modifier.fillMaxWidth()) {
-        Column(
-            modifier = Modifier.padding(24.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            Text(
-                "Aucun remarquable capturé dans cette saison.",
-                style = MaterialTheme.typography.titleMedium,
+private fun RemarquablesEmptyState() {
+    EmptyState(
+        title = "Aucun remarquable capturé.",
+        body = "Pars à la chasse : la loupe en bas-gauche de la carte t'indique la distance au plus proche.",
+        illustration = {
+            Image(
+                painter = painterResource(R.drawable.illus_empty_remarquables),
+                contentDescription = null,
+                modifier = Modifier.fillMaxSize(),
             )
-            Text(
-                "Pars à la chasse : la loupe en bas-gauche de la carte t'indique la distance au plus proche.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-    }
+        },
+    )
 }
 
 private val DATE_FORMAT: DateFormat = DateFormat.getDateInstance(DateFormat.SHORT)

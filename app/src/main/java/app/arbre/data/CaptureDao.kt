@@ -44,4 +44,7 @@ interface CaptureDao {
 
     @Query("SELECT EXISTS(SELECT 1 FROM capture WHERE arbreId = :arbreId AND timestamp = :timestamp)")
     suspend fun captureExists(arbreId: Long, timestamp: Long): Boolean
+
+    @Query("SELECT EXISTS(SELECT 1 FROM capture WHERE speciesIndex = :speciesIndex AND remarquable = 0)")
+    suspend fun speciesAlreadyCaptured(speciesIndex: Int): Boolean
 }

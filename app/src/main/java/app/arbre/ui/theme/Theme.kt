@@ -1,14 +1,18 @@
 package app.arbre.ui.theme
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.graphics.Color
 import app.arbre.data.Season
+import app.arbre.data.rememberSeasonStore
 
 private val BaseLightColors = lightColorScheme(
     primary = FeuilleSombre,
@@ -43,19 +47,25 @@ fun ArbresTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     content: @Composable () -> Unit,
 ) {
-    // remember() : on calcule la saison une fois par recomposition initiale.
-    // Pas besoin de réagir à un changement de saison à la milliseconde —
-    // l'app est tuée et relancée tous les jours en pratique.
-    val season = remember { Season.current() }
+    val season by rememberSeasonStore().selected.collectAsState()
+    val motion = ArbresMotion()
     val baseScheme = if (darkTheme) BaseDarkColors else BaseLightColors
-    val tintedSurface = seasonalSurface(season, darkTheme)
+    val targetSurface = seasonalSurface(season, darkTheme)
+    val animatedSurface by animateColorAsState(
+        targetValue = targetSurface,
+        animationSpec = tween(durationMillis = motion.medium, easing = motion.swayEasing),
+        label = "seasonSurface",
+    )
     val colorScheme = baseScheme.copy(
-        surface = tintedSurface,
-        background = tintedSurface,
+        surface = animatedSurface,
+        background = animatedSurface,
     )
     val arbresColors = if (darkTheme) DarkArbresColors else LightArbresColors
 
-    CompositionLocalProvider(LocalArbresColors provides arbresColors) {
+    CompositionLocalProvider(
+        LocalArbresColors provides arbresColors,
+        LocalArbresMotion provides motion,
+    ) {
         MaterialTheme(
             colorScheme = colorScheme,
             typography = ArbresTypography,

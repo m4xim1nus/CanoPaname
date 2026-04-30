@@ -66,6 +66,10 @@ import app.arbre.data.Season
 import app.arbre.data.rememberBackupExporter
 import app.arbre.data.rememberBackupImporter
 import app.arbre.data.rememberCaptureRepository
+import app.arbre.R
+import app.arbre.ui.common.EmptyState
+import androidx.compose.foundation.Image
+import androidx.compose.ui.res.painterResource
 import kotlinx.coroutines.launch
 import java.text.DateFormat
 import java.util.Date
@@ -189,6 +193,21 @@ fun ProfileScreen(
                     onSelect = { scope = it },
                     currentSeason = currentSeason,
                 )
+            }
+            if (firstCaptureTs == null) {
+                item {
+                    EmptyState(
+                        title = "Ton aventure commence ici",
+                        body = "Approche-toi d'un arbre, capture-le pour révéler son espèce. Tes stats et tes badges s'écriront ici au fil des saisons.",
+                        illustration = {
+                            Image(
+                                painter = painterResource(R.drawable.illus_empty_profile),
+                                contentDescription = null,
+                                modifier = Modifier.fillMaxSize(),
+                            )
+                        },
+                    )
+                }
             }
             item {
                 StatsCard(

@@ -1,5 +1,7 @@
 package app.arbre.ui.common
 
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -27,6 +29,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import app.arbre.data.Season
+import app.arbre.ui.theme.arbresMotion
 
 /**
  * Sélecteur de saison discret : pill `Surface` cliquable (icône + label de
@@ -59,15 +62,27 @@ fun SeasonSelector(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
             ) {
-                Icon(
-                    imageVector = seasonIcon(selected),
-                    contentDescription = null,
-                    modifier = Modifier.size(18.dp),
-                )
-                Text(
-                    selected.label,
-                    style = MaterialTheme.typography.labelLarge,
-                )
+                Crossfade(
+                    targetState = selected,
+                    animationSpec = tween(MaterialTheme.arbresMotion.short),
+                    label = "seasonIcon",
+                ) { season ->
+                    Icon(
+                        imageVector = seasonIcon(season),
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp),
+                    )
+                }
+                Crossfade(
+                    targetState = selected,
+                    animationSpec = tween(MaterialTheme.arbresMotion.short),
+                    label = "seasonLabel",
+                ) { season ->
+                    Text(
+                        season.label,
+                        style = MaterialTheme.typography.labelLarge,
+                    )
+                }
             }
         }
         DropdownMenu(

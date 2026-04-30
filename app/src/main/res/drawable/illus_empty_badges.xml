@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Silhouette de médaille : ruban + cercle. Couleurs neutres/dorées tamisées. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="160dp"
+    android:height="160dp"
+    android:viewportWidth="160"
+    android:viewportHeight="160">
+    <!-- Ruban gauche -->
+    <path
+        android:fillColor="#9E8B6B"
+        android:fillAlpha="0.45"
+        android:pathData="M52,18 L72,80 L88,72 L68,18 Z" />
+    <!-- Ruban droit -->
+    <path
+        android:fillColor="#9E8B6B"
+        android:fillAlpha="0.45"
+        android:pathData="M108,18 L88,80 L72,72 L92,18 Z" />
+    <!-- Médaille -->
+    <path
+        android:fillColor="#C9A227"
+        android:fillAlpha="0.40"
+        android:pathData="M80,140 m-34,0 a34,34 0 1,0 68,0 a34,34 0 1,0 -68,0" />
+    <!-- Étoile centrée légère -->
+    <path
+        android:fillColor="#F5F1E6"
+        android:fillAlpha="0.55"
+        android:pathData="M80,116 L86,130 L101,131 L90,141 L93,156 L80,148 L67,156 L70,141 L59,131 L74,130 Z" />
+</vector>

@@ -56,9 +56,13 @@ import app.arbre.data.rememberCaptureRepository
 import app.arbre.data.rememberDatasetStats
 import app.arbre.data.rememberSeasonStore
 import app.arbre.data.rememberSpeciesIndex
+import app.arbre.R
 import app.arbre.ui.common.ArchiveBanner
+import app.arbre.ui.common.EmptyState
 import app.arbre.ui.common.PhotoThumbnail
 import app.arbre.ui.common.SeasonSelector
+import androidx.compose.foundation.Image
+import androidx.compose.ui.res.painterResource
 import java.text.DateFormat
 import java.util.Date
 
@@ -202,7 +206,7 @@ private fun ListeView(
                 )
             }
         } else {
-            item { EmptyState(season = selectedSeason, isArchive = isArchive) }
+            item { ArboretumEmptyState(season = selectedSeason, isArchive = isArchive) }
         }
     }
 }
@@ -442,25 +446,22 @@ private fun SpeciesCard(
 }
 
 @Composable
-private fun EmptyState(season: Season, isArchive: Boolean) {
-    Card(modifier = Modifier.fillMaxWidth()) {
-        Column(
-            modifier = Modifier.padding(24.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            Text(
-                if (isArchive) "Aucune capture en ${season.label.lowercase()}."
-                else "Premier ${season.label.lowercase()} ? Va capturer ton premier arbre.",
-                style = MaterialTheme.typography.titleMedium,
+private fun ArboretumEmptyState(season: Season, isArchive: Boolean) {
+    val title = if (isArchive) "Aucune capture en ${season.label.lowercase()}."
+                else "Premier ${season.label.lowercase()} ?"
+    val body = if (isArchive) "Reviens à la saison vive pour capturer."
+               else "Approche-toi d'un arbre, tape son pin gris et capture-le pour révéler son espèce."
+    EmptyState(
+        title = title,
+        body = body,
+        illustration = {
+            Image(
+                painter = painterResource(R.drawable.illus_empty_arboretum),
+                contentDescription = null,
+                modifier = Modifier.fillMaxSize(),
             )
-            Text(
-                if (isArchive) "Reviens à la saison vive pour capturer."
-                else "Approche-toi d'un arbre, tape son pin gris et capture-le pour révéler son espèce.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-    }
+        },
+    )
 }
 
 private val DATE_FORMAT: DateFormat = DateFormat.getDateInstance(DateFormat.SHORT)
