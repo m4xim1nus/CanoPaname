@@ -162,21 +162,22 @@ Pendant cette session, Claude Code peut être réquisitionné en parallèle pour
 4. **`BackupExporter.kt`** — `pkg.longVersionCode` requiert API 28, `minSdk = 26` → erreur Lint `NewApi`. Remplacé par `PackageInfoCompat.getLongVersionCode(pkg).toInt()` (`androidx.core.content.pm`, déjà tiré par `core-ktx`).
 5. **`BadgesScreen.kt`** — faux-positif Lint `ProduceStateDoesNotAssignValue` sur un `produceState` dont l'assignation `value = ...` est suspend. Suppression locale `@Suppress("ProduceStateDoesNotAssignValue")` ; le pattern est idiomatique.
 
-## Phase 10 — Polish v1.0 (rebranding + fixes UX)
+## Phase 10 — Polish v1.0 (rebranding + fixes UX) ✅
 
-Phase tampon entre la passe device de Phase 9 et la release publique de Phase 11. Pas de feature nouvelle : on transforme « Arbres » (nom de travail) en **CanoPaname** (nom produit), on règle les bugs de polish remontés en usage prolongé, et on referme les détails textuels. Tout doit être vert avant de figer le keystore prod et de pousser le repo public.
+Phase tampon entre la passe device de Phase 9 et la release publique de Phase 11. Pas de feature nouvelle : on transforme « Arbres » (nom de travail) en **CanoPaname** (nom produit), on règle les bugs de polish remontés en usage prolongé, et on referme les détails textuels. Les 4 tâches étaient strictement indépendantes (zéro fichier partagé) — elles ont été parallélisées sur 2 agents pendant que les fixes locaux tournaient en main thread.
 
-- [ ] **Rebranding `Arbres` → `CanoPaname`** — propager partout le nouveau nom :
-  - `app/src/main/res/values/strings.xml` : `app_name`, `welcome_title`, et tout autre string visible utilisateur portant « Arbres ».
-  - Display name OS (icône launcher) — vérifier sur le device après install.
-  - `README.md` : pitch, badges, accroche.
-  - `CLAUDE.md` : section *Contexte produit*.
-  - GitHub si possible (renommer le repo distant — vérifier que Claude Code continue de pointer dessus, ou renommer après le push public).
-  - **Ne PAS toucher au nom du dossier local** `arbre-app/` (risque de casser les paths dans les tools Claude Code) ni au package Kotlin `app.arbre` (refactor coûteux, pas visible utilisateur, on accepte le mismatch interne / externe).
-- [ ] **Splash cold-start figé** — au 1er run device, le splash apparaît mais ne joue ni sway, ni intro fade, ni progress bar. Cause probable : `Skipped 184 frames!` au cold start sature le main thread pendant la fenêtre de visibilité du splash, donc Choreographer ne tick pas les animations Compose. Pistes : (a) yielder explicitement (`withFrameNanos` ou `delay(16)`) avant `addArbresLayers(style, json)` pour donner au moins une frame au splash, (b) lazy-load le GeoJSON 32 Mo en deux passes (pré-affichage de la carte vide → injection des arbres après que le splash ait fini son intro 600 ms), (c) accepter le freeze et juste raccourcir le splash (cosmétique, pas de fix root cause).
-- [ ] **Cohérence iconographique des arbres** — `ic_launcher_foreground.xml` (utilisé sur splash custom + WelcomeScreen hero + monochrome themed icon) doit montrer le **même platane parisien** partout. Aujourd'hui il y aurait 2-3 silhouettes différentes (1 sapin restant sur WelcomeScreen, 1 platane sur splash, peut-être 1 autre dans la fiche-espèce). Auditer tous les drawables `ic_launcher_*`, `illus_empty_*`, et tout asset SVG dérivé. Une seule silhouette canonique → la dupliquer/tinter pour les variantes (themed, monochrome, empty states).
-- [ ] **« en printemps » → « au printemps »** — la préposition correcte en français est *au* (printemps) et *en* (hiver/été/automne). Concerné : `RemarquablesScreen.kt:378`, `ArboretumScreen.kt:365` + `:450`, `ProfileScreen.kt:374`. Le plus propre : helper `Season.preposition()` (« en » / « au ») dans `data/Season.kt`, branché dans les 4 sites au lieu de hardcoder « en » devant un label saisonnier.
-- [ ] **Bump versionCode → 8 / versionName → "0.8.0"** à la fermeture de Phase 10 — alignement avec phases livrées 0 → 8.
+- [x] **Rebranding `Arbres` → `CanoPaname`** ✅ — strict surface utilisateur. Touché : `strings.xml` (`app_name`, `welcome_title`), `themes.xml` (`Theme.Arbres*` → `Theme.CanoPaname*`), `AndroidManifest.xml` (refs themes seulement, `android:name=".ArbresApp"` intact), `MapOverlays.kt:160` (string hardcodée du `ColdStartSplash`), `README.md` (titre L1). Conservés intentionnellement : package `app.arbre`, classes Kotlin `Arbres*` (`ArbresApp`/`ArbresTheme`/`ArbresColors`/`ArbresMotion`/`ArbresNavHost`/`ArbresTypography`), IDs MapLibre (`ARBRES_SOURCE_ID`, `arbres-paris.geojson`), strings au sens trees (« capturer les arbres », « Arbres remarquables » dans `ProfileScreen:407`). Mismatch interne/externe assumé.
+- [x] **Splash cold-start figé** ✅ — stratégie « lazy 2-passes flip-avant-load » :
+  1. `addArbresLayers(style, EMPTY_GEOJSON)` → carte interactive immédiate, layers vides instantanées.
+  2. `arbresPrets = true` → splash joue son anim (sway, intro fade, progress) et sort proprement.
+  3. `setArbresGeoJson(style, json)` (nouvelle fonction `internal` dans `MapLayers.kt`) injecte les 217k features après — le freeze 700 ms du parsing natif MapLibre est masqué par « carte vide » au lieu d'un splash figé. Mode `MAP_FILTERED` reste en single-pass (corpus filtré < 1 Mo, freeze imperceptible). `EMPTY_GEOJSON` passe `internal` pour usage cross-fichier.
+- [x] **Cohérence iconographique des arbres** ✅ — silhouette platane unique partout :
+  - Nouveau `ic_arbre_canonical.xml` (viewport 24×24, fillColor `#FFFFFF` tintable, dérivé linéairement du path L16 de `ic_launcher_foreground.xml`).
+  - `illus_empty_arboretum.xml` et `illus_empty_remarquables.xml` réécrits sur le platane canonique 160×160 (`#7A8F6E` fillAlpha 0.40). La plaque chanfreinée verte + lettre R de remarquables conservées intactes.
+  - `WelcomeScreen.HeroLogo()` : `Icons.Outlined.Park` (sapin générique Material) → `painterResource(R.drawable.ic_arbre_canonical)` tinted `arbresColors.or`.
+  - `WelcomeAnimation()` : Lottie remplacé par animation Compose pure (`rememberInfiniteTransition` + `lerp` tint gris→vert + scale 0.85→1.0, 4 s en `RepeatMode.Reverse`). Asset `welcome_loop.json` supprimé, dossier `assets/animations/` retiré, dépendance `lottie-compose` retirée du catalog + `app/build.gradle.kts`.
+- [x] **« en printemps » → « au printemps »** ✅ — helper `val preposition: String get() = if (this == SPRING) "au" else "en"` ajouté dans l'enum `Season`. 3 callsites patchés (le ROADMAP citait 4 mais `ProfileScreen:374` mettait juste la saison entre parenthèses, sans préposition) : `ArboretumScreen.kt:365` + `:450` (empty state isArchive), `RemarquablesScreen.kt:378`.
+- [x] **Bump versionCode → 8 / versionName → "0.8.0"** ✅ — alignement avec phases livrées 0 → 8.
 
 ## Phase 11 — Préparation de la release v1.0.0
 

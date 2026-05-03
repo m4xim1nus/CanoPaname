@@ -26,6 +26,12 @@ enum class Season(val label: String) {
 
     val storedValue: Int get() = ordinal
 
+    /**
+     * Préposition française correcte devant le nom de saison :
+     * « au printemps » mais « en hiver / été / automne ».
+     */
+    val preposition: String get() = if (this == SPRING) "au" else "en"
+
     companion object {
         fun fromStored(value: Int): Season = entries[value]
 

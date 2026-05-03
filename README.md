@@ -1,4 +1,4 @@
-# Arbres
+# CanoPaname
 
 App Android pour partir à la chasse aux arbres remarquables de Paris, collectionner les espèces, et redécouvrir la ville par sa canopée.
 

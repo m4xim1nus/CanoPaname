@@ -157,7 +157,7 @@ internal fun ColdStartSplash() {
             )
             Spacer(Modifier.height(20.dp))
             Text(
-                text = "Arbres",
+                text = "CanoPaname",
                 color = Color.White,
                 style = MaterialTheme.typography.displayMedium,
             )

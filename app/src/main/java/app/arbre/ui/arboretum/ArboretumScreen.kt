@@ -362,7 +362,7 @@ private fun HeaderCard(
                 style = MaterialTheme.typography.titleLarge,
             )
             Text(
-                "en ${season.label.lowercase()}",
+                "${season.preposition} ${season.label.lowercase()}",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onPrimaryContainer,
             )
@@ -447,7 +447,7 @@ private fun SpeciesCard(
 
 @Composable
 private fun ArboretumEmptyState(season: Season, isArchive: Boolean) {
-    val title = if (isArchive) "Aucune capture en ${season.label.lowercase()}."
+    val title = if (isArchive) "Aucune capture ${season.preposition} ${season.label.lowercase()}."
                 else "Premier ${season.label.lowercase()} ?"
     val body = if (isArchive) "Reviens à la saison vive pour capturer."
                else "Approche-toi d'un arbre, tape son pin gris et capture-le pour révéler son espèce."

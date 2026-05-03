@@ -4,6 +4,13 @@ import android.Manifest
 import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -16,8 +23,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Park
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -28,17 +33,17 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import app.arbre.R
 import app.arbre.ui.theme.arbresColors
-import com.airbnb.lottie.compose.LottieAnimation
-import com.airbnb.lottie.compose.LottieCompositionSpec
-import com.airbnb.lottie.compose.LottieConstants
-import com.airbnb.lottie.compose.rememberLottieComposition
 
 /**
  * Écran de bienvenue + explication minimale du jeu, montré une seule fois
@@ -150,7 +155,7 @@ private fun HeroLogo() {
         contentAlignment = Alignment.Center,
     ) {
         Icon(
-            imageVector = Icons.Outlined.Park,
+            painter = painterResource(R.drawable.ic_arbre_canonical),
             contentDescription = null,
             tint = MaterialTheme.arbresColors.or,
             modifier = Modifier.size(56.dp),
@@ -159,28 +164,41 @@ private fun HeroLogo() {
 }
 
 /**
- * Boucle Lottie qui montre la mécanique : silhouette grise → coloration verte
- * → reset (4 s, repeat infini). Le composable charge l'asset et masque
- * gracieusement si la composition échoue (placeholder vide même hauteur).
+ * Boucle Compose pure qui montre la mécanique : silhouette grise petite
+ * (« pas encore capturé ») → silhouette verte pleine grandeur (« capturé »),
+ * avec interpolation continue. 4 s par cycle, repeat infini en reverse.
  */
 @Composable
 private fun WelcomeAnimation() {
-    val composition by rememberLottieComposition(
-        LottieCompositionSpec.Asset("animations/welcome_loop.json")
+    val infinite = rememberInfiniteTransition(label = "welcome")
+    val progress by infinite.animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 4000, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse,
+        ),
+        label = "welcomeProgress",
     )
+    // 0 = silhouette grise petite (pas encore capturé), 1 = vert plein scale 1.0 (capturé)
+    val grey = MaterialTheme.arbresColors.ecorce.copy(alpha = 0.5f)
+    val green = MaterialTheme.arbresColors.feuilleSombre
+    val tint = lerp(grey, green, progress)
+    val scale = 0.85f + 0.15f * progress
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .height(220.dp),
         contentAlignment = Alignment.Center,
     ) {
-        if (composition != null) {
-            LottieAnimation(
-                composition = composition,
-                iterations = LottieConstants.IterateForever,
-                modifier = Modifier.size(220.dp),
-            )
-        }
+        Image(
+            painter = painterResource(R.drawable.ic_arbre_canonical),
+            contentDescription = null,
+            colorFilter = ColorFilter.tint(tint),
+            modifier = Modifier
+                .size(180.dp)
+                .scale(scale),
+        )
     }
 }
 

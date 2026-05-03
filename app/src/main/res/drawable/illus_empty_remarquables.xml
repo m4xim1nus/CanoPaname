@@ -1,23 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Silhouette d'arbre + plaque verte rectangulaire (rappel des plaques
-     officielles « Arbre remarquable Ville de Paris »). -->
+<!-- Silhouette platane canonique unifiée + plaque chanfreinée verte
+     (rappel des plaques officielles « Arbre remarquable Ville de Paris »). -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="160dp"
     android:height="160dp"
     android:viewportWidth="160"
     android:viewportHeight="160">
-    <!-- Arbre (silhouette douce) -->
+    <!-- Arbre canonique (silhouette douce) -->
     <path
         android:fillColor="#7A8F6E"
         android:fillAlpha="0.40"
-        android:pathData="M80,28
-            C 56,28 40,46 40,68
-            C 26,72 22,90 36,98
-            C 30,114 50,126 66,118
-            L 66,140 L 94,140 L 94,118
-            C 110,126 130,114 124,98
-            C 138,90 134,72 120,68
-            C 120,46 104,28 80,28 Z" />
+        android:pathData="M71.1,133.3 L71.1,97.8 C56.3,97.8 44.4,91.9 38.5,80 C32.6,77 32.6,65.2 35.6,56.3 C32.6,44.4 41.5,32.6 53.3,32.6 C56.3,23.7 68.1,17.8 80,17.8 C91.9,17.8 103.7,23.7 106.7,32.6 C118.5,32.6 127.4,44.4 124.4,56.3 C127.4,65.2 127.4,77 121.5,80 C115.6,91.9 103.7,97.8 88.9,97.8 L88.9,133.3 Z" />
     <!-- Plaque chanfreinée (coin haut-droit coupé) sur le tronc -->
     <path
         android:fillColor="#2E7D32"

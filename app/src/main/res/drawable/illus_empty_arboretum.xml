@@ -1,27 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Silhouette d'arbre nu (pré-feuilles), plus aérienne que le platane plein
-     du launcher. Évoque le « pas encore » de l'Arboretum sans capture. -->
+<!-- Silhouette platane canonique unifiée (cf. ic_arbre_canonical) en
+     viewport 160x160, fillAlpha 0.40 pour évoquer le « pas encore » de
+     l'Arboretum sans capture. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="160dp"
     android:height="160dp"
     android:viewportWidth="160"
     android:viewportHeight="160">
-    <!-- Tronc -->
-    <path
-        android:fillColor="#9E8B6B"
-        android:fillAlpha="0.55"
-        android:pathData="M76,140 L76,90 L84,90 L84,140 Z" />
-    <!-- Canopée en cercles superposés (silhouette douce) -->
     <path
         android:fillColor="#7A8F6E"
         android:fillAlpha="0.40"
-        android:pathData="M80,30
-            C 60,30 44,46 44,66
-            C 28,68 22,84 32,96
-            C 24,108 36,122 52,118
-            C 56,128 76,128 80,118
-            C 84,128 104,128 108,118
-            C 124,122 136,108 128,96
-            C 138,84 132,68 116,66
-            C 116,46 100,30 80,30 Z" />
+        android:pathData="M71.1,133.3 L71.1,97.8 C56.3,97.8 44.4,91.9 38.5,80 C32.6,77 32.6,65.2 35.6,56.3 C32.6,44.4 41.5,32.6 53.3,32.6 C56.3,23.7 68.1,17.8 80,17.8 C91.9,17.8 103.7,23.7 106.7,32.6 C118.5,32.6 127.4,44.4 124.4,56.3 C127.4,65.2 127.4,77 121.5,80 C115.6,91.9 103.7,97.8 88.9,97.8 L88.9,133.3 Z" />
 </vector>

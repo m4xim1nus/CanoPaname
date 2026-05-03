@@ -251,14 +251,17 @@ fun MapScreen(
                     }
                     scope.launch {
                         try {
-                            val rawJson = app.arbresGeoJsonAsync.await()
-                            val tJson = android.os.SystemClock.elapsedRealtime()
-                            android.util.Log.i(
-                                "MapScreen",
-                                "GeoJSON disponible (process+${tJson - tProcess}ms, ${rawJson.length / 1_000_000}Mo)",
-                            )
-                            val json = if (filterSpecies != null) {
-                                withContext(Dispatchers.Default) {
+                            if (filterSpecies != null) {
+                                // Mode filtré : single-pass. Le GeoJSON filtré est
+                                // petit (~max 38k features pour Platanus, < 1 Mo),
+                                // le freeze d'`addArbresLayers` reste imperceptible.
+                                val rawJson = app.arbresGeoJsonAsync.await()
+                                val tJson = android.os.SystemClock.elapsedRealtime()
+                                android.util.Log.i(
+                                    "MapScreen",
+                                    "GeoJSON disponible (process+${tJson - tProcess}ms, ${rawJson.length / 1_000_000}Mo)",
+                                )
+                                val json = withContext(Dispatchers.Default) {
                                     filterGeoJsonBySpecies(rawJson, filterSpecies)
                                 }.also { filtered ->
                                     val tFilter = android.os.SystemClock.elapsedRealtime()
@@ -267,15 +270,46 @@ fun MapScreen(
                                         "GeoJSON filtré sk=$filterSpecies (process+${tFilter - tProcess}ms, ${filtered.length / 1024}ko)",
                                     )
                                 }
-                            } else rawJson
-                            addArbresLayers(style, json)
-                            styleRef = style
-                            arbresPrets = true
-                            val tLayers = android.os.SystemClock.elapsedRealtime()
-                            android.util.Log.i(
-                                "MapScreen",
-                                "Layers posées (process+${tLayers - tProcess}ms, total cold start)",
-                            )
+                                addArbresLayers(style, json)
+                                styleRef = style
+                                arbresPrets = true
+                                val tLayers = android.os.SystemClock.elapsedRealtime()
+                                android.util.Log.i(
+                                    "MapScreen",
+                                    "Layers posées (process+${tLayers - tProcess}ms, total filtered)",
+                                )
+                            } else {
+                                // Cold-start global : 2-passes flip-avant-load.
+                                // Le `GeoJsonSource` ctor parse le JSON 32 Mo sur le UI
+                                // thread (exigence MapLibre, cf. bug Phase 9 §4) et
+                                // bloque ~700 ms — pendant ce temps Choreographer ne
+                                // tique pas et le splash apparaît figé. Solution :
+                                // on pose les layers VIDES (instantané), on flip
+                                // `arbresPrets = true` pour que le splash joue son anim
+                                // et sorte proprement, puis on injecte les arbres
+                                // via `setArbresGeoJson` après — le freeze 700 ms est
+                                // alors masqué par « carte vide » au lieu du splash.
+                                addArbresLayers(style, EMPTY_GEOJSON)
+                                styleRef = style
+                                arbresPrets = true
+                                val tEmpty = android.os.SystemClock.elapsedRealtime()
+                                android.util.Log.i(
+                                    "MapScreen",
+                                    "Layers vides posées (process+${tEmpty - tProcess}ms, splash exit)",
+                                )
+                                val rawJson = app.arbresGeoJsonAsync.await()
+                                val tJson = android.os.SystemClock.elapsedRealtime()
+                                android.util.Log.i(
+                                    "MapScreen",
+                                    "GeoJSON disponible (process+${tJson - tProcess}ms, ${rawJson.length / 1_000_000}Mo)",
+                                )
+                                setArbresGeoJson(style, rawJson)
+                                val tLayers = android.os.SystemClock.elapsedRealtime()
+                                android.util.Log.i(
+                                    "MapScreen",
+                                    "Arbres injectés (process+${tLayers - tProcess}ms, total cold start)",
+                                )
+                            }
                         } catch (e: Throwable) {
                             android.util.Log.e("MapScreen", "Échec chargement arbres", e)
                         }

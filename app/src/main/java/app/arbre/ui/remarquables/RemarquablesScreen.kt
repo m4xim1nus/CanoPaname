@@ -375,7 +375,7 @@ private fun HeaderCard(
                 style = MaterialTheme.typography.titleLarge,
             )
             Text(
-                "en ${season.label.lowercase()}",
+                "${season.preposition} ${season.label.lowercase()}",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onPrimaryContainer,
             )

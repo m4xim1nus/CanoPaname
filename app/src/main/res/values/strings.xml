@@ -1,11 +1,11 @@
 <resources>
-    <string name="app_name">Arbres</string>
+    <string name="app_name">CanoPaname</string>
     <string name="permission_location_rationale">Active la position pour capturer les arbres autour de toi (moins de 30 m). Tout reste sur ton téléphone.</string>
     <!-- OpenFreeMap : tuiles vectorielles OSM gratuites, sans clé. Voir https://openfreemap.org -->
     <string name="map_style_url">https://tiles.openfreemap.org/styles/liberty</string>
 
     <!-- Onboarding (Phase 5.5) -->
-    <string name="welcome_title">Arbres</string>
+    <string name="welcome_title">CanoPaname</string>
     <string name="welcome_tagline">Chasse les arbres remarquables de Paris</string>
     <string name="welcome_bullet_grey">Tous les pins de la carte commencent gris.</string>
     <string name="welcome_bullet_proximity">Approche-toi à moins de 30 m d\'un arbre pour le capturer.</string>

@@ -27,7 +27,7 @@ private val PIN_GREEN: String = MapColors.PIN_GREEN
 private val PIN_ORANGE: String = MapColors.PIN_ORANGE
 private val PIN_GREY: String = MapColors.PIN_GREY
 
-private const val EMPTY_GEOJSON = "{\"type\":\"FeatureCollection\",\"features\":[]}"
+internal const val EMPTY_GEOJSON = "{\"type\":\"FeatureCollection\",\"features\":[]}"
 
 /**
  * Construit le `GeoJsonSource` ET attache layers. DOIT être appelé sur le
@@ -85,6 +85,22 @@ internal fun addArbresLayers(style: Style, json: String) {
     )
     count.setFilter(has("point_count"))
     style.addLayer(count)
+}
+
+/**
+ * Réinjecte le GeoJSON dans la source existante. Utilisé par la stratégie
+ * 2-passes du cold-start : on pose `addArbresLayers(style, EMPTY_GEOJSON)`
+ * pour libérer le splash, puis on appelle ceci pour injecter les 217k
+ * features. Le parsing 32 Mo bloque ~700 ms le UI thread mais à ce moment
+ * la carte est déjà visible (splash sorti) — le freeze passe pour un
+ * « pas encore d'arbres » au lieu d'un splash figé.
+ *
+ * Doit être appelé sur le thread UI (même contrainte MapLibre que le ctor
+ * de `GeoJsonSource` — cf. bug Phase 9 §4).
+ */
+internal fun setArbresGeoJson(style: Style, json: String) {
+    val source = style.getSourceAs<GeoJsonSource>(ARBRES_SOURCE_ID) ?: return
+    source.setGeoJson(json)
 }
 
 /**
