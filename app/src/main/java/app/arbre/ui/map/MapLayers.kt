@@ -29,6 +29,13 @@ private val PIN_GREY: String = MapColors.PIN_GREY
 
 private const val EMPTY_GEOJSON = "{\"type\":\"FeatureCollection\",\"features\":[]}"
 
+/**
+ * Construit le `GeoJsonSource` ET attache layers. DOIT être appelé sur le
+ * thread UI : MapLibre throw `CalledFromWorkerThreadException` dès le ctor
+ * de `GeoJsonSource` si on essaye de paralléliser. Le parse 30 Mo se fait
+ * donc sur Main — la stratégie « anti-freeze » est ailleurs (ne pas démarrer
+ * tant que le splash n'a pas eu le temps de se rendre).
+ */
 internal fun addArbresLayers(style: Style, json: String) {
     val source = GeoJsonSource(
         ARBRES_SOURCE_ID,

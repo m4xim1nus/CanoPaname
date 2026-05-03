@@ -12,7 +12,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.rotate
-import androidx.compose.ui.input.pointer.pointerInput
 import app.arbre.data.Season
 import app.arbre.ui.theme.arbresColors
 import app.arbre.ui.theme.arbresMotion
@@ -23,8 +22,11 @@ import kotlin.random.Random
 /**
  * Couche ambiante éphémère qui flotte au-dessus de l'écran 2-3 s à chaque
  * changement de saison. Particules saisonnières (flocon → pétale → feuille
- * verte → feuille cuivrée), purement décoratives, non bloquantes pour les
- * inputs (cf. `pointerInput {}` vide).
+ * verte → feuille cuivrée), purement décoratives.
+ *
+ * Le Canvas n'attache aucun `pointerInput` : un `pointerInput {}` même vide
+ * intercepte les events (consume), il NE faut PAS l'ajouter ici sinon la
+ * carte sous-jacente devient non-interactive.
  *
  * `triggerKey` doit être quelque chose qui change à chaque switch (la saison
  * elle-même fait l'affaire). Le composable se monte avec animation 0→1, puis
@@ -68,9 +70,7 @@ fun SeasonAmbience(
     }
 
     Canvas(
-        modifier = modifier
-            .fillMaxSize()
-            .pointerInput(Unit) {} // bloque rien : laisse passer les events
+        modifier = modifier.fillMaxSize(),
     ) {
         if (progress >= 1f) return@Canvas
         val w = size.width

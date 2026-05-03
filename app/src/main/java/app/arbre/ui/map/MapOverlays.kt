@@ -1,8 +1,8 @@
 package app.arbre.ui.map
 
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
@@ -29,7 +29,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
@@ -122,11 +124,18 @@ internal fun ColdStartSplash() {
         ),
         label = "swayAngle",
     )
-    val intro by animateFloatAsState(
-        targetValue = 1f,
-        animationSpec = tween(durationMillis = motion.medium, easing = motion.swayEasing),
-        label = "intro",
-    )
+    // `Animatable` plutôt que `animateFloatAsState(targetValue = 1f)` : le
+    // second saute directement à 1f à la 1re composition (pas d'animation
+    // visible) parce qu'il n'y a pas de valeur précédente vers laquelle
+    // interpoler. L'Animatable part explicitement de 0f puis va à 1f.
+    val intro = remember { Animatable(0f) }
+    LaunchedEffect(Unit) {
+        intro.animateTo(
+            targetValue = 1f,
+            animationSpec = tween(durationMillis = motion.medium, easing = motion.swayEasing),
+        )
+    }
+    val introValue = intro.value
 
     Box(
         modifier = Modifier
@@ -136,14 +145,14 @@ internal fun ColdStartSplash() {
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.graphicsLayer { alpha = intro },
+            modifier = Modifier.graphicsLayer { alpha = introValue },
         ) {
             Image(
                 painter = painterResource(R.drawable.ic_launcher_foreground),
                 contentDescription = null,
                 modifier = Modifier
                     .size(168.dp)
-                    .scale(0.85f + intro * 0.15f)
+                    .scale(0.85f + introValue * 0.15f)
                     .graphicsLayer { rotationZ = sway },
             )
             Spacer(Modifier.height(20.dp))
@@ -180,11 +189,13 @@ internal fun ColdStartSplash() {
 internal fun FilterSplash(speciesLabel: String) {
     val splashGreen = MaterialTheme.colorScheme.primary
     val motion = MaterialTheme.arbresMotion
-    val intro by animateFloatAsState(
-        targetValue = 1f,
-        animationSpec = tween(durationMillis = motion.short, easing = motion.swayEasing),
-        label = "filterIntro",
-    )
+    val intro = remember { Animatable(0f) }
+    LaunchedEffect(Unit) {
+        intro.animateTo(
+            targetValue = 1f,
+            animationSpec = tween(durationMillis = motion.short, easing = motion.swayEasing),
+        )
+    }
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -195,7 +206,7 @@ internal fun FilterSplash(speciesLabel: String) {
             horizontalAlignment = Alignment.CenterHorizontally,
             modifier = Modifier
                 .padding(horizontal = 48.dp)
-                .graphicsLayer { alpha = intro },
+                .graphicsLayer { alpha = intro.value },
         ) {
             Text(
                 text = "Filtrage de $speciesLabel…",

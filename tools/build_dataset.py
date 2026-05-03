@@ -825,6 +825,12 @@ def build(csv_path: Path, db_path: Path, geojson_path: Path) -> None:
     cur = con.cursor()
     cur.execute("PRAGMA journal_mode=OFF")
     cur.execute("PRAGMA synchronous=OFF")
+    # Room lit `PRAGMA user_version` pour décider du chemin de migration.
+    # L'asset ship en v1 (table `arbre` seule) ; MIGRATION_1_2 côté Kotlin
+    # ajoute la table `capture` à la 1re ouverture. Sans ce pragma, Room voit
+    # v0 sans migration 0→2 et tombe en `fallbackToDestructiveMigration`,
+    # qui re-copie l'asset à v0 → boucle, table `capture` jamais créée.
+    cur.execute("PRAGMA user_version = 1")
     for stmt in SCHEMA_SQL:
         cur.execute(stmt)
 

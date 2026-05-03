@@ -18,7 +18,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
@@ -40,9 +39,11 @@ import kotlin.math.roundToInt
  *  - un cœur scale 1× → 1.5× → 1× sur la même fenêtre,
  *  - si 1re espèce, le binomial Fraunces qui flotte 800 ms au-dessus puis fade.
  *
- * Non bloquant pour les inputs (`pointerInput {}` vide). La recoloration
- * gris→vert du point reste pilotée par `applyDiscoveryColor` (Flow Room) ;
- * on ne synchronise pas explicitement, l'effet visuel se superpose bien.
+ * NE PAS attacher de `pointerInput` (même vide) : un `pointerInput {}` vide
+ * intercepte les touches et empêche la carte sous-jacente de zoomer/panner.
+ * La recoloration gris→vert du point reste pilotée par `applyDiscoveryColor`
+ * (Flow Room) ; on ne synchronise pas explicitement, l'effet visuel se
+ * superpose bien.
  */
 @Composable
 fun CaptureCelebrationOverlay(
@@ -81,9 +82,7 @@ fun CaptureCelebrationOverlay(
     }
 
     Box(
-        modifier = modifier
-            .fillMaxSize()
-            .pointerInput(Unit) {}
+        modifier = modifier.fillMaxSize(),
     ) {
         val current = active ?: return@Box
         val map = mapRef ?: return@Box

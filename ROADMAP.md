@@ -126,7 +126,7 @@ Sprint court (~3 jours) entre Phase 7 (texture sensorielle, qui ajoute du code) 
 
   Le refactor du `@Composable MapScreen` lui-même (extraction `MapHostView` / `MapFabs` / `MapSheets` / `MapPermissions`) est laissé à plus tard — risque de casser le lifecycle `MapView` sans environnement de build pour valider, et les FABs sont fortement couplés à l'état du Composable parent (snackbar, viewModel, scope, captureRepo, captureController). À reprendre quand on veut splitter le hub de navigation (idée-vrac CPO #10).
 
-## Phase 9 — Build et tests manuels device
+## Phase 9 — Build et tests manuels device ✅
 
 Première session devant le téléphone GrapheneOS depuis longtemps : on a accumulé 8 phases (Sprints H/I, Phase 3 → 8) sans validation device, donc une grosse séance de smoke + régression avant de penser à la release publique.
 
@@ -140,8 +140,17 @@ Pendant cette session, Claude Code peut être réquisitionné en parallèle pour
 - [x] **Tests JVM verts** ✅ — `./gradlew :app:testDebugUnitTest` → 34 cas verts (`BadgeEvaluator` + `BackupImporter`, le ROADMAP annonçait 30 mais le décompte réel est 34).
 - [x] **detekt baseline** ✅ — `app/detekt-baseline.xml` (15 lignes legacy : `MapScreen`, `ArbresNavHost`, `ProfileScreen`, `ArbreDetailScreen`). `./gradlew :app:detekt` → 0 issue.
 - [x] **Build release** ✅ — `./gradlew assembleRelease` (fallback debug-signing) → APK 59 Mo, R8/ProGuard OK, signature v2 vérifiée par `apksigner verify`.
-- [ ] **Run TESTS.md à fond** — sections 2 → 13 (smoke device manuel), à dérouler dans une nouvelle conversation. Noter les bugs en section finale `## Bugs trouvés` de TESTS.md.
-- [ ] **Bump versionCode → 8 / versionName → "0.8.0"** une fois Phase 9 close — ouvre la voie à Phase 10 / release publique.
+- [x] **Smoke device — première passe** ✅ (2026-05-03) — flows principaux validés (onboarding, carte interactive, capture, Arboretum, remarquables, profil, badges, saisonnalité, motion). 4 bugs critiques attrapés et fixés en cours de session, listés ci-dessous. Reste des sous-sections de `TESTS.md` à cocher demain en usage prolongé sur le device — bascule en Phase 10 plutôt que de bloquer la fermeture de Phase 9.
+- [ ] **Bump versionCode → 8 / versionName → "0.8.0"** à la fin de Phase 10 (avec les fixes polish).
+
+### Bugs Phase 9 — corrigés pendant le smoke device
+
+4 bugs trouvés au 1er run device (2026-05-03), tous fixés dans la foulée :
+
+1. **Asset DB v0 → fallback destructif → table `capture` jamais créée** — `tools/build_dataset.py` ne settait pas `PRAGMA user_version` sur l'asset DB. Room voyait `user_version = 0` à la 1re ouverture, ne trouvait pas de migration `0→2`, déclenchait `fallbackToDestructiveMigration()` → re-copie de l'asset (toujours v0) → la migration `1→2` ne tournait jamais → crash `SQLiteException: no such table: capture`. Fix : `PRAGMA user_version = 1` ajouté côté script + asset existant patché en place (sans regénérer 217 k rows).
+2. **Carte non-interactive (zoom/pan/tap bloqués)** — `SeasonAmbience` (Canvas overlay des particules saisonnières) attachait un `pointerInput(Unit) {}` censé « laisser passer les events » d'après le commentaire. En réalité un `pointerInput {}` vide INTERCEPTE les events au lieu de les forwarder. Même bug dans `CaptureCelebrationOverlay`. Fix : `pointerInput` retiré des deux composables, un Canvas sans pointerInput laisse passer naturellement les events vers les composables sous-jacents.
+3. **Sélecteur de saison hors de sa place** — la pill `SeasonSelector` traînait sur la carte alors qu'elle vit naturellement dans Profil/Arboretum/Remarquables (3 écrans qui exposent des stats). La carte affiche désormais toujours `Season.current()`. `ArchiveBanner` + branche `isArchive` retirés de `MapScreen`.
+4. **Splash bloqué (régression introduite par tentative d'optim)** — `GeoJsonSource(json)` appelé sur `Dispatchers.Default` jetait `CalledFromWorkerThreadException` (MapLibre exige le UI thread sur les sources). L'exception était attrapée par le `catch (Throwable)`, `arbresPrets` ne devenait jamais `true`, splash affiché indéfiniment. Fix : revert sur Main (le freeze ~700 ms du parsing 32 Mo est toléré ; régler le « splash sans animation » est traité en Phase 10).
 
 ### Bugs Phase 9 — corrigés en build & tests headless
 
@@ -153,7 +162,23 @@ Pendant cette session, Claude Code peut être réquisitionné en parallèle pour
 4. **`BackupExporter.kt`** — `pkg.longVersionCode` requiert API 28, `minSdk = 26` → erreur Lint `NewApi`. Remplacé par `PackageInfoCompat.getLongVersionCode(pkg).toInt()` (`androidx.core.content.pm`, déjà tiré par `core-ktx`).
 5. **`BadgesScreen.kt`** — faux-positif Lint `ProduceStateDoesNotAssignValue` sur un `produceState` dont l'assignation `value = ...` est suspend. Suppression locale `@Suppress("ProduceStateDoesNotAssignValue")` ; le pattern est idiomatique.
 
-## Phase 10 — Préparation de la release v1.0.0
+## Phase 10 — Polish v1.0 (rebranding + fixes UX)
+
+Phase tampon entre la passe device de Phase 9 et la release publique de Phase 11. Pas de feature nouvelle : on transforme « Arbres » (nom de travail) en **CanoPaname** (nom produit), on règle les bugs de polish remontés en usage prolongé, et on referme les détails textuels. Tout doit être vert avant de figer le keystore prod et de pousser le repo public.
+
+- [ ] **Rebranding `Arbres` → `CanoPaname`** — propager partout le nouveau nom :
+  - `app/src/main/res/values/strings.xml` : `app_name`, `welcome_title`, et tout autre string visible utilisateur portant « Arbres ».
+  - Display name OS (icône launcher) — vérifier sur le device après install.
+  - `README.md` : pitch, badges, accroche.
+  - `CLAUDE.md` : section *Contexte produit*.
+  - GitHub si possible (renommer le repo distant — vérifier que Claude Code continue de pointer dessus, ou renommer après le push public).
+  - **Ne PAS toucher au nom du dossier local** `arbre-app/` (risque de casser les paths dans les tools Claude Code) ni au package Kotlin `app.arbre` (refactor coûteux, pas visible utilisateur, on accepte le mismatch interne / externe).
+- [ ] **Splash cold-start figé** — au 1er run device, le splash apparaît mais ne joue ni sway, ni intro fade, ni progress bar. Cause probable : `Skipped 184 frames!` au cold start sature le main thread pendant la fenêtre de visibilité du splash, donc Choreographer ne tick pas les animations Compose. Pistes : (a) yielder explicitement (`withFrameNanos` ou `delay(16)`) avant `addArbresLayers(style, json)` pour donner au moins une frame au splash, (b) lazy-load le GeoJSON 32 Mo en deux passes (pré-affichage de la carte vide → injection des arbres après que le splash ait fini son intro 600 ms), (c) accepter le freeze et juste raccourcir le splash (cosmétique, pas de fix root cause).
+- [ ] **Cohérence iconographique des arbres** — `ic_launcher_foreground.xml` (utilisé sur splash custom + WelcomeScreen hero + monochrome themed icon) doit montrer le **même platane parisien** partout. Aujourd'hui il y aurait 2-3 silhouettes différentes (1 sapin restant sur WelcomeScreen, 1 platane sur splash, peut-être 1 autre dans la fiche-espèce). Auditer tous les drawables `ic_launcher_*`, `illus_empty_*`, et tout asset SVG dérivé. Une seule silhouette canonique → la dupliquer/tinter pour les variantes (themed, monochrome, empty states).
+- [ ] **« en printemps » → « au printemps »** — la préposition correcte en français est *au* (printemps) et *en* (hiver/été/automne). Concerné : `RemarquablesScreen.kt:378`, `ArboretumScreen.kt:365` + `:450`, `ProfileScreen.kt:374`. Le plus propre : helper `Season.preposition()` (« en » / « au ») dans `data/Season.kt`, branché dans les 4 sites au lieu de hardcoder « en » devant un label saisonnier.
+- [ ] **Bump versionCode → 8 / versionName → "0.8.0"** à la fermeture de Phase 10 — alignement avec phases livrées 0 → 8.
+
+## Phase 11 — Préparation de la release v1.0.0
 
 - [ ] **CI GitHub Actions** — workflow `.github/workflows/build.yml` qui exécute `./gradlew assembleDebug test detekt` sur push et PR (le test passera grâce à Phase 8, detekt aussi). Job de release optionnel sur tag `v*` qui produit l'APK signé via secrets GitHub (keystore + passwords stockés en `secrets.RELEASE_KEYSTORE_BASE64` etc.). 1-2 h de setup.
 - [ ] À la veille de la `v1.0.0` : générer keystore release prod, pousser repo public sur GitHub, créer GitHub Release avec APK signé, exposer URL Obtainium. La machinerie côté `build.gradle.kts` est prête (Phase 6) — ne reste plus qu'à provisionner le keystore et le rendre public.

@@ -385,7 +385,19 @@ Si quelque chose te bloque pendant le test, **demande-moi avant de bricoler** �
 
 Format : `[Section §X.Y] Description courte. Stack/log si pertinent. → action proposée.`
 
-- [ ] (rien pour l'instant)
+### Session 2026-05-03 — 1er smoke device (4 bugs critiques fixés en cours)
 
-À transformer en commits hotfix en fin de session, à pousser sur la branche avant de fermer Phase 9 et bumper en `0.8.0`.
+- [x] **[§2 cold start]** Crash au 1er lancement, app meurt après 2 s. Logcat : `SQLiteException: no such table: capture (code 1 SQLITE_ERROR)` puis `file unlinked while open: arbres-paris.db`. → Asset DB shippé en `user_version = 0` (script Python ne settait pas le pragma), Room cible v2 sans migration `0→2` → `fallbackToDestructiveMigration` re-copie l'asset (toujours v0) en boucle, migration `1→2` jamais exécutée, table `capture` jamais créée. Fix : `PRAGMA user_version = 1` ajouté à `tools/build_dataset.py` + asset existant patché en place.
+- [x] **[§4 carte]** Carte non-interactive : zoom/pan/tap bloqués, FAB « centrer sur ma position » fonctionne (preuve que la carte sous-jacente est OK, c'est un overlay qui swallow les touches). → 2 sites : `SeasonAmbience.kt` et `CaptureCelebrationOverlay.kt` attachaient `pointerInput(Unit) {}` censé être un no-op « laisse passer les events ». Faux — un `pointerInput {}` vide INTERCEPTE les events sans les forwarder. Fix : `pointerInput` retiré des deux Canvas overlay.
+- [x] **[§4 carte]** Sélecteur de saison sur la carte n'a pas de raison d'être (la carte n'est pas un écran de stats, et Profil/Arboretum/Remarquables ont déjà chacun leur sélecteur). → Retrait du `SeasonSelector` + `ArchiveBanner` + branche `isArchive` de `MapScreen`. La carte affiche toujours `Season.current()`.
+- [x] **[§2 splash]** Splash bloqué après une optim ratée (régression introduite en cours de session) — `GeoJsonSource(json)` appelé sur `Dispatchers.Default` jetait `CalledFromWorkerThreadException` immédiatement (MapLibre exige UI thread sur sources). Exception attrapée par `catch (Throwable)`, `arbresPrets` jamais setté, splash affiché indéfiniment. → Revert : `addArbresLayers(style, json)` sur Main comme avant. Le freeze ~700 ms du parsing 32 Mo est toléré.
+
+### Restant — non-bloquant, basculé en Phase 10 (polish v1.0)
+
+- [ ] **[§2 splash]** Splash apparaît mais aucune animation visible (sway, intro fade, progress bar). Cause : `Skipped 184 frames!` au cold start sature le main thread pile pendant la fenêtre de visibilité du splash → Choreographer ne tick pas. Voir Phase 10 ROADMAP pour pistes de fix.
+- [ ] **[§3 onboarding]** Sapin présent sur WelcomeScreen alors que le reste de l'app utilise un platane. 2-3 silhouettes différentes coexistent dans les écrans de chargement / hero. → Audit drawables + dédup en Phase 10.
+- [ ] **[transverse]** Nom d'app « Arbres » → renommer en **CanoPaname** partout (strings, README, GitHub, OS). Décidé en fin de Phase 9, traité en Phase 10.
+- [ ] **[transverse]** « en printemps » → « au printemps » (préposition correcte). 4 sites identifiés (`RemarquablesScreen`, `ArboretumScreen` ×2, `ProfileScreen`). Helper `Season.preposition()` à introduire en Phase 10.
+
+À transformer en commits hotfix en fin de session, à pousser sur la branche avant de fermer Phase 9 et bumper en `0.8.0`. Phase 9 fermée 2026-05-03 sur les 4 bugs critiques fixés ; le reste passe en Phase 10.
 
