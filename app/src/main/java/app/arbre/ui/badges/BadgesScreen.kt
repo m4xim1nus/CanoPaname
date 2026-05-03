@@ -69,6 +69,7 @@ fun BadgesScreen(onBack: () -> Unit) {
     // Vieux sage / arrondissements / espèce rare). Re-déclenché dès que
     // le set d'ids change — pas à chaque tick.
     val arbreIds = remember(captures) { captures.map { it.arbreId }.toSet() }
+    @Suppress("ProduceStateDoesNotAssignValue")
     val arbresById by produceState(
         initialValue = emptyMap<Long, Arbre>(),
         key1 = arbreIds,

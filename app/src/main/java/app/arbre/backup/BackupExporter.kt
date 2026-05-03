@@ -3,6 +3,7 @@ package app.arbre.backup
 import android.content.Context
 import android.net.Uri
 import android.util.Log
+import androidx.core.content.pm.PackageInfoCompat
 import app.arbre.data.CaptureDao
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -36,7 +37,7 @@ class BackupExporter(
             val captures = captureDao.allCapturesSnapshot()
             val pkg = context.packageManager.getPackageInfo(context.packageName, 0)
             val meta = BackupMeta(
-                appVersionCode = pkg.longVersionCode.toInt(),
+                appVersionCode = PackageInfoCompat.getLongVersionCode(pkg).toInt(),
                 appVersionName = pkg.versionName ?: "",
                 schemaVersion = CURRENT_SCHEMA_VERSION,
                 captureCount = captures.size,

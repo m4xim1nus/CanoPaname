@@ -136,12 +136,22 @@ Le détail du protocole de test est dans **`TESTS.md`** à la racine du repo : 1
 
 Pendant cette session, Claude Code peut être réquisitionné en parallèle pour exécuter des `./gradlew …` ou `adb …`, lire des logs, fabriquer des données de test (ex. `BackupImporter` avec un zip généré), comparer des sorties — voir `TESTS.md` § « Ce que Claude peut faire à tes côtés ».
 
-- [ ] **Build debug + install device** — `./gradlew installDebug`, app se lance sur GrapheneOS, splash natif visible, transition vers le splash custom Compose sans flicker.
-- [ ] **Tests JVM verts** — `./gradlew :app:testDebugUnitTest` doit passer (30 cas répartis sur `BadgeEvaluator` et `BackupImporter`).
-- [ ] **detekt baseline** — `./gradlew :app:detektBaseline` puis `./gradlew :app:detekt` doit sortir 0 issue. Commiter `detekt-baseline.xml` à la racine ou sous `app/`.
-- [ ] **Build release** — `./gradlew assembleRelease` (fallback signing debug si pas de `local.properties`). Vérifier que le minify ProGuard ne casse rien (smoke onboarding + capture sur APK release).
-- [ ] **Run TESTS.md à fond** — cocher tous les items, noter les bugs dans une nouvelle section « Bugs Phase 9 » de la ROADMAP. À traiter en hotfix avant Phase 10.
+- [x] **Build debug + install device** ✅ — `./gradlew installDebug` sur Pixel 9a (GrapheneOS), APK 77 Mo. Splash device à valider en smoke (section 2 TESTS.md, à venir).
+- [x] **Tests JVM verts** ✅ — `./gradlew :app:testDebugUnitTest` → 34 cas verts (`BadgeEvaluator` + `BackupImporter`, le ROADMAP annonçait 30 mais le décompte réel est 34).
+- [x] **detekt baseline** ✅ — `app/detekt-baseline.xml` (15 lignes legacy : `MapScreen`, `ArbresNavHost`, `ProfileScreen`, `ArbreDetailScreen`). `./gradlew :app:detekt` → 0 issue.
+- [x] **Build release** ✅ — `./gradlew assembleRelease` (fallback debug-signing) → APK 59 Mo, R8/ProGuard OK, signature v2 vérifiée par `apksigner verify`.
+- [ ] **Run TESTS.md à fond** — sections 2 → 13 (smoke device manuel), à dérouler dans une nouvelle conversation. Noter les bugs en section finale `## Bugs trouvés` de TESTS.md.
 - [ ] **Bump versionCode → 8 / versionName → "0.8.0"** une fois Phase 9 close — ouvre la voie à Phase 10 / release publique.
+
+### Bugs Phase 9 — corrigés en build & tests headless
+
+5 bugs trouvés en faisant tourner build + tests + lint pour la première fois depuis la fin de Phase 7. Tous fixés dans le commit du 2026-05-03 :
+
+1. **`WelcomeScreen.kt`** — `import androidx.compose.runtime.getValue` manquant ; `by rememberLottieComposition(...)` ne compilait pas. Régression Phase 7 jamais buildée localement.
+2. **`build.gradle.kts` + `libs.versions.toml`** — `org.json` indisponible en JVM unit-test (Android-only, pas tiré par `isReturnDefaultValues`). Ajout `testImplementation("org.json:json:20240303")` (version `orgJson` dans la version catalog). Sans ça, les 7 tests `BackupImporterTest` tombaient tous en `Failure(CORRUPT_ZIP)` car `JSONObject(...)` levait à l'instanciation, attrapé par le `catch (Throwable)` de l'importer.
+3. **`BackupImporter.kt`** — bug réel : `ZipInputStream` accepte les bytes garbage sans `ZipException`, sortait de la boucle avec 0 entry, retournait `META_MISSING` au lieu de `CORRUPT_ZIP` sur fichier non-zip. Compteur `entryCount` ajouté ; si 0 entry, fail dur en `CORRUPT_ZIP` avant le check `meta == null`. Couvre aussi le cas dégénéré du zip vide légitime.
+4. **`BackupExporter.kt`** — `pkg.longVersionCode` requiert API 28, `minSdk = 26` → erreur Lint `NewApi`. Remplacé par `PackageInfoCompat.getLongVersionCode(pkg).toInt()` (`androidx.core.content.pm`, déjà tiré par `core-ktx`).
+5. **`BadgesScreen.kt`** — faux-positif Lint `ProduceStateDoesNotAssignValue` sur un `produceState` dont l'assignation `value = ...` est suspend. Suppression locale `@Suppress("ProduceStateDoesNotAssignValue")` ; le pattern est idiomatique.
 
 ## Phase 10 — Préparation de la release v1.0.0
 

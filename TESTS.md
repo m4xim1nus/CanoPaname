@@ -10,26 +10,21 @@ Cette session est la première grosse passe device depuis longtemps. La branche 
 
 ## 0. Pré-requis machine
 
-- [ ] FF de la branche locale jusqu'au tip distant :
-  ```
-  git fetch origin claude/phase-8-dev-YGxnL
-  git checkout claude/phase-8-dev-YGxnL
-  git merge --ff-only origin/claude/phase-8-dev-YGxnL
-  ```
-- [ ] `JAVA_HOME=/opt/android-studio/jbr` exporté (ou utiliser Studio).
-- [ ] Téléphone branché, `adb devices` montre 1 device autorisé.
-- [ ] Wrapper Gradle présent (sinon `gradle wrapper` depuis le dossier).
+- [x] FF de la branche locale jusqu'au tip distant ✅ (la branche `claude/phase-8-dev-YGxnL` est déjà alignée — tip local = tip distant).
+- [x] `JAVA_HOME=/opt/android-studio/jbr` exporté ✅ (utilisé pour toutes les invocations Gradle de la session 2026-05-03).
+- [x] Téléphone branché, `adb devices` montre 1 device autorisé ✅ (Pixel 9a sous GrapheneOS, série `4B011JEBF13579`).
+- [x] Wrapper Gradle présent ✅.
 
-## 1. Build & tests headless (sans device)
+## 1. Build & tests headless (sans device) ✅
 
-À faire **avant** le déploiement device — si ça casse ici, inutile d'aller plus loin.
+Tous les items de cette section ont été déroulés le 2026-05-03 (avant le smoke device). 5 bugs trouvés et corrigés en cours de route, listés sous **« Bugs Phase 9 — corrigés en build & tests headless »** dans `ROADMAP.md`.
 
-- [ ] **Build debug** : `./gradlew assembleDebug` → APK dans `app/build/outputs/apk/debug/app-debug.apk`. Pas de warning critique.
-- [ ] **Tests JVM** : `./gradlew :app:testDebugUnitTest` → 30 cas verts (23 `BadgeEvaluatorTest` + 7 `BackupImporterTest`).
-- [ ] **detekt baseline** : `./gradlew :app:detektBaseline` (1re fois) → génère `app/detekt-baseline.xml`. Le commiter.
-- [ ] **detekt run** : `./gradlew :app:detekt` → 0 issue (baseline absorbe le legacy).
-- [ ] **Lint Android** : `./gradlew :app:lint` → ne pas bloquer sur les warnings, juste s'assurer qu'il n'y a pas d'erreur.
-- [ ] **Build release fallback** : `./gradlew assembleRelease` (sans `local.properties` config keystore) → APK signé debug fallback dans `app/build/outputs/apk/release/`. Vérifie que ProGuard/R8 ne casse pas le minify.
+- [x] **Build debug** ✅ — `./gradlew assembleDebug` → `app/build/outputs/apk/debug/app-debug.apk` (77 Mo). Bug fix : import `androidx.compose.runtime.getValue` ajouté à `WelcomeScreen.kt` pour faire compiler le `by rememberLottieComposition(...)`.
+- [x] **Tests JVM** ✅ — `./gradlew :app:testDebugUnitTest` → 34 cas verts (le ROADMAP annonçait 30, le décompte réel est 34). Bug fix #1 : ajout `testImplementation("org.json:json:20240303")` dans `app/build.gradle.kts` + `gradle/libs.versions.toml` (sans ça, `JSONObject(...)` levait à l'instanciation en JVM pure et tous les `BackupImporterTest` retournaient `Failure(CORRUPT_ZIP)`). Bug fix #2 : `BackupImporter` retournait `META_MISSING` au lieu de `CORRUPT_ZIP` sur un fichier non-zip — `ZipInputStream` accepte le garbage en silence ; ajout d'un compteur `entryCount` qui force `CORRUPT_ZIP` si zéro entry.
+- [x] **detekt baseline** ✅ — `./gradlew :app:detektBaseline` génère `app/detekt-baseline.xml` (15 lignes : `MapScreen`, `ArbresNavHost`, `ProfileScreen`, `ArbreDetailScreen` — legacy connu). Commité.
+- [x] **detekt run** ✅ — `./gradlew :app:detekt` → 0 issue (baseline absorbe le legacy).
+- [x] **Lint Android** ✅ — 0 erreur, 65 warnings. Bug fix #1 : `BackupExporter.kt` utilisait `pkg.longVersionCode` (API 28) avec `minSdk = 26` → remplacé par `PackageInfoCompat.getLongVersionCode(pkg).toInt()` (`androidx.core.content.pm`, déjà tiré par `core-ktx`). Bug fix #2 : faux-positif Lint `ProduceStateDoesNotAssignValue` sur le `produceState` suspend de `BadgesScreen.kt` → `@Suppress` localisé (le pattern est idiomatique).
+- [x] **Build release fallback** ✅ — `./gradlew assembleRelease` → APK 59 Mo, R8/ProGuard OK, signature v2 vérifiée (`apksigner verify` du SDK build-tools 36.1.0 — note : CLAUDE.md référence 35.0.0 mais ce build-tools n'est plus installé sur la machine du dev, à mettre à jour).
 
 Si `:app:detekt` sort des findings non couverts par le baseline, **NE PAS** silence-fix — analyser case-par-case avec Claude.
 

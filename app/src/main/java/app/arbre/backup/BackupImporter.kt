@@ -78,10 +78,12 @@ internal suspend fun importStream(
     var meta: BackupMeta? = null
     var capturesJson: String? = null
     val photoBytes = HashMap<String, ByteArray>()
+    var entryCount = 0
     try {
         ZipInputStream(input.buffered()).use { zip ->
             while (true) {
                 val entry = zip.nextEntry ?: break
+                entryCount++
                 val name = entry.name
                 if (entry.isDirectory) {
                     zip.closeEntry()
@@ -111,6 +113,9 @@ internal suspend fun importStream(
         return@withContext ImportResult.Failure(ImportError.CORRUPT_ZIP)
     }
 
+    if (entryCount == 0) {
+        return@withContext ImportResult.Failure(ImportError.CORRUPT_ZIP)
+    }
     val resolvedMeta = meta ?: return@withContext ImportResult.Failure(ImportError.META_MISSING)
     val resolvedCaptures = capturesJson
         ?: return@withContext ImportResult.Failure(ImportError.CAPTURES_MISSING)

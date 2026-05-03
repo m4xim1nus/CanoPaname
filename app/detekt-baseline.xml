@@ -1,0 +1,15 @@
+<?xml version="1.0" ?>
+<SmellBaseline>
+  <ManuallySuppressedIssues></ManuallySuppressedIssues>
+  <CurrentIssues>
+    <ID>ComplexCondition:ArbreDetailScreen.kt$info.qualification == null &amp;&amp; info.resume == null &amp;&amp; info.description == null &amp;&amp; info.datePlantation == null &amp;&amp; info.cultivar == null</ID>
+    <ID>CyclomaticComplexMethod:MapScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @SuppressLint("MissingPermission") @Composable fun MapScreen( onArboretumClick: () -&gt; Unit = {}, onRemarquablesClick: () -&gt; Unit = {}, onProfileClick: () -&gt; Unit = {}, onSpeciesClick: (Int) -&gt; Unit = {}, onFirstSpeciesCapture: (Int) -&gt; Unit = {}, onBack: (() -&gt; Unit)? = null, filterSpecies: Int? = null, )</ID>
+    <ID>LongMethod:ArbresNavHost.kt$@Composable fun ArbresNavHost()</ID>
+    <ID>LongMethod:MapScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @SuppressLint("MissingPermission") @Composable fun MapScreen( onArboretumClick: () -&gt; Unit = {}, onRemarquablesClick: () -&gt; Unit = {}, onProfileClick: () -&gt; Unit = {}, onSpeciesClick: (Int) -&gt; Unit = {}, onFirstSpeciesCapture: (Int) -&gt; Unit = {}, onBack: (() -&gt; Unit)? = null, filterSpecies: Int? = null, )</ID>
+    <ID>LongMethod:ProfileScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun ProfileScreen( onBack: () -&gt; Unit, onBadgesClick: () -&gt; Unit = {}, onHowToPlayClick: () -&gt; Unit = {}, )</ID>
+    <ID>LongParameterList:ArbreDetailScreen.kt$( arbre: Arbre, isDiscovered: Boolean, nbPhotos: Int = 0, onCapturer: (() -&gt; Unit)? = null, captureAvailability: CaptureAvailability? = null, onSpeciesClick: (() -&gt; Unit)? = null, medianHeightM: Int? = null, medianCircCm: Int? = null, remarquableInfo: RemarquableInfo? = null, )</ID>
+    <ID>LoopWithTooManyJumpStatements:BackupImporter.kt$while</ID>
+    <ID>MatchingDeclarationName:ArbresNavHost.kt$Routes</ID>
+    <ID>ReturnCount:MapViewModel.kt$MapViewModel$fun consumePending(): PendingCapture?</ID>
+  </CurrentIssues>
+</SmellBaseline>
