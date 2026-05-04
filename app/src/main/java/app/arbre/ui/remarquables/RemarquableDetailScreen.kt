@@ -70,6 +70,13 @@ fun RemarquableDetailScreen(
         captureRepo.capturesPourArbre(arbreId)
     }.collectAsState(initial = emptyList())
 
+    // Gating fiche-espèce : on ne propose le pivot vers la fiche-espèce que si
+    // l'espèce basique a été capturée (toutes saisons). Sinon le bouton se
+    // masquerait silencieusement — cohérent avec le langage « ??? » de l'app
+    // (cf. Phase 10.5 sous-groupe E).
+    val capturedSpecies by captureRepo.capturedSpeciesIndices()
+        .collectAsState(initial = emptySet())
+
     val info = remarquableInfoRepo.get(arbreId)
 
     var lightboxIndex by remember(arbreId) { mutableStateOf<Int?>(null) }
@@ -119,7 +126,7 @@ fun RemarquableDetailScreen(
                     arbre = current,
                     isDiscovered = true,
                     nbPhotos = captures.size,
-                    onSpeciesClick = if (sk != null) {
+                    onSpeciesClick = if (sk != null && sk in capturedSpecies) {
                         { onSpeciesClick(sk) }
                     } else null,
                     onRemarquableClick = null,

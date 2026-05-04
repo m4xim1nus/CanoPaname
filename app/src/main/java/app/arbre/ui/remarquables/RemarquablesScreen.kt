@@ -44,8 +44,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.unit.dp
 import app.arbre.data.Arbre
-import app.arbre.data.BadgeEvaluator
+import app.arbre.data.ArrKey
 import app.arbre.data.Season
+import app.arbre.data.label
+import app.arbre.data.parseArrKey
+import app.arbre.data.sortKey
 import app.arbre.data.rememberArbreRepository
 import app.arbre.data.rememberCaptureRepository
 import app.arbre.data.rememberSeasonStore
@@ -231,13 +234,14 @@ private fun ListeView(
 
 /**
  * Vue annuaire : `LazyColumn` groupé par arrondissement avec `stickyHeader`
- * (« 1er », « 2e », …, « 20e », puis « Hors Paris » pour les remarquables
- * sans suffixe d'arrondissement reconnu — bois de Vincennes/Boulogne, cas
- * limites). Tri intra-section : alpha genre/espèce. Effet : navigation
- * géographique du catalogue, on voit ce qui reste à chasser arr par arr.
+ * (« 1er », « 2e », …, « 20e », puis « Bois de Vincennes », « Bois de
+ * Boulogne » et enfin « Hors Paris »). Tri intra-section : alpha genre/espèce.
+ * Effet : navigation géographique du catalogue, on voit ce qui reste à chasser
+ * arr par arr.
  *
- * Réutilise `BadgeEvaluator.parseArrondissement` (regex `, (\d+)(er|e)$`,
- * cohérente avec `tools/build_dataset.py:normalize_arr`).
+ * Réutilise `parseArrKey` (`data/ArrKey.kt`) — tolère le format sans
+ * virgule de tête (« 5e » seul) que produit `tools/build_dataset.py` quand la
+ * voie est vide, fréquent chez les remarquables.
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -249,11 +253,10 @@ private fun CatalogueView(
 ) {
     val sections: List<ArrSection> = remember(tousRemarquables) {
         tousRemarquables
-            .groupBy { BadgeEvaluator.parseArrondissement(it.adresse ?: "") }
-            .map { (arr, arbres) ->
+            .groupBy { parseArrKey(it.adresse) }
+            .map { (key, arbres) ->
                 ArrSection(
-                    arr = arr,
-                    label = arrondissementLabel(arr),
+                    key = key,
                     arbres = arbres.sortedWith(
                         compareBy(
                             { it.genre.lowercase() },
@@ -263,9 +266,7 @@ private fun CatalogueView(
                     ),
                 )
             }
-            // Sections triées par n° arrondissement croissant ; null (Hors
-            // Paris) en queue via Int.MAX_VALUE.
-            .sortedBy { it.arr ?: Int.MAX_VALUE }
+            .sortedBy { it.key.sortKey() }
     }
 
     LazyColumn(
@@ -277,8 +278,8 @@ private fun CatalogueView(
         // `stickyHeader` est une extension de LazyListScope, qu'une lambda
         // de forEach masquerait.
         for (section in sections) {
-            stickyHeader(key = "header-${section.arr ?: "off"}") {
-                ArrondissementHeader(section.label)
+            stickyHeader(key = "header-${section.key.sortKey()}") {
+                ArrondissementHeader(section.key.label())
             }
             items(section.arbres, key = { it.id }) { arbre ->
                 val discovered = arbre.id in capturedIds
@@ -292,7 +293,7 @@ private fun CatalogueView(
                             onClick = { onRemarquableClick(arbre.id) },
                         )
                     } else {
-                        LockedRemarquableCard(arbre = arbre)
+                        LockedRemarquableCard()
                     }
                 }
             }
@@ -301,16 +302,9 @@ private fun CatalogueView(
 }
 
 private data class ArrSection(
-    val arr: Int?,
-    val label: String,
+    val key: ArrKey,
     val arbres: List<Arbre>,
 )
-
-private fun arrondissementLabel(arr: Int?): String = when (arr) {
-    null -> "Hors Paris"
-    1 -> "1er"
-    else -> "${arr}e"
-}
 
 @Composable
 private fun ArrondissementHeader(label: String) {
@@ -328,7 +322,7 @@ private fun ArrondissementHeader(label: String) {
 }
 
 @Composable
-private fun LockedRemarquableCard(arbre: Arbre) {
+private fun LockedRemarquableCard() {
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
@@ -359,13 +353,6 @@ private fun LockedRemarquableCard(arbre: Arbre) {
                         "Remarquable",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.arbresColors.remarquableOrange,
-                    )
-                }
-                arbre.adresse?.let {
-                    Text(
-                        it,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
             }

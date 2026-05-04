@@ -32,6 +32,66 @@ class BadgeEvaluatorTest {
         assertNull(BadgeEvaluator.parseArrondissement("PLACE, 99e"))
     }
 
+    @Test fun `parseArrondissement matches bare suffix without leading comma`() {
+        // Format normalisé (suffixe sans virgule). Pas le cas réel device, mais
+        // accepté pour rester compatible avec les tests historiques.
+        assertEquals(5, BadgeEvaluator.parseArrondissement("5e"))
+        assertEquals(1, BadgeEvaluator.parseArrondissement("1er"))
+        assertEquals(20, BadgeEvaluator.parseArrondissement("20e"))
+    }
+
+    @Test fun `parseArrondissement matches raw OpenData format`() {
+        // Format réellement stocké en DB (cf. dump 2026-05-04). C'est le cas
+        // qui fait foi pour les badges Tourneur/Tour Complet sur device.
+        assertEquals(
+            12,
+            BadgeEvaluator.parseArrondissement("PARC DE BERCY / 128 QUAI DE BERCY, PARIS 12E ARRDT"),
+        )
+        assertEquals(1, BadgeEvaluator.parseArrondissement("RUE DE RIVOLI, PARIS 1ER ARRDT"))
+        assertEquals(20, BadgeEvaluator.parseArrondissement("AVE GAMBETTA, PARIS 20E ARRDT"))
+    }
+
+    // ---------- parseArrKey (catalogue Remarquables) ----------
+
+    @Test fun `parseArrKey Paris on full address`() {
+        assertEquals(ArrKey.Paris(5), parseArrKey("Rue de Rivoli, 5e"))
+    }
+
+    @Test fun `parseArrKey Paris on bare suffix`() {
+        assertEquals(ArrKey.Paris(11), parseArrKey("11e"))
+    }
+
+    @Test fun `parseArrKey raw Paris with parc prefix`() {
+        // Format réellement stocké : « ..., PARIS XE ARRDT » après un préfixe
+        // long (parc/square/voie).
+        assertEquals(
+            ArrKey.Paris(19),
+            parseArrKey("PARC DES BUTTES CHAUMONT / 7 RUE BOTZARIS, PARIS 19E ARRDT"),
+        )
+    }
+
+    @Test fun `parseArrKey BoisVincennes`() {
+        assertEquals(ArrKey.BoisVincennes, parseArrKey("Bois de Vincennes"))
+        assertEquals(
+            ArrKey.BoisVincennes,
+            parseArrKey("ILE DE BERCY / LAC DAUMESNIL, BOIS DE VINCENNES"),
+        )
+    }
+
+    @Test fun `parseArrKey BoisBoulogne`() {
+        assertEquals(ArrKey.BoisBoulogne, parseArrKey("Bois de Boulogne"))
+        assertEquals(
+            ArrKey.BoisBoulogne,
+            parseArrKey("VIVACES PARC DE BAGATELLE / ROUTE DE SEVRES A NEUILLY, BOIS DE BOULOGNE"),
+        )
+    }
+
+    @Test fun `parseArrKey Other for null and unrecognised`() {
+        assertEquals(ArrKey.Other, parseArrKey(null))
+        assertEquals(ArrKey.Other, parseArrKey(""))
+        assertEquals(ArrKey.Other, parseArrKey("Hauts-de-Seine"))
+    }
+
     // ---------- yearMonthOf (Europe/Paris) ----------
 
     @Test fun `yearMonthOf returns Paris-zoned YearMonth`() {

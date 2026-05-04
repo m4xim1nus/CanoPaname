@@ -99,14 +99,13 @@ object BadgeEvaluator {
         }
     }
 
-    /** Match « 1er » (1) ou « 5e », « 12e », … (2-20) en suffixe d'adresse. */
-    private val ARR_PATTERN = Regex(""", (\d{1,2})(?:er|e)$""")
-
-    fun parseArrondissement(adresse: String): Int? {
-        val match = ARR_PATTERN.find(adresse) ?: return null
-        val n = match.groupValues[1].toIntOrNull() ?: return null
-        return if (n in 1..20) n else null
-    }
+    /**
+     * Numéro d'arrondissement parisien (1..20) parsé depuis le suffixe
+     * d'adresse, ou `null` pour les bois et exclaves. Wrapper sur [parseArrKey]
+     * — l'API riche (avec les bois) est dans `ArrKey.kt`.
+     */
+    fun parseArrondissement(adresse: String): Int? =
+        (parseArrKey(adresse) as? ArrKey.Paris)?.num
 
     private val PARIS_ZONE: ZoneId = ZoneId.of("Europe/Paris")
 

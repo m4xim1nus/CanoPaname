@@ -60,6 +60,8 @@ import app.arbre.data.SpeciesEntry
 import app.arbre.data.SpeciesIndex
 import app.arbre.data.SpeciesInfo
 import app.arbre.data.SpeciesStats
+import app.arbre.data.label
+import app.arbre.data.parseArrKey
 import app.arbre.data.rememberArbreRepository
 import app.arbre.data.rememberCaptureRepository
 import app.arbre.data.rememberSpeciesIndex
@@ -110,6 +112,13 @@ fun SpeciesDetailScreen(
     LaunchedEffect(speciesIndex) {
         remarquablesEspece = loadRemarquablesPourEspece(arbreRepo, speciesIndexRepo, speciesIndex)
     }
+
+    // Set des remarquables capturés (toutes saisons confondues) pour décider
+    // ligne par ligne si on dévoile l'adresse + cliquabilité, ou si on rend
+    // une silhouette « ??? + arrondissement ». Réveil de la chasse cf. Phase
+    // 10.5 sous-groupe E.
+    val capturedRemarquables by captureRepo.capturedRemarquableIds()
+        .collectAsState(initial = emptySet())
 
     var lightboxIndex by remember(speciesIndex) { mutableStateOf<Int?>(null) }
     val photoPaths = captures.map { it.photoPath }
@@ -164,6 +173,7 @@ fun SpeciesDetailScreen(
                 item {
                     RemarquablesDeCetteEspece(
                         remarquables = remarquablesEspece,
+                        capturedIds = capturedRemarquables,
                         onClick = onRemarquableClick,
                     )
                 }
@@ -303,6 +313,7 @@ private fun IdentityBlock(entry: SpeciesEntry, sample: Arbre?) {
 @Composable
 private fun RemarquablesDeCetteEspece(
     remarquables: List<Arbre>,
+    capturedIds: Set<Long>,
     onClick: (Long) -> Unit,
 ) {
     Card(modifier = Modifier.fillMaxWidth()) {
@@ -315,33 +326,66 @@ private fun RemarquablesDeCetteEspece(
                 style = MaterialTheme.typography.titleMedium,
             )
             remarquables.forEach { arbre ->
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { onClick(arbre.id) }
-                        .padding(vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.ic_remarquable_badge),
-                        contentDescription = null,
-                        tint = Color.Unspecified,
-                        modifier = Modifier.size(20.dp),
-                    )
-                    Text(
-                        arbre.adresse ?: "Adresse inconnue",
-                        style = MaterialTheme.typography.bodyMedium,
-                        modifier = Modifier.weight(1f),
-                    )
-                    Icon(
-                        Icons.AutoMirrored.Outlined.KeyboardArrowRight,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+                if (arbre.id in capturedIds) {
+                    DiscoveredRemarquableRow(arbre = arbre, onClick = onClick)
+                } else {
+                    LockedRemarquableRow(arbre = arbre)
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun DiscoveredRemarquableRow(arbre: Arbre, onClick: (Long) -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick(arbre.id) }
+            .padding(vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Icon(
+            painter = painterResource(R.drawable.ic_remarquable_badge),
+            contentDescription = null,
+            tint = Color.Unspecified,
+            modifier = Modifier.size(20.dp),
+        )
+        Text(
+            arbre.adresse ?: "Adresse inconnue",
+            style = MaterialTheme.typography.bodyMedium,
+            modifier = Modifier.weight(1f),
+        )
+        Icon(
+            Icons.AutoMirrored.Outlined.KeyboardArrowRight,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+@Composable
+private fun LockedRemarquableRow(arbre: Arbre) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Icon(
+            painter = painterResource(R.drawable.ic_remarquable_badge),
+            contentDescription = null,
+            tint = Color.Unspecified,
+            modifier = Modifier.size(20.dp),
+        )
+        Text(
+            "??? · ${parseArrKey(arbre.adresse).label()}",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.weight(1f),
+        )
     }
 }
 
