@@ -26,6 +26,7 @@ internal const val CLUSTER_COUNT_LAYER_ID = "arbres-cluster-count"
 private val PIN_GREEN: String = MapColors.PIN_GREEN
 private val PIN_ORANGE: String = MapColors.PIN_ORANGE
 private val PIN_GREY: String = MapColors.PIN_GREY
+private val CLUSTER_MIXED: String = MapColors.CLUSTER_MIXED
 
 internal const val EMPTY_GEOJSON = "{\"type\":\"FeatureCollection\",\"features\":[]}"
 
@@ -43,7 +44,22 @@ internal fun addArbresLayers(style: Style, json: String) {
         GeoJsonOptions()
             .withCluster(true)
             .withClusterMaxZoom(14)
-            .withClusterRadius(60),
+            .withClusterRadius(60)
+            // Accumule la propriété `discovered` (0|1 par feature, posée par
+            // `enrichGeoJsonWithDiscovery`) dans `discovered_count`. Couplé
+            // au `point_count` natif Supercluster, ça donne 3 buckets de
+            // couleur sur la layer cluster (cf. `circleColor` ci-dessous).
+            // L'accumulation se fait au moment du clustering : pour qu'elle
+            // reflète l'état actuel des captures, il faut re-pousser le
+            // GeoJSON enrichi via `setArbresGeoJson` à chaque changement.
+            .withClusterProperty(
+                "discovered_count",
+                Expression.sum(
+                    Expression.accumulated(),
+                    Expression.toNumber(Expression.get("discovered_count"))
+                ),
+                Expression.toNumber(Expression.get("discovered"))
+            ),
     )
     style.addSource(source)
 
@@ -59,10 +75,29 @@ internal fun addArbresLayers(style: Style, json: String) {
     points.setFilter(not(has("point_count")))
     style.addLayer(points)
 
-    // Bulles de clusters : rayon fixe pour démarrer, on graduera après.
-    // Limite assumée : la couleur cluster ne reflète pas la progression.
+    // Bulles de clusters : 3 buckets selon `discovered_count` vs `point_count`.
+    //   - 0 capturé          → gris (`PIN_GREY`)
+    //   - mixte              → vert clair (`CLUSTER_MIXED` = vert du splash)
+    //   - tous capturés      → vert foncé (`PIN_GREEN`, = pins identifiés)
+    // Sémantique « progression dans la zone ». Default en DERNIER (cf. note
+    // `buildDiscoveryExpression` plus bas — un default mal placé serait pris
+    // pour un label et l'expression silencieusement ignorée).
     val clusters = CircleLayer(CLUSTERS_LAYER_ID, ARBRES_SOURCE_ID).withProperties(
-        PropertyFactory.circleColor(PIN_GREEN),
+        PropertyFactory.circleColor(
+            Expression.switchCase(
+                Expression.eq(
+                    Expression.toNumber(Expression.get("discovered_count")),
+                    Expression.literal(0)
+                ),
+                Expression.color(android.graphics.Color.parseColor(PIN_GREY)),
+                Expression.eq(
+                    Expression.toNumber(Expression.get("discovered_count")),
+                    Expression.toNumber(Expression.get("point_count"))
+                ),
+                Expression.color(android.graphics.Color.parseColor(PIN_GREEN)),
+                Expression.color(android.graphics.Color.parseColor(CLUSTER_MIXED))
+            )
+        ),
         PropertyFactory.circleStrokeColor("#FFFFFF"),
         PropertyFactory.circleStrokeWidth(2f),
         PropertyFactory.circleOpacity(0.85f),
@@ -144,6 +179,89 @@ internal fun filterGeoJsonBySpecies(json: String, sk: Int): String {
             sb.append(json, pos, end)
             first = false
         }
+        if (nextSep == -1 || nextSep >= closeIdx) break
+        pos = nextSep + 1
+    }
+    sb.append("]}")
+    return sb.toString()
+}
+
+/**
+ * Réécrit le GeoJSON brut en injectant une propriété `discovered: 0|1` dans
+ * chaque feature, calculée d'après les sets de captures du joueur :
+ *   - feature `remarquable: true` → 1 ssi `id ∈ capturedRemarquables`
+ *   - feature `remarquable: false` → 1 ssi `sk ∈ capturedSpecies`
+ *
+ * Le flag est ensuite accumulé par Supercluster via la `clusterProperty`
+ * `discovered_count` (cf. `addArbresLayers`), ce qui permet de colorer le
+ * cluster en 3 buckets selon la progression locale du joueur.
+ *
+ * Pourquoi un scan linéaire string et pas un parse JSON : la sortie de
+ * `tools/build_dataset.py` est très régulière (`json.dumps(separators=(",", ":"))`,
+ * ordre des clés stable `id`/`remarquable`/`sk`), donc on peut tokeniser sur
+ * `,{"type":"Feature"` et extraire les 3 valeurs par `indexOf` ciblé. Coût ~150–
+ * 300 ms en background sur 32 Mo / 217k features ; un parse JSON complet
+ * exploserait la heap. Mêmes contrats que `filterGeoJsonBySpecies`.
+ *
+ * **Contrat** : la feature en entrée a la forme
+ *   `{"type":"Feature","geometry":{...},"properties":{"id":X,"remarquable":bool,"sk":N}}`
+ * — `sk` est la dernière clé. Si tu changes l'ordre côté Python, casser ce
+ * contrat ici se traduit par des clusters tous gris (le flag `discovered`
+ * mal injecté serait silencieusement ignoré par MapLibre) — ne pas rater.
+ */
+internal fun enrichGeoJsonWithDiscovery(
+    json: String,
+    capturedSpecies: Set<Int>,
+    capturedRemarquables: Set<Long>,
+): String {
+    val featureSeparator = ",{\"type\":\"Feature\""
+    val featuresMarker = "\"features\":["
+    val openIdx = json.indexOf(featuresMarker).let {
+        if (it == -1) return EMPTY_GEOJSON else it + featuresMarker.length
+    }
+    val closeIdx = json.lastIndexOf("]}")
+    if (openIdx >= closeIdx) return EMPTY_GEOJSON
+
+    // Sortie ≈ entrée + ~17 octets par feature découverte. Pré-allocation
+    // conservatrice à json.length + 1 Mo.
+    val sb = StringBuilder(json.length + 1_000_000)
+    sb.append("{\"type\":\"FeatureCollection\",\"features\":[")
+    var first = true
+    var pos = openIdx
+    val idMarker = "\"id\":"
+    val remarquableMarker = "\"remarquable\":"
+    val skMarker = "\"sk\":"
+    while (pos < closeIdx) {
+        val nextSep = json.indexOf(featureSeparator, pos + 1)
+        val end = if (nextSep == -1 || nextSep >= closeIdx) closeIdx else nextSep
+
+        val idStart = json.indexOf(idMarker, pos) + idMarker.length
+        val idEnd = json.indexOf(',', idStart)
+        val id = json.substring(idStart, idEnd).toLong()
+
+        val remStart = json.indexOf(remarquableMarker, idEnd) + remarquableMarker.length
+        val remarquable = json[remStart] == 't' // "true" vs "false"
+
+        // `sk` se termine juste avant le `}}` final de la feature. `end`
+        // pointe sur la virgule du séparateur (ou sur le `]` du `]}` final
+        // pour la dernière feature) ; dans les deux cas les 2 derniers
+        // chars de la feature sont `}}`.
+        val skStart = json.indexOf(skMarker, remStart) + skMarker.length
+        val sk = json.substring(skStart, end - 2).toInt()
+
+        val discovered = if (remarquable) {
+            if (id in capturedRemarquables) 1 else 0
+        } else {
+            if (sk in capturedSpecies) 1 else 0
+        }
+
+        if (!first) sb.append(",")
+        sb.append(json, pos, end - 2)
+        sb.append(",\"discovered\":")
+        sb.append(discovered)
+        sb.append("}}")
+        first = false
+
         if (nextSep == -1 || nextSep >= closeIdx) break
         pos = nextSep + 1
     }

@@ -269,6 +269,24 @@ Bonus product décidé en cours de Phase 10.5 (avant bump `versionCode 9`). Le `
 - [x] **UI `ColdStartSplash`** ✅ — `Spacer(32.dp)` + `Box.height(84.dp)` + `AnimatedContent` crossfade 220 ms inséré sous « Réveil des… ». Style `bodyMedium` blanc α 0.85, `maxLines = 3`, `TextOverflow.Ellipsis`, hauteur fixée pour éviter les sauts entre une phrase courte et une longue.
 - [x] **Verif** ✅ — `python3 tools/build_dataset.py` regen complet OK, asset 31 Ko embarqué, `assembleDebug` vert, ordre intro vérifié contre la séquence cible : Bienvenue → 210 000 arbres → 907 espèces → 30 m → 247 espèces uniques → 183 remarquables → recensement 2003 → Le Forestier → Haussmann → 10 espèces = 50 %.
 
+### Sous-groupe H — Couleur des clusters carte ✅
+
+**Problème UI** : sur la layer `arbres-clusters`, couleur fixe vert foncé `#2E7D32`. Au cold start sans capture, Paris paraît uniformément verte alors que 99 % des pins sont gris au sol — message visuel **trompeur** (« tout est identifié ») qui sape la lisibilité de la progression.
+
+**Solution** : 3 buckets francs reflétant la **progression du joueur** dans la zone agrégée. Aucun nouveau token couleur introduit (réutilise `PIN_GREY`, `FeuilleClaire`, `PIN_GREEN` déjà présents). Rayon, halo texte, hit-test : inchangés.
+
+- [x] **`enrichGeoJsonWithDiscovery` dans `MapLayers.kt`** ✅ — pendant de `filterGeoJsonBySpecies` : scan linéaire string sur le rawJson (217 k features, ~32 Mo), injecte `,"discovered":0|1` avant le `}}` final de chaque feature. Critère : `id ∈ capturedRemarquables` pour les remarquables, `sk ∈ capturedSpecies` sinon. Coût ~150-300 ms en background. Mêmes contrats de format que `filterGeoJsonBySpecies` (`sk` dernière clé, ordre Python 3.7+).
+- [x] **`clusterProperty` `discovered_count`** ✅ — accumulé par Supercluster via `withClusterProperty("discovered_count", sum(accumulated, get), get("discovered"))` sur les `GeoJsonOptions`. Couplé au `point_count` natif, donne 3 buckets de couleur dans un `switchCase` :
+  - `discovered_count == 0` → `PIN_GREY = #9E9E9E` (même gris que les pins non découverts)
+  - `discovered_count == point_count` → `PIN_GREEN = #2E7D32` (= `FeuilleSombre`, vert foncé des pins identifiés)
+  - sinon → `CLUSTER_MIXED = #81C784` (= `FeuilleClaire`, vert clair du splash)
+- [x] **Pipeline cold-start non-bloquant** ✅ — l'enrichment 217k features sur device prend ~5-15 s (test GrapheneOS, plus lent que prévu sur PC). Bloquer le cold-start dessus laissait la carte vide ~20 s avant que les pins n'apparaissent. Solution : **cold-start fresh pose le rawJson nu** via `setArbresGeoJson` (~700 ms, pins visibles), clusters transitoirement tous gris. Mode filtré garde son enrichment au cold-start (json < 1 Mo, instantané).
+- [x] **`LaunchedEffect` mid-session debounced 1 s** ✅ — collecte `combine(speciesIndices, remarquableIds).debounce(1000)`. C'est lui qui fait le **1er enrichment** au tout 1er cold-start (~1 s après le 1er paint, les pins sont déjà visibles). Aux changements de captures pendant la session : pareil, debounce 1 s + enrich + push. À chaque émission : `enrichGeoJsonWithDiscovery` en `Dispatchers.Default`, puis `setArbresGeoJson` UI thread. Mode filtré skippé.
+- [x] **Cache process-singleton `app.enrichedGeoJson` + `app.lastEnrichmentKey`** ✅ — `MutableStateFlow<String?>` + `Pair<Set<Int>, Set<Long>>?` dans `ArbresApp`. Mis à jour par le LaunchedEffect mid-session. Au remount du `MapScreen` (retour Profil → Map), le cold-start lit `app.enrichedGeoJson.value` direct → **1 seul `setGeoJson` enrichi**, pins ET clusters d'un coup, pas de double-freeze. Le LaunchedEffect compare contre `lastEnrichmentKey` et skip le re-enrich si sets inchangés.
+- [x] **OptIn `FlowPreview`** ✅ — `debounce` est encore en preview en kotlinx-coroutines 1.9. Ajouté `@OptIn(kotlinx.coroutines.FlowPreview::class)` à la fonction `MapScreen`.
+- [x] **Verif build** ✅ — `assembleDebug` vert (warning FlowPreview résolu après opt-in `@OptIn(kotlinx.coroutines.FlowPreview::class)` sur `MapScreen`).
+- [x] **Smoke device** ✅ — validé sur GrapheneOS : pins visibles ~700 ms au cold-start fresh, clusters s'allument en 2e wave ~1-2 s plus tard ; au retour Profil → Map, lecture cache `app.enrichedGeoJson` → 1 seul freeze, pins+clusters d'un coup ; mid-session capture → pin instant via `applyDiscoveryColor`, cluster suit après 1 s de debounce. 3 buckets gris/vert clair/vert foncé cohérents avec la progression. **Bug résolu en cours d'impl** : 1re version bloquait le cold-start sur l'enrichment 217k features (~5-15 s sur device, beaucoup plus lent que sur PC) → carte vide ~20 s. Refactor : enrichment déplacé du cold-start vers le LaunchedEffect mid-session debounced, cache process-singleton dans `ArbresApp` pour les remounts.
+
 ### Verrou de fin de phase
 
 - [ ] **Bump `versionCode → 9` / `versionName → "0.9.0"`** avant le tag v1.0.0 de Phase 11.

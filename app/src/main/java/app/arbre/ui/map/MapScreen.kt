@@ -69,8 +69,11 @@ import app.arbre.ui.theme.arbresMotion
 import app.arbre.util.LocationProvider
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import org.maplibre.android.camera.CameraPosition
 import org.maplibre.android.camera.CameraUpdateFactory
 import org.maplibre.android.geometry.LatLng
@@ -118,7 +121,7 @@ private suspend fun computeInitialCamera(ctx: Context): CameraPosition {
         .build()
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, kotlinx.coroutines.FlowPreview::class)
 @SuppressLint("MissingPermission")
 @Composable
 fun MapScreen(
@@ -186,6 +189,51 @@ fun MapScreen(
         ) { species, remarquables -> species to remarquables }
             .collect { (species, remarquables) ->
                 applyDiscoveryColor(style, species, remarquables)
+            }
+    }
+
+    // Mid-session : à chaque changement des captures (debounce 1 s pour
+    // lisser les rafales), regenerate le GeoJSON enrichi (flag `discovered`
+    // par feature) en background et le re-pousse via `setArbresGeoJson`.
+    // C'est lui qui fait le **1er enrichment** au tout 1er cold-start (pas
+    // le pipeline cold-start, trop coûteux pour bloquer le 1er paint des
+    // pins). Aux mounts suivants, le cache `app.enrichedGeoJson` permet au
+    // cold-start de poser direct l'enrichi — ici on skip le re-enrich si
+    // les sets sont identiques à `lastEnrichmentKey`. Skip le mode filtré.
+    // Phase 10.5 H.
+    LaunchedEffect(styleRef, currentSeason, filterSpecies) {
+        if (filterSpecies != null) return@LaunchedEffect
+        val style = styleRef ?: return@LaunchedEffect
+        combine(
+            captureRepo.capturedSpeciesIndices(currentSeason),
+            captureRepo.capturedRemarquableIds(currentSeason),
+        ) { species, remarquables -> species to remarquables }
+            .debounce(1000)
+            .collect { (species, remarquables) ->
+                val key = species to remarquables
+                if (key == app.lastEnrichmentKey && app.enrichedGeoJson.value != null) {
+                    // Mount avec sets inchangés depuis le dernier enrich :
+                    // le cold-start a déjà posé le cached enrichi, rien à faire.
+                    return@collect
+                }
+                val tStart = android.os.SystemClock.elapsedRealtime()
+                val rawJson = app.arbresGeoJsonAsync.await()
+                val enriched = withContext(Dispatchers.Default) {
+                    enrichGeoJsonWithDiscovery(rawJson, species, remarquables)
+                }
+                val tEnrich = android.os.SystemClock.elapsedRealtime()
+                android.util.Log.i(
+                    "MapScreen",
+                    "GeoJSON enrichi mid-session (${tEnrich - tStart}ms bg, ${enriched.length / 1_000_000}Mo)",
+                )
+                app.enrichedGeoJson.value = enriched
+                app.lastEnrichmentKey = key
+                setArbresGeoJson(style, enriched)
+                val tPushed = android.os.SystemClock.elapsedRealtime()
+                android.util.Log.i(
+                    "MapScreen",
+                    "Enrichi poussé mid-session (+${tPushed - tEnrich}ms UI)",
+                )
             }
     }
 
@@ -292,8 +340,21 @@ fun MapScreen(
                                     "MapScreen",
                                     "GeoJSON disponible (process+${tJson - tProcess}ms, ${rawJson.length / 1_000_000}Mo)",
                                 )
+                                // On enrichit aussi en mode filtré pour que les
+                                // clusters d'espèce reflètent la progression
+                                // (Phase 10.5 H). Coût négligeable sur < 1 Mo.
+                                val initialCaptures = withTimeoutOrNull(2000) {
+                                    combine(
+                                        captureRepo.capturedSpeciesIndices(currentSeason),
+                                        captureRepo.capturedRemarquableIds(currentSeason),
+                                    ) { s, r -> s to r }.first()
+                                } ?: (emptySet<Int>() to emptySet<Long>())
                                 val json = withContext(Dispatchers.Default) {
-                                    filterGeoJsonBySpecies(rawJson, filterSpecies)
+                                    enrichGeoJsonWithDiscovery(
+                                        filterGeoJsonBySpecies(rawJson, filterSpecies),
+                                        initialCaptures.first,
+                                        initialCaptures.second,
+                                    )
                                 }.also { filtered ->
                                     val tFilter = android.os.SystemClock.elapsedRealtime()
                                     android.util.Log.i(
@@ -328,13 +389,28 @@ fun MapScreen(
                                     "MapScreen",
                                     "Layers vides posées (process+${tEmpty - tProcess}ms, splash exit)",
                                 )
-                                val rawJson = app.arbresGeoJsonAsync.await()
+                                // Phase 10.5 H : si on a déjà un GeoJSON enrichi
+                                // dans le cache process-singleton (mount post
+                                // retour Profil → Map), on le pose direct — pins
+                                // ET clusters bons d'un coup, 1 seul freeze UI.
+                                // Sinon (cold-start fresh), on pose le rawJson nu
+                                // pour que les pins individuels apparaissent ASAP
+                                // (~700 ms via `setArbresGeoJson`) ; le
+                                // `LaunchedEffect` mid-session débouncedra
+                                // l'enrichment ~1 s plus tard et re-poussera
+                                // l'enrichi (les clusters s'allument en 2e wave).
+                                // L'enrichment 217k features est trop coûteux
+                                // (~5-15 s sur device GrapheneOS) pour bloquer
+                                // le 1er paint.
+                                val cached = app.enrichedGeoJson.value
+                                val initialJson = cached ?: app.arbresGeoJsonAsync.await()
                                 val tJson = android.os.SystemClock.elapsedRealtime()
                                 android.util.Log.i(
                                     "MapScreen",
-                                    "GeoJSON disponible (process+${tJson - tProcess}ms, ${rawJson.length / 1_000_000}Mo)",
+                                    "GeoJSON ${if (cached != null) "(cache enrichi)" else "(raw)"} disponible " +
+                                        "(process+${tJson - tProcess}ms, ${initialJson.length / 1_000_000}Mo)",
                                 )
-                                setArbresGeoJson(style, rawJson)
+                                setArbresGeoJson(style, initialJson)
                                 val tLayers = android.os.SystemClock.elapsedRealtime()
                                 android.util.Log.i(
                                     "MapScreen",

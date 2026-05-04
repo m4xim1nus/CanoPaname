@@ -20,6 +20,7 @@ import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
+import kotlinx.coroutines.flow.MutableStateFlow
 import org.maplibre.android.MapLibre
 
 private const val ARBRES_GEOJSON_ASSET = "arbres-paris.geojson"
@@ -82,6 +83,26 @@ class ArbresApp : Application() {
             json
         }
     }
+
+    /**
+     * Cache process-singleton du GeoJSON enrichi par `enrichGeoJsonWithDiscovery`
+     * (Phase 10.5 H). Permet aux remounts de `MapScreen` (retour Profil → Map)
+     * de poser directement la version enrichie sans re-payer l'enrichment ni
+     * un 2e `setGeoJson` UI thread. Mis à jour par le `LaunchedEffect`
+     * mid-session debounced quand les sets captures changent. Reste `null` au
+     * tout 1er cold-start (process fresh) — dans ce cas le cold-start pose le
+     * rawJson nu (pins visibles vite) et le mid-session tickera ~1 s plus
+     * tard pour le 1er enrichment.
+     *
+     * `lastEnrichmentKey` mémorise le couple `(species, remarquables)` qui a
+     * produit `enrichedGeoJson` ; sert au mid-session à skipper un re-enrich
+     * inutile au mount (les flows émettent leur état actuel à chaque nouveau
+     * collector).
+     */
+    val enrichedGeoJson: MutableStateFlow<String?> = MutableStateFlow(null)
+
+    @Volatile
+    var lastEnrichmentKey: Pair<Set<Int>, Set<Long>>? = null
 
     override fun onCreate() {
         super.onCreate()

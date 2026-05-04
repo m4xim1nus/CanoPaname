@@ -42,4 +42,9 @@ object MapColors {
     const val PIN_GREEN: String = "#2E7D32"
     const val PIN_ORANGE: String = "#FB8C00"
     const val PIN_GREY: String = "#9E9E9E"
+
+    // Cluster « progression mixte » : alias hex de [FeuilleClaire], le vert
+    // clair du splash. Réutilise un token déjà présent — pas de nouvelle
+    // teinte introduite.
+    const val CLUSTER_MIXED: String = "#81C784"
 }
