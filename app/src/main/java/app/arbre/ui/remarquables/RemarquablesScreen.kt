@@ -57,6 +57,7 @@ import app.arbre.ui.common.ArchiveBanner
 import app.arbre.ui.common.EmptyState
 import app.arbre.ui.common.PhotoThumbnail
 import app.arbre.ui.common.SeasonSelector
+import app.arbre.ui.theme.arbresColors
 import androidx.compose.foundation.Image
 import androidx.compose.ui.res.painterResource
 import java.text.DateFormat
@@ -432,14 +433,14 @@ private fun DiscoveredCard(
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
                     Image(
-                        painter = painterResource(R.drawable.ic_remarquable_plaque),
+                        painter = painterResource(R.drawable.ic_remarquable_badge),
                         contentDescription = null,
                         modifier = Modifier.size(14.dp),
                     )
                     Text(
                         "Remarquable",
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.primary,
+                        color = MaterialTheme.arbresColors.remarquableOrange,
                     )
                 }
                 arbre.adresse?.let {

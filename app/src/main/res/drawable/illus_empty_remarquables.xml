@@ -1,23 +1,24 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Silhouette platane canonique unifiée + plaque chanfreinée verte
-     (rappel des plaques officielles « Arbre remarquable Ville de Paris »). -->
+<!-- Silhouette platane canonique unifiée + pastille badge remarquable orange
+     (rappel du `ic_remarquable_badge` posé en Phase 10.5). Refonte
+     post-Phase-10 : la plaque chanfreinée verte est remplacée par la
+     pastille orange, alignée sur l'identité remarquable = orange. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="160dp"
     android:height="160dp"
     android:viewportWidth="160"
     android:viewportHeight="160">
-    <!-- Arbre canonique (silhouette douce) -->
+    <!-- Arbre canonique (silhouette douce, identique à illus_empty_arboretum) -->
     <path
         android:fillColor="#7A8F6E"
         android:fillAlpha="0.40"
         android:pathData="M71.1,133.3 L71.1,97.8 C56.3,97.8 44.4,91.9 38.5,80 C32.6,77 32.6,65.2 35.6,56.3 C32.6,44.4 41.5,32.6 53.3,32.6 C56.3,23.7 68.1,17.8 80,17.8 C91.9,17.8 103.7,23.7 106.7,32.6 C118.5,32.6 127.4,44.4 124.4,56.3 C127.4,65.2 127.4,77 121.5,80 C115.6,91.9 103.7,97.8 88.9,97.8 L88.9,133.3 Z" />
-    <!-- Plaque chanfreinée (coin haut-droit coupé) sur le tronc -->
+    <!-- Pastille orange remarquable, en surimpression sur le bas-droit -->
     <path
-        android:fillColor="#2E7D32"
-        android:fillAlpha="0.85"
-        android:pathData="M64,116 L92,116 L100,124 L100,138 L64,138 Z" />
-    <!-- Lettre R blanche -->
+        android:fillColor="#FB8C00"
+        android:pathData="M120,92 A24,24 0 1 1 120,140 A24,24 0 1 1 120,92 Z" />
+    <!-- Mini-silhouette platane crème dans la pastille -->
     <path
         android:fillColor="#F5F1E6"
-        android:pathData="M72,122 L80,122 C84,122 86,124 86,127 C86,129 85,131 83,132 L88,136 L84,136 L80,133 L76,133 L76,136 L72,136 Z M76,125 L76,131 L80,131 C82,131 83,130 83,128 C83,126 82,125 80,125 Z" />
+        android:pathData="M117,132 L117,123 C112,123 108,121 106,116 C103,114 103,110 105,107 C103,103 105,99 109,99 C110,96 113,94 120,94 C127,94 129,96 130,99 C134,99 137,103 134,107 C137,110 137,114 134,116 C132,121 128,123 123,123 L123,132 Z" />
 </vector>

@@ -96,14 +96,14 @@ private fun DiscoveredContent(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Image(
-                painter = painterResource(R.drawable.ic_remarquable_plaque),
+                painter = painterResource(R.drawable.ic_remarquable_badge),
                 contentDescription = null,
                 modifier = Modifier.size(20.dp),
             )
             Text(
                 "Arbre remarquable",
                 style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.primary,
+                color = MaterialTheme.arbresColors.remarquableOrange,
             )
         }
         remarquableInfo?.let { RemarquableBlock(it) }

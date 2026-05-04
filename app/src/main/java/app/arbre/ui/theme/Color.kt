@@ -18,6 +18,10 @@ internal val EcorceMoyenne = Color(0xFF8D6E63)
 internal val EcorceMoyenneClaire = Color(0xFFA1887F)
 internal val Or = Color(0xFFC9A227)
 
+// Couleur d'identité des arbres remarquables. Alignée sur `MapColors.PIN_ORANGE`
+// pour que la pastille orange du badge écho exactement le pin sur la carte.
+internal val RemarquableOrange = Color(0xFFFB8C00)
+
 // Réserve saisonnière — appliquée subtilement sur le surface dans Theme.kt.
 internal val SaisonPrintemps = Color(0xFFE8F5E9) // vert très pâle
 internal val SaisonEte = Color(0xFFDDEEDD)       // vert dense pâle

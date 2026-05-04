@@ -18,6 +18,7 @@ data class ArbresColors(
     val feuilleClaire: Color,
     val feuilleSombre: Color,
     val ecorce: Color,
+    val remarquableOrange: Color,
 )
 
 internal val LightArbresColors = ArbresColors(
@@ -25,6 +26,7 @@ internal val LightArbresColors = ArbresColors(
     feuilleClaire = FeuilleClaire,
     feuilleSombre = FeuilleSombre,
     ecorce = Ecorce,
+    remarquableOrange = RemarquableOrange,
 )
 
 internal val DarkArbresColors = ArbresColors(
@@ -32,6 +34,7 @@ internal val DarkArbresColors = ArbresColors(
     feuilleClaire = FeuilleClaire,
     feuilleSombre = FeuilleSombre,
     ecorce = EcorceClaire,
+    remarquableOrange = RemarquableOrange,
 )
 
 internal val LocalArbresColors = staticCompositionLocalOf {

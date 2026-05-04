@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Badge « Arbre remarquable » — disque orange + silhouette platane crème.
+  Couleur orange alignée sur le pin remarquable de la carte (`MapColors.PIN_ORANGE` = `arbresColors.remarquableOrange`).
+  Volontairement non-tintable : la couleur *est* le sens (la pastille orange
+  désigne un remarquable). Utiliser avec `Icon(tint = Color.Unspecified)`.
+  Silhouette platane dérivée linéairement de `ic_arbre_canonical` (scale 0.76
+  autour du centre 12,11.33), pour rester cohérent avec l'iconographie
+  canonique posée en Phase 10.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <!-- Disque orange remarquable -->
+    <path
+        android:fillColor="#FB8C00"
+        android:pathData="M12,1.5 A10.5,10.5 0 1 1 12,22.5 A10.5,10.5 0 1 1 12,1.5 Z" />
+    <!-- Silhouette platane crème (scale 0.76 de ic_arbre_canonical) -->
+    <path
+        android:fillColor="#F5F1E6"
+        android:pathData="M10.99,17.92 L10.99,13.87 C9.30,13.87 7.95,13.19 7.27,11.84 C6.60,11.50 6.60,10.15 6.93,9.13 C6.60,7.79 7.61,6.44 8.96,6.44 C9.30,5.42 10.65,4.75 12,4.75 C13.35,4.75 14.70,5.42 15.04,6.44 C16.39,6.44 17.40,7.79 17.07,9.13 C17.40,10.15 17.40,11.50 16.73,11.84 C16.05,13.19 14.70,13.87 13.01,13.87 L13.01,17.92 Z" />
+</vector>

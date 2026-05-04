@@ -83,6 +83,7 @@ Constat : un nouvel utilisateur arrivait sur une carte 100 % grise sans explicat
 - **Sound design opt-in** — l'app est aujourd'hui muette partout. 3-4 field recordings courts (~500 ms) pour capture confirmée (froissement de feuilles), badge unlock (craquement de bois), switch de saison (soupir de vent). Banque CC0 freesound.org, ~50 Ko OGG embarqués. Toggle dans le Profil, opt-in par défaut pour rester compatible avec le ton sobre. Élève de « app » vers « expérience sensorielle » sans rompre la charte privacy.
 - **Traitement des photos utilisateur** — les JPEG bruts capturés en conditions réelles (pluie, contre-jour, flou de marche) contaminent l'esthétique soignée. Trois pistes : cadre polaroid subtil (bordure crème + ombre douce) qui assume l'imperfection, vignette légère ~10 % qui adoucit les bords brûlés, filtre saisonnier discret (hiver bleuté, été verdâtre). Probablement la piste polaroid seule. Affecte `PhotoThumbnail` + galeries de la fiche-espèce.
 - **Accessibilité daltonien sur la couche découverte** — la distinction découvert/non-découvert repose sur gris vs vert, quasi-identiques pour ~8 % des hommes (deutéranopie/protanopie). Ajouter un 2nd signal : halo autour des points découverts, pattern, ou différentiel de saturation/luminosité plus marqué. À tester avec simulateur daltonisme (Android dev options). Affecte `buildDiscoveryExpression` dans `MapScreen`.
+- **Investigation usage data Android** — observé 2026-05-04 : User data 6 → 36 Mo en 4 h sur Pixel 9a (cf. `manual_tests/20260504/UserData{1,2}.png`), Cache stable ~31 Mo. Croissance attendue (asset DB Room 30 Mo copiée par `Room.createFromAsset` au 1er lancement + photos JPEG ~2-5 Mo + WAL Room non checkpointé). Pistes si dérive : (a) checkpoint WAL périodique (`PRAGMA wal_checkpoint(TRUNCATE)`), (b) ouverture asset DB en read-only sans copie complète si Room le permet, (c) compression JPEG plus aggressive sur les captures. Pas urgent — investiguer post-v1.0 si remontée user.
 
 ## Phase 6 — Hygiène projet ✅
 
@@ -178,6 +179,57 @@ Phase tampon entre la passe device de Phase 9 et la release publique de Phase 11
   - `WelcomeAnimation()` : Lottie remplacé par animation Compose pure (`rememberInfiniteTransition` + `lerp` tint gris→vert + scale 0.85→1.0, 4 s en `RepeatMode.Reverse`). Asset `welcome_loop.json` supprimé, dossier `assets/animations/` retiré, dépendance `lottie-compose` retirée du catalog + `app/build.gradle.kts`.
 - [x] **« en printemps » → « au printemps »** ✅ — helper `val preposition: String get() = if (this == SPRING) "au" else "en"` ajouté dans l'enum `Season`. 3 callsites patchés (le ROADMAP citait 4 mais `ProfileScreen:374` mettait juste la saison entre parenthèses, sans préposition) : `ArboretumScreen.kt:365` + `:450` (empty state isArchive), `RemarquablesScreen.kt:378`.
 - [x] **Bump versionCode → 8 / versionName → "0.8.0"** ✅ — alignement avec phases livrées 0 → 8.
+
+## Phase 10.5 — Polish post-smoke 2026-05
+
+Session de tests manuels device du 2026-05-04 (impr. écran dans `manual_tests/20260504/`). L'app tourne, rien de bloquant fonctionnel, mais 11 remarques d'usage qui touchent les premières secondes (splash, hero du Profil vide, plaque R des Remarquables) et le parcours nav (modal arbre remarquable, photos non zoomables, libellé `Pokédex`, tris, boussole inaccessible). Phase tampon avant Phase 11 — ce sont les défauts qui salissent la première impression d'une release publique. Une 12e remarque (usage data) est reclassée en *Idées en vrac* (investigation post-v1.0).
+
+Arbitrages tranchés en session : Vert = écosystème arbres normaux + Arboretum, Orange = Remarquables partout (refonte complète, pas de demi-mesure). Renommage `Pokédex → Catalogue`. Splash enrichi par cascade de platanes miniatures.
+
+### Sous-groupe A — Refonte iconographie Remarquables ✅
+
+Couvre remarques #4 (plaque R bizarre, chanfrein top-right) et #12 (incohérence pin orange / icône verte / Arboretum gris). Contrat couleur stabilisé.
+
+- [x] **Nouveau `ic_remarquable_badge.xml`** ✅ — disque orange `#FB8C00` (r=10.5 dans 24×24) + silhouette platane crème `#F5F1E6` dérivée linéairement de `ic_arbre_canonical` (scale 0.76 autour de (12, 11.33)). `tint = Color.Unspecified` côté Compose, la couleur *est* le sens.
+- [x] **Token `remarquableOrange`** ✅ — `Color.kt` expose `RemarquableOrange = Color(0xFFFB8C00)` (aligné `MapColors.PIN_ORANGE`), `ArbresColors` data class étendue avec `remarquableOrange: Color`, light + dark partagent la même valeur (couleur de marque, pas tintée par le scheme).
+- [x] **Migration des sites** ✅ — FAB ★ de la carte (`MapScreen.kt:424`), `ArbreDetailContent` (modal sheet, `ArbreDetailScreen.kt:99` + label « Arbre remarquable » passé de `colorScheme.primary` vert à `arbresColors.remarquableOrange`), card discovered de `RemarquablesScreen.kt:435` (label « Remarquable » idem). `illus_empty_remarquables.xml` réécrit : silhouette platane (alpha 0.40) + pastille orange (r=24 à center 120,116) + mini-platane crème dans la pastille.
+- [x] **`ic_remarquable_plaque.xml`** supprimé du repo ✅ — `git grep ic_remarquable_plaque` = 0 résultat. `BadgeIcons.kt` garde `Icons.Outlined.Star` pour `CHASSEUR_REMARQUABLES` (le bichromy ne survit pas au tint, choix Phase 7 toujours valide).
+- [x] Pas de migration côté carte MapLibre ✅ — pin orange déjà en place via `MapColors.PIN_ORANGE`.
+
+### Sous-groupe B — Fiche remarquable enrichie + parcours croisé
+
+Couvre remarques #5 (modal remarquable mauvaise nav vers fiche-espèce non capturée), #6 (fiche-remarquable n'affiche pas la photo user), #7 (photos pas plein écran), #8 (liens fiche remarquable ↔ fiche espèce, one-to-many).
+
+- [ ] **`ArbreDetailScreen` (modal sheet)** — second callback `onRemarquableClick`. Logique :
+  - Arbre remarquable capturé en remarquable → bouton **« Fiche remarquable »**.
+  - Espèce capturée (`isDiscovered && sk != null`) → bouton **« Fiche espèce »**.
+  - Les deux peuvent coexister (FilledTonalButton + OutlinedButton).
+- [ ] **`RemarquableDetailScreen` — galerie « Tes photos (N) »** au-dessus de la description, identique à `SpeciesDetailScreen`. Réutilise `PhotoThumbnail`. Section masquée si N=0.
+- [ ] **`PhotoLightbox` plein écran** (nouveau, `ui/common/`) — Compose `Dialog` plein-écran, `Modifier.transformable` pour pinch-zoom, dismiss au tap hors zone. Réutilisé depuis `SpeciesDetailScreen` ET `RemarquableDetailScreen`.
+- [ ] **Fiche espèce → Arbres remarquables de cette espèce** — section dans `SpeciesDetailScreen`, requête `RemarquableInfoRepository` filtré par `(genre, espece)`. Nav vers `RemarquableDetailScreen`. Section masquée si N=0.
+
+### Sous-groupe C — Renommage Catalogue + tris listes
+
+Couvre remarques #10 (Arboretum : `Pokédex → Catalogue`, tri par count Paris décroissant) et #11 (Remarquables : `Pokédex → Catalogue`, groupage par arrondissement avec sous-headers).
+
+- [ ] **Renommer `Pokédex → Catalogue`** dans `ArboretumScreen` et `RemarquablesScreen` (segmented `Liste / Catalogue`). String extraite dans `strings.xml` (`segment_catalogue`). UI inchangée (cartes / grille).
+- [ ] **Arboretum — Liste triée par count Paris décroissant** — ordre `001 → 907` du *plus* au *moins nombreux* (basé sur `DatasetStats` ou `SpeciesInfo.stats.count`). Couvre les espèces non-capturées (silhouettes grises). Le mode Catalogue actuel (espèces capturées par fraîcheur) reste à arbitrer en cours de session — soit on aligne, soit on garde la fraîcheur.
+- [ ] **Remarquables — Catalogue groupé par arrondissement** — `LazyColumn` avec `stickyHeader` par arrondissement (« 1er », « 11e », …, « 20e ARRDT »). Réutilise `BadgeEvaluator.parseArrondissement` (regex `, (\d+)(er|e)$` cohérente avec `tools/build_dataset.py:normalize_arr`). Tri intra-section : alpha genre/espèce. Effet : navigation géographique du catalogue.
+
+### Sous-groupe D — Splash + empty state Profil + boussole carte
+
+Couvre remarques #1 (splash perçu statique 3-25 s), #3 (empty state Profil = drapeau de golf bizarre), #9 (boussole MapLibre sous status bar, intappable).
+
+- [ ] **Splash cascade de platanes** — dans `ColdStartSplash` (`MapOverlays.kt`), couche de 6-8 platanes miniatures (`ic_arbre_canonical` 24-32 dp, alpha 0.5, couleur crème) qui apparaissent en cascade autour du hero — `AnimatedVisibility` séquentiel `delayMillis` 200/350/500/650 ms, fade+scale `arbresMotion.short`, boucle douce. Le sway sinusoïdal du hero existant reste. Garder wordmark + barre indéfinie.
+- [ ] **Investigation latence cold start** — instrumenter `MapScreen.LaunchedEffect` avec timestamps : (a) latence `addArbresLayers(EMPTY_GEOJSON)` → flip `arbresPrets`, (b) latence `setArbresGeoJson(json)` (32 Mo, ~700 ms attendus), (c) latence `setStyle` MapLibre. Si une étape dépasse 5 s, ajouter optim ciblée (pré-décompression asset, parsing GeoJSON sur `Default` puis push UI thread). Pas bloquant.
+- [ ] **Empty state Profil refondu** — remplacer `illus_empty_profile.xml` (path sinueux + drapeau) par silhouette platane `ic_arbre_canonical` 160×160 alpha 0.4, cohérent avec les autres empty states refondus en Phase 10. Variante à trancher au moment du dessin (point d'interrogation au-dessus, ou silhouette « personnage qui marche vers un arbre »).
+- [ ] **Boussole MapLibre sous l'inset status bar** — `mapView.getMapAsync { it.uiSettings.setCompassMargins(0, statusBarPx + 16dp, 16dp, 0) }` après init MapView. Inset calculé via `WindowInsets.statusBars.asPaddingValues()`. Pas de bandeau vert qui mangerait la carte. Boussole reste TopEnd, sous l'inset, tappable.
+
+### Verrou de fin de phase
+
+- [ ] **Bump `versionCode → 9` / `versionName → "0.9.0"`** avant le tag v1.0.0 de Phase 11.
+- [ ] Smoke device complet sur les 4 sous-groupes — `TESTS.md` à amender avec une section « Phase 10.5 ».
+- [ ] `./gradlew test detekt` verts ; baseline detekt régénérée si refacto Remarquables (sous-groupe C) introduit du complexe.
 
 ## Phase 11 — Préparation de la release v1.0.0
 

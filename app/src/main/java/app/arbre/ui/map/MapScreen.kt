@@ -417,11 +417,11 @@ fun MapScreen(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 FloatingActionButton(onClick = onRemarquablesClick) {
-                    // Plaque inspirée des plaques officielles « Arbre remarquable
-                    // Ville de Paris ». Tint Unspecified pour préserver la
-                    // bichromie verte/crème de l'asset.
+                    // Pastille orange remarquable (cf. `ic_remarquable_badge`).
+                    // Tint Unspecified pour préserver la bichromie orange/crème
+                    // — la couleur *est* le sens, alignée sur le pin de la carte.
                     Icon(
-                        painter = painterResource(R.drawable.ic_remarquable_plaque),
+                        painter = painterResource(R.drawable.ic_remarquable_badge),
                         contentDescription = "Remarquables",
                         tint = androidx.compose.ui.graphics.Color.Unspecified,
                     )
