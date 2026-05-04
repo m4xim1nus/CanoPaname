@@ -22,7 +22,7 @@ Note d'arbitrage écrite avant d'attaquer la phase 2 du `ROADMAP.md` (capture + 
 
 - **Saisonnalité 4 formes** (`ROADMAP.md:58`) : la même espèce capturée en hiver vs en mai compte comme 2 entrées. Multiplie naturellement la collection sans inflation artificielle.
 - **Taxonomie multi-niveaux** : genre / espèce / cultivar — déjà en data. **L'espèce est le niveau atomique du « Pokédex »**. Capturer une espèce débloque tous les arbres de cette espèce. % de complétion principal = % d'espèces découvertes ; secondaire = % de genres dérivés. Le cultivar reste affiché sur la fiche pour les curieux, mais n'intervient pas dans les mécaniques de jeu (raisons : 18 % seulement des arbres ont un cultivar renseigné contre 97 % pour l'espèce ; deux cultivars d'une même espèce sont indiscernables à l'œil nu pour un public non-spécialiste ; le grain espèce produit des moments de jeu bien plus forts — capturer un *Platanus x hispanica* fait basculer 38 147 pins d'un coup).
-- **Caractère « remarquable »** : 217 855 arbres dont une poignée ★. Traitement à part (cf. §5) — chaque remarquable est une entrée individuelle dans l'Arboretum, indépendante de son cultivar.
+- **Caractère « remarquable »** : 213 042 arbres dont une poignée ★. Traitement à part (cf. §5) — chaque remarquable est une entrée individuelle dans l'Arboretum, indépendante de son cultivar.
 - **Géographie réelle parisienne** : quêtes par arrondissement / parc. Pokémon GO a des biomes génériques ; nous avons un territoire identifié et chargé culturellement.
 
 ## 4. Nature de la « capture » — tranchée
@@ -66,4 +66,4 @@ Pour aider à les trouver sans casser la mécanique de découverte : un **bouton
 4. Bouton ★ au-dessus de la carte → overlay avec distance au remarquable non découvert le plus proche.
 5. Pas de notifications push dans le MVP capture (cf. `ROADMAP.md:54`, prévu plus tard).
 
-**Conséquence design.** Notre jeu est plus proche d'une **collection topographique** (Foursquare-style check-in + Pokédex) que d'un jeu d'apparition AR. C'est calme, ça récompense la promenade lente, et ça évite tout le contenu serveur live que Pokémon GO doit fabriquer pour combler les zones rurales — ici, Paris a déjà 217 855 arbres réels, fixes et géolocalisés. Le gameplay n'a rien à inventer ; il reflète ce qui existe.
+**Conséquence design.** Notre jeu est plus proche d'une **collection topographique** (Foursquare-style check-in + Pokédex) que d'un jeu d'apparition AR. C'est calme, ça récompense la promenade lente, et ça évite tout le contenu serveur live que Pokémon GO doit fabriquer pour combler les zones rurales — ici, Paris a déjà 213 042 arbres réels, fixes et géolocalisés. Le gameplay n'a rien à inventer ; il reflète ce qui existe.

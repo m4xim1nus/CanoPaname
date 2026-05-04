@@ -8,7 +8,7 @@ Squelette Gradle/Kotlin/Compose, NavHost, MapLibre, Room, GeoJSON, icône, build
 
 ## Phase 1 — MVP « voir les arbres autour de moi » ✅
 
-217 855 arbres réels de Paris affichés et tappables. Style OpenFreeMap, MapLibre 11.11.0, géoloc native (`LocationManager`, sans GMS), Room avec index `(latitude, longitude)`, source GeoJSON clusterisée, hit-test à deux niveaux.
+213 042 arbres réels de Paris affichés et tappables (217 855 lignes du CSV OpenData filtrées des ~4 800 sans `genre`/`espece` connus). Style OpenFreeMap, MapLibre 11.11.0, géoloc native (`LocationManager`, sans GMS), Room avec index `(latitude, longitude)`, source GeoJSON clusterisée, hit-test à deux niveaux.
 
 ## Phase 1.5 — Polish carte ✅
 
@@ -255,7 +255,7 @@ Reporté du brief 2026-05-04. Quatre micro-items, aucun touchant la persistance 
 
 ### Sous-groupe G — Tips informatifs sur le splash ✅
 
-Bonus product décidé en cours de Phase 10.5 (avant bump `versionCode 9`). Le `ColdStartSplash` peut tourner ~35 s pendant l'init MapLibre + chargement des 213 k arbres. Sous le wordmark (« CanoPaname » + « Réveil des 217 855 arbres parisiens »), il restait un large vide visuel comblé seulement par la couronne de mini-platanes. On y greffe un texte rotatif de tips informatifs au ton **pince-sans-rire / décalé** : transforme le temps mort en moment de lecture, pose l'identité ludique de l'app dès le 1er lancement.
+Bonus product décidé en cours de Phase 10.5 (avant bump `versionCode 9`). Le `ColdStartSplash` peut tourner ~35 s pendant l'init MapLibre + chargement des 213 k arbres. Sous le wordmark (« CanoPaname » + « Réveil des 213 042 arbres parisiens »), il restait un large vide visuel comblé seulement par la couronne de mini-platanes. On y greffe un texte rotatif de tips informatifs au ton **pince-sans-rire / décalé** : transforme le temps mort en moment de lecture, pose l'identité ludique de l'app dès le 1er lancement.
 
 - [x] **Banque fusionnée 242 tips** ✅ — `tools/splash-tips-static.json` (source manuelle commitée, ~170 phrases history/popculture/player) + `tools/build_dataset.py:write_splash_tips()` (~60 phrases dataset générées des agrégats CSV : top espèces nominatives, distributions counts/hauteur/circonférence, Pareto « 10 espèces = 50 % », « 48 = 80 % », arrondissements croisés intra-muros vs bois, hégémonie platane « domine 18 arr sur 19 », arr atypiques, genres top/diversité, rangs 4-8 désambiguïsés par binôme scientifique quand le nom commun se répète, curiosités). Sortie unique : `app/src/main/assets/splash-tips.json` (31 Ko). Sanity check au build : placeholders `{xxx}` non supportés runtime → `ValueError` immédiat. Outliers de saisie filtrés (hauteur > 60 m / circonférence > 1200 cm écartées du « plus grand arbre »).
 - [x] **Catégories + filtrage `requires`** ✅ — `intro` (10 ids ordonnés, 1er lancement), `dataset` (généré), `history`/`popculture` (statique), `player` (templates avec placeholders `{captureCount}`, `{speciesCount}`, `{remarquableCount}`, `{daysSinceFirst}`). Tip avec `requires: ["X", "Y"]` éligible seulement si toutes les valeurs > 0 → début de partie ne montre aucun tip joueur creux. Set fermé de 4 placeholders, contrôlé identiquement côté Python build et Kotlin runtime.
@@ -286,6 +286,15 @@ Bonus product décidé en cours de Phase 10.5 (avant bump `versionCode 9`). Le `
 - [x] **OptIn `FlowPreview`** ✅ — `debounce` est encore en preview en kotlinx-coroutines 1.9. Ajouté `@OptIn(kotlinx.coroutines.FlowPreview::class)` à la fonction `MapScreen`.
 - [x] **Verif build** ✅ — `assembleDebug` vert (warning FlowPreview résolu après opt-in `@OptIn(kotlinx.coroutines.FlowPreview::class)` sur `MapScreen`).
 - [x] **Smoke device** ✅ — validé sur GrapheneOS : pins visibles ~700 ms au cold-start fresh, clusters s'allument en 2e wave ~1-2 s plus tard ; au retour Profil → Map, lecture cache `app.enrichedGeoJson` → 1 seul freeze, pins+clusters d'un coup ; mid-session capture → pin instant via `applyDiscoveryColor`, cluster suit après 1 s de debounce. 3 buckets gris/vert clair/vert foncé cohérents avec la progression. **Bug résolu en cours d'impl** : 1re version bloquait le cold-start sur l'enrichment 217k features (~5-15 s sur device, beaucoup plus lent que sur PC) → carte vide ~20 s. Refactor : enrichment déplacé du cold-start vers le LaunchedEffect mid-session debounced, cache process-singleton dans `ArbresApp` pour les remounts.
+
+### Sous-groupe I — Cohérence du compteur splash ✅
+
+**Problème UX** : le splash annonçait « Réveil des **217 855** arbres parisiens » (chiffre hardcodé dans `MapOverlays.kt`), mais au dezoom max sur la carte, le cluster unique affiche **213 042** (`point_count` du GeoJSON réel). Différence de 4 813 = lignes du CSV OpenData filtrées au build par `tools/build_dataset.py` (`if genre is None or espece is None: continue`). Le user tatillon dezoome à fond et a l'impression qu'on lui a survendu de quelques milliers d'arbres.
+
+**Solution** : la carte est la source de vérité, le splash s'aligne. On lit `dataset-stats.json:totalArbres` (déjà chargé eagerly via `DatasetStats.load` → `ArbresApp.datasetStats`) au lieu d'un nombre fixe — bénéfice secondaire : résilient aux futurs rebuilds du dataset OpenData.
+
+- [x] **Lecture dynamique dans `ColdStartSplash`** ✅ — `rememberDatasetStats()` (helper Compose déjà adopté par `ArboretumScreen`) + `NumberFormat.getInstance(Locale.FRANCE).format(...)` pour conserver l'espace insécable étroit U+202F (« 213 042 ») cohérent avec la typographie du splash. Mémoïsé via `remember(datasetStats.totalArbres)` (le `Int` ne change pas pendant la vie du process, mais la stabilité est gratuite).
+- [x] **Alignement doc** ✅ — toutes les mentions runtime-visibles synchronisées : `README.md:11`, `TESTS.md:38` (texte cold start), `TESTS.md:39` (durée), `TESTS.md:67` (smoke 213k pins + matche le cluster dezoomé), `docs/vision-jeu.md:25` et `:69`, `ROADMAP.md:11` (217 855 garde une mention pédagogique pour expliquer l'écart). Pas touché aux historiques de commits ni aux logs de dev.
 
 ### Verrou de fin de phase
 

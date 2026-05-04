@@ -35,8 +35,8 @@ Si `:app:detekt` sort des findings non couverts par le baseline, **NE PAS** sile
 - [ ] `./gradlew installDebug` réussit, app installée (icône platane visible dans le launcher).
 - [ ] **Icône launcher** ressemble à un platane parisien (pas le robot Android par défaut). Phase 3.
 - [ ] **Icône monochrome** : activer Themed Icons dans les options launcher GrapheneOS → l'icône bascule sur la variante monochrome. Phase 3.
-- [ ] **Cold start** : tap sur l'icône → splash natif (fond vert + logo) → splash Compose custom (sway sinusoïdal + cascade fade+scale + LinearProgressIndicator or, texte « Réveil des 217 855 arbres parisiens ») → carte. Pas de flicker entre les deux splashes. Phase 3 + Phase 7 motion.
-- [ ] **Durée splash custom** : ~2-3 s avant que la carte n'apparaisse, le temps que les 217k pins se chargent.
+- [ ] **Cold start** : tap sur l'icône → splash natif (fond vert + logo) → splash Compose custom (sway sinusoïdal + cascade fade+scale + LinearProgressIndicator or, texte « Réveil des 213 042 arbres parisiens ») → carte. Pas de flicker entre les deux splashes. Phase 3 + Phase 7 motion.
+- [ ] **Durée splash custom** : ~2-3 s avant que la carte n'apparaisse, le temps que les 213k pins se chargent.
 
 Si le splash custom ne s'affiche pas et qu'on voit directement la carte vide grise, vérifier les logs : `adb logcat -s MapScreen:I` doit afficher `MapView init`, `Style prêt`, `GeoJSON disponible`, `Layers posées`.
 
@@ -64,7 +64,7 @@ Si le splash custom ne s'affiche pas et qu'on voit directement la carte vide gri
 
 ### 4.1 Affichage
 
-- [ ] **217 855 pins** parisiens visibles à z13 sur Paris (clustering vert).
+- [ ] **213 042 pins** parisiens visibles à z13 sur Paris (clustering vert). Au dezoom max, le cluster unique doit afficher exactement ce count (matche le « Réveil des 213 042 » du splash).
 - [ ] **Dezoom à z11** : clusters seulement, pas de grille de pins (régression GeoJSON tiling).
 - [ ] **Zoom à z16** : pins individuels gris (non-capturés).
 - [ ] **Tap sur cluster** : la carte zoome (animation) sur la zone du cluster.

@@ -8,7 +8,7 @@ Inspirée de Pokémon GO et Space Invaders, mais avec de **vrais** arbres : ceux
 
 ## Ce que ça fait aujourd'hui
 
-- **Carte** plein écran : 217 855 arbres parisiens en clusters MapLibre, style OpenFreeMap, géoloc native sans Google Play Services.
+- **Carte** plein écran : 213 042 arbres parisiens en clusters MapLibre, style OpenFreeMap, géoloc native sans Google Play Services.
 - **Capture** par proximité GPS (< 30 m), photo prise depuis l'app, stockée localement. Pin gris → vert quand l'espèce est découverte ; orange pour les remarquables capturés.
 - **Arboretum** : Pokédex à 907 espèces. Cards par espèce avec count Paris, photos perso, première capture. Fiche enrichie (résumé Wikipedia FR, stats Paris, mini-carte filtrée).
 - **Pokédex remarquables** dédié, avec qualification + résumé + cultivar + lien fiche PDF Ville de Paris (169/907).

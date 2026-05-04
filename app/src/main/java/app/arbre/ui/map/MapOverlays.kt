@@ -50,12 +50,15 @@ import androidx.compose.ui.unit.dp
 import app.arbre.R
 import app.arbre.data.SpeciesEntry
 import app.arbre.data.rememberCaptureRepository
+import app.arbre.data.rememberDatasetStats
 import app.arbre.data.rememberOnboardingStore
 import app.arbre.data.rememberSplashTipsRepository
 import app.arbre.ui.theme.ArbresMotion
 import app.arbre.ui.theme.arbresMotion
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import java.text.NumberFormat
+import java.util.Locale
 import kotlin.math.cos
 import kotlin.math.sin
 
@@ -165,6 +168,14 @@ internal fun ColdStartSplash() {
         canRotate = canRotateTips,
     )
 
+    // Total réellement embarqué (arbres OpenData filtrés sur genre+espece
+    // connus). Doit matcher le `point_count` du cluster MapLibre dezoomé à
+    // fond — sinon le user croit qu'on lui en survend quelques milliers.
+    val datasetStats = rememberDatasetStats()
+    val totalFormatted = remember(datasetStats.totalArbres) {
+        NumberFormat.getInstance(Locale.FRANCE).format(datasetStats.totalArbres)
+    }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -191,7 +202,7 @@ internal fun ColdStartSplash() {
             )
             Spacer(Modifier.height(8.dp))
             Text(
-                text = "Réveil des 217 855 arbres parisiens",
+                text = "Réveil des $totalFormatted arbres parisiens",
                 color = Color.White.copy(alpha = 0.85f),
                 style = MaterialTheme.typography.bodyMedium,
             )
