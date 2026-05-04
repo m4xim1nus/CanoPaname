@@ -1,26 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Chemin sinueux + drapeau « début de l'aventure ». -->
+<!-- Silhouette platane canonique 160x160 alpha 0.40, cohérent avec
+     illus_empty_arboretum / illus_empty_remarquables. Empty state Profil
+     avant 1re capture. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="160dp"
     android:height="160dp"
     android:viewportWidth="160"
     android:viewportHeight="160">
-    <!-- Chemin -->
     <path
-        android:strokeColor="#9E8B6B"
-        android:strokeWidth="6"
-        android:strokeAlpha="0.5"
-        android:strokeLineCap="round"
-        android:fillColor="#00000000"
-        android:pathData="M30,140 C 40,110 70,120 80,90 C 90,60 110,70 130,40" />
-    <!-- Mât -->
-    <path
-        android:fillColor="#9E8B6B"
-        android:fillAlpha="0.6"
-        android:pathData="M128,40 L132,40 L132,80 L128,80 Z" />
-    <!-- Drapeau triangulaire -->
-    <path
-        android:fillColor="#C9A227"
-        android:fillAlpha="0.7"
-        android:pathData="M132,40 L154,46 L132,54 Z" />
+        android:fillColor="#7A8F6E"
+        android:fillAlpha="0.40"
+        android:pathData="M71.1,133.3 L71.1,97.8 C56.3,97.8 44.4,91.9 38.5,80 C32.6,77 32.6,65.2 35.6,56.3 C32.6,44.4 41.5,32.6 53.3,32.6 C56.3,23.7 68.1,17.8 80,17.8 C91.9,17.8 103.7,23.7 106.7,32.6 C118.5,32.6 127.4,44.4 124.4,56.3 C127.4,65.2 127.4,77 121.5,80 C115.6,91.9 103.7,97.8 88.9,97.8 L88.9,133.3 Z" />
 </vector>

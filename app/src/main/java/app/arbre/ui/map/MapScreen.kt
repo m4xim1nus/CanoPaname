@@ -234,6 +234,14 @@ fun MapScreen(
         mapView.onResume()
         mapView.getMapAsync { map ->
             mapRef = map
+            // On bloque la rotation : la boussole MapLibre se retrouve sinon
+            // sous l'inset status bar en edge-to-edge, intappable, et la
+            // rotation libre n'apporte rien à l'usage « carnet de bord
+            // naturaliste » (la carte reste nord-en-haut, comme un plan
+            // imprimé). `isCompassEnabled = false` la cache puisque
+            // dépourvue de raison d'être sans rotation.
+            map.uiSettings.isRotateGesturesEnabled = false
+            map.uiSettings.isCompassEnabled = false
             scope.launch {
                 map.cameraPosition = if (filterSpecies != null) {
                     parisCamera(PARIS_OVERVIEW_ZOOM)
