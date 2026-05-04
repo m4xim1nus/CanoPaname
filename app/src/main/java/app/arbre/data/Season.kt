@@ -11,7 +11,7 @@ import java.util.TimeZone
 /**
  * Saisons calendaires fixes (déc-fév / mar-mai / juin-août / sep-nov),
  * indépendantes de l'année. Une espèce capturée à 2 saisons compte pour 2
- * entrées dans le Pokédex saisonnier ; les captures s'accumulent au fil
+ * entrées dans le catalogue saisonnier ; les captures s'accumulent au fil
  * des années dans le bucket de leur saison (cf. ROADMAP Sprint I).
  *
  * Stockage : `CaptureEntity.season: Int` reste tel quel pour ne pas migrer

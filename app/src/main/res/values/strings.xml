@@ -16,4 +16,8 @@
     <string name="welcome_cta_start">Commencer</string>
     <string name="welcome_cta_close">Fermer</string>
     <string name="welcome_how_to_play">Comment jouer</string>
+
+    <!-- Arboretum / Remarquables : segmented control -->
+    <string name="segment_liste">Liste</string>
+    <string name="segment_catalogue">Catalogue</string>
 </resources>

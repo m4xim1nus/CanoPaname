@@ -25,7 +25,7 @@ data class SpeciesEntry(
 ) {
     val displayName: String get() = "$genre $espece"
     /**
-     * Nom à afficher en primaire dans l'Arboretum (liste / Pokédex / fiche
+     * Nom à afficher en primaire dans l'Arboretum (liste / Catalogue / fiche
      * arbre). Tombe sur le binôme si le dataset n'expose pas de nom commun
      * pour l'espèce.
      */
@@ -38,8 +38,9 @@ class SpeciesIndex(entries: List<SpeciesEntry>) {
     private val byKey: Map<Pair<String, String>, Int> =
         entries.associate { (it.genre to it.espece) to it.index }
     // Ordre stable par speciesIndex croissant — c'est l'ordre « annuaire »
-    // qu'on expose dans la vue Pokédex de l'Arboretum. Le tri est fait une
-    // fois à l'init et conservé en mémoire.
+    // de référence ; le Catalogue Arboretum réordonne par count Paris
+    // décroissant à l'affichage. Le tri est fait une fois à l'init et
+    // conservé en mémoire.
     private val ordered: List<SpeciesEntry> = entries.sortedBy { it.index }
 
     val total: Int get() = byIndex.size

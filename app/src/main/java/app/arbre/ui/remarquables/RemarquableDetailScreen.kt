@@ -38,8 +38,8 @@ import app.arbre.ui.detail.ArbreDetailContent
 
 /**
  * Fiche plein-écran d'un arbre remarquable individuel, atteinte depuis le
- * Pokédex remarquables ou depuis la modale carte (Phase 10.5 sous-groupe B).
- * On n'arrive ici qu'après découverte (le Pokédex ne rend cliquable que les
+ * Catalogue remarquables ou depuis la modale carte (Phase 10.5 sous-groupe B).
+ * On n'arrive ici qu'après découverte (le Catalogue ne rend cliquable que les
  * cellules découvertes), donc `isDiscovered = true` d'office et pas de bouton
  * Capturer.
  *

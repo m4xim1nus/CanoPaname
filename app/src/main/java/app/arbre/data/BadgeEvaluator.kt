@@ -102,7 +102,7 @@ object BadgeEvaluator {
     /** Match « 1er » (1) ou « 5e », « 12e », … (2-20) en suffixe d'adresse. */
     private val ARR_PATTERN = Regex(""", (\d{1,2})(?:er|e)$""")
 
-    internal fun parseArrondissement(adresse: String): Int? {
+    fun parseArrondissement(adresse: String): Int? {
         val match = ARR_PATTERN.find(adresse) ?: return null
         val n = match.groupValues[1].toIntOrNull() ?: return null
         return if (n in 1..20) n else null

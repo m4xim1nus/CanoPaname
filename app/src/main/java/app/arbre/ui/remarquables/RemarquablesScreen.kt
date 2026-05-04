@@ -7,15 +7,12 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -30,6 +27,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -44,10 +42,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontStyle
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.arbre.data.Arbre
+import app.arbre.data.BadgeEvaluator
 import app.arbre.data.Season
 import app.arbre.data.rememberArbreRepository
 import app.arbre.data.rememberCaptureRepository
@@ -60,6 +57,7 @@ import app.arbre.ui.common.SeasonSelector
 import app.arbre.ui.theme.arbresColors
 import androidx.compose.foundation.Image
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import java.text.DateFormat
 import java.util.Date
 
@@ -86,7 +84,7 @@ fun RemarquablesScreen(
     val capturesRemarquables by captureRepo.capturesRemarquables()
         .collectAsState(initial = emptyList())
     // Set scopé sur la saison sélectionnée — un même remarquable capturé
-    // en hiver et en été compte 2 fois dans le Pokédex saisonnier.
+    // en hiver et en été compte 2 fois dans le catalogue saisonnier.
     val capturedIds by captureRepo.capturedRemarquableIds(selectedSeason)
         .collectAsState(initial = emptySet())
 
@@ -109,8 +107,8 @@ fun RemarquablesScreen(
     val nbDecouverts = tousRemarquables.count { it.id in capturedIds }
 
     // `rememberSaveable` pour conserver le mode au retour de la fiche-arbre —
-    // miroir de l'Arboretum (cf. ArboretumScreen.kt : aller-retour Pokédex →
-    // fiche → Pokédex sans flash sur la vue Liste).
+    // miroir de l'Arboretum (cf. ArboretumScreen.kt : aller-retour Catalogue →
+    // fiche → Catalogue sans flash sur la vue Liste).
     var viewMode by rememberSaveable { mutableStateOf(RemarquablesViewMode.LISTE) }
 
     Scaffold(
@@ -162,7 +160,7 @@ fun RemarquablesScreen(
                     lastCaptureTsByArbreId = lastCaptureTsByArbreId,
                     onRemarquableClick = onRemarquableClick,
                 )
-                RemarquablesViewMode.POKEDEX -> PokedexView(
+                RemarquablesViewMode.CATALOGUE -> CatalogueView(
                     tousRemarquables = tousRemarquables,
                     capturedIds = capturedIds,
                     firstPhotoByArbreId = firstPhotoByArbreId,
@@ -173,7 +171,7 @@ fun RemarquablesScreen(
     }
 }
 
-private enum class RemarquablesViewMode { LISTE, POKEDEX }
+private enum class RemarquablesViewMode { LISTE, CATALOGUE }
 
 @Composable
 private fun ViewModeSelector(
@@ -186,12 +184,12 @@ private fun ViewModeSelector(
             selected = current == RemarquablesViewMode.LISTE,
             onClick = { onSelect(RemarquablesViewMode.LISTE) },
             shape = SegmentedButtonDefaults.itemShape(0, 2),
-        ) { Text("Liste") }
+        ) { Text(stringResource(R.string.segment_liste)) }
         SegmentedButton(
-            selected = current == RemarquablesViewMode.POKEDEX,
-            onClick = { onSelect(RemarquablesViewMode.POKEDEX) },
+            selected = current == RemarquablesViewMode.CATALOGUE,
+            onClick = { onSelect(RemarquablesViewMode.CATALOGUE) },
             shape = SegmentedButtonDefaults.itemShape(1, 2),
-        ) { Text("Pokédex") }
+        ) { Text(stringResource(R.string.segment_catalogue)) }
     }
 }
 
@@ -232,123 +230,145 @@ private fun ListeView(
 }
 
 /**
- * Vue annuaire : grille 3 colonnes ordonnée alphabétiquement par (genre, espèce, id).
- * Les remarquables capturés révèlent leur photo et leur nom ; les autres restent
- * en silhouette « ??? » avec leur numéro pour donner une idée de l'avancement.
+ * Vue annuaire : `LazyColumn` groupé par arrondissement avec `stickyHeader`
+ * (« 1er », « 2e », …, « 20e », puis « Hors Paris » pour les remarquables
+ * sans suffixe d'arrondissement reconnu — bois de Vincennes/Boulogne, cas
+ * limites). Tri intra-section : alpha genre/espèce. Effet : navigation
+ * géographique du catalogue, on voit ce qui reste à chasser arr par arr.
  *
- * Variante de la vue Pokédex Arboretum : ici le numéro est stable (chaque
- * remarquable a son rang fixe dans la liste), tandis que pour les espèces le
- * numéro est juste un rang d'affichage.
+ * Réutilise `BadgeEvaluator.parseArrondissement` (regex `, (\d+)(er|e)$`,
+ * cohérente avec `tools/build_dataset.py:normalize_arr`).
  */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun PokedexView(
+private fun CatalogueView(
     tousRemarquables: List<Arbre>,
     capturedIds: Set<Long>,
     firstPhotoByArbreId: Map<Long, String>,
     onRemarquableClick: (Long) -> Unit,
 ) {
-    val ordered = remember(tousRemarquables) {
-        tousRemarquables.sortedWith(
-            compareBy(
-                { it.genre.lowercase() },
-                { it.espece.lowercase() },
-                { it.id },
-            )
-        )
+    val sections: List<ArrSection> = remember(tousRemarquables) {
+        tousRemarquables
+            .groupBy { BadgeEvaluator.parseArrondissement(it.adresse ?: "") }
+            .map { (arr, arbres) ->
+                ArrSection(
+                    arr = arr,
+                    label = arrondissementLabel(arr),
+                    arbres = arbres.sortedWith(
+                        compareBy(
+                            { it.genre.lowercase() },
+                            { it.espece.lowercase() },
+                            { it.id },
+                        )
+                    ),
+                )
+            }
+            // Sections triées par n° arrondissement croissant ; null (Hors
+            // Paris) en queue via Int.MAX_VALUE.
+            .sortedBy { it.arr ?: Int.MAX_VALUE }
     }
 
-    LazyVerticalGrid(
-        columns = GridCells.Fixed(3),
+    LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 16.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        contentPadding = PaddingValues(bottom = 16.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        itemsIndexed(ordered, key = { _, a -> a.id }) { position, arbre ->
-            val discovered = arbre.id in capturedIds
-            val photoPath = if (discovered) firstPhotoByArbreId[arbre.id] else null
-            PokedexCell(
-                displayNumber = position + 1,
-                arbre = arbre,
-                photoPath = photoPath,
-                discovered = discovered,
-                onClick = if (discovered) {
-                    { onRemarquableClick(arbre.id) }
-                } else null,
-            )
+        // `for` (pas `forEach`) pour préserver le scope LazyListScope —
+        // `stickyHeader` est une extension de LazyListScope, qu'une lambda
+        // de forEach masquerait.
+        for (section in sections) {
+            stickyHeader(key = "header-${section.arr ?: "off"}") {
+                ArrondissementHeader(section.label)
+            }
+            items(section.arbres, key = { it.id }) { arbre ->
+                val discovered = arbre.id in capturedIds
+                val photoPath = if (discovered) firstPhotoByArbreId[arbre.id] else null
+                Box(modifier = Modifier.padding(horizontal = 16.dp)) {
+                    if (discovered) {
+                        DiscoveredCard(
+                            arbre = arbre,
+                            photoPath = photoPath,
+                            captureTs = null,
+                            onClick = { onRemarquableClick(arbre.id) },
+                        )
+                    } else {
+                        LockedRemarquableCard(arbre = arbre)
+                    }
+                }
+            }
         }
     }
 }
 
+private data class ArrSection(
+    val arr: Int?,
+    val label: String,
+    val arbres: List<Arbre>,
+)
+
+private fun arrondissementLabel(arr: Int?): String = when (arr) {
+    null -> "Hors Paris"
+    1 -> "1er"
+    else -> "${arr}e"
+}
+
 @Composable
-private fun PokedexCell(
-    displayNumber: Int,
-    arbre: Arbre,
-    photoPath: String?,
-    discovered: Boolean,
-    onClick: (() -> Unit)?,
-) {
+private fun ArrondissementHeader(label: String) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        tonalElevation = 2.dp,
+        color = MaterialTheme.colorScheme.surface,
+    ) {
+        Text(
+            label,
+            style = MaterialTheme.typography.titleLarge,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+        )
+    }
+}
+
+@Composable
+private fun LockedRemarquableCard(arbre: Arbre) {
     Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .let { if (onClick != null) it.clickable(onClick = onClick) else it },
+        modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
-            containerColor = if (discovered) {
-                MaterialTheme.colorScheme.surfaceVariant
-            } else {
-                MaterialTheme.colorScheme.surface
-            },
+            containerColor = MaterialTheme.colorScheme.surface,
         ),
     ) {
-        Column(
-            modifier = Modifier.padding(8.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
+        Row(
+            modifier = Modifier.padding(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Text(
-                "#%03d".format(displayNumber),
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .aspectRatio(1f)
-                    .clip(RoundedCornerShape(8.dp)),
-                contentAlignment = Alignment.Center,
-            ) {
-                if (photoPath != null) {
-                    PhotoThumbnail(
-                        photoPath = photoPath,
-                        sampleSize = 4,
-                        modifier = Modifier.fillMaxSize(),
+            PlaceholderThumbnail(modifier = Modifier.size(72.dp))
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(
+                    "???",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    Image(
+                        painter = painterResource(R.drawable.ic_remarquable_badge),
+                        contentDescription = null,
+                        modifier = Modifier.size(14.dp),
                     )
-                } else {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(MaterialTheme.colorScheme.surfaceContainerHighest),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Text(
-                            "?",
-                            style = MaterialTheme.typography.displayMedium,
-                            color = MaterialTheme.colorScheme.outline,
-                        )
-                    }
+                    Text(
+                        "Remarquable",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.arbresColors.remarquableOrange,
+                    )
+                }
+                arbre.adresse?.let {
+                    Text(
+                        it,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 }
             }
-            Text(
-                if (discovered) arbre.nomAffichage else "???",
-                style = MaterialTheme.typography.bodySmall,
-                color = if (discovered) {
-                    MaterialTheme.colorScheme.onSurface
-                } else {
-                    MaterialTheme.colorScheme.onSurfaceVariant
-                },
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-                textAlign = TextAlign.Start,
-            )
         }
     }
 }

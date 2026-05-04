@@ -48,7 +48,7 @@ import app.arbre.ui.theme.arbresMotion
 /**
  * Bandeau retour + label espèce affiché en haut à gauche en mode `MAP_FILTERED`.
  * Remplace les FABs Profil/Arboretum/Remarquables qui n'ont pas de sens en mode
- * filtré (l'utilisateur chasse une espèce précise, pas la Pokédex globale).
+ * filtré (l'utilisateur chasse une espèce précise, pas le Catalogue global).
  */
 @Composable
 internal fun FilterBanner(

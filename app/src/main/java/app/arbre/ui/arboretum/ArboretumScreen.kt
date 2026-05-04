@@ -51,11 +51,13 @@ import app.arbre.data.Capture
 import app.arbre.data.Season
 import app.arbre.data.SpeciesEntry
 import app.arbre.data.SpeciesIndex
+import app.arbre.data.SpeciesInfoRepository
 import app.arbre.data.rememberArbreRepository
 import app.arbre.data.rememberCaptureRepository
 import app.arbre.data.rememberDatasetStats
 import app.arbre.data.rememberSeasonStore
 import app.arbre.data.rememberSpeciesIndex
+import app.arbre.data.rememberSpeciesInfoRepository
 import app.arbre.R
 import app.arbre.ui.common.ArchiveBanner
 import app.arbre.ui.common.EmptyState
@@ -63,6 +65,7 @@ import app.arbre.ui.common.PhotoThumbnail
 import app.arbre.ui.common.SeasonSelector
 import androidx.compose.foundation.Image
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import java.text.DateFormat
 import java.util.Date
 
@@ -74,6 +77,7 @@ fun ArboretumScreen(
 ) {
     val captureRepo = rememberCaptureRepository()
     val speciesIndex = rememberSpeciesIndex()
+    val speciesInfoRepo = rememberSpeciesInfoRepository()
     val stats = rememberDatasetStats()
     val arbreRepo = rememberArbreRepository()
     val seasonStore = rememberSeasonStore()
@@ -148,8 +152,9 @@ fun ArboretumScreen(
                     selectedSeason = selectedSeason,
                     isArchive = isArchive,
                 )
-                ArboretumViewMode.POKEDEX -> PokedexView(
+                ArboretumViewMode.CATALOGUE -> CatalogueView(
                     speciesIndex = speciesIndex,
+                    speciesInfoRepo = speciesInfoRepo,
                     speciesGroups = speciesGroups,
                     onSpeciesClick = onSpeciesClick,
                 )
@@ -158,7 +163,7 @@ fun ArboretumScreen(
     }
 }
 
-private enum class ArboretumViewMode { LISTE, POKEDEX }
+private enum class ArboretumViewMode { LISTE, CATALOGUE }
 
 @Composable
 private fun ViewModeSelector(
@@ -171,12 +176,12 @@ private fun ViewModeSelector(
             selected = current == ArboretumViewMode.LISTE,
             onClick = { onSelect(ArboretumViewMode.LISTE) },
             shape = SegmentedButtonDefaults.itemShape(0, 2),
-        ) { Text("Liste") }
+        ) { Text(stringResource(R.string.segment_liste)) }
         SegmentedButton(
-            selected = current == ArboretumViewMode.POKEDEX,
-            onClick = { onSelect(ArboretumViewMode.POKEDEX) },
+            selected = current == ArboretumViewMode.CATALOGUE,
+            onClick = { onSelect(ArboretumViewMode.CATALOGUE) },
             shape = SegmentedButtonDefaults.itemShape(1, 2),
-        ) { Text("Pokédex") }
+        ) { Text(stringResource(R.string.segment_catalogue)) }
     }
 }
 
@@ -212,32 +217,38 @@ private fun ListeView(
 }
 
 /**
- * Vue annuaire : grille 3 colonnes ordonnée par speciesIndex. Les espèces
+ * Vue annuaire : grille 3 colonnes ordonnée par count Paris décroissant.
+ * #001 = espèce la plus présente dans le dataset OpenData (~Platane), les
+ * derniers numéros sont les espèces uniques/quasi uniques. Les espèces
  * capturées révèlent leur photo et leur nom ; les autres restent en
  * silhouette « ??? » avec leur numéro pour donner une idée de l'avancement
- * sans spoiler l'identité (cf. ROADMAP : « cases vides pour les espèces non
- * encore capturées »).
+ * sans spoiler l'identité.
  *
  * Pas de section remarquables ici : le speciesIndex est partagé avec les
  * arbres normaux, donc l'annuaire représente l'inventaire des espèces
  * tout court — pertinent autant pour les remarquables que les autres.
  */
 @Composable
-private fun PokedexView(
+private fun CatalogueView(
     speciesIndex: SpeciesIndex,
+    speciesInfoRepo: SpeciesInfoRepository,
     speciesGroups: List<SpeciesGroup>,
     onSpeciesClick: (Int) -> Unit,
 ) {
     val firstPhotoBySk: Map<Int, String> = remember(speciesGroups) {
         speciesGroups.associate { it.entry.index to it.captures.first().photoPath }
     }
-    // Ordre Pokédex : alphabétique par (genre, espece). Regroupe les espèces
-    // d'un même genre (Acer platanoides, Acer pseudoplatanus, …) côte à côte
-    // — l'ordre par speciesIndex (sk) reflèterait l'ordre d'ingestion CSV
-    // qui est lié à l'ordre des captures et n'a pas de sens pour l'utilisateur.
-    val ordered = remember(speciesIndex) {
+    // Tri indépendant des captures : count Paris décroissant (espèces sans
+    // SpeciesInfo → count = 0, alpha en queue). Mémoïsé sur (speciesIndex,
+    // speciesInfoRepo) — pas recalculé au switch de saison ni à l'INSERT
+    // d'une capture.
+    val ordered = remember(speciesIndex, speciesInfoRepo) {
         speciesIndex.entries().sortedWith(
-            compareBy({ it.genre.lowercase() }, { it.espece.lowercase() })
+            compareByDescending<SpeciesEntry> {
+                speciesInfoRepo.get(it.index)?.stats?.count ?: 0
+            }
+                .thenBy { it.genre.lowercase() }
+                .thenBy { it.espece.lowercase() }
         )
     }
 
@@ -250,10 +261,10 @@ private fun PokedexView(
     ) {
         itemsIndexed(ordered, key = { _, e -> e.index }) { position, entry ->
             val photoPath = firstPhotoBySk[entry.index]
-            PokedexCell(
-                // Numéro 1-based — c'est un rang d'affichage, distinct du
-                // speciesIndex stocké en Room (qui peut être 0 et reflète
-                // l'ordre d'ingestion).
+            CatalogueCell(
+                // Numéro 1-based — rang d'affichage dans l'ordre count
+                // décroissant, distinct du speciesIndex Room (qui reflète
+                // l'ordre d'ingestion CSV).
                 displayNumber = position + 1,
                 entry = entry,
                 photoPath = photoPath,
@@ -266,7 +277,7 @@ private fun PokedexView(
 }
 
 @Composable
-private fun PokedexCell(
+private fun CatalogueCell(
     displayNumber: Int,
     entry: SpeciesEntry,
     photoPath: String?,

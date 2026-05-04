@@ -111,7 +111,7 @@ fun rememberCaptureController(
             }
             // Snapshot AVANT insert : sinon on lit le set qui contient déjà
             // notre nouvelle espèce et on rate la transition « 1re capture ».
-            // Scopé sur la saison de la capture pour le Pokédex saisonnier
+            // Scopé sur la saison de la capture pour le catalogue saisonnier
             // (cf. Sprint I) : la même espèce capturée 2 saisons compte 2 fois.
             val captureSeason = Season.fromTimestamp(pending.captureTimestamp)
             val previouslyCaptured = captureRepo.capturedSpeciesIndices(captureSeason).first()
