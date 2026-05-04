@@ -1,11 +1,15 @@
 package app.arbre.ui.map
 
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -30,6 +34,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -40,9 +45,13 @@ import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.arbre.R
 import app.arbre.data.SpeciesEntry
+import app.arbre.data.rememberCaptureRepository
+import app.arbre.data.rememberOnboardingStore
+import app.arbre.data.rememberSplashTipsRepository
 import app.arbre.ui.theme.ArbresMotion
 import app.arbre.ui.theme.arbresMotion
 import kotlinx.coroutines.delay
@@ -141,6 +150,20 @@ internal fun ColdStartSplash() {
         )
     }
     val introValue = intro.value
+    // `derivedStateOf` plutôt qu'une lecture brute : la rotation des tips ne
+    // doit pas redémarrer à chaque frame du fade-in. Ne change qu'une fois,
+    // au passage 0.99 → 1f.
+    val canRotateTips by remember { derivedStateOf { intro.value >= 1f } }
+
+    val splashTips = rememberSplashTipsRepository()
+    val captureRepo = rememberCaptureRepository()
+    val onboardingStore = rememberOnboardingStore()
+    val tipText by rememberSplashTipText(
+        repository = splashTips,
+        captureRepository = captureRepo,
+        onboardingStore = onboardingStore,
+        canRotate = canRotateTips,
+    )
 
     Box(
         modifier = Modifier
@@ -172,6 +195,35 @@ internal fun ColdStartSplash() {
                 color = Color.White.copy(alpha = 0.85f),
                 style = MaterialTheme.typography.bodyMedium,
             )
+            // Tip rotatif sous le wordmark, hauteur fixe pour éviter les sauts
+            // de layout entre une phrase courte et une longue (3 lignes max).
+            Spacer(Modifier.height(32.dp))
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(84.dp)
+                    .padding(horizontal = 28.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                AnimatedContent(
+                    targetState = tipText,
+                    transitionSpec = {
+                        fadeIn(tween(220)) togetherWith fadeOut(tween(220))
+                    },
+                    label = "splash-tip",
+                ) { text ->
+                    if (text != null) {
+                        Text(
+                            text = text,
+                            color = Color.White.copy(alpha = 0.85f),
+                            style = MaterialTheme.typography.bodyMedium,
+                            textAlign = TextAlign.Center,
+                            maxLines = 3,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                }
+            }
         }
         // Couronne de mini-platanes flottants — apparition cascade puis
         // boucle douce désynchronisée. Posée après la Column dans le Box

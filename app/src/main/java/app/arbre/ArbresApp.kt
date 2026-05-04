@@ -14,6 +14,7 @@ import app.arbre.data.RemarquableInfoRepository
 import app.arbre.data.SeasonStore
 import app.arbre.data.SpeciesIndex
 import app.arbre.data.SpeciesInfoRepository
+import app.arbre.data.SplashTipsRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
@@ -40,6 +41,9 @@ class ArbresApp : Application() {
     val speciesInfoRepository: SpeciesInfoRepository by lazy { SpeciesInfoRepository.load(this) }
     val remarquableInfoRepository: RemarquableInfoRepository by lazy {
         RemarquableInfoRepository.load(this)
+    }
+    val splashTipsRepository: SplashTipsRepository by lazy {
+        SplashTipsRepository.load(this)
     }
 
     val seasonStore: SeasonStore = SeasonStore()
