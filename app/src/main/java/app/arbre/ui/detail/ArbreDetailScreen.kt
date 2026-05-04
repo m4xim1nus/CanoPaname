@@ -16,11 +16,13 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -50,6 +52,7 @@ fun ArbreDetailContent(
     onCapturer: (() -> Unit)? = null,
     captureAvailability: CaptureAvailability? = null,
     onSpeciesClick: (() -> Unit)? = null,
+    onRemarquableClick: (() -> Unit)? = null,
     medianHeightM: Int? = null,
     medianCircCm: Int? = null,
     remarquableInfo: RemarquableInfo? = null,
@@ -68,6 +71,7 @@ fun ArbreDetailContent(
                 medianHeightM = medianHeightM,
                 medianCircCm = medianCircCm,
                 onSpeciesClick = onSpeciesClick,
+                onRemarquableClick = onRemarquableClick,
                 remarquableInfo = remarquableInfo,
             )
         } else {
@@ -83,6 +87,7 @@ private fun DiscoveredContent(
     medianHeightM: Int?,
     medianCircCm: Int?,
     onSpeciesClick: (() -> Unit)?,
+    onRemarquableClick: (() -> Unit)?,
     remarquableInfo: RemarquableInfo?,
 ) {
     Text(
@@ -136,9 +141,29 @@ private fun DiscoveredContent(
     }
     Text("ID OpenData : ${arbre.id}", style = MaterialTheme.typography.bodySmall)
 
-    if (onSpeciesClick != null) {
+    if (onRemarquableClick != null || onSpeciesClick != null) {
         Spacer(Modifier.height(8.dp))
+    }
+    if (onRemarquableClick != null) {
         FilledTonalButton(
+            onClick = onRemarquableClick,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Icon(
+                painter = painterResource(R.drawable.ic_remarquable_badge),
+                contentDescription = null,
+                tint = Color.Unspecified,
+                modifier = Modifier.size(20.dp),
+            )
+            Text(
+                "Fiche remarquable",
+                modifier = Modifier.padding(start = 8.dp),
+            )
+        }
+    }
+    if (onSpeciesClick != null) {
+        if (onRemarquableClick != null) Spacer(Modifier.height(8.dp))
+        OutlinedButton(
             onClick = onSpeciesClick,
             modifier = Modifier.fillMaxWidth(),
         ) {
@@ -148,7 +173,7 @@ private fun DiscoveredContent(
                 modifier = Modifier.size(20.dp),
             )
             Text(
-                "En savoir plus sur l'espèce",
+                "Fiche espèce",
                 modifier = Modifier.padding(start = 8.dp),
             )
         }

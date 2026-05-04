@@ -83,6 +83,7 @@ fun ArbresNavHost() {
                 onRemarquablesClick = { nav.navigate(Routes.REMARQUABLES) },
                 onProfileClick = { nav.navigate(Routes.PROFILE) },
                 onSpeciesClick = { sk -> nav.navigate(Routes.species(sk)) },
+                onRemarquableDetail = { id -> nav.navigate(Routes.remarquableDetail(id)) },
                 onFirstSpeciesCapture = { sk ->
                     nav.navigate(Routes.species(sk, celebrate = true))
                 },
@@ -118,6 +119,7 @@ fun ArbresNavHost() {
             RemarquableDetailScreen(
                 arbreId = arbreId,
                 onBack = { nav.popBackStack() },
+                onSpeciesClick = { sk -> nav.navigate(Routes.species(sk)) },
             )
         }
         composable(
@@ -136,6 +138,7 @@ fun ArbresNavHost() {
                 speciesIndex = sk,
                 onBack = { nav.popBackStack() },
                 onShowOnMap = { nav.navigate(Routes.mapFiltered(sk)) },
+                onRemarquableClick = { id -> nav.navigate(Routes.remarquableDetail(id)) },
                 celebrate = celebrate,
             )
         }
@@ -148,6 +151,7 @@ fun ArbresNavHost() {
                 filterSpecies = sk,
                 onArboretumClick = { nav.navigate(Routes.ARBORETUM) },
                 onSpeciesClick = { other -> nav.navigate(Routes.species(other)) },
+                onRemarquableDetail = { id -> nav.navigate(Routes.remarquableDetail(id)) },
                 onBack = { nav.popBackStack() },
             )
         }

@@ -17,11 +17,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.outlined.OpenInNew
 import androidx.compose.material.icons.outlined.Map
 import androidx.compose.material.icons.outlined.Park
@@ -45,25 +43,29 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import app.arbre.R
 import app.arbre.ui.theme.arbresColors
 import app.arbre.ui.theme.arbresMotion
 import app.arbre.data.Arbre
+import app.arbre.data.ArbreRepository
 import app.arbre.data.ArrCount
-import app.arbre.data.Capture
 import app.arbre.data.SpeciesEntry
+import app.arbre.data.SpeciesIndex
 import app.arbre.data.SpeciesInfo
 import app.arbre.data.SpeciesStats
 import app.arbre.data.rememberArbreRepository
 import app.arbre.data.rememberCaptureRepository
 import app.arbre.data.rememberSpeciesIndex
 import app.arbre.data.rememberSpeciesInfoRepository
-import app.arbre.ui.common.PhotoThumbnail
+import app.arbre.ui.common.PhotoGallery
+import app.arbre.ui.common.PhotoLightbox
 import java.text.NumberFormat
 import java.util.Locale
 import kotlinx.coroutines.flow.map
@@ -74,6 +76,7 @@ fun SpeciesDetailScreen(
     speciesIndex: Int,
     onBack: () -> Unit,
     onShowOnMap: () -> Unit = {},
+    onRemarquableClick: (Long) -> Unit = {},
     celebrate: Boolean = false,
 ) {
     val speciesIndexRepo = rememberSpeciesIndex()
@@ -98,6 +101,18 @@ fun SpeciesDetailScreen(
         captureRepo.toutesLesCaptures()
             .map { all -> all.filter { it.speciesIndex == speciesIndex } }
     }.collectAsState(initial = emptyList())
+
+    // Liste statique en mémoire (~200 arbres remarquables au total). Chargée
+    // une fois au montage de l'écran et filtrée côté Kotlin par speciesIndex.
+    var remarquablesEspece by remember(speciesIndex) {
+        mutableStateOf<List<Arbre>>(emptyList())
+    }
+    LaunchedEffect(speciesIndex) {
+        remarquablesEspece = loadRemarquablesPourEspece(arbreRepo, speciesIndexRepo, speciesIndex)
+    }
+
+    var lightboxIndex by remember(speciesIndex) { mutableStateOf<Int?>(null) }
+    val photoPaths = captures.map { it.photoPath }
 
     val title = arbreSample?.nomCommun ?: entry.displayName
 
@@ -126,8 +141,13 @@ fun SpeciesDetailScreen(
 
             item { IdentityBlock(entry, arbreSample) }
 
-            if (captures.isNotEmpty()) {
-                item { PhotoGallery(captures) }
+            if (photoPaths.isNotEmpty()) {
+                item {
+                    PhotoGallery(
+                        photoPaths = photoPaths,
+                        onPhotoClick = { idx -> lightboxIndex = idx },
+                    )
+                }
             }
 
             item { WikipediaBlock(info) }
@@ -140,9 +160,32 @@ fun SpeciesDetailScreen(
                 item { StatsBlock(stats) }
             }
 
+            if (remarquablesEspece.isNotEmpty()) {
+                item {
+                    RemarquablesDeCetteEspece(
+                        remarquables = remarquablesEspece,
+                        onClick = onRemarquableClick,
+                    )
+                }
+            }
+
             item { ShowOnMapButton(onShowOnMap) }
         }
+        PhotoLightbox(
+            photoPaths = photoPaths,
+            selectedIndex = lightboxIndex,
+            onDismiss = { lightboxIndex = null },
+        )
     }
+}
+
+private suspend fun loadRemarquablesPourEspece(
+    arbreRepo: ArbreRepository,
+    speciesIndexRepo: SpeciesIndex,
+    sk: Int,
+): List<Arbre> {
+    val all = arbreRepo.arbresRemarquables()
+    return all.filter { speciesIndexRepo.indexOf(it) == sk }
 }
 
 @Composable
@@ -258,23 +301,45 @@ private fun IdentityBlock(entry: SpeciesEntry, sample: Arbre?) {
 }
 
 @Composable
-private fun PhotoGallery(captures: List<Capture>) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(
-            "Tes photos (${captures.size})",
-            style = MaterialTheme.typography.titleMedium,
-        )
-        LazyRow(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+private fun RemarquablesDeCetteEspece(
+    remarquables: List<Arbre>,
+    onClick: (Long) -> Unit,
+) {
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            items(captures, key = { it.id }) { capture ->
-                PhotoThumbnail(
-                    photoPath = capture.photoPath,
-                    sampleSize = 2,
+            Text(
+                "Arbres remarquables de cette espèce (${remarquables.size})",
+                style = MaterialTheme.typography.titleMedium,
+            )
+            remarquables.forEach { arbre ->
+                Row(
                     modifier = Modifier
-                        .size(120.dp)
-                        .clip(RoundedCornerShape(8.dp)),
-                )
+                        .fillMaxWidth()
+                        .clickable { onClick(arbre.id) }
+                        .padding(vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_remarquable_badge),
+                        contentDescription = null,
+                        tint = Color.Unspecified,
+                        modifier = Modifier.size(20.dp),
+                    )
+                    Text(
+                        arbre.adresse ?: "Adresse inconnue",
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.weight(1f),
+                    )
+                    Icon(
+                        Icons.AutoMirrored.Outlined.KeyboardArrowRight,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             }
         }
     }

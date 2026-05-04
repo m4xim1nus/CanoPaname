@@ -119,6 +119,7 @@ fun MapScreen(
     onRemarquablesClick: () -> Unit = {},
     onProfileClick: () -> Unit = {},
     onSpeciesClick: (Int) -> Unit = {},
+    onRemarquableDetail: (Long) -> Unit = {},
     onFirstSpeciesCapture: (Int) -> Unit = {},
     onBack: (() -> Unit)? = null,
     filterSpecies: Int? = null,
@@ -529,6 +530,14 @@ fun MapScreen(
                         {
                             viewModel.closeDetail()
                             onSpeciesClick(sk)
+                        }
+                    } else null,
+                    onRemarquableClick = if (openedArbre.remarquable &&
+                        openedArbre.id in capturedRemarquables
+                    ) {
+                        {
+                            viewModel.closeDetail()
+                            onRemarquableDetail(openedArbre.id)
                         }
                     } else null,
                     medianHeightM = info?.stats?.medianHeightM,

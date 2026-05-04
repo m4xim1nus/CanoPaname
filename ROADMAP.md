@@ -196,17 +196,18 @@ Couvre remarques #4 (plaque R bizarre, chanfrein top-right) et #12 (incohérence
 - [x] **`ic_remarquable_plaque.xml`** supprimé du repo ✅ — `git grep ic_remarquable_plaque` = 0 résultat. `BadgeIcons.kt` garde `Icons.Outlined.Star` pour `CHASSEUR_REMARQUABLES` (le bichromy ne survit pas au tint, choix Phase 7 toujours valide).
 - [x] Pas de migration côté carte MapLibre ✅ — pin orange déjà en place via `MapColors.PIN_ORANGE`.
 
-### Sous-groupe B — Fiche remarquable enrichie + parcours croisé
+### Sous-groupe B — Fiche remarquable enrichie + parcours croisé ✅
 
 Couvre remarques #5 (modal remarquable mauvaise nav vers fiche-espèce non capturée), #6 (fiche-remarquable n'affiche pas la photo user), #7 (photos pas plein écran), #8 (liens fiche remarquable ↔ fiche espèce, one-to-many).
 
-- [ ] **`ArbreDetailScreen` (modal sheet)** — second callback `onRemarquableClick`. Logique :
-  - Arbre remarquable capturé en remarquable → bouton **« Fiche remarquable »**.
-  - Espèce capturée (`isDiscovered && sk != null`) → bouton **« Fiche espèce »**.
-  - Les deux peuvent coexister (FilledTonalButton + OutlinedButton).
-- [ ] **`RemarquableDetailScreen` — galerie « Tes photos (N) »** au-dessus de la description, identique à `SpeciesDetailScreen`. Réutilise `PhotoThumbnail`. Section masquée si N=0.
-- [ ] **`PhotoLightbox` plein écran** (nouveau, `ui/common/`) — Compose `Dialog` plein-écran, `Modifier.transformable` pour pinch-zoom, dismiss au tap hors zone. Réutilisé depuis `SpeciesDetailScreen` ET `RemarquableDetailScreen`.
-- [ ] **Fiche espèce → Arbres remarquables de cette espèce** — section dans `SpeciesDetailScreen`, requête `RemarquableInfoRepository` filtré par `(genre, espece)`. Nav vers `RemarquableDetailScreen`. Section masquée si N=0.
+- [x] **`ArbreDetailContent` (modal sheet)** ✅ — second callback `onRemarquableClick`. Logique branchée côté caller (`MapScreen.kt`) :
+  - Arbre remarquable capturé en remarquable (`arbre.remarquable && id ∈ capturedRemarquables`) → `FilledTonalButton` **« Fiche remarquable »** (icône `ic_remarquable_badge`, tint `Color.Unspecified` pour préserver la bichromie orange/crème).
+  - Espèce capturée (`sk != null && sk ∈ capturedSpecies`) → `OutlinedButton` **« Fiche espèce »** (renommage de l'ancien « En savoir plus sur l'espèce »).
+  - Les deux peuvent coexister, empilés verticalement avec `Spacer(8.dp)` (le bouton remarquable au-dessus, plus emphatique). Les callbacks ferment d'abord la sheet via `viewModel.closeDetail()` avant la nav.
+- [x] **`RemarquableDetailScreen` — galerie « Tes photos (N) »** ✅ — `PhotoGallery` ajoutée au-dessus de `ArbreDetailContent`, masquée si N=0. `onRemarquableClick = null` explicite (déjà sur la fiche, éviter la boucle). `onSpeciesClick` cross-link vers la fiche-espèce (utile pour pivoter de l'arbre individuel vers le contexte espèce).
+- [x] **`PhotoLightbox` plein écran** ✅ — nouveau composable `ui/common/PhotoLightbox.kt`. `Dialog` avec `usePlatformDefaultWidth = false` + fond noir plein écran. `rememberTransformableState` pour pinch-zoom 1×→5× + pan, `detectTapGestures` pour tap-dismiss et double-tap-reset. Pas de swipe entre photos (kept minimal). Décodage `BitmapFactory.decodeFile` sur `Dispatchers.IO` en pleine résolution. Réutilisé depuis `SpeciesDetailScreen` ET `RemarquableDetailScreen` via le state `lightboxIndex: Int?`.
+- [x] **Galerie partagée extraite** ✅ — `PhotoGallery` (auparavant privé dans `SpeciesDetailScreen.kt:261-281`) déplacé en `ui/common/PhotoGallery.kt` avec param `onPhotoClick: (Int) -> Unit`. Items deviennent cliquables (`Modifier.clickable`) et ouvrent le lightbox sur l'index correspondant.
+- [x] **Fiche espèce → Arbres remarquables de cette espèce** ✅ — nouvelle section `RemarquablesDeCetteEspece` insérée juste avant `ShowOnMapButton` dans `SpeciesDetailScreen`. Charge via `ArbreRepository.arbresRemarquables()` (suspend, ~200 rows en RAM) puis filtre côté Kotlin par `speciesIndex.indexOf(arbre) == sk` (lookup O(1) sur la map `byKey` de `SpeciesIndex`). Card avec lignes `[badge] [adresse] [chevron]` — masquée si N=0. Tap → `Routes.remarquableDetail(arbre.id)`.
 
 ### Sous-groupe C — Renommage Catalogue + tris listes
 
