@@ -5,6 +5,7 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.RectF
 import android.location.Location
+import android.os.Looper
 import android.view.ViewGroup
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -63,6 +64,7 @@ import app.arbre.data.rememberRemarquableInfoRepository
 import app.arbre.data.rememberSpeciesInfoRepository
 import app.arbre.ui.common.SeasonAmbience
 import app.arbre.ui.detail.ArbreDetailContent
+import app.arbre.ui.theme.arbresColors
 import app.arbre.ui.theme.arbresMotion
 import app.arbre.util.LocationProvider
 import kotlinx.coroutines.Dispatchers
@@ -72,8 +74,13 @@ import kotlinx.coroutines.withContext
 import org.maplibre.android.camera.CameraPosition
 import org.maplibre.android.camera.CameraUpdateFactory
 import org.maplibre.android.geometry.LatLng
+import org.maplibre.android.location.LocationComponent
 import org.maplibre.android.location.LocationComponentActivationOptions
 import org.maplibre.android.location.LocationComponentOptions
+import org.maplibre.android.location.engine.LocationEngine
+import org.maplibre.android.location.engine.LocationEngineCallback
+import org.maplibre.android.location.engine.LocationEngineRequest
+import org.maplibre.android.location.engine.LocationEngineResult
 import org.maplibre.android.location.modes.CameraMode
 import org.maplibre.android.location.modes.RenderMode
 import org.maplibre.android.maps.MapLibreMap
@@ -163,6 +170,11 @@ fun MapScreen(
     var mapRef by remember { mutableStateOf<MapLibreMap?>(null) }
     var styleRef by remember { mutableStateOf<Style?>(null) }
     var arbresPrets by remember { mutableStateOf(false) }
+    // Cleanup du bridge `LocationEngine` MapLibre → `LocationProvider` (cf.
+    // `attachMapLibreLocationBridge`). Stocké hors de `enableLocationPin`
+    // pour pouvoir être appelé au `onDispose` du `MapView`. Phase 10.5
+    // sous-groupe F.
+    var maplibreLocationCleanup by remember { mutableStateOf<(() -> Unit)?>(null) }
     val snackbar = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
 
@@ -195,6 +207,16 @@ fun MapScreen(
         component.isLocationComponentEnabled = true
         component.cameraMode = CameraMode.NONE
         component.renderMode = RenderMode.NORMAL
+        // Bridge MapLibre → LocationProvider : au tout 1er lancement
+        // post-onboarding, notre `LocationListener` propre ne reçoit pas
+        // d'updates pendant ~10 s alors que le `LocationEngineDefault` que
+        // MapLibre instancie reçoit des fix dès t≈1 s. On consomme SA
+        // source au lieu d'attendre la nôtre — élimine la cause racine du
+        // bug « Active le GPS » au 1er run et garantit zéro drift entre le
+        // pin user et la distance utilisée pour `captureAvailability`.
+        if (maplibreLocationCleanup == null) {
+            maplibreLocationCleanup = attachMapLibreLocationBridge(component)
+        }
     }
 
     suspend fun centerOnUser() {
@@ -352,6 +374,8 @@ fun MapScreen(
             }
         }
         onDispose {
+            maplibreLocationCleanup?.invoke()
+            maplibreLocationCleanup = null
             mapView.onPause()
             mapView.onStop()
             mapView.onDestroy()
@@ -436,7 +460,11 @@ fun MapScreen(
                     )
                 }
                 FloatingActionButton(onClick = onArboretumClick) {
-                    Icon(Icons.AutoMirrored.Outlined.MenuBook, contentDescription = "Arboretum")
+                    Icon(
+                        Icons.AutoMirrored.Outlined.MenuBook,
+                        contentDescription = "Arboretum",
+                        tint = MaterialTheme.arbresColors.feuilleSombre,
+                    )
                 }
             }
             // FAB loupe (BottomStart) : recherche du remarquable le plus
@@ -449,7 +477,11 @@ fun MapScreen(
                     .windowInsetsPadding(WindowInsets.navigationBars)
                     .padding(16.dp),
             ) {
-                Icon(Icons.Outlined.Search, contentDescription = "Plus proche remarquable")
+                Icon(
+                    Icons.Outlined.Search,
+                    contentDescription = "Plus proche remarquable",
+                    tint = MaterialTheme.arbresColors.remarquableOrange,
+                )
             }
         }
         FloatingActionButton(
@@ -512,11 +544,15 @@ fun MapScreen(
             }
             val capturesArbre by captureRepo.capturesPourArbre(openedArbre.id)
                 .collectAsState(initial = emptyList())
-            var availability by remember(openedArbre.id) {
-                mutableStateOf<CaptureAvailability?>(null)
-            }
-            LaunchedEffect(openedArbre.id) {
-                availability = captureAvailability(ctx, openedArbre)
+            // `captureAvailability` est non-bloquant (pure lecture du flow
+            // `currentLocation` filtré sur âge), donc on la dérive directement
+            // à chaque émission. La transition « Active le GPS » → « Capturer »
+            // se fait dans la seconde quand le 1er fix arrive
+            // post-onboarding ; le bouton suit aussi le mouvement live de
+            // l'utilisateur. Cf. Phase 10.5 sous-groupe F.
+            val currentLocation by LocationProvider.currentLocation.collectAsState()
+            val availability = remember(openedArbre.id, currentLocation) {
+                captureAvailability(openedArbre)
             }
             // Médianes de l'espèce pour situer l'arbre vs ses pairs. Le lookup
             // est local en RAM (singleton dans ArbresApp), pas de coût IO.
@@ -555,4 +591,32 @@ fun MapScreen(
             }
         }
     }
+}
+
+/**
+ * Attache notre `LocationProvider` au `LocationEngine` qu'a déjà instancié
+ * MapLibre via `useDefaultLocationEngine(true)`. Renvoie une closure de
+ * cleanup à invoquer au `onDispose` du `MapView`. Cf. note dans
+ * `enableLocationPin` pour le contexte du bug 1er-lancement résolu par ce
+ * bridge (Phase 10.5 sous-groupe F).
+ */
+@android.annotation.SuppressLint("MissingPermission")
+private fun attachMapLibreLocationBridge(component: LocationComponent): (() -> Unit)? {
+    val engine: LocationEngine = component.locationEngine ?: return null
+    val callback = object : LocationEngineCallback<LocationEngineResult> {
+        override fun onSuccess(result: LocationEngineResult?) {
+            val loc: Location = result?.lastLocation ?: return
+            LocationProvider.feedExternalFix(loc)
+        }
+        override fun onFailure(exception: Exception) = Unit
+    }
+    val request = LocationEngineRequest.Builder(500L)
+        .setPriority(LocationEngineRequest.PRIORITY_HIGH_ACCURACY)
+        .build()
+    engine.requestLocationUpdates(request, callback, Looper.getMainLooper())
+    // Pousse aussi le dernier fix connu de MapLibre — gratuit et raccourcit
+    // encore le délai si le pin user était déjà à l'écran avant que notre
+    // bridge ne s'attache.
+    engine.getLastLocation(callback)
+    return { engine.removeLocationUpdates(callback) }
 }

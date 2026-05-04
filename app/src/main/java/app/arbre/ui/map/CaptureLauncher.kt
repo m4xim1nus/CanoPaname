@@ -45,14 +45,21 @@ sealed class CaptureAvailability {
     object Archived : CaptureAvailability()
 }
 
-suspend fun captureAvailability(
-    ctx: Context,
-    arbre: Arbre,
-): CaptureAvailability {
+/**
+ * Lecture pure du `currentLocation` — pas de fallback bloquant. Si notre
+ * listener n'a pas encore reçu de fix (cold start post-onboarding,
+ * permission tout juste accordée), retourne `NoGps` instantanément. Le
+ * `LaunchedEffect(openedArbre.id, currentLocation)` côté `MapScreen` recompute
+ * dès que `LocationProvider.currentLocation` émet, donc le bouton bascule de
+ * « Active le GPS » à « Capturer » dans la seconde. Cf. Phase 10.5 sous-groupe
+ * F : l'ancien fallback `currentOrLastKnown` faisait un `getCurrentLocation`
+ * synchrone qui pouvait suspendre jusqu'à 10 s, gardant le bouton « Capturer »
+ * non-cliquable pendant tout ce délai.
+ */
+fun captureAvailability(arbre: Arbre): CaptureAvailability {
     val loc = LocationProvider.currentLocation.value
-        ?: LocationProvider.currentOrLastKnown(ctx)
+        ?.takeIf { it.ageMs() <= MAX_GPS_AGE_MS }
         ?: return CaptureAvailability.NoGps
-    if (loc.ageMs() > MAX_GPS_AGE_MS) return CaptureAvailability.NoGps
     val results = FloatArray(1)
     Location.distanceBetween(
         loc.latitude, loc.longitude,
@@ -181,14 +188,13 @@ private suspend fun runCapture(
         return
     }
 
-    val loc = LocationProvider.currentLocation.value
-        ?: LocationProvider.currentOrLastKnown(ctx)
+    // Lecture pure du flow temps réel — cf. `captureAvailability`. Si on
+    // arrive ici sans fix, c'est qu'un état de course très court a permis
+    // au bouton d'être tappé avant la propagation. La snackbar reste un
+    // garde-fou théorique.
+    val loc = LocationProvider.currentLocation.value?.takeIf { it.ageMs() <= MAX_GPS_AGE_MS }
     if (loc == null) {
         snackbar.showSnackbar("Position indisponible (active le GPS)")
-        return
-    }
-    if (loc.ageMs() > MAX_GPS_AGE_MS) {
-        snackbar.showSnackbar("Position trop ancienne, attends un nouveau fix")
         return
     }
     val results = FloatArray(1)

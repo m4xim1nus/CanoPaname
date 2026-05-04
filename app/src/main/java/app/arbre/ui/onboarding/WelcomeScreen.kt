@@ -44,6 +44,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import app.arbre.R
 import app.arbre.ui.theme.arbresColors
+import app.arbre.util.LocationProvider
 
 /**
  * Écran de bienvenue + explication minimale du jeu, montré une seule fois
@@ -65,8 +66,13 @@ fun WelcomeScreen(
     val ctx = LocalContext.current
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
-    ) { _ ->
-        // L'onboarding est validé que la permission soit accordée ou non.
+    ) { granted ->
+        // L'onboarding est validé que la permission soit accordée ou non,
+        // mais on amorce le `LocationProvider` immédiatement si grant : sinon
+        // le 1er sheet de capture (avant que `MapScreen.DisposableEffect`
+        // n'ait re-amorcé) trouve `currentLocation == null` et affiche
+        // « Activer le GPS » pendant le TTFF (Phase 10.5 sous-groupe F).
+        if (granted) LocationProvider.start(ctx)
         onContinue()
     }
 

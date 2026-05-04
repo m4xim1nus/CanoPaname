@@ -52,6 +52,7 @@ import app.arbre.data.Season
 import app.arbre.data.SpeciesEntry
 import app.arbre.data.SpeciesIndex
 import app.arbre.data.SpeciesInfoRepository
+import app.arbre.data.catalogueOrder
 import app.arbre.data.rememberArbreRepository
 import app.arbre.data.rememberCaptureRepository
 import app.arbre.data.rememberDatasetStats
@@ -241,15 +242,10 @@ private fun CatalogueView(
     // Tri indépendant des captures : count Paris décroissant (espèces sans
     // SpeciesInfo → count = 0, alpha en queue). Mémoïsé sur (speciesIndex,
     // speciesInfoRepo) — pas recalculé au switch de saison ni à l'INSERT
-    // d'une capture.
+    // d'une capture. Source unique partagée avec `SpeciesDetailScreen` pour
+    // que le `#NNN` soit cohérent entre Catalogue et fiche.
     val ordered = remember(speciesIndex, speciesInfoRepo) {
-        speciesIndex.entries().sortedWith(
-            compareByDescending<SpeciesEntry> {
-                speciesInfoRepo.get(it.index)?.stats?.count ?: 0
-            }
-                .thenBy { it.genre.lowercase() }
-                .thenBy { it.espece.lowercase() }
-        )
+        catalogueOrder(speciesIndex, speciesInfoRepo)
     }
 
     LazyVerticalGrid(

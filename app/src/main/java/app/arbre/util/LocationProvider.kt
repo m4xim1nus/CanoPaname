@@ -82,12 +82,55 @@ object LocationProvider {
                 ?: lm.getLastKnownLocation(LocationManager.NETWORK_PROVIDER)
             if (seed != null) _currentLocation.value = seed
         }
+
+        // Sur API ≥ R, demande aussi un fix one-shot async via
+        // `getCurrentLocation` — Android optimise cette API pour retourner un
+        // fix frais rapidement (souvent < 1 s), bien plus précis que le seed
+        // last-known qui peut être vieux ou imprécis. Non-bloquant : le
+        // callback pousse dans le flow quand prêt. Sans ça, au cold start
+        // post-onboarding on attendait le 1er natural update du listener
+        // (~2 s) ou pire le `getCurrentLocation` synchrone côté
+        // `currentOrLastKnown` qui bloquait jusqu'à 10 s.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            requestOneShotSeed(lm)
+        }
+    }
+
+    @SuppressLint("MissingPermission")
+    @androidx.annotation.RequiresApi(Build.VERSION_CODES.R)
+    private fun requestOneShotSeed(lm: LocationManager) {
+        val provider = pickProvider(lm) ?: return
+        lm.getCurrentLocation(provider, CancellationSignal(), directExecutor) { loc ->
+            if (loc != null) {
+                val current = _currentLocation.value
+                if (current == null || isBetterFix(loc, current)) {
+                    _currentLocation.value = loc
+                }
+            }
+        }
     }
 
     fun stop() {
         listener?.let { manager?.removeUpdates(it) }
         listener = null
         manager = null
+    }
+
+    /**
+     * Pousse un fix externe (typiquement reçu via le `LocationEngine` MapLibre
+     * que `MapScreen` bridge dans notre flow). Sert au cas du tout 1er
+     * lancement post-onboarding où notre `LocationListener` fraîchement
+     * enregistré ne reçoit pas d'updates pendant ~10 s alors que le
+     * `LocationEngineDefault` MapLibre a déjà reçu un fix. Filtre identique
+     * aux updates natural ([isBetterFix]) — un fix externe vieux ou
+     * imprécis ne va pas écraser un meilleur fix temps réel. Cf. Phase 10.5
+     * sous-groupe F.
+     */
+    fun feedExternalFix(loc: Location) {
+        val current = _currentLocation.value
+        if (current == null || isBetterFix(loc, current)) {
+            _currentLocation.value = loc
+        }
     }
 
     /**
@@ -127,8 +170,12 @@ object LocationProvider {
 
     private val directExecutor = java.util.concurrent.Executor { it.run() }
 
-    private const val MIN_INTERVAL_MS = 2_000L
-    private const val MIN_DISTANCE_M = 1f
+    // Aligné avec la cadence de MapLibre (qui raffine sub-second via son
+    // propre LocationEngine). À 2 000 ms on observait un drift visuel
+    // ~100 m entre le pin MapLibre et notre flow lors des premières
+    // secondes post-cold-start (cf. Phase 10.5 sous-groupe F).
+    private const val MIN_INTERVAL_MS = 500L
+    private const val MIN_DISTANCE_M = 0f
 }
 
 /**

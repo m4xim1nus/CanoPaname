@@ -58,6 +58,7 @@ import app.arbre.data.ArbreRepository
 import app.arbre.data.ArrCount
 import app.arbre.data.SpeciesEntry
 import app.arbre.data.SpeciesIndex
+import app.arbre.data.catalogueRank
 import app.arbre.data.SpeciesInfo
 import app.arbre.data.SpeciesStats
 import app.arbre.data.label
@@ -124,16 +125,16 @@ fun SpeciesDetailScreen(
     val photoPaths = captures.map { it.photoPath }
 
     val title = arbreSample?.nomCommun ?: entry.displayName
-
+    val rank = remember(speciesIndex, speciesIndexRepo, speciesInfoRepo) {
+        catalogueRank(speciesIndex, speciesIndexRepo, speciesInfoRepo)
+    }
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text(title) },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Retour")
-                    }
-                },
+            SpeciesDetailTopBar(
+                title = title,
+                catalogueRank = rank,
+                catalogueTotal = speciesIndexRepo.total,
+                onBack = onBack,
             )
         },
     ) { padding ->
@@ -196,6 +197,38 @@ private suspend fun loadRemarquablesPourEspece(
 ): List<Arbre> {
     val all = arbreRepo.arbresRemarquables()
     return all.filter { speciesIndexRepo.indexOf(it) == sk }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SpeciesDetailTopBar(
+    title: String,
+    catalogueRank: Int?,
+    catalogueTotal: Int,
+    onBack: () -> Unit,
+) {
+    TopAppBar(
+        title = {
+            Column {
+                Text(title)
+                if (catalogueRank != null) {
+                    // Compteur 1-based « #47 / 907 » : nudge de progression
+                    // « tu en es à la N-ième espèce du Catalogue ». Source
+                    // partagée avec `ArboretumScreen.CatalogueView`.
+                    Text(
+                        "#$catalogueRank / $catalogueTotal",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+        },
+        navigationIcon = {
+            IconButton(onClick = onBack) {
+                Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Retour")
+            }
+        },
+    )
 }
 
 @Composable
