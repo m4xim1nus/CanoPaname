@@ -47,3 +47,11 @@ les-arbres*.csv
 # Caches du pipeline build_dataset (Wikidata SPARQL + Wikipedia REST)
 tools/.wikidata-cache/
 tools/.wikipedia-cache/
+tools/.essences-cache/
+tools/.remarquables-cache/
+tools/__pycache__/
+*.pyc
+
+# Artefacts dev privés
+manual_tests/
+.claude/
