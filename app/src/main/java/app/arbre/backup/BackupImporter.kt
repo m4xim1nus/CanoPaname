@@ -8,6 +8,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
+import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.IOException
 import java.io.InputStream
@@ -16,11 +17,27 @@ import java.util.zip.ZipInputStream
 
 private const val TAG = "BackupImporter"
 
+// Caps anti-zipbomb. Calibrés pour la cible family & friends : un export
+// réaliste pèse ~30 captures × ~500 KB photos ≈ 15 Mo. Les seuils sont
+// volontairement larges (~30× la taille typique) pour ne jamais frustrer un
+// utilisateur légitime tout en bornant l'allocation mémoire d'un zip hostile.
+internal const val MAX_ENTRY_BYTES = 10L * 1024 * 1024
+internal const val MAX_TOTAL_BYTES = 500L * 1024 * 1024
+internal const val MAX_ENTRY_COUNT = 10_000
+
+// Magic JPEG SOI + start of next marker. Suffit à rejeter un .jpg renommé
+// arbitraire ; pas une validation complète (un fichier corrompu post-magic
+// passera, mais BitmapFactory s'en chargera au décodage).
+private val JPEG_MAGIC = byteArrayOf(0xFF.toByte(), 0xD8.toByte(), 0xFF.toByte())
+
+private class BackupTooLargeException(message: String) : IOException(message)
+
 enum class ImportError {
     CORRUPT_ZIP,
     META_MISSING,
     CAPTURES_MISSING,
     SCHEMA_TOO_NEW,
+    TOO_LARGE,
     IO_ERROR,
 }
 
@@ -79,29 +96,54 @@ internal suspend fun importStream(
     var capturesJson: String? = null
     val photoBytes = HashMap<String, ByteArray>()
     var entryCount = 0
+    var totalBytes = 0L
     try {
         ZipInputStream(input.buffered()).use { zip ->
             while (true) {
                 val entry = zip.nextEntry ?: break
                 entryCount++
+                if (entryCount > MAX_ENTRY_COUNT) {
+                    throw BackupTooLargeException("Backup contient > $MAX_ENTRY_COUNT entrées")
+                }
                 val name = entry.name
                 if (entry.isDirectory) {
                     zip.closeEntry()
                     continue
                 }
+                if (isPathSuspicious(name)) {
+                    zip.closeEntry()
+                    continue
+                }
                 when {
-                    name == META_JSON -> meta = parseMeta(zip.readBytes())
-                    name == CAPTURES_JSON -> capturesJson = String(zip.readBytes())
+                    name == META_JSON -> {
+                        val bytes = zip.readBytesCapped(MAX_ENTRY_BYTES)
+                        totalBytes = checkTotal(totalBytes + bytes.size)
+                        meta = parseMeta(bytes)
+                    }
+                    name == CAPTURES_JSON -> {
+                        val bytes = zip.readBytesCapped(MAX_ENTRY_BYTES)
+                        totalBytes = checkTotal(totalBytes + bytes.size)
+                        capturesJson = String(bytes)
+                    }
                     name.startsWith(PHOTOS_DIR) -> {
                         val basename = name.removePrefix(PHOTOS_DIR)
                         if (basename.isNotEmpty() && !basename.contains('/')) {
-                            photoBytes[basename] = zip.readBytes()
+                            val bytes = zip.readBytesCapped(MAX_ENTRY_BYTES)
+                            totalBytes = checkTotal(totalBytes + bytes.size)
+                            if (hasJpegMagic(bytes)) {
+                                photoBytes[basename] = bytes
+                            }
+                            // sinon : skip silencieux, la capture sera comptée
+                            // photosMissing si elle référence cette photo.
                         }
                     }
                 }
                 zip.closeEntry()
             }
         }
+    } catch (e: BackupTooLargeException) {
+        Log.e(TAG, "Backup trop volumineux", e)
+        return@withContext ImportResult.Failure(ImportError.TOO_LARGE)
     } catch (e: ZipException) {
         Log.e(TAG, "Zip corrompu", e)
         return@withContext ImportResult.Failure(ImportError.CORRUPT_ZIP)
@@ -167,6 +209,42 @@ private fun parseMeta(bytes: ByteArray): BackupMeta {
         exportedAt = o.optLong("exportedAt"),
     )
 }
+
+private fun ZipInputStream.readBytesCapped(maxBytes: Long): ByteArray {
+    val out = ByteArrayOutputStream()
+    val buf = ByteArray(8192)
+    var total = 0L
+    while (true) {
+        val n = read(buf)
+        if (n < 0) break
+        total += n.toLong()
+        if (total > maxBytes) {
+            throw BackupTooLargeException("Entrée dépasse $maxBytes octets")
+        }
+        out.write(buf, 0, n)
+    }
+    return out.toByteArray()
+}
+
+private fun checkTotal(running: Long): Long {
+    if (running > MAX_TOTAL_BYTES) {
+        throw BackupTooLargeException("Backup dépasse $MAX_TOTAL_BYTES octets cumulés")
+    }
+    return running
+}
+
+// Refus des noms d'entrée qui essaient de sortir du dossier d'extraction
+// (path traversal). Le filtre `!basename.contains('/')` côté boucle ne couvre
+// que les sous-dossiers UNIX ; il faut aussi rejeter les `\` Windows-style et
+// les `..` de tous types.
+private fun isPathSuspicious(name: String): Boolean =
+    name.contains('\\') || name.contains("..") || name.startsWith('/')
+
+private fun hasJpegMagic(bytes: ByteArray): Boolean =
+    bytes.size >= 3 &&
+        bytes[0] == JPEG_MAGIC[0] &&
+        bytes[1] == JPEG_MAGIC[1] &&
+        bytes[2] == JPEG_MAGIC[2]
 
 private fun parseCaptures(json: String): List<CaptureExport> {
     val arr = JSONArray(json)

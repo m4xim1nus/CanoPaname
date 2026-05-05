@@ -130,6 +130,7 @@ fun ProfileScreen(
                     ImportError.META_MISSING -> "meta.json absent — fichier non reconnu"
                     ImportError.CAPTURES_MISSING -> "captures.json absent — fichier non reconnu"
                     ImportError.SCHEMA_TOO_NEW -> "Backup créé avec une version plus récente de l'app"
+                    ImportError.TOO_LARGE -> "Backup trop volumineux, refusé"
                     ImportError.IO_ERROR -> "Erreur de lecture, réessaie"
                 }
             }
