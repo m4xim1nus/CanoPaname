@@ -69,13 +69,13 @@ Les sous-phases sont **ordonnées chronologiquement** (pas par axe de l'audit). 
 
 ### 11B — Légal & attributions parallélisable *(0,5 j, en parallèle des tests live)*
 
-- [ ] **P0** Embarquer `app/src/main/assets/licenses/Fraunces-OFL.txt` (texte OFL 1.1 + copyright "Copyright 2020 The Fraunces Project Authors…"). Bloquant légal sans ça.
-- [ ] **P0** Créer `NOTICE.md` racine (draft annexe B du rapport d'audit) listant : OpenData Paris ODbL, OSM, OpenFreeMap, Wikipedia FR CC BY-SA, Fraunces OFL, MapLibre BSD-2, AndroidX/Compose/Kotlin/Room Apache-2.0, org.json.
-- [ ] **P0** Créer `app/src/main/assets/databases/ODbL-NOTICE.txt` avec wording §4.3 ODbL pour les 2 datasets (`les-arbres` + `arbresremarquablesparis`).
-- [ ] **P0** Ajouter ligne "Source : Wikipedia FR · CC BY-SA 4.0" sous le summary dans `WikipediaBlock` (`SpeciesDetailScreen.kt:435-475`) avec lien `https://creativecommons.org/licenses/by-sa/4.0/`.
-- [ ] **P0** Vérifier sur device que MapLibre affiche le bouton attribution OSM/OpenFreeMap (par défaut `uiSettings.isAttributionEnabled = true`). Si non visible, le forcer.
-- [ ] **P1** `Routes.ABOUT` + `AboutScreen` Compose accessible depuis `ProfileScreen.kt` sous `HowToPlayEntry` : version (BuildConfig), attributions complètes, licences tierces, lien repo, mention "non affilié à la Ville de Paris".
-- [ ] **P2** Étoffer copyright `LICENSE` : `Copyright (c) 2026 m4xim1nus (https://github.com/m4xim1nus)`.
+- [x] **P0** Embarquer `app/src/main/assets/licenses/Fraunces-OFL.txt` ✅ (texte OFL 1.1 intégral + copyright Fraunces Project Authors).
+- [x] **P0** Créer `NOTICE.md` racine ✅ (data, fonts, libs ; mention « projet indépendant, non affilié à la Ville de Paris »).
+- [x] **P0** Créer `app/src/main/assets/databases/ODbL-NOTICE.txt` ✅ (wording §4.3 ODbL + Derivative Database §4.4 pour les 2 datasets).
+- [x] **P0** Ajouter ligne « Source : Wikipédia FR · CC BY-SA 4.0 » sous le summary dans `WikipediaBlock` ✅ (Row clickable bodySmall sous le CTA Wikipedia).
+- [ ] **P0** Vérifier sur device que MapLibre affiche le bouton attribution OSM/OpenFreeMap (par défaut `uiSettings.isAttributionEnabled = true`). Si non visible, le forcer. *(Smoke device à valider — pas touché côté code car le défaut MapLibre 11.x est déjà true.)*
+- [x] **P1** `Routes.ABOUT` + `AboutScreen` Compose accessible depuis `ProfileScreen.kt` sous `HowToPlayEntry` ✅ (identité + version BuildConfig + lien repo + 6 attributions + lien NOTICE.md).
+- [x] **P2** Étoffer copyright `LICENSE` ✅ : `Copyright (c) 2026 m4xim1nus (https://github.com/m4xim1nus)`.
 - [ ] **P3** Recherche manuelle "CanoPaname" sur https://bases-marques.inpi.fr/ (5 min avant push public).
 
 ---
