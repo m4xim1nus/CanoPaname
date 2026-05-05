@@ -1512,6 +1512,10 @@ SCHEMA_SQL = [
 ]
 
 
+class SpeciesIndexCorrupt(Exception):
+    """Raised when species-index.json exists but is unreadable."""
+
+
 def load_existing_species_index(path: Path) -> dict[tuple[str, str], int]:
     """Charge l'index existant pour préserver les int speciesIndex entre runs."""
     if not path.exists():
@@ -1520,18 +1524,48 @@ def load_existing_species_index(path: Path) -> dict[tuple[str, str], int]:
         with path.open("r", encoding="utf-8") as f:
             entries = json.load(f)
         return {(e["g"], e["e"]): e["i"] for e in entries}
-    except (json.JSONDecodeError, KeyError, TypeError):
-        print(f"[warn] {path.name} illisible, repart de zéro")
-        return {}
+    except (json.JSONDecodeError, KeyError, TypeError) as exc:
+        raise SpeciesIndexCorrupt(f"{path.name} illisible : {exc}") from exc
 
 
 def build(csv_path: Path, db_path: Path, geojson_path: Path) -> None:
+    # Garde-fou : regénérer la DB sans species-index réindexerait à zéro et
+    # casserait les captures Room déjà stockées chez l'utilisateur (qui
+    # réfèrent les espèces par leur int). Si l'index manque ou est illisible
+    # alors qu'une DB asset existe, c'est probablement un mauvais clone ou un
+    # conflit — mieux vaut crash que silently break.
+    db_exists = db_path.exists()
+    index_missing = not OUT_SPECIES_INDEX.exists()
+    try:
+        species_index = load_existing_species_index(OUT_SPECIES_INDEX)
+    except SpeciesIndexCorrupt as exc:
+        if db_exists:
+            print(
+                f"[err] {exc}\n"
+                f"      {db_path.name} existe — regénérer les indices casserait\n"
+                f"      les captures déjà stockées en Room. Restaurer\n"
+                f"      {OUT_SPECIES_INDEX.name} depuis git, ou supprimer\n"
+                f"      {db_path.name} explicitement pour repartir de zéro.",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+        print(f"[warn] {exc} — repart de zéro (pas de DB existante)")
+        species_index = {}
+    if index_missing and db_exists:
+        print(
+            f"[err] {OUT_SPECIES_INDEX.name} absent mais {db_path.name} existe.\n"
+            f"      Regénérer les indices casserait les captures déjà stockées\n"
+            f"      en Room. Restaurer {OUT_SPECIES_INDEX.name} depuis git, ou\n"
+            f"      supprimer {db_path.name} explicitement pour repartir de zéro.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
     if db_path.exists():
         db_path.unlink()
     db_path.parent.mkdir(parents=True, exist_ok=True)
     geojson_path.parent.mkdir(parents=True, exist_ok=True)
 
-    species_index = load_existing_species_index(OUT_SPECIES_INDEX)
     next_index = (max(species_index.values()) + 1) if species_index else 0
     if species_index:
         print(f"[idx ] {len(species_index)} espèces déjà indexées (next={next_index})")
