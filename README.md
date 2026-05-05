@@ -1,59 +1,64 @@
 # CanoPaname
 
-App Android pour partir à la chasse aux arbres remarquables de Paris, collectionner les espèces, et redécouvrir la ville par sa canopée.
+> Pokédex botanique des arbres de Paris. App Android, single-player, 100 % local.
 
-Inspirée de Pokémon GO et Space Invaders, mais avec de **vrais** arbres : ceux du dataset [OpenData Paris « les-arbres »](https://opendata.paris.fr/explore/dataset/les-arbres/) (~210 000 arbres géolocalisés, dont ~200 « remarquables »).
+App Android pour partir à la chasse aux arbres remarquables de Paris, collectionner les espèces, et redécouvrir la ville par sa canopée. Inspirée de Pokémon GO et Space Invaders, mais avec de **vrais** arbres : ceux du dataset [OpenData Paris « les-arbres »](https://opendata.paris.fr/explore/dataset/les-arbres/) (213 042 arbres géolocalisés, dont 169 « remarquables »).
 
-> **Statut** : version 0.6 (phases 0 → 5.5 livrées). Usage personnel + family & friends. Repo privé, pas de version publique prévue à court terme.
+> **Statut** : v1.0 (phases 0 → 10.5 livrées). Usage personnel + family & friends. Repo public pour transparence et Obtainium ; pas de PR externe acceptée à ce stade.
 
-## Ce que ça fait aujourd'hui
+<p align="center">
+  <img src="docs/screenshots/01-onboarding.png" width="240" alt="Écran d'accueil"/>
+  <img src="docs/screenshots/02-carte.png" width="240" alt="Carte des arbres parisiens"/>
+  <img src="docs/screenshots/03-fiche-arbre.png" width="240" alt="Fiche d'un arbre capturé"/>
+</p>
 
-- **Carte** plein écran : 213 042 arbres parisiens en clusters MapLibre, style OpenFreeMap, géoloc native sans Google Play Services.
-- **Capture** par proximité GPS (< 30 m), photo prise depuis l'app, stockée localement. Pin gris → vert quand l'espèce est découverte ; orange pour les remarquables capturés.
-- **Arboretum** : Pokédex à 907 espèces. Cards par espèce avec count Paris, photos perso, première capture. Fiche enrichie (résumé Wikipedia FR, stats Paris, mini-carte filtrée).
-- **Pokédex remarquables** dédié, avec qualification + résumé + cultivar + lien fiche PDF Ville de Paris (169/907).
-- **Saisonnalité** : 4 saisons calendaires fixes, pill `SeasonSelector`, mode archive read-only avec bandeau plein-écran. Les captures s'accumulent dans le bucket de leur saison sur toutes les années.
-- **Profil** : stats (1re capture, # espèces, # remarquables, total captures), segmented Global / Saison vive.
-- **Badges & succès** : 15 badges en 6 catégories (Découverte, Botanique, Géographie, Remarquables, Saisons, Démesure), évalués à la volée depuis les captures, pas de table dédiée.
-- **Backup local** : export ZIP via SAF (captures + photos + métadonnées), import idempotent (dédup `(arbreId, timestamp)`). Le seul moyen de survivre à un changement de téléphone.
-- **Onboarding** : un écran d'accueil scrollable avec rationale GPS expliqué au bon moment ; rejouable depuis le Profil (« Comment jouer »).
+## Ce que c'est
+
+213 042 arbres parisiens géolocalisés sur une carte plein écran, 907 espèces à découvrir, 169 arbres remarquables à dénicher. Capture par proximité (< 30 m) avec une photo prise depuis l'app. La carte se colore au fil de tes découvertes. Pokédex à 907 espèces avec fiches Wikipedia FR, badges, saisonnalité, export ZIP. Pensé family & friends, pas de classement, pas de social.
 
 ## Pourquoi
 
 - Les arbres sont déjà là, déjà géolocalisés, déjà documentés (espèce, hauteur, circonférence, date de plantation, statut remarquable).
 - Pas besoin de licence IP, pas besoin de serveur de spawning, pas besoin de Google Play Services.
-- Spécificité jolie vs. Pokémon : la **saisonnalité réelle** (un platane en mai ≠ en novembre) multiplie naturellement le contenu.
+- Différenciateur clé vs. Pokémon : la **saisonnalité réelle** (un platane en mai ≠ en novembre) multiplie naturellement le contenu.
 
-## Pile technique
+## Installation (Android 8.0+)
 
-Kotlin + Jetpack Compose + Material 3, MapLibre Native Android 11.11.0, Room v2 (~907 espèces, dataset pré-cuit dans `assets/`), DataStore Preferences, Gradle Kotlin DSL + version catalog. Police Fraunces SemiBold sur les niveaux display/headline. Stockage **strictement local** : pas de cloud, pas d'auth, pas de service tiers au runtime. Cible Android 8.0+ (API 26), pensé pour tourner sur GrapheneOS sans Google Play Services.
+- **Via Obtainium** (recommandé) : ajouter ce repo `https://github.com/m4xim1nus/CanoPaname` dans Obtainium, source « GitHub ». Mises à jour automatiques aux nouveaux tags.
+- **APK direct** : Releases → v1.0.0 → `canopaname-v1.0.0-release.apk`.
+- **Vérifier la signature** : `apksigner verify --print-certs canopaname-v1.0.0-release.apk` — fingerprint SHA-256 publié dans la note de chaque Release.
 
-## Démarrage rapide
+## Permissions
 
-Pré-requis : Android Studio (Koala ou plus récent) ou Gradle ≥ 8.10 + Android SDK (API 35) + JDK 21 (le JDK 21 bundlé dans Android Studio sous `/opt/android-studio/jbr` fait l'affaire — cf. [`CLAUDE.md`](CLAUDE.md) pour la note JDK 25 incompatible).
+- **Position fine** : mesurer les < 30 m d'un arbre pour autoriser la capture. Jamais envoyée.
+- **Caméra** : photographier l'arbre capturé. Photo stockée localement.
+- **Vibrer** : retour haptique court à la capture.
 
-```bash
-# Bootstrap du wrapper Gradle (une seule fois)
-gradle wrapper
+## Données et vie privée
 
-# Build et install sur appareil branché en ADB
-JAVA_HOME=/opt/android-studio/jbr ./gradlew installDebug
-```
+Tout reste sur ton téléphone. Pas de cloud, pas de compte, pas de tracker. Détails dans [PRIVACY.md](PRIVACY.md).
 
-Voir [`CLAUDE.md`](CLAUDE.md) pour les commandes détaillées, la structure du code et les conventions ; [`ROADMAP.md`](ROADMAP.md) pour l'historique des phases.
+## FAQ
 
-## Build release signé
+- *Pourquoi pas le Play Store ?* — Pas de Google Play Services requis. GrapheneOS first.
+- *Mes captures, je peux les exporter ?* — Profil → Sauvegarde → Exporter (ZIP).
+- *Le dataset bouge ?* — Mis à jour aux releases majeures (re-cuit dans l'APK, pas de download au runtime).
+- *Pourquoi pas de PR externe ?* — App perso family & friends. Le repo est public pour la transparence et Obtainium ; pour un fix ou une suggestion, ouvre une issue.
 
-Le release build cherche un keystore référencé dans `local.properties` (jamais committé). Sans clé renseignée, l'APK release est signé avec la clé debug — utile pour smoke-tester `isMinifyEnabled`. Procédure complète dans [`CLAUDE.md`](CLAUDE.md) section *Build release signé*.
+## Attributions
 
-## Données
+- Données arbres : Ville de Paris, OpenData (licence ODbL).
+- Cartographie : OpenFreeMap, OpenStreetMap contributors (ODbL).
+- Résumés d'espèces : Wikipedia FR (CC BY-SA 4.0).
+- Police Fraunces : Undercase Type (OFL 1.1).
+- Bibliothèques : MapLibre (BSD-2), Compose / Material 3 / AndroidX (Apache 2.0).
 
-Source : OpenData Ville de Paris, licence ODbL.
-- `les-arbres` — arbres du domaine public (~210 k entrées, mis à jour ~hebdo).
-- `arbresremarquablesparis` — sous-ensemble labellisé « remarquable » (~200 entrées).
-
-Les fichiers téléchargés ne sont pas committés (`.gitignore`). Le pipeline de génération des assets (Room DB + GeoJSON + JSON espèces + cache Wikipedia FR) vit dans `tools/build_dataset.py`.
+Détails complets dans [NOTICE.md](NOTICE.md).
 
 ## Licence
 
 [MIT](LICENSE).
+
+## Développement
+
+Voir [CLAUDE.md](CLAUDE.md) pour la stack, les commandes et les conventions ; [ROADMAP.md](ROADMAP.md) pour l'historique des phases.
