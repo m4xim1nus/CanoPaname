@@ -120,7 +120,7 @@ fun rememberCaptureController(
     ) { success ->
         scope.launch {
             val pending = viewModel.consumePending() ?: return@launch
-            val file = File(pending.photoPath)
+            val file = File(File(ctx.getExternalFilesDir(null), "captures"), pending.photoBasename)
             if (!success) {
                 file.delete()
                 return@launch
@@ -152,7 +152,7 @@ fun rememberCaptureController(
                 remarquable = pending.remarquable,
                 latitudeDevice = pending.captureLatitude,
                 longitudeDevice = pending.captureLongitude,
-                photoPath = pending.photoPath,
+                photoPath = pending.photoBasename,
                 timestamp = pending.captureTimestamp,
             )
             captureHaptic()
@@ -248,7 +248,7 @@ private suspend fun runCapture(
             arbreId = arbre.id,
             speciesIndex = sk,
             remarquable = arbre.remarquable,
-            photoPath = photoFile.absolutePath,
+            photoBasename = photoFile.name,
             captureLatitude = loc.latitude,
             captureLongitude = loc.longitude,
             captureTimestamp = timestamp,

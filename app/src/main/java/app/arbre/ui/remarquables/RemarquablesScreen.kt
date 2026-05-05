@@ -41,6 +41,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.unit.dp
 import app.arbre.data.Arbre
@@ -52,6 +53,7 @@ import app.arbre.data.sortKey
 import app.arbre.data.rememberArbreRepository
 import app.arbre.data.rememberCaptureRepository
 import app.arbre.data.rememberSeasonStore
+import app.arbre.data.resolvedFile
 import app.arbre.R
 import app.arbre.ui.common.ArchiveBanner
 import app.arbre.ui.common.EmptyState
@@ -61,6 +63,7 @@ import app.arbre.ui.theme.arbresColors
 import androidx.compose.foundation.Image
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import java.io.File
 import java.text.DateFormat
 import java.util.Date
 
@@ -92,13 +95,14 @@ fun RemarquablesScreen(
         .collectAsState(initial = emptySet())
 
     // 1re photo de la saison sélectionnée pour chaque arbre.
+    val ctx = LocalContext.current
     val capturesInSeason = remember(capturesRemarquables, selectedSeason) {
         capturesRemarquables.filter { it.season == selectedSeason }
     }
-    val firstPhotoByArbreId: Map<Long, String> = remember(capturesInSeason) {
+    val firstPhotoByArbreId: Map<Long, File> = remember(capturesInSeason, ctx) {
         capturesInSeason
             .groupBy { it.arbreId }
-            .mapValues { (_, caps) -> caps.minBy { it.timestamp }.photoPath }
+            .mapValues { (_, caps) -> caps.minBy { it.timestamp }.resolvedFile(ctx) }
     }
     val lastCaptureTsByArbreId: Map<Long, Long> = remember(capturesInSeason) {
         capturesInSeason
@@ -200,7 +204,7 @@ private fun ViewModeSelector(
 private fun ListeView(
     tousRemarquables: List<Arbre>,
     capturedIds: Set<Long>,
-    firstPhotoByArbreId: Map<Long, String>,
+    firstPhotoByArbreId: Map<Long, File>,
     lastCaptureTsByArbreId: Map<Long, Long>,
     onRemarquableClick: (Long) -> Unit,
 ) {
@@ -219,7 +223,7 @@ private fun ListeView(
             items(decouverts, key = { it.id }) { arbre ->
                 DiscoveredCard(
                     arbre = arbre,
-                    photoPath = firstPhotoByArbreId[arbre.id],
+                    photoFile = firstPhotoByArbreId[arbre.id],
                     captureTs = lastCaptureTsByArbreId[arbre.id],
                     onClick = { onRemarquableClick(arbre.id) },
                 )
@@ -248,7 +252,7 @@ private fun ListeView(
 private fun CatalogueView(
     tousRemarquables: List<Arbre>,
     capturedIds: Set<Long>,
-    firstPhotoByArbreId: Map<Long, String>,
+    firstPhotoByArbreId: Map<Long, File>,
     onRemarquableClick: (Long) -> Unit,
 ) {
     val sections: List<ArrSection> = remember(tousRemarquables) {
@@ -283,12 +287,12 @@ private fun CatalogueView(
             }
             items(section.arbres, key = { it.id }) { arbre ->
                 val discovered = arbre.id in capturedIds
-                val photoPath = if (discovered) firstPhotoByArbreId[arbre.id] else null
+                val photoFile = if (discovered) firstPhotoByArbreId[arbre.id] else null
                 Box(modifier = Modifier.padding(horizontal = 16.dp)) {
                     if (discovered) {
                         DiscoveredCard(
                             arbre = arbre,
-                            photoPath = photoPath,
+                            photoFile = photoFile,
                             captureTs = null,
                             onClick = { onRemarquableClick(arbre.id) },
                         )
@@ -403,7 +407,7 @@ private fun SectionHeader(label: String) {
 @Composable
 private fun DiscoveredCard(
     arbre: Arbre,
-    photoPath: String?,
+    photoFile: File?,
     captureTs: Long?,
     onClick: () -> Unit,
 ) {
@@ -416,9 +420,9 @@ private fun DiscoveredCard(
             modifier = Modifier.padding(12.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            if (photoPath != null) {
+            if (photoFile != null) {
                 PhotoThumbnail(
-                    photoPath = photoPath,
+                    photoFile = photoFile,
                     modifier = Modifier
                         .size(72.dp)
                         .clip(RoundedCornerShape(8.dp)),

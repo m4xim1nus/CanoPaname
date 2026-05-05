@@ -59,14 +59,17 @@ import app.arbre.data.rememberDatasetStats
 import app.arbre.data.rememberSeasonStore
 import app.arbre.data.rememberSpeciesIndex
 import app.arbre.data.rememberSpeciesInfoRepository
+import app.arbre.data.resolvedFile
 import app.arbre.R
 import app.arbre.ui.common.ArchiveBanner
 import app.arbre.ui.common.EmptyState
 import app.arbre.ui.common.PhotoThumbnail
 import app.arbre.ui.common.SeasonSelector
 import androidx.compose.foundation.Image
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import java.io.File
 import java.text.DateFormat
 import java.util.Date
 
@@ -236,8 +239,9 @@ private fun CatalogueView(
     speciesGroups: List<SpeciesGroup>,
     onSpeciesClick: (Int) -> Unit,
 ) {
-    val firstPhotoBySk: Map<Int, String> = remember(speciesGroups) {
-        speciesGroups.associate { it.entry.index to it.captures.first().photoPath }
+    val ctx = LocalContext.current
+    val firstPhotoBySk: Map<Int, File> = remember(speciesGroups, ctx) {
+        speciesGroups.associate { it.entry.index to it.captures.first().resolvedFile(ctx) }
     }
     // Tri indépendant des captures : count Paris décroissant (espèces sans
     // SpeciesInfo → count = 0, alpha en queue). Mémoïsé sur (speciesIndex,
@@ -256,15 +260,15 @@ private fun CatalogueView(
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         itemsIndexed(ordered, key = { _, e -> e.index }) { position, entry ->
-            val photoPath = firstPhotoBySk[entry.index]
+            val photoFile = firstPhotoBySk[entry.index]
             CatalogueCell(
                 // Numéro 1-based — rang d'affichage dans l'ordre count
                 // décroissant, distinct du speciesIndex Room (qui reflète
                 // l'ordre d'ingestion CSV).
                 displayNumber = position + 1,
                 entry = entry,
-                photoPath = photoPath,
-                onClick = if (photoPath != null) {
+                photoFile = photoFile,
+                onClick = if (photoFile != null) {
                     { onSpeciesClick(entry.index) }
                 } else null,
             )
@@ -276,10 +280,10 @@ private fun CatalogueView(
 private fun CatalogueCell(
     displayNumber: Int,
     entry: SpeciesEntry,
-    photoPath: String?,
+    photoFile: File?,
     onClick: (() -> Unit)?,
 ) {
-    val discovered = photoPath != null
+    val discovered = photoFile != null
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -308,9 +312,9 @@ private fun CatalogueCell(
                     .clip(RoundedCornerShape(8.dp)),
                 contentAlignment = Alignment.Center,
             ) {
-                if (photoPath != null) {
+                if (photoFile != null) {
                     PhotoThumbnail(
-                        photoPath = photoPath,
+                        photoFile = photoFile,
                         sampleSize = 4,
                         modifier = Modifier.fillMaxSize(),
                     )
@@ -392,6 +396,7 @@ private fun SpeciesCard(
     countParEspece: suspend (String, String) -> Int,
     onClick: () -> Unit,
 ) {
+    val ctx = LocalContext.current
     val first = group.captures.first()
     val firstChrono = group.captures.last() // 1re capture = la plus ancienne
     var countInDataset by remember(group.entry) { mutableStateOf(-1) }
@@ -409,7 +414,7 @@ private fun SpeciesCard(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             PhotoThumbnail(
-                photoPath = first.photoPath,
+                photoFile = first.resolvedFile(ctx),
                 modifier = Modifier
                     .size(72.dp)
                     .clip(RoundedCornerShape(8.dp)),

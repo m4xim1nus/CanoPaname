@@ -1,7 +1,6 @@
 package app.arbre.backup
 
 import app.arbre.data.CaptureEntity
-import java.io.File
 
 /**
  * Format de l'archive d'export/import.
@@ -32,9 +31,10 @@ data class BackupMeta(
  * Room autoincrement — il n'a aucun sens d'un device à l'autre, et le ré-
  * insérer comme primary key bloquerait les imports multi-source.
  *
- * `photoFilename` est le basename UUID (ex. `8f3b...uuid.jpg`) — on
- * reconstruit le chemin absolu à l'import via
- * `getExternalFilesDir(null)/captures/<filename>`.
+ * `photoFilename` est le basename UUID (ex. `8f3b...uuid.jpg`). Depuis la
+ * migration v3 c'est aussi exactement ce qu'on stocke dans `Capture.photoPath`,
+ * d'où le mapping 1:1 (le chemin absolu est reconstruit à la lecture par
+ * `Capture.resolvedFile(context)`).
  */
 data class CaptureExport(
     val arbreId: Long,
@@ -54,11 +54,11 @@ fun CaptureEntity.toExport(): CaptureExport = CaptureExport(
     timestamp = timestamp,
     latitudeDevice = latitudeDevice,
     longitudeDevice = longitudeDevice,
-    photoFilename = File(photoPath).name,
+    photoFilename = photoPath,
     season = season,
 )
 
-fun CaptureExport.toEntity(capturesDir: File): CaptureEntity = CaptureEntity(
+fun CaptureExport.toEntity(): CaptureEntity = CaptureEntity(
     id = 0L,
     arbreId = arbreId,
     speciesIndex = speciesIndex,
@@ -66,6 +66,6 @@ fun CaptureExport.toEntity(capturesDir: File): CaptureEntity = CaptureEntity(
     timestamp = timestamp,
     latitudeDevice = latitudeDevice,
     longitudeDevice = longitudeDevice,
-    photoPath = File(capturesDir, photoFilename).absolutePath,
+    photoPath = photoFilename,
     season = season,
 )

@@ -27,6 +27,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import java.io.File
 
 /**
  * Visionneuse plein écran pour les photos user (galeries fiche-espèce et
@@ -38,12 +39,12 @@ import kotlinx.coroutines.withContext
  */
 @Composable
 fun PhotoLightbox(
-    photoPaths: List<String>,
+    photoFiles: List<File>,
     selectedIndex: Int?,
     onDismiss: () -> Unit,
 ) {
     if (selectedIndex == null) return
-    val path = photoPaths.getOrNull(selectedIndex) ?: return
+    val file = photoFiles.getOrNull(selectedIndex) ?: return
 
     Dialog(
         onDismissRequest = onDismiss,
@@ -53,17 +54,17 @@ fun PhotoLightbox(
             dismissOnBackPress = true,
         ),
     ) {
-        var bitmap by remember(path) { mutableStateOf<ImageBitmap?>(null) }
-        LaunchedEffect(path) {
+        var bitmap by remember(file) { mutableStateOf<ImageBitmap?>(null) }
+        LaunchedEffect(file) {
             bitmap = withContext(Dispatchers.IO) {
                 runCatching {
-                    BitmapFactory.decodeFile(path)?.asImageBitmap()
+                    BitmapFactory.decodeFile(file.absolutePath)?.asImageBitmap()
                 }.getOrNull()
             }
         }
 
-        var scale by remember(path) { mutableStateOf(1f) }
-        var offset by remember(path) { mutableStateOf(Offset.Zero) }
+        var scale by remember(file) { mutableStateOf(1f) }
+        var offset by remember(file) { mutableStateOf(Offset.Zero) }
         val transformState = rememberTransformableState { zoomChange, panChange, _ ->
             scale = (scale * zoomChange).coerceIn(1f, 5f)
             offset += panChange
@@ -74,7 +75,7 @@ fun PhotoLightbox(
                 .fillMaxSize()
                 .background(Color.Black)
                 .transformable(state = transformState)
-                .pointerInput(path) {
+                .pointerInput(file) {
                     detectTapGestures(
                         onTap = { onDismiss() },
                         onDoubleTap = {

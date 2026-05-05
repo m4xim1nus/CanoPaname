@@ -17,6 +17,7 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import java.io.File
 
 /**
  * Affiche un fichier image local (issu d'une capture utilisateur) en
@@ -26,16 +27,16 @@ import kotlinx.coroutines.withContext
  */
 @Composable
 fun PhotoThumbnail(
-    photoPath: String,
+    photoFile: File,
     modifier: Modifier = Modifier,
     sampleSize: Int = 4,
 ) {
-    var bitmap by remember(photoPath, sampleSize) { mutableStateOf<ImageBitmap?>(null) }
-    LaunchedEffect(photoPath, sampleSize) {
+    var bitmap by remember(photoFile, sampleSize) { mutableStateOf<ImageBitmap?>(null) }
+    LaunchedEffect(photoFile, sampleSize) {
         bitmap = withContext(Dispatchers.IO) {
             val opts = BitmapFactory.Options().apply { inSampleSize = sampleSize }
             try {
-                BitmapFactory.decodeFile(photoPath, opts)?.asImageBitmap()
+                BitmapFactory.decodeFile(photoFile.absolutePath, opts)?.asImageBitmap()
             } catch (e: Throwable) {
                 null
             }

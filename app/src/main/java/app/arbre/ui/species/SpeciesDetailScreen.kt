@@ -66,6 +66,7 @@ import app.arbre.data.rememberArbreRepository
 import app.arbre.data.rememberCaptureRepository
 import app.arbre.data.rememberSpeciesIndex
 import app.arbre.data.rememberSpeciesInfoRepository
+import app.arbre.data.resolvedFile
 import app.arbre.ui.common.PhotoGallery
 import app.arbre.ui.common.PhotoLightbox
 import java.text.NumberFormat
@@ -121,7 +122,8 @@ fun SpeciesDetailScreen(
         .collectAsState(initial = emptySet())
 
     var lightboxIndex by remember(speciesIndex) { mutableStateOf<Int?>(null) }
-    val photoPaths = captures.map { it.photoPath }
+    val ctx = LocalContext.current
+    val photoFiles = captures.map { it.resolvedFile(ctx) }
 
     val title = arbreSample?.nomCommun ?: entry.displayName
     val rank = remember(speciesIndex, speciesIndexRepo, speciesInfoRepo) {
@@ -150,10 +152,10 @@ fun SpeciesDetailScreen(
 
             item { IdentityBlock(entry, arbreSample) }
 
-            if (photoPaths.isNotEmpty()) {
+            if (photoFiles.isNotEmpty()) {
                 item {
                     PhotoGallery(
-                        photoPaths = photoPaths,
+                        photoFiles = photoFiles,
                         onPhotoClick = { idx -> lightboxIndex = idx },
                     )
                 }
@@ -182,7 +184,7 @@ fun SpeciesDetailScreen(
             item { ShowOnMapButton(onShowOnMap) }
         }
         PhotoLightbox(
-            photoPaths = photoPaths,
+            photoFiles = photoFiles,
             selectedIndex = lightboxIndex,
             onDismiss = { lightboxIndex = null },
         )

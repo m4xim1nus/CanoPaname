@@ -9,7 +9,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 
 @Database(
     entities = [ArbreEntity::class, CaptureEntity::class],
-    version = 2,
+    version = 3,
     exportSchema = true,
 )
 abstract class ArbreDatabase : RoomDatabase() {
@@ -25,7 +25,7 @@ abstract class ArbreDatabase : RoomDatabase() {
         // exécute MIGRATION_1_2 qui ajoute la table `capture` + ses indexes.
         // Le CREATE TABLE doit matcher exactement ce que Room génère pour
         // `CaptureEntity` (sinon le schemaCheck rejette au runtime).
-        private val MIGRATION_1_2 = object : Migration(1, 2) {
+        internal val MIGRATION_1_2: Migration = object : Migration(1, 2) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL(
                     """
@@ -53,6 +53,36 @@ abstract class ArbreDatabase : RoomDatabase() {
             }
         }
 
+        // Avant v3, `capture.photoPath` stockait un chemin absolu. Ça crée une
+        // dépendance fragile au sandbox path (cassée par device-transfer,
+        // multi-user, debug↔release applicationId). On rewrite chaque row au
+        // basename pur ; le chemin absolu est reconstitué côté lecture par
+        // `Capture.resolvedFile(context)`. Aucun DDL — la diff est sémantique,
+        // pas structurelle. Idempotent : `substringAfterLast('/')` sur un
+        // basename retourne le basename.
+        internal val MIGRATION_2_3: Migration = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                val rewrites = mutableListOf<Pair<Long, String>>()
+                db.query("SELECT id, photoPath FROM capture").use { c ->
+                    while (c.moveToNext()) {
+                        val id = c.getLong(0)
+                        val path = c.getString(1)
+                        val basename = path.substringAfterLast('/')
+                        if (basename != path) rewrites += id to basename
+                    }
+                }
+                val stmt = db.compileStatement("UPDATE capture SET photoPath = ? WHERE id = ?")
+                rewrites.forEach { (id, basename) ->
+                    stmt.bindString(1, basename)
+                    stmt.bindLong(2, id)
+                    stmt.executeUpdateDelete()
+                    stmt.clearBindings()
+                }
+            }
+        }
+
+        internal val ALL_MIGRATIONS: Array<Migration> = arrayOf(MIGRATION_1_2, MIGRATION_2_3)
+
         fun get(context: Context): ArbreDatabase = INSTANCE ?: synchronized(this) {
             INSTANCE ?: Room.databaseBuilder(
                 context.applicationContext,
@@ -60,7 +90,7 @@ abstract class ArbreDatabase : RoomDatabase() {
                 "arbres-paris.db",
             )
                 .createFromAsset("databases/arbres-paris.db")
-                .addMigrations(MIGRATION_1_2)
+                .addMigrations(*ALL_MIGRATIONS)
                 .build()
                 .also { INSTANCE = it }
         }

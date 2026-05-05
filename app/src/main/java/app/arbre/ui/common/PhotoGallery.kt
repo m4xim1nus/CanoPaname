@@ -13,6 +13,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
+import java.io.File
 
 /**
  * Galerie horizontale des photos prises par l'utilisateur (fiche-espèce ou
@@ -21,9 +22,9 @@ import androidx.compose.ui.unit.dp
  */
 @Composable
 fun PhotoGallery(
-    photoPaths: List<String>,
+    photoFiles: List<File>,
     modifier: Modifier = Modifier,
-    title: String = "Tes photos (${photoPaths.size})",
+    title: String = "Tes photos (${photoFiles.size})",
     onPhotoClick: (Int) -> Unit = {},
 ) {
     Column(
@@ -32,9 +33,9 @@ fun PhotoGallery(
     ) {
         Text(title, style = MaterialTheme.typography.titleMedium)
         LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            itemsIndexed(photoPaths) { index, path ->
+            itemsIndexed(photoFiles) { index, file ->
                 PhotoThumbnail(
-                    photoPath = path,
+                    photoFile = file,
                     sampleSize = 2,
                     modifier = Modifier
                         .size(120.dp)

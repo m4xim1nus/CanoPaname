@@ -26,12 +26,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import app.arbre.data.Arbre
 import app.arbre.data.rememberArbreRepository
 import app.arbre.data.rememberCaptureRepository
 import app.arbre.data.rememberRemarquableInfoRepository
 import app.arbre.data.rememberSpeciesIndex
+import app.arbre.data.resolvedFile
 import app.arbre.ui.common.PhotoGallery
 import app.arbre.ui.common.PhotoLightbox
 import app.arbre.ui.detail.ArbreDetailContent
@@ -106,17 +108,18 @@ fun RemarquableDetailScreen(
                 Text("Chargement…", style = MaterialTheme.typography.bodyMedium)
             }
         } else {
+            val ctx = LocalContext.current
             val sk = speciesIndex.indexOf(current)
-            val photoPaths = captures.map { it.photoPath }
+            val photoFiles = captures.map { it.resolvedFile(ctx) }
             Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(padding)
                     .verticalScroll(rememberScrollState()),
             ) {
-                if (photoPaths.isNotEmpty()) {
+                if (photoFiles.isNotEmpty()) {
                     PhotoGallery(
-                        photoPaths = photoPaths,
+                        photoFiles = photoFiles,
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                         onPhotoClick = { idx -> lightboxIndex = idx },
                     )
@@ -133,11 +136,11 @@ fun RemarquableDetailScreen(
                     remarquableInfo = info,
                 )
             }
+            PhotoLightbox(
+                photoFiles = photoFiles,
+                selectedIndex = lightboxIndex,
+                onDismiss = { lightboxIndex = null },
+            )
         }
-        PhotoLightbox(
-            photoPaths = captures.map { it.photoPath },
-            selectedIndex = lightboxIndex,
-            onDismiss = { lightboxIndex = null },
-        )
     }
 }

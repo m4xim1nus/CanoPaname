@@ -200,7 +200,7 @@ internal suspend fun importStream(
         } else {
             photosMissing++
         }
-        captureDao.insert(capture.toEntity(photosDir))
+        captureDao.insert(capture.toEntity())
         imported++
     }
 

@@ -348,7 +348,7 @@ class BadgeEvaluatorTest {
         timestamp = ts,
         latitudeDevice = 48.85,
         longitudeDevice = 2.35,
-        photoPath = "/tmp/x.jpg",
+        photoPath = "x.jpg",
         season = season,
     )
 

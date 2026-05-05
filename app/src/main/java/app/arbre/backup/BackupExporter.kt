@@ -5,11 +5,11 @@ import android.net.Uri
 import android.util.Log
 import androidx.core.content.pm.PackageInfoCompat
 import app.arbre.data.CaptureDao
+import app.arbre.data.resolvedFile
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
-import java.io.File
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
 
@@ -61,7 +61,7 @@ class BackupExporter(
                 zip.closeEntry()
 
                 for (capture in captures) {
-                    val photoFile = File(capture.photoPath)
+                    val photoFile = capture.resolvedFile(context)
                     if (!photoFile.exists() || photoFile.length() == 0L) {
                         Log.w(TAG, "Photo absente pour capture id=${capture.id} (${capture.photoPath})")
                         continue

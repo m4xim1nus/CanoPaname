@@ -1,8 +1,10 @@
 package app.arbre.data
 
+import android.content.Context
 import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
+import java.io.File
 
 @Entity(
     tableName = "capture",
@@ -46,4 +48,12 @@ data class Capture(
     val photoPath: String,
     val season: Season,
 )
+
+// `photoPath` stocke un basename (UUID.jpg) depuis la migration v3.
+// Les fichiers vivent tous sous `<externalFilesDir>/captures/`.
+fun Capture.resolvedFile(context: Context): File =
+    File(File(context.getExternalFilesDir(null), "captures"), photoPath)
+
+fun CaptureEntity.resolvedFile(context: Context): File =
+    File(File(context.getExternalFilesDir(null), "captures"), photoPath)
 
