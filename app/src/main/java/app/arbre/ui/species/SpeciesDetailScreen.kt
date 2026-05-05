@@ -89,7 +89,6 @@ fun SpeciesDetailScreen(
 
     val entry = speciesIndexRepo.get(speciesIndex)
     if (entry == null) {
-        // Index inconnu : la nav s'auto-ferme.
         LaunchedEffect(speciesIndex) { onBack() }
         return
     }
@@ -105,8 +104,7 @@ fun SpeciesDetailScreen(
             .map { all -> all.filter { it.speciesIndex == speciesIndex } }
     }.collectAsState(initial = emptyList())
 
-    // Liste statique en mémoire (~200 arbres remarquables au total). Chargée
-    // une fois au montage de l'écran et filtrée côté Kotlin par speciesIndex.
+    // ~200 remarquables au total — chargés en mémoire et filtrés Kotlin.
     var remarquablesEspece by remember(speciesIndex) {
         mutableStateOf<List<Arbre>>(emptyList())
     }
@@ -114,10 +112,8 @@ fun SpeciesDetailScreen(
         remarquablesEspece = loadRemarquablesPourEspece(arbreRepo, speciesIndexRepo, speciesIndex)
     }
 
-    // Set des remarquables capturés (toutes saisons confondues) pour décider
-    // ligne par ligne si on dévoile l'adresse + cliquabilité, ou si on rend
-    // une silhouette « ??? + arrondissement ». Réveil de la chasse cf. Phase
-    // 10.5 sous-groupe E.
+    // Toutes saisons confondues : décide ligne par ligne entre adresse
+    // dévoilée + cliquable et silhouette « ??? + arrondissement ».
     val capturedRemarquables by captureRepo.capturedRemarquableIds()
         .collectAsState(initial = emptySet())
 
@@ -213,9 +209,7 @@ private fun SpeciesDetailTopBar(
             Column {
                 Text(title)
                 if (catalogueRank != null) {
-                    // Compteur 1-based « #47 / 907 » : nudge de progression
-                    // « tu en es à la N-ième espèce du Catalogue ». Source
-                    // partagée avec `ArboretumScreen.CatalogueView`.
+                    // Rang 1-based partagé avec `ArboretumScreen.CatalogueView`.
                     Text(
                         "#$catalogueRank / $catalogueTotal",
                         style = MaterialTheme.typography.bodySmall,
@@ -250,10 +244,8 @@ private fun ShowOnMapButton(onClick: () -> Unit) {
     }
 }
 
-/**
- * Climax « 1re capture » sur la fiche-espèce. Cascade fade+scale sur
- * 1.8 s : fond → silhouette espèce → nom binomial → label de confirmation.
- * Réutilise la grammaire du splash cold-start (sway sinusoïdal léger).
+/** Climax « 1re capture » : cascade fade+scale fond → silhouette → binomial
+ *  → label, ~1.8 s. Réutilise la grammaire visuelle du splash cold-start.
  */
 @Composable
 private fun CelebrationHero(entry: SpeciesEntry) {
@@ -629,10 +621,7 @@ private fun formatPercent(p: Double): String = FR_PERCENT.format(p)
 
 private fun formatRatio(r: Double): String = "×${FR_RATIO.format(r)}"
 
-/**
- * Wikipedia accepte les espaces et la plupart des caractères dans son URL ;
- * la convention est de remplacer les espaces par `_`. Les apostrophes et
- * accents passent tels quels (Android URI les encode si besoin via Uri.parse).
- */
+// Convention Wikipedia : espaces → `_`. Apostrophes/accents passent tels
+// quels (Android `Uri.parse` les encode au besoin).
 private fun wikipediaUrlPath(title: String): String =
     title.replace(' ', '_')

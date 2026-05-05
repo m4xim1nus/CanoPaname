@@ -18,18 +18,15 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.suspendCancellableCoroutine
 
 /**
- * Géoloc native autour de `LocationManager`. Ne dépend pas de Google Play Services
- * — l'app cible GrapheneOS sans GMS.
+ * Géoloc native autour de `LocationManager` — pas de dépendance Google Play
+ * Services (cible GrapheneOS sans GMS).
  *
  * Deux APIs :
- *  - [currentLocation] : `StateFlow` mis à jour en continu tant que [start] est
- *    actif. C'est la source à lire pour tout calcul de distance temps réel
- *    (capture, FAB ★ remarquable proche). Fix sur le bug observé Sprint D où
- *    `getCurrentLocation` rendait un fix figé alors que MapLibre voyait la vraie
- *    position : MapLibre souscrit en continu via son `LocationEngine`, on fait
- *    pareil ici plutôt que du one-shot.
- *  - [currentOrLastKnown] : one-shot pour le cold start (avant que la souscription
- *    n'ait reçu son premier fix), reste utilisé par `computeInitialCamera`.
+ *  - [currentLocation] : `StateFlow` continu, à lire pour les calculs de
+ *    distance temps réel (capture, FAB ★ remarquable proche). Souscription
+ *    continue plutôt que one-shot pour suivre la position vivante.
+ *  - [currentOrLastKnown] : one-shot pour le bootstrap cold-start
+ *    (`computeInitialCamera`), avant le 1er fix de la souscription.
  */
 object LocationProvider {
 
@@ -75,22 +72,16 @@ object LocationProvider {
             lm.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, MIN_INTERVAL_MS, MIN_DISTANCE_M, l)
         }
 
-        // Amorce le flow avec le last-known pour ne pas démarrer à null pendant
-        // la première seconde de TTFF.
+        // Amorce le flow avec un last-known — sinon il reste à null pendant le TTFF.
         if (_currentLocation.value == null) {
             val seed = lm.getLastKnownLocation(LocationManager.GPS_PROVIDER)
                 ?: lm.getLastKnownLocation(LocationManager.NETWORK_PROVIDER)
             if (seed != null) _currentLocation.value = seed
         }
 
-        // Sur API ≥ R, demande aussi un fix one-shot async via
-        // `getCurrentLocation` — Android optimise cette API pour retourner un
-        // fix frais rapidement (souvent < 1 s), bien plus précis que le seed
-        // last-known qui peut être vieux ou imprécis. Non-bloquant : le
-        // callback pousse dans le flow quand prêt. Sans ça, au cold start
-        // post-onboarding on attendait le 1er natural update du listener
-        // (~2 s) ou pire le `getCurrentLocation` synchrone côté
-        // `currentOrLastKnown` qui bloquait jusqu'à 10 s.
+        // API ≥ R : `getCurrentLocation` retourne un fix frais en < 1 s,
+        // non-bloquant, plus précis que le last-known. Sans ça, le cold-start
+        // post-onboarding attendait le 1er natural update (~2 s).
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             requestOneShotSeed(lm)
         }
@@ -117,14 +108,11 @@ object LocationProvider {
     }
 
     /**
-     * Pousse un fix externe (typiquement reçu via le `LocationEngine` MapLibre
-     * que `MapScreen` bridge dans notre flow). Sert au cas du tout 1er
-     * lancement post-onboarding où notre `LocationListener` fraîchement
-     * enregistré ne reçoit pas d'updates pendant ~10 s alors que le
-     * `LocationEngineDefault` MapLibre a déjà reçu un fix. Filtre identique
-     * aux updates natural ([isBetterFix]) — un fix externe vieux ou
-     * imprécis ne va pas écraser un meilleur fix temps réel. Cf. Phase 10.5
-     * sous-groupe F.
+     * Pousse un fix externe — typiquement le `LocationEngine` MapLibre bridge
+     * par `MapScreen`. Couvre le cas du 1er lancement post-onboarding où
+     * notre `LocationListener` ne reçoit rien pendant ~10 s alors que le
+     * `LocationEngine` MapLibre a déjà des fix. Filtre [isBetterFix] : un
+     * fix externe vieux ou imprécis n'écrasera pas un meilleur temps réel.
      */
     fun feedExternalFix(loc: Location) {
         val current = _currentLocation.value
@@ -134,9 +122,8 @@ object LocationProvider {
     }
 
     /**
-     * Renvoie une position fraîche (API 30+) ou la dernière connue (API 26-29).
-     * Réservé au bootstrap (cold start, première caméra). Pour les calculs de
-     * distance utiliser [currentLocation].
+     * One-shot pour le bootstrap (cold start). Pour les calculs de distance
+     * temps réel, lire [currentLocation] à la place.
      */
     @SuppressLint("MissingPermission")
     suspend fun currentOrLastKnown(context: Context): Location? {
@@ -170,29 +157,26 @@ object LocationProvider {
 
     private val directExecutor = java.util.concurrent.Executor { it.run() }
 
-    // Aligné avec la cadence de MapLibre (qui raffine sub-second via son
-    // propre LocationEngine). À 2 000 ms on observait un drift visuel
-    // ~100 m entre le pin MapLibre et notre flow lors des premières
-    // secondes post-cold-start (cf. Phase 10.5 sous-groupe F).
+    // 500 ms aligné avec la cadence MapLibre. Au-dessus (2 000 ms testé), on
+    // observe un drift ~100 m entre le pin MapLibre et notre flow.
     private const val MIN_INTERVAL_MS = 500L
     private const val MIN_DISTANCE_M = 0f
 }
 
 /**
- * Âge d'un fix mesuré sur l'horloge monotonique (`elapsedRealtimeNanos`),
- * insensible aux changements d'heure système et à la mise en cache douteuse de
- * `loc.time` — le bug observé Sprint D venait justement d'un `loc.time` jeune
- * sur un fix spatialement figé.
+ * Âge mesuré sur l'horloge monotonique — insensible aux changements d'heure
+ * système et au caching douteux de `loc.time` qu'on a vu reporter un fix jeune
+ * sur une position spatialement figée.
  */
 fun Location.ageMs(): Long =
     (SystemClock.elapsedRealtimeNanos() - elapsedRealtimeNanos) / 1_000_000L
 
 /**
- * Vrai si [candidate] est plus utile que [current] :
- *  - significativement plus récent (> 10 s) → on prend, même si moins précis ;
- *  - significativement plus ancien (> 10 s) → on garde l'actuel ;
- *  - sinon, on prend si la précision est égale ou meilleure (NETWORK ne doit
- *    pas écraser un GPS plus précis qui vient d'arriver).
+ * Critère « ce nouveau fix est-il préférable au courant » :
+ * - +10 s plus récent → on prend, même si moins précis ;
+ * - −10 s plus ancien → on garde l'actuel ;
+ * - sinon, prend si précision égale ou meilleure (NETWORK ne doit pas
+ *   écraser un GPS plus précis fraîchement arrivé).
  */
 private fun isBetterFix(candidate: Location, current: Location): Boolean {
     val dtMs = (candidate.elapsedRealtimeNanos - current.elapsedRealtimeNanos) / 1_000_000L

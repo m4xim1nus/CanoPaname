@@ -52,9 +52,9 @@ import java.text.DateFormat
 import java.util.Date
 
 /**
- * Écran dédié — vue d'ensemble des 15 badges, débloqués au-dessus, à
- * débloquer en dessous (cf. ROADMAP Phase 4). L'évaluation est
- * recalculée à chaque changement de captures via `BadgeEvaluator`.
+ * Vue d'ensemble des badges (débloqués au-dessus, verrouillés en dessous).
+ * L'évaluation est recalculée à chaque changement de captures via
+ * `BadgeEvaluator`.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -65,9 +65,8 @@ fun BadgesScreen(onBack: () -> Unit) {
 
     val captures by captureRepo.toutesLesCaptures().collectAsState(initial = emptyList())
 
-    // Batch-fetch des arbres référencés par les captures (pour Géant /
-    // Vieux sage / arrondissements / espèce rare). Re-déclenché dès que
-    // le set d'ids change — pas à chaque tick.
+    // Batch-fetch des arbres référencés (Géant, Vieux sage, arrondissements,
+    // espèce rare). Re-déclenché sur changement du set d'ids, pas à chaque tick.
     val arbreIds = remember(captures) { captures.map { it.arbreId }.toSet() }
     @Suppress("ProduceStateDoesNotAssignValue")
     val arbresById by produceState(
@@ -209,8 +208,6 @@ private fun BadgeCard(state: BadgeState) {
                     MaterialTheme.colorScheme.onSurfaceVariant
                 },
             )
-            // Critère toujours visible — l'utilisateur sait ce qu'il vise
-            // même quand le badge est verrouillé.
             Text(
                 state.def.description,
                 style = MaterialTheme.typography.labelSmall,

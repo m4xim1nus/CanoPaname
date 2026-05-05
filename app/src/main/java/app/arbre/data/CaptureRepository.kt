@@ -6,12 +6,9 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.map
 
 /**
- * Événement émis après chaque INSERT capture réussi. Permet aux écrans de
- * déclencher une animation de climax (halo + scale sur le point, célébration
- * silhouette) sans repasser par un signal d'horodatage Room.
- *
- * `isFirstOfSpecies` : true si c'est la 1re capture de l'espèce, *toutes
- * saisons confondues*. Calculé en queryant Room juste avant l'INSERT.
+ * Émis après chaque INSERT réussi pour déclencher l'animation climax sans
+ * repasser par un signal d'horodatage Room. `isFirstOfSpecies` est calculé
+ * AVANT l'insert et reste valide *toutes saisons confondues*.
  */
 data class CaptureEvent(
     val arbreId: Long,
@@ -23,11 +20,9 @@ data class CaptureEvent(
 )
 
 /**
- * État du jeu côté capture : qui a découvert quoi.
- *
- * Toutes les écritures Room de l'app passent par ici. Les Flows ré-émettent
- * automatiquement à chaque INSERT, ce qui propage la bascule grise → verte
- * jusqu'à l'expression `circleColor` de la layer MapLibre.
+ * Toutes les écritures captures passent par ici. Les Flows Room ré-émettent
+ * à chaque INSERT, ce qui propage la bascule gris → vert jusqu'à l'expression
+ * `circleColor` de la layer MapLibre.
  */
 class CaptureRepository(private val dao: CaptureDao) {
 

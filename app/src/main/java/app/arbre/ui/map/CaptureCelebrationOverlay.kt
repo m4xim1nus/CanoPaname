@@ -67,7 +67,7 @@ fun CaptureCelebrationOverlay(
         }
     }
 
-    val totalDuration = motion.short.toLong() + 800L + motion.short.toLong() // halo + hold + fade
+    val totalDuration = motion.short.toLong() + 800L + motion.short.toLong()
     LaunchedEffect(active) {
         val current = active ?: return@LaunchedEffect
         val start = withFrameMillis { it }
@@ -93,7 +93,6 @@ fun CaptureCelebrationOverlay(
         val haloProgress = (progressMs.toFloat() / haloDuration).coerceIn(0f, 1f)
 
         Canvas(modifier = Modifier.fillMaxSize()) {
-            // Halo qui s'étend.
             val haloRadiusPx = with(density) { (8.dp.toPx() + 40.dp.toPx() * haloProgress) }
             val haloAlpha = (1f - haloProgress) * 0.6f
             drawCircle(
@@ -101,7 +100,6 @@ fun CaptureCelebrationOverlay(
                 radius = haloRadiusPx,
                 center = Offset(pixel.x, pixel.y),
             )
-            // Cœur : pulse 1× → 1.5× → 1×.
             val pulse = if (haloProgress < 0.5f) 1f + haloProgress * 1f else 1.5f - (haloProgress - 0.5f) * 1f
             val coreRadiusPx = with(density) { 5.dp.toPx() * pulse }
             drawCircle(
@@ -111,10 +109,9 @@ fun CaptureCelebrationOverlay(
             )
         }
 
-        // Binomial flottant : apparait après le halo (300 ms), hold 800 ms, fade 300 ms.
         val binomial = current.binomial
         if (binomial != null) {
-            val appearAt = haloDuration  // 300 ms
+            val appearAt = haloDuration
             val holdEnd = appearAt + 800L
             val fadeEnd = totalDuration
             val textAlpha = when {

@@ -1,23 +1,11 @@
 package app.arbre.data
 
 /**
- * Clé géographique d'une adresse d'arbre, dérivée du suffixe d'adresse produit
- * par `tools/build_dataset.py:build_address`. La DB stocke le **format brut**
- * du CSV OpenData (sans normalisation — `normalize_arr` n'est utilisé que pour
- * les stats `species-info.json`, pas pour l'adresse stockée). Exemples réels :
- *  - « …, PARIS 12E ARRDT » → [Paris(12)]
- *  - « …, PARIS 1ER ARRDT » → [Paris(1)] (la forme « 1ER » est spécifique)
- *  - « …, BOIS DE VINCENNES » → [BoisVincennes]
- *  - « …, BOIS DE BOULOGNE » → [BoisBoulogne]
- *  - tout le reste → [Other]
- *
- * Le parser tolère aussi un format normalisé (« 5e », « 1er ») au cas où
- * `build_address` serait un jour patché pour utiliser `normalize_arr` ; les
- * tests historiques l'utilisaient déjà.
- *
- * Les bois sont élevés en clé propre parce qu'ils représentent ~10 % des arbres
- * remarquables — fondre tout en « Hors Paris » noierait l'info géo dans le
- * Catalogue Remarquables.
+ * Clé géographique dérivée du suffixe d'adresse. La DB stocke le format
+ * brut du CSV OpenData (« PARIS 12E ARRDT », « BOIS DE VINCENNES »…) ; le
+ * parser tolère aussi le format normalisé (« 5e », « 1er ») utilisé par
+ * les tests. Les bois sont élevés en clé propre car ~10 % des remarquables
+ * y vivent — fondre dans « Hors Paris » noierait l'info géo.
  */
 sealed class ArrKey {
     data class Paris(val num: Int) : ArrKey()
@@ -26,16 +14,12 @@ sealed class ArrKey {
     data object Other : ArrKey()
 }
 
-// Format brut OpenData : « PARIS 12E ARRDT » / « PARIS 1ER ARRDT ».
 private val PARIS_RAW = Regex("""^PARIS (\d{1,2})(?:ER|E) ARRDT$""")
-
-// Format normalisé : « 5e », « 1er », « 20e ».
 private val PARIS_NORMALIZED = Regex("""^(\d{1,2})(?:er|e)$""")
 
 /**
- * Parse l'arrondissement depuis le suffixe d'adresse. Travaille sur le segment
- * post-dernière-virgule pour matcher uniformément peu importe le préfixe
- * (parc/square/voie). Accepte le format brut OpenData et le format normalisé.
+ * Parse l'arrondissement depuis le segment post-dernière-virgule, peu
+ * importe le préfixe d'adresse (parc/square/voie).
  */
 fun parseArrKey(adresse: String?): ArrKey {
     if (adresse.isNullOrBlank()) return ArrKey.Other

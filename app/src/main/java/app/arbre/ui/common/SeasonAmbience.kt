@@ -20,17 +20,11 @@ import kotlin.math.sin
 import kotlin.random.Random
 
 /**
- * Couche ambiante éphémère qui flotte au-dessus de l'écran 2-3 s à chaque
- * changement de saison. Particules saisonnières (flocon → pétale → feuille
- * verte → feuille cuivrée), purement décoratives.
+ * Couche ambiante éphémère sur changement de saison (flocon → pétale →
+ * feuille verte → feuille cuivrée), purement décorative.
  *
- * Le Canvas n'attache aucun `pointerInput` : un `pointerInput {}` même vide
- * intercepte les events (consume), il NE faut PAS l'ajouter ici sinon la
- * carte sous-jacente devient non-interactive.
- *
- * `triggerKey` doit être quelque chose qui change à chaque switch (la saison
- * elle-même fait l'affaire). Le composable se monte avec animation 0→1, puis
- * fade-out passé `arbresMotion.celebration` (1800 ms).
+ * NE PAS ajouter de `pointerInput` au Canvas, même vide — il consume les
+ * events et rendrait la carte sous-jacente non-interactive.
  */
 @Composable
 fun SeasonAmbience(
@@ -47,8 +41,6 @@ fun SeasonAmbience(
     }
     val progress = animProgress.value
 
-    // Particules figées par recomposition de saison : positions x random,
-    // chacune avec offset Y et rotation propres.
     val particles = remember(season) {
         val rng = Random(season.ordinal * 17L)
         List(16) {
@@ -64,9 +56,9 @@ fun SeasonAmbience(
 
     val color = when (season) {
         Season.WINTER -> Color.White
-        Season.SPRING -> Color(0xFFEFAFC8) // pétale rose
+        Season.SPRING -> Color(0xFFEFAFC8)
         Season.SUMMER -> arbresColors.feuilleClaire
-        Season.AUTUMN -> Color(0xFFC8771F) // feuille cuivrée
+        Season.AUTUMN -> Color(0xFFC8771F)
     }
 
     Canvas(
@@ -75,7 +67,6 @@ fun SeasonAmbience(
         if (progress >= 1f) return@Canvas
         val w = size.width
         val h = size.height
-        // Alpha enveloppe : monte vite (0-15 %), tient (15-70 %), fade (70-100 %).
         val envelope = when {
             progress < 0.15f -> progress / 0.15f
             progress < 0.7f -> 1f
@@ -83,7 +74,6 @@ fun SeasonAmbience(
         }
         particles.forEach { p ->
             val cx = p.xFraction * w
-            // Trajectoire : descente linéaire 0→h*1.1, légère oscillation X.
             val cy = -p.size + progress * (h + p.size * 2f)
             val xWobble = sin(progress * 4f * PI.toFloat() + p.phase) * 12f
             val rotation = p.rotationStart + p.rotationSpeed * progress

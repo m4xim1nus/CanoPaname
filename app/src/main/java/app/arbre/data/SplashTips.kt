@@ -6,15 +6,10 @@ import org.json.JSONArray
 import org.json.JSONObject
 
 /**
- * Tip splash écrit en `assets/splash-tips.json`. Le `text` peut contenir des
- * placeholders `{xxx}` qui sont substitués au runtime par
- * [SplashTipsController]. Si `requires` est non vide, tous les placeholders
- * listés doivent être > 0 dans la session courante pour que le tip soit
- * éligible (filtre les phrases joueur en début de partie).
- *
- * Catégories utilisées : `intro`, `dataset`, `history`, `popculture`, `player`.
- * Les phrases dataset sont générées par `tools/build_dataset.py` ; les autres
- * proviennent de `tools/splash-tips-static.json` et sont fusionnées au build.
+ * Tip splash. `text` peut contenir des placeholders `{xxx}` substitués au
+ * runtime par [SplashTipsController]. `requires` non vide → tous les
+ * placeholders listés doivent être > 0 (filtre les phrases joueur en
+ * début de partie).
  */
 data class SplashTip(
     val id: String,
@@ -24,10 +19,8 @@ data class SplashTip(
 )
 
 /**
- * Singleton chargé une fois depuis `assets/splash-tips.json` au boot. En cas
- * de parse fail (asset corrompu, JSON malformé), le repository part avec
- * `tips` vide et `intro` vide — le splash continue sans tip plutôt que de
- * crasher.
+ * Chargé une fois au boot. Parse fail → fallback `tips`/`intro` vides ; le
+ * splash continue sans tip plutôt que de crasher l'app.
  */
 class SplashTipsRepository private constructor(
     val intro: List<String>,

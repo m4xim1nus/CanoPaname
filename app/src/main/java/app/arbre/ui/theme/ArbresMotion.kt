@@ -9,11 +9,8 @@ import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.staticCompositionLocalOf
 
 /**
- * Tokens motion (durées + easings) exposés à tous les composables.
- *
- * Sert le même rôle que [ArbresColors] : centraliser des constantes que les
- * écrans réinventaient chacun de leur côté (`tween(350)`, `tween(600)`…).
- * Permet d'accorder le motion language sans toucher à 15 fichiers.
+ * Tokens motion (durées + easings) — pendant de [ArbresColors] pour les
+ * animations. Permet d'accorder le motion language depuis un seul endroit.
  */
 data class ArbresMotion(
     val micro: Int = 150,

@@ -34,15 +34,9 @@ import app.arbre.ui.map.CaptureAvailability
 import app.arbre.ui.theme.arbresColors
 
 /**
- * Trois rendus possibles du sheet en fonction de l'état de découverte :
- *  - **Inconnu** : pin gris, fiche neutre + bouton Capturer.
- *  - **Découvert (espèce)** : pin vert, fiche complète. Pas de bouton Capturer
- *    (l'espèce est déjà débloquée — recapturer n'apporte rien côté progression).
- *  - **Découvert (remarquable)** : idem, fiche complète.
- *
- * Pour un remarquable non découvert, on est bien sur le rendu Inconnu — un
- * remarquable reste gris jusqu'à sa capture personnelle, même si son espèce
- * est par ailleurs découverte (cf. vision-jeu.md §5.2).
+ * Rendu du sheet selon l'état de découverte. Un remarquable non capturé
+ * tombe sur le rendu Inconnu même si son espèce est par ailleurs débloquée —
+ * un remarquable reste gris jusqu'à sa capture personnelle.
  */
 @Composable
 fun ArbreDetailContent(
@@ -180,10 +174,7 @@ private fun DiscoveredContent(
     }
 }
 
-/**
- * « (médiane X) » + indication relative. Volontairement court pour garder la
- * fiche dense — pas de percentile ni d'intervalle, juste un repère.
- */
+/** « (médiane X · au-dessus/en-dessous) » — repère compact, pas de percentile. */
 private fun medianComparison(value: Int, median: Int?): String {
     if (median == null) return ""
     val ratio = value.toDouble() / median
@@ -197,9 +188,6 @@ private fun medianComparison(value: Int, median: Int?): String {
     return " · médiane $median ($tag)"
 }
 
-// Or token (`arbresColors.or`) : signal visuel d'exceptionnalité pour les
-// ~180 arbres remarquables. Cohérent avec l'orange vif des pins remarquables
-// capturés et avec l'accent or du splash.
 @Composable
 private fun RemarquableBlock(info: RemarquableInfo) {
     if (info.qualification == null && info.resume == null && info.description == null &&

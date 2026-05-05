@@ -18,12 +18,9 @@ import androidx.compose.ui.unit.dp
 import app.arbre.ui.theme.arbresColors
 
 /**
- * Composable partagé pour les écrans dans leur état vide initial : Arboretum
- * sans capture, Badges sans déblocage, Remarquables sans capture, Profil
- * pré-1re-capture. Une illustration vectorielle, un titre Fraunces, un corps.
- *
- * `illustration` est volontairement un slot @Composable pour laisser chaque
- * écran apporter son drawable (cf. `illus_empty_*.xml`).
+ * État vide générique : illustration vectorielle + titre Fraunces + corps.
+ * `illustration` reste un slot @Composable pour que chaque écran apporte
+ * son `illus_empty_*.xml`.
  */
 @Composable
 fun EmptyState(

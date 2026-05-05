@@ -21,10 +21,10 @@ abstract class ArbreDatabase : RoomDatabase() {
         @Volatile
         private var INSTANCE: ArbreDatabase? = null
 
-        // L'asset DB ship en v1 (table `arbre` seule). À la 1re ouverture, Room
-        // exécute MIGRATION_1_2 qui ajoute la table `capture` + ses indexes.
-        // Le CREATE TABLE doit matcher exactement ce que Room génère pour
-        // `CaptureEntity` (sinon le schemaCheck rejette au runtime).
+        // L'asset DB ship en v1 (table `arbre` seule) ; Room exécute cette
+        // migration à la 1re ouverture pour créer `capture`. Le DDL DOIT
+        // matcher exactement ce que Room génère pour `CaptureEntity` —
+        // toute divergence fait crasher le schemaCheck au runtime.
         internal val MIGRATION_1_2: Migration = object : Migration(1, 2) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL(
@@ -53,13 +53,11 @@ abstract class ArbreDatabase : RoomDatabase() {
             }
         }
 
-        // Avant v3, `capture.photoPath` stockait un chemin absolu. Ça crée une
-        // dépendance fragile au sandbox path (cassée par device-transfer,
-        // multi-user, debug↔release applicationId). On rewrite chaque row au
-        // basename pur ; le chemin absolu est reconstitué côté lecture par
-        // `Capture.resolvedFile(context)`. Aucun DDL — la diff est sémantique,
-        // pas structurelle. Idempotent : `substringAfterLast('/')` sur un
-        // basename retourne le basename.
+        // Avant v3, `capture.photoPath` stockait un chemin absolu — fragile
+        // (cassé par device-transfer, multi-user, debug↔release). Rewrite
+        // chaque row en basename pur ; le chemin absolu est reconstitué à la
+        // lecture par `Capture.resolvedFile(context)`. Diff sémantique, pas
+        // structurelle, donc aucun DDL. Idempotent.
         internal val MIGRATION_2_3: Migration = object : Migration(2, 3) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 val rewrites = mutableListOf<Pair<Long, String>>()

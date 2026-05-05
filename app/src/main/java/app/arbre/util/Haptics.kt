@@ -5,10 +5,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 
-/**
- * Wrapper léger autour de [LocalHapticFeedback] pour ne pas mentionner le
- * type de feedback dans chaque appelant. `LongPress` est l'effet « tap+
- * confirmation » standard d'Android, plus marqué qu'un `TextHandleMove`.
+/** Wrapper compact sur [LocalHapticFeedback]. `LongPress` = effet
+ *  « tap + confirmation » standard, plus marqué que `TextHandleMove`.
  */
 @Composable
 fun rememberCaptureHaptic(): () -> Unit {

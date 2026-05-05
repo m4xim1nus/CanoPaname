@@ -1,14 +1,10 @@
 package app.arbre.data
 
 /**
- * Ordre d'affichage du Catalogue (Arboretum + fiche-espèce) : count Paris
- * décroissant, puis alpha par binôme. Une espèce sans `SpeciesInfo` retombe
- * sur `count = 0` et finit en queue de liste, alpha entre paires.
- *
- * Source de vérité unique pour le numéro `#NNN` qui apparaît dans le Catalogue
- * Arboretum (`displayNumber`) ET en sous-titre du `SpeciesDetailScreen`. Le
- * `speciesIndex` Room (ordre d'ingestion CSV) ne peut pas servir de numéro
- * d'affichage — il est stable pour la migration mais arbitraire pour l'usage.
+ * Ordre d'affichage du Catalogue : count Paris décroissant, alpha sur binôme
+ * en cas d'égalité. Source unique du `#NNN` partagée entre `ArboretumScreen`
+ * et `SpeciesDetailScreen` ; le `speciesIndex` Room (ordre d'ingestion CSV)
+ * est stable pour la migration mais inutilisable comme rang d'affichage.
  */
 fun catalogueOrder(
     speciesIndex: SpeciesIndex,
@@ -22,10 +18,7 @@ fun catalogueOrder(
             .thenBy { it.espece.lowercase() }
     )
 
-/**
- * Rang 1-based d'une espèce dans le Catalogue, ou `null` si l'espèce n'existe
- * pas dans l'index.
- */
+/** Rang 1-based ou `null` si l'espèce n'existe pas dans l'index. */
 fun catalogueRank(
     sk: Int,
     speciesIndex: SpeciesIndex,

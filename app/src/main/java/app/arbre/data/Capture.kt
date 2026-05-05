@@ -49,8 +49,8 @@ data class Capture(
     val season: Season,
 )
 
-// `photoPath` stocke un basename (UUID.jpg) depuis la migration v3.
-// Les fichiers vivent tous sous `<externalFilesDir>/captures/`.
+// Depuis v3, `photoPath` est un basename (UUID.jpg). Les fichiers vivent
+// tous sous `<externalFilesDir>/captures/`.
 fun Capture.resolvedFile(context: Context): File =
     File(File(context.getExternalFilesDir(null), "captures"), photoPath)
 

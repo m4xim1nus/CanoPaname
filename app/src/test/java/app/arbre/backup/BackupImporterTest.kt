@@ -104,7 +104,6 @@ class BackupImporterTest {
     // ---------- Zip corrompu ----------
 
     @Test fun `importStream returns CORRUPT_ZIP when input is not a zip`() = runBlocking {
-        // Bytes qui ne sont pas un zip valide.
         val garbage = byteArrayOf(0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07)
         val result = importStream(ByteArrayInputStream(garbage), photosDir, dao)
 
@@ -178,8 +177,6 @@ class BackupImporterTest {
     }
 
     @Test fun `importStream silently skips entries with path traversal markers`() = runBlocking {
-        // Les noms d'entrée contenant `..` ou `\\` ou démarrant par `/` sont refusés.
-        // L'entry valide en parallèle doit toujours s'importer.
         val zip = buildZip(
             meta = META_V1,
             captures = capturesJson(CaptureRecord(1L, 1000L, "ok.jpg")),

@@ -5,15 +5,9 @@ import java.time.YearMonth
 import java.time.ZoneId
 
 /**
- * Évalue l'état des badges à partir des captures de l'utilisateur.
- *
- * Approche : balayage chronologique unique. Pour chaque badge, on note le
- * timestamp de la capture qui a fait basculer le critère (déblocage figé
- * dans le temps). Coût O(n × b) où n = # captures et b = # badges, qui
- * reste largement négligeable pour l'usage perso (n se compte en
- * centaines, b en dizaines).
- *
- * Pure fonction : pas de side-effect, testable directement.
+ * Évalue l'état des badges. Balayage chronologique unique : pour chaque
+ * badge, le `unlockedAt` est figé sur la capture qui a fait basculer le
+ * critère. Coût O(n × b), trivial à l'échelle perso.
  */
 object BadgeEvaluator {
 
@@ -25,7 +19,6 @@ object BadgeEvaluator {
         val sorted = captures.sortedBy { it.timestamp }
         val unlocks = mutableMapOf<String, Long>()
 
-        // Accumulateurs maintenus à mesure du scan.
         val seenSpecies = mutableSetOf<Int>()
         val seenRemarquables = mutableSetOf<Long>()
         val seenSeasons = mutableSetOf<Season>()
@@ -38,14 +31,13 @@ object BadgeEvaluator {
             val ts = capture.timestamp
             val arbre = arbresById[capture.arbreId]
 
-            // Découverte — # captures cumulées.
             unlockOnce(unlocks, BadgeCatalog.FIRST_CAPTURE.id, totalCount >= 1, ts)
             unlockOnce(unlocks, BadgeCatalog.PROMENADE.id, totalCount >= 10, ts)
             unlockOnce(unlocks, BadgeCatalog.MARCHEUR.id, totalCount >= 50, ts)
             unlockOnce(unlocks, BadgeCatalog.CENTURION.id, totalCount >= 100, ts)
 
-            // Botanique — espèces (les remarquables ne comptent pas comme espèce
-            // pour l'Arboretum, on garde la même règle ici).
+            // Cohérence Arboretum : les remarquables ne comptent pas comme
+            // espèce — ils ont leur catégorie dédiée.
             if (!capture.remarquable) {
                 seenSpecies.add(capture.speciesIndex)
             }
@@ -58,8 +50,6 @@ object BadgeEvaluator {
                 }
             }
 
-            // Géographie — arrondissement parsé depuis l'adresse de l'arbre
-            // (format normalisé par tools/build_dataset.py : « …, 5e »).
             val arr = arbre?.adresse?.let(::parseArrondissement)
             if (arr != null) {
                 seenArrondissements.add(arr)
@@ -67,14 +57,12 @@ object BadgeEvaluator {
             unlockOnce(unlocks, BadgeCatalog.TOURNEUR_DE_PARIS.id, seenArrondissements.size >= 10, ts)
             unlockOnce(unlocks, BadgeCatalog.TOUR_COMPLET.id, seenArrondissements.size >= 20, ts)
 
-            // Remarquables — # arbres remarquables distincts.
             if (capture.remarquable) {
                 seenRemarquables.add(capture.arbreId)
             }
             unlockOnce(unlocks, BadgeCatalog.CHASSEUR_REMARQUABLES.id, seenRemarquables.size >= 10, ts)
             unlockOnce(unlocks, BadgeCatalog.LEGENDE.id, seenRemarquables.size >= 50, ts)
 
-            // Saisons.
             seenSeasons.add(capture.season)
             unlockOnce(unlocks, BadgeCatalog.RONDE_DES_SAISONS.id, seenSeasons.size == 4, ts)
 
@@ -83,7 +71,6 @@ object BadgeEvaluator {
                 unlockOnce(unlocks, BadgeCatalog.ANNEE_COMPLETE.id, true, ts)
             }
 
-            // Démesure — caractéristiques de l'arbre capturé.
             val hauteur = arbre?.hauteurM
             if (hauteur != null && hauteur > 30) {
                 unlockOnce(unlocks, BadgeCatalog.GEANT.id, true, ts)
@@ -99,11 +86,7 @@ object BadgeEvaluator {
         }
     }
 
-    /**
-     * Numéro d'arrondissement parisien (1..20) parsé depuis le suffixe
-     * d'adresse, ou `null` pour les bois et exclaves. Wrapper sur [parseArrKey]
-     * — l'API riche (avec les bois) est dans `ArrKey.kt`.
-     */
+    /** 1..20 ou `null` pour les bois et exclaves. */
     fun parseArrondissement(adresse: String): Int? =
         (parseArrKey(adresse) as? ArrKey.Paris)?.num
 
@@ -112,11 +95,7 @@ object BadgeEvaluator {
     internal fun yearMonthOf(epochMillis: Long): YearMonth =
         YearMonth.from(Instant.ofEpochMilli(epochMillis).atZone(PARIS_ZONE))
 
-    /**
-     * Cherche une fenêtre de 12 mois consécutifs où chaque mois figure dans
-     * [months]. Trié → on parcourt et on regarde chaque mois comme le
-     * potentiel début d'une fenêtre.
-     */
+    /** Cherche une fenêtre de 12 mois consécutifs entièrement dans [months]. */
     internal fun hasTwelveConsecutiveMonths(months: Set<YearMonth>): Boolean {
         if (months.size < 12) return false
         return months.any { start ->

@@ -9,16 +9,9 @@ import androidx.compose.ui.unit.sp
 import app.arbre.R
 
 /**
- * Typographie de l'app.
- *
- * - **Display / Headline / TitleLarge** : Fraunces SemiBold bundlée
- *   (`res/font/fraunces_semibold.ttf`, ~70 Ko, OFL). Donne du caractère aux
- *   accroches sans dépendance réseau ni Google Fonts runtime.
- * - **TitleMedium / Body / Label** : sans-serif système (default M3). Lisible,
- *   éprouvé, gratuit côté APK.
- *
- * Pas d'override sur les bodies/labels — la lisibilité du corps prime sur le
- * caractère, et changer la sans-serif aurait surchargé l'identité.
+ * Typographie : Fraunces SemiBold (`res/font/fraunces_semibold.ttf`, ~70 Ko,
+ * OFL) sur les niveaux Display/Headline/TitleLarge ; sans-serif système
+ * (M3 default) ailleurs — la lisibilité du corps prime sur le caractère.
  */
 private val Fraunces = FontFamily(
     Font(R.font.fraunces_semibold, FontWeight.SemiBold),
@@ -59,16 +52,14 @@ val ArbresTypography: Typography = DefaultTypography.copy(
         fontWeight = FontWeight.SemiBold,
         fontSize = 20.sp,
     ),
-    // titleMedium / titleSmall / body* / label* gardent la sans-serif système.
     titleMedium = DefaultTypography.titleMedium.copy(
         fontWeight = FontWeight.Medium,
     ),
 )
 
 /**
- * TextStyle pour le binôme latin italique des fiches-espèces / arbres.
- * Reste en sans-serif (Fraunces ne fournit pas son italique en static OFL et
- * la sans-serif italique reste lisible et neutre).
+ * Style binôme latin italique — sans-serif, car Fraunces n'a pas d'italique
+ * en static OFL et la sans-serif italique reste lisible.
  */
 val LatinBinomial: TextStyle = TextStyle(
     fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,

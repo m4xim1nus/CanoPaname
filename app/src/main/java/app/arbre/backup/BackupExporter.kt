@@ -19,14 +19,9 @@ sealed class ExportResult {
 }
 
 /**
- * Génère un zip `arbres-export-YYYYMMDD.zip` contenant `meta.json`,
- * `captures.json` et un répertoire `photos/`. L'écriture passe par un
- * `Uri` SAF — l'utilisateur a choisi la destination via
- * `ACTION_CREATE_DOCUMENT` (Drive, Files, Documents…).
- *
- * Photo manquante sur disque : la capture est exportée sans son fichier
- * (cohérent avec la philosophie additive, l'import remontera un compteur
- * `photosMissing`).
+ * Écrit `meta.json` + `captures.json` + `photos/` dans un zip via un `Uri`
+ * SAF (`ACTION_CREATE_DOCUMENT`). Photo manquante sur disque : capture
+ * exportée sans fichier — l'import remontera `photosMissing`.
  */
 class BackupExporter(
     private val context: Context,

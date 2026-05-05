@@ -17,17 +17,15 @@ import java.util.zip.ZipInputStream
 
 private const val TAG = "BackupImporter"
 
-// Caps anti-zipbomb. Calibrés pour la cible family & friends : un export
-// réaliste pèse ~30 captures × ~500 KB photos ≈ 15 Mo. Les seuils sont
-// volontairement larges (~30× la taille typique) pour ne jamais frustrer un
-// utilisateur légitime tout en bornant l'allocation mémoire d'un zip hostile.
+// Caps anti-zipbomb. Un export réaliste pèse ~30 captures × ~500 KB ≈ 15 Mo —
+// seuils ~30× au-dessus pour n'embêter aucun utilisateur légitime tout en
+// bornant l'allocation mémoire d'un zip hostile.
 internal const val MAX_ENTRY_BYTES = 10L * 1024 * 1024
 internal const val MAX_TOTAL_BYTES = 500L * 1024 * 1024
 internal const val MAX_ENTRY_COUNT = 10_000
 
-// Magic JPEG SOI + start of next marker. Suffit à rejeter un .jpg renommé
-// arbitraire ; pas une validation complète (un fichier corrompu post-magic
-// passera, mais BitmapFactory s'en chargera au décodage).
+// Magic JPEG SOI — suffit à rejeter un .jpg renommé. Pas une validation
+// complète, BitmapFactory rattrapera la corruption au décodage.
 private val JPEG_MAGIC = byteArrayOf(0xFF.toByte(), 0xD8.toByte(), 0xFF.toByte())
 
 private class BackupTooLargeException(message: String) : IOException(message)
@@ -52,23 +50,13 @@ sealed class ImportResult {
 }
 
 /**
- * Lit un zip d'export et applique les captures inconnues à la DB locale.
+ * Importe un zip d'export. Idempotent par dédup `(arbreId, timestamp)` :
+ * un import partiel (zip tronqué, IO error) laisse les captures déjà
+ * ingérées et une seconde tentative reprend là où on s'est arrêté.
  *
- * Idempotence : dédup sur `(arbreId, timestamp)`. Un import partiel (zip
- * tronqué, IO error en cours) laisse les captures déjà ingérées —
- * la dédup garantit qu'une nouvelle tentative reprend là où on s'est
- * arrêté.
- *
- * Photo absente du zip mais capture présente dans `captures.json` :
- * la capture est insérée quand même (compteur `photosMissing`). On ne
- * veut pas perdre l'historique pour une photo manquante.
- *
- * Le zip est lu en deux passes mémoire :
- * 1. `meta.json` + `captures.json` parsés
- * 2. photos copiées vers `getExternalFilesDir(null)/captures/`
- *
- * Compromis simple — ~30 captures × 500 KB ≈ 15 Mo en mémoire, OK sur
- * Android. Si les volumes explosent, refactor en streaming-only.
+ * Photo absente mais capture présente : on insère quand même (compteur
+ * `photosMissing` remonté à l'UI), on ne perd pas l'historique pour une
+ * photo manquante.
  */
 class BackupImporter(
     private val context: Context,
@@ -82,11 +70,6 @@ class BackupImporter(
     }
 }
 
-/**
- * Cœur logique de l'import, isolé de `Context` / `Uri` pour permettre des
- * tests JVM purs. Top-level `internal` pour rester appelable depuis le
- * dossier `test/` sans instance de [BackupImporter].
- */
 private class ZipAccumulator {
     var meta: BackupMeta? = null
     var capturesJson: String? = null
@@ -116,8 +99,8 @@ private fun ZipInputStream.handlePhotoEntry(name: String, acc: ZipAccumulator) {
     if (basename.isEmpty() || basename.contains('/')) return
     val bytes = readBytesCapped(MAX_ENTRY_BYTES)
     acc.totalBytes = checkTotal(acc.totalBytes + bytes.size)
-    // Photo non-JPEG : skip silencieux, sera comptée photosMissing si une
-    // capture y réfère.
+    // Photo non-JPEG : skip silencieux ; comptée photosMissing si une
+    // capture s'y réfère.
     if (hasJpegMagic(bytes)) acc.photoBytes[basename] = bytes
 }
 
@@ -241,10 +224,8 @@ private fun checkTotal(running: Long): Long {
     return running
 }
 
-// Refus des noms d'entrée qui essaient de sortir du dossier d'extraction
-// (path traversal). Le filtre `!basename.contains('/')` côté boucle ne couvre
-// que les sous-dossiers UNIX ; il faut aussi rejeter les `\` Windows-style et
-// les `..` de tous types.
+// Path traversal : couvre les `\` Windows-style, les `..` de tous types et
+// les paths absolus, en plus du filtre basename.
 private fun isPathSuspicious(name: String): Boolean =
     name.contains('\\') || name.contains("..") || name.startsWith('/')
 

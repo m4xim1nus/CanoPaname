@@ -39,17 +39,10 @@ import app.arbre.ui.common.PhotoLightbox
 import app.arbre.ui.detail.ArbreDetailContent
 
 /**
- * Fiche plein-écran d'un arbre remarquable individuel, atteinte depuis le
- * Catalogue remarquables ou depuis la modale carte (Phase 10.5 sous-groupe B).
- * On n'arrive ici qu'après découverte (le Catalogue ne rend cliquable que les
- * cellules découvertes), donc `isDiscovered = true` d'office et pas de bouton
- * Capturer.
- *
- * Réutilise `ArbreDetailContent` (le même rendu que la bottom sheet de la
- * carte), avec en amont une galerie « Tes photos (N) » qui ouvre un
- * `PhotoLightbox` plein écran au tap. `onRemarquableClick = null` explicite
- * — on est déjà sur la fiche remarquable, le bouton serait une boucle.
- * `onSpeciesClick` permet le cross-link vers la fiche-espèce.
+ * Fiche plein-écran d'un arbre remarquable, atteinte uniquement après
+ * découverte — d'où `isDiscovered = true` d'office et pas de bouton Capturer.
+ * Réutilise `ArbreDetailContent` (le rendu de la bottom sheet de la carte)
+ * en y ajoutant une galerie + lightbox plein écran.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -72,10 +65,8 @@ fun RemarquableDetailScreen(
         captureRepo.capturesPourArbre(arbreId)
     }.collectAsState(initial = emptyList())
 
-    // Gating fiche-espèce : on ne propose le pivot vers la fiche-espèce que si
-    // l'espèce basique a été capturée (toutes saisons). Sinon le bouton se
-    // masquerait silencieusement — cohérent avec le langage « ??? » de l'app
-    // (cf. Phase 10.5 sous-groupe E).
+    // Gating : pivot vers la fiche-espèce seulement si l'espèce basique a
+    // été capturée (toutes saisons), cohérent avec le langage « ??? ».
     val capturedSpecies by captureRepo.capturedSpeciesIndices()
         .collectAsState(initial = emptySet())
 

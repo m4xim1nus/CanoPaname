@@ -5,17 +5,13 @@ import org.json.JSONArray
 import org.json.JSONObject
 
 /**
- * Métadonnées enrichies d'un arbre remarquable parisien, alignées avec
- * `assets/remarquables-info.json` produit par `tools/build_dataset.py` à
- * partir du dataset OpenData `arbresremarquablesparis`.
- *
- * Tous les champs textuels sont nullables : OpenData ne garantit pas leur
- * présence. Si tout est null, l'arbre n'a pas d'entrée dans le JSON du tout
- * (cf. write_remarquables_info — skip si len(entry) == 1).
+ * Métadonnées d'un arbre remarquable. Tous les champs textuels sont nullables :
+ * OpenData ne garantit pas leur présence. Un arbre sans aucun champ rempli
+ * n'apparaît pas dans le JSON du tout.
  */
 data class RemarquableInfo(
     val id: Long,
-    val qualification: String?,  // "Paysager", "Botanique", "Historique"...
+    val qualification: String?,
     val resume: String?,
     val description: String?,
     val datePlantation: String?,

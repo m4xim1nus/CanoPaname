@@ -4,10 +4,8 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
 /**
- * Source de vérité des arbres parisiens.
- *
- * Backed par une base Room peuplée depuis l'asset `databases/arbres-paris.db`
- * (généré hors-app par `tools/build_dataset.py`).
+ * Source de vérité des arbres. Backed par Room sur l'asset
+ * `databases/arbres-paris.db` (généré hors-app par `tools/build_dataset.py`).
  */
 class ArbreRepository(private val dao: ArbreDao) {
 
@@ -23,8 +21,9 @@ class ArbreRepository(private val dao: ArbreDao) {
 
     suspend fun arbreParId(id: Long): Arbre? = dao.arbreParId(id)?.toArbre()
 
-    /** Batch lookup : utile pour évaluer les badges qui dépendent des
-     *  caractéristiques des arbres capturés (hauteur, circ, arrondissement). */
+    /** Batch lookup pour les badges qui dépendent des caractéristiques des
+     *  arbres capturés (hauteur, circ, arrondissement).
+     */
     suspend fun arbresParIds(ids: Collection<Long>): Map<Long, Arbre> {
         if (ids.isEmpty()) return emptyMap()
         return dao.arbresParIds(ids.toList())
@@ -41,8 +40,7 @@ class ArbreRepository(private val dao: ArbreDao) {
         dao.unArbreParEspece(genre, espece)?.toArbre()
 
     companion object {
-        // Plafond pour éviter de déverser une bbox trop large dans la carte.
-        // À z14+ sur Paris une bbox visible contient typiquement < 2000 arbres.
+        // Plafond bbox — z14+ sur Paris contient typiquement < 2000 arbres.
         const val DEFAULT_BBOX_LIMIT = 5000
     }
 }

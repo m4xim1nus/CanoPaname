@@ -93,25 +93,13 @@ import org.maplibre.android.style.sources.GeoJsonSource
 
 private val PARIS = LatLng(48.8566, 2.3522)
 private const val PARIS_ZOOM = 13.0
-// Vue d'ensemble pour le mode filtré : zoom plus bas pour montrer la
-// distribution spatiale de l'espèce sur tout Paris.
 private const val PARIS_OVERVIEW_ZOOM = 11.5
 private const val USER_ZOOM = 16.0
-
-// Constantes layers + couleurs pins déplacées dans `MapLayers.kt` (visibilité
-// internal pour l'usage cross-fichier ici). Composables splash + bandeau filtré
-// déplacés dans `MapOverlays.kt`.
 
 private fun parisCamera(zoom: Double = PARIS_ZOOM): CameraPosition =
     CameraPosition.Builder().target(PARIS).zoom(zoom).build()
 
-/**
- * Caméra à utiliser au tout premier rendu de la carte. Si la permission est
- * déjà accordée et qu'un fix (frais ou last-known) est disponible, on ouvre
- * directement sur la position de l'utilisateur. Sinon on retombe sur Paris z13.
- *
- * On ne déclenche jamais de demande de permission ici : c'est le rôle du FAB.
- */
+// Pas de demande de permission ici — c'est le rôle du FAB de localisation.
 private suspend fun computeInitialCamera(ctx: Context): CameraPosition {
     if (!LocationProvider.hasFineLocationPermission(ctx)) return parisCamera()
     val loc = LocationProvider.currentOrLastKnown(ctx) ?: return parisCamera()
@@ -151,10 +139,8 @@ fun MapScreen(
     val filteredEntry = filterSpecies?.let { speciesIndex.get(it) }
     val filteredCount = filterSpecies?.let { speciesInfoRepo.get(it)?.stats?.count }
 
-    // La carte affiche toujours la saison vive : le sélecteur de saison vit
-    // dans Profil/Arboretum/Remarquables, pas sur le hub. `Season.current()`
-    // est recalculée à chaque recomposition — coût nul, bascule de minuit
-    // gérée naturellement.
+    // La carte affiche toujours la saison vive — la sélection d'archive vit
+    // dans Profil/Arboretum/Remarquables, pas sur le hub.
     val currentSeason = Season.current()
 
     val capturedSpecies by captureRepo.capturedSpeciesIndices(currentSeason)
@@ -173,10 +159,9 @@ fun MapScreen(
     var mapRef by remember { mutableStateOf<MapLibreMap?>(null) }
     var styleRef by remember { mutableStateOf<Style?>(null) }
     var arbresPrets by remember { mutableStateOf(false) }
-    // Cleanup du bridge `LocationEngine` MapLibre → `LocationProvider` (cf.
-    // `attachMapLibreLocationBridge`). Stocké hors de `enableLocationPin`
-    // pour pouvoir être appelé au `onDispose` du `MapView`. Phase 10.5
-    // sous-groupe F.
+    // Cleanup du bridge MapLibre LocationEngine → LocationProvider (cf.
+    // `attachMapLibreLocationBridge`) — extrait pour être appelable depuis
+    // `onDispose` du MapView.
     var maplibreLocationCleanup by remember { mutableStateOf<(() -> Unit)?>(null) }
     val snackbar = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
@@ -192,15 +177,14 @@ fun MapScreen(
             }
     }
 
-    // Mid-session : à chaque changement des captures (debounce 1 s pour
-    // lisser les rafales), regenerate le GeoJSON enrichi (flag `discovered`
-    // par feature) en background et le re-pousse via `setArbresGeoJson`.
-    // C'est lui qui fait le **1er enrichment** au tout 1er cold-start (pas
-    // le pipeline cold-start, trop coûteux pour bloquer le 1er paint des
-    // pins). Aux mounts suivants, le cache `app.enrichedGeoJson` permet au
-    // cold-start de poser direct l'enrichi — ici on skip le re-enrich si
-    // les sets sont identiques à `lastEnrichmentKey`. Skip le mode filtré.
-    // Phase 10.5 H.
+    // Mid-session : à chaque changement des captures (debounce 1 s), régénère
+    // le GeoJSON enrichi (flag `discovered` par feature) en background et le
+    // re-pousse via `setArbresGeoJson`. C'est aussi lui qui fait le 1er
+    // enrichment du cold-start fresh (le pipeline cold-start ne le fait pas,
+    // 217 k features = trop lourd pour bloquer le 1er paint des pins). Aux
+    // mounts suivants, `app.enrichedGeoJson` permet au cold-start de poser
+    // direct l'enrichi ; ici on skip le re-enrich si les sets sont identiques
+    // à `lastEnrichmentKey`. Skip total en mode filtré (déjà enrichi cold).
     LaunchedEffect(styleRef, currentSeason, filterSpecies) {
         if (filterSpecies != null) return@LaunchedEffect
         val style = styleRef ?: return@LaunchedEffect
@@ -212,8 +196,6 @@ fun MapScreen(
             .collect { (species, remarquables) ->
                 val key = species to remarquables
                 if (key == app.lastEnrichmentKey && app.enrichedGeoJson.value != null) {
-                    // Mount avec sets inchangés depuis le dernier enrich :
-                    // le cold-start a déjà posé le cached enrichi, rien à faire.
                     return@collect
                 }
                 val tStart = android.os.SystemClock.elapsedRealtime()
@@ -255,12 +237,10 @@ fun MapScreen(
         component.isLocationComponentEnabled = true
         component.cameraMode = CameraMode.NONE
         component.renderMode = RenderMode.NORMAL
-        // Bridge MapLibre → LocationProvider : au tout 1er lancement
-        // post-onboarding, notre `LocationListener` propre ne reçoit pas
-        // d'updates pendant ~10 s alors que le `LocationEngineDefault` que
-        // MapLibre instancie reçoit des fix dès t≈1 s. On consomme SA
-        // source au lieu d'attendre la nôtre — élimine la cause racine du
-        // bug « Active le GPS » au 1er run et garantit zéro drift entre le
+        // Au 1er lancement post-onboarding, notre `LocationListener` propre
+        // ne reçoit pas d'updates pendant ~10 s alors que le `LocationEngine`
+        // de MapLibre reçoit des fix dès t≈1 s. On consomme SA source — élimine
+        // le bug « Active le GPS » au 1er run et garantit zéro drift entre le
         // pin user et la distance utilisée pour `captureAvailability`.
         if (maplibreLocationCleanup == null) {
             maplibreLocationCleanup = attachMapLibreLocationBridge(component)
@@ -304,12 +284,9 @@ fun MapScreen(
         mapView.onResume()
         mapView.getMapAsync { map ->
             mapRef = map
-            // On bloque la rotation : la boussole MapLibre se retrouve sinon
-            // sous l'inset status bar en edge-to-edge, intappable, et la
-            // rotation libre n'apporte rien à l'usage « carnet de bord
-            // naturaliste » (la carte reste nord-en-haut, comme un plan
-            // imprimé). `isCompassEnabled = false` la cache puisque
-            // dépourvue de raison d'être sans rotation.
+            // Rotation bloquée : la boussole en edge-to-edge se retrouve sous
+            // l'inset status bar et devient intappable. Sans rotation libre,
+            // la boussole n'a plus de raison d'être — d'où `isCompassEnabled`.
             map.uiSettings.isRotateGesturesEnabled = false
             map.uiSettings.isCompassEnabled = false
             scope.launch {
@@ -331,18 +308,18 @@ fun MapScreen(
                     scope.launch {
                         try {
                             if (filterSpecies != null) {
-                                // Mode filtré : single-pass. Le GeoJSON filtré est
-                                // petit (~max 38k features pour Platanus, < 1 Mo),
-                                // le freeze d'`addArbresLayers` reste imperceptible.
+                                // Mode filtré : single-pass. GeoJSON filtré <
+                                // 1 Mo (~38 k features pour Platanus max), le
+                                // freeze d'`addArbresLayers` reste imperceptible.
                                 val rawJson = app.arbresGeoJsonAsync.await()
                                 val tJson = android.os.SystemClock.elapsedRealtime()
                                 android.util.Log.i(
                                     "MapScreen",
                                     "GeoJSON disponible (process+${tJson - tProcess}ms, ${rawJson.length / 1_000_000}Mo)",
                                 )
-                                // On enrichit aussi en mode filtré pour que les
-                                // clusters d'espèce reflètent la progression
-                                // (Phase 10.5 H). Coût négligeable sur < 1 Mo.
+                                // Enrichi aussi en mode filtré pour que les
+                                // clusters d'espèce reflètent la progression.
+                                // Coût négligeable sur < 1 Mo.
                                 val initialCaptures = withTimeoutOrNull(2000) {
                                     combine(
                                         captureRepo.capturedSpeciesIndices(currentSeason),
@@ -376,15 +353,14 @@ fun MapScreen(
                                 )
                             } else {
                                 // Cold-start global : 2-passes flip-avant-load.
-                                // Le `GeoJsonSource` ctor parse le JSON 32 Mo sur le UI
-                                // thread (exigence MapLibre, cf. bug Phase 9 §4) et
-                                // bloque ~700 ms — pendant ce temps Choreographer ne
-                                // tique pas et le splash apparaît figé. Solution :
-                                // on pose les layers VIDES (instantané), on flip
-                                // `arbresPrets = true` pour que le splash joue son anim
-                                // et sorte proprement, puis on injecte les arbres
-                                // via `setArbresGeoJson` après — le freeze 700 ms est
-                                // alors masqué par « carte vide » au lieu du splash.
+                                // Le `GeoJsonSource` ctor parse le JSON 32 Mo sur
+                                // le UI thread (exigence MapLibre) et bloque
+                                // ~700 ms ; Choreographer s'arrête et le splash
+                                // apparaît figé. Solution : poser les layers
+                                // VIDES (instantané), flip `arbresPrets = true`
+                                // pour que le splash joue son anim de sortie,
+                                // PUIS injecter les arbres via `setArbresGeoJson`
+                                // — le freeze 700 ms est masqué par « carte vide ».
                                 addArbresLayers(style, EMPTY_GEOJSON)
                                 styleRef = style
                                 arbresPrets = true
@@ -393,19 +369,16 @@ fun MapScreen(
                                     "MapScreen",
                                     "Layers vides posées (process+${tEmpty - tProcess}ms, splash exit)",
                                 )
-                                // Phase 10.5 H : si on a déjà un GeoJSON enrichi
-                                // dans le cache process-singleton (mount post
-                                // retour Profil → Map), on le pose direct — pins
-                                // ET clusters bons d'un coup, 1 seul freeze UI.
-                                // Sinon (cold-start fresh), on pose le rawJson nu
-                                // pour que les pins individuels apparaissent ASAP
-                                // (~700 ms via `setArbresGeoJson`) ; le
-                                // `LaunchedEffect` mid-session débouncedra
-                                // l'enrichment ~1 s plus tard et re-poussera
-                                // l'enrichi (les clusters s'allument en 2e wave).
-                                // L'enrichment 217k features est trop coûteux
-                                // (~5-15 s sur device GrapheneOS) pour bloquer
-                                // le 1er paint.
+                                // Si on a déjà un GeoJSON enrichi cached (mount
+                                // post retour Profil → Map), on le pose direct
+                                // — pins ET clusters bons d'un coup, 1 seul
+                                // freeze UI. Sinon (cold-start fresh), on pose
+                                // le rawJson nu pour que les pins apparaissent
+                                // ASAP (~700 ms) ; le LaunchedEffect mid-session
+                                // déboucera l'enrichment ~1 s plus tard et
+                                // re-poussera l'enrichi en 2e wave. Enrich des
+                                // 217 k features = ~5-15 s sur device, trop
+                                // coûteux pour bloquer le 1er paint.
                                 val cached = app.enrichedGeoJson.value
                                 val initialJson = cached ?: app.arbresGeoJsonAsync.await()
                                 val tJson = android.os.SystemClock.elapsedRealtime()
@@ -511,8 +484,6 @@ fun MapScreen(
                     .padding(16.dp),
             )
         } else {
-            // FAB Profil seul à gauche : la sélection de saison vit dans
-            // Profil/Arboretum/Remarquables, pas ici.
             FloatingActionButton(
                 onClick = onProfileClick,
                 modifier = Modifier
@@ -530,9 +501,8 @@ fun MapScreen(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 FloatingActionButton(onClick = onRemarquablesClick) {
-                    // Pastille orange remarquable (cf. `ic_remarquable_badge`).
                     // Tint Unspecified pour préserver la bichromie orange/crème
-                    // — la couleur *est* le sens, alignée sur le pin de la carte.
+                    // de l'asset — la couleur *est* le sens, alignée sur le pin.
                     Icon(
                         painter = painterResource(R.drawable.ic_remarquable_badge),
                         contentDescription = "Remarquables",
@@ -547,9 +517,6 @@ fun MapScreen(
                     )
                 }
             }
-            // FAB loupe (BottomStart) : recherche du remarquable le plus
-            // proche non découvert. Réservé au mode non-filtré — en
-            // `MAP_FILTERED` l'utilisateur chasse une espèce.
             FloatingActionButton(
                 onClick = ::onNearestRemarquableClick,
                 modifier = Modifier
@@ -584,11 +551,9 @@ fun MapScreen(
             modifier = Modifier.align(Alignment.BottomCenter),
         )
 
-        // Splash overlay : reste au-dessus de la carte tant que les layers
-        // d'arbres ne sont pas posées. Couleurs et icône alignées avec le
-        // splash natif (themes.xml) pour une transition sans flicker.
-        // En mode `MAP_FILTERED` on ne charge pas tout Paris, juste une
-        // espèce — copy + animation différents.
+        // Splash : reste au-dessus de la carte tant que les layers d'arbres
+        // ne sont pas posées. Couleurs/icône alignées avec le splash natif
+        // (themes.xml) pour transition sans flicker.
         AnimatedVisibility(
             visible = !arbresPrets,
             enter = androidx.compose.animation.EnterTransition.None,
@@ -624,18 +589,13 @@ fun MapScreen(
             }
             val capturesArbre by captureRepo.capturesPourArbre(openedArbre.id)
                 .collectAsState(initial = emptyList())
-            // `captureAvailability` est non-bloquant (pure lecture du flow
-            // `currentLocation` filtré sur âge), donc on la dérive directement
-            // à chaque émission. La transition « Active le GPS » → « Capturer »
-            // se fait dans la seconde quand le 1er fix arrive
-            // post-onboarding ; le bouton suit aussi le mouvement live de
-            // l'utilisateur. Cf. Phase 10.5 sous-groupe F.
+            // `captureAvailability` lit le flow `currentLocation` filtré sur
+            // âge (non-bloquant) ; recompute live à chaque émission pour que
+            // « Active le GPS » bascule vers « Capturer » dès le 1er fix.
             val currentLocation by LocationProvider.currentLocation.collectAsState()
             val availability = remember(openedArbre.id, currentLocation) {
                 captureAvailability(openedArbre)
             }
-            // Médianes de l'espèce pour situer l'arbre vs ses pairs. Le lookup
-            // est local en RAM (singleton dans ArbresApp), pas de coût IO.
             val info = sk?.let { speciesInfoRepo.get(it) }
             val remarquableInfo = if (openedArbre.remarquable) {
                 remarquableInfoRepo.get(openedArbre.id)
@@ -676,9 +636,8 @@ fun MapScreen(
 /**
  * Attache notre `LocationProvider` au `LocationEngine` qu'a déjà instancié
  * MapLibre via `useDefaultLocationEngine(true)`. Renvoie une closure de
- * cleanup à invoquer au `onDispose` du `MapView`. Cf. note dans
- * `enableLocationPin` pour le contexte du bug 1er-lancement résolu par ce
- * bridge (Phase 10.5 sous-groupe F).
+ * cleanup à invoquer au `onDispose` du `MapView`. Cf. `enableLocationPin`
+ * pour la cause racine que ce bridge corrige.
  */
 @android.annotation.SuppressLint("MissingPermission")
 private fun attachMapLibreLocationBridge(component: LocationComponent): (() -> Unit)? {
@@ -694,9 +653,8 @@ private fun attachMapLibreLocationBridge(component: LocationComponent): (() -> U
         .setPriority(LocationEngineRequest.PRIORITY_HIGH_ACCURACY)
         .build()
     engine.requestLocationUpdates(request, callback, Looper.getMainLooper())
-    // Pousse aussi le dernier fix connu de MapLibre — gratuit et raccourcit
-    // encore le délai si le pin user était déjà à l'écran avant que notre
-    // bridge ne s'attache.
+    // Pousse aussi le dernier fix connu — raccourcit le délai si le pin user
+    // était déjà à l'écran avant que ce bridge ne s'attache.
     engine.getLastLocation(callback)
     return { engine.removeLocationUpdates(callback) }
 }

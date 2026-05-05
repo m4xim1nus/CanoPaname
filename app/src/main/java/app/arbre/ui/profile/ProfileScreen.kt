@@ -138,17 +138,15 @@ fun ProfileScreen(
         }
     }
 
-    // Saison vive seule comptée pour la stat « Saison courante » : pas de
-    // sélecteur de saison ici, un toggle binaire suffit (cf. ROADMAP I).
+    // Toggle binaire (Global / Saison vive) — pas de sélecteur multi-saison ici.
     val currentSeason = Season.current()
 
     var scope by rememberSaveable { mutableStateOf(ProfileScope.GLOBAL) }
 
     val firstCaptureTs by captureRepo.firstCaptureTimestamp()
         .collectAsState(initial = null)
-    // Stat espèces / remarquables selon le scope : tout l'historique ou la
-    // saison vive uniquement. Les Flows sans scope sont conservés pour le
-    // mode GLOBAL — pas de re-collect au switch.
+    // Les deux Flows scopés sont collectés en parallèle pour éviter un
+    // re-collect au switch GLOBAL ↔ SEASON.
     val capturedSpeciesGlobal by captureRepo.capturedSpeciesIndices()
         .collectAsState(initial = emptySet())
     val capturedRemarquablesGlobal by captureRepo.capturedRemarquableIds()
@@ -162,10 +160,8 @@ fun ProfileScreen(
     val nbSpecies = if (scope == ProfileScope.GLOBAL) capturedSpeciesGlobal.size else capturedSpeciesSeason.size
     val nbRemarquables = if (scope == ProfileScope.GLOBAL) capturedRemarquablesGlobal.size else capturedRemarquablesSeason.size
 
-    // Le badge « 1re capture » reste global — la 1re capture est unique
-    // dans la vie du joueur, indépendante de la saison. La vue dédiée
-    // (`BadgesScreen`) montre les 15 badges et leur état complet ; ici
-    // on garde uniquement le highlight pour ne pas surcharger le profil.
+    // « 1re capture » reste global, c'est un événement unique. `BadgesScreen`
+    // expose les 15 badges complets ; on n'affiche ici que le highlight.
     val firstCaptureBadge = remember(firstCaptureTs) {
         BadgeState(def = BadgeCatalog.FIRST_CAPTURE, unlockedAt = firstCaptureTs)
     }
@@ -423,8 +419,6 @@ private fun StatsCard(
                 "Statistiques",
                 style = MaterialTheme.typography.titleMedium,
             )
-            // Première capture et captures totales restent globales — la
-            // notion « 1re capture » est unique, et le total cumule tout.
             StatLine(
                 label = if (firstCaptureTs != null) "Première capture" else "Aucune capture",
                 value = if (firstCaptureTs != null) {
@@ -469,9 +463,6 @@ private fun StatLine(label: String, value: String) {
 
 @Composable
 private fun BadgeGrid(badges: List<BadgeState>) {
-    // Grille fixe pour homogénéiser la taille des cellules ; aujourd'hui
-    // un seul badge, demain on en aura plus — la grille se remplit
-    // naturellement.
     LazyVerticalGrid(
         columns = GridCells.Fixed(3),
         modifier = Modifier
@@ -487,10 +478,8 @@ private fun BadgeGrid(badges: List<BadgeState>) {
 }
 
 /**
- * Calcul de hauteur statique pour la grille — `LazyVerticalGrid` à
- * l'intérieur d'un `LazyColumn` ne sait pas se mesurer tout seul. On
- * dimensionne pour que toutes les rangées soient visibles sans scroll
- * interne.
+ * Hauteur fixe imposée — un `LazyVerticalGrid` dans un `LazyColumn` ne sait
+ * pas se mesurer tout seul.
  */
 private fun Modifier.heightForBadges(count: Int): Modifier {
     val rows = (count + 2) / 3
@@ -560,11 +549,6 @@ private fun BadgeCell(state: BadgeState) {
     }
 }
 
-/**
- * Card cliquable qui mène à `BadgesScreen`. Volontairement discrète : la
- * fiche dédiée existe pour explorer les 15 badges, le profil reste centré
- * sur le highlight (« 1re capture ») et les stats.
- */
 @Composable
 private fun AllBadgesEntry(onClick: () -> Unit) {
     Card(

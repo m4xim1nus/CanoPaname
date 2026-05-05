@@ -5,30 +5,19 @@ import org.json.JSONArray
 import org.json.JSONObject
 
 /**
- * Lookup `(genre, espece) <-> int speciesIndex` aligné avec
- * `assets/species-index.json` (généré par `tools/build_dataset.py`).
- *
- * Les int sont préservés entre regénérations du dataset (cf. build_dataset.py)
- * pour que les captures stockées en Room restent valides après une mise à
- * jour de l'asset DB.
+ * Lookup `(genre, espece) ↔ int speciesIndex`. Les int sont préservés entre
+ * regénérations du dataset par `tools/build_dataset.py` — sinon les rows
+ * `Capture.speciesIndex` deviendraient invalides après une mise à jour.
  */
 data class SpeciesEntry(
     val index: Int,
     val genre: String,
     val espece: String,
-    /**
-     * Nom commun le plus fréquent pour cette (genre, espece) dans le dataset
-     * OpenData. Null si aucun arbre de l'espèce n'a de `libellefrancais`
-     * renseigné. Calculé à build-time par `tools/build_dataset.py`.
-     */
+    /** Nom commun le plus fréquent dans OpenData ; null si jamais renseigné. */
     val nomCommun: String? = null,
 ) {
     val displayName: String get() = "$genre $espece"
-    /**
-     * Nom à afficher en primaire dans l'Arboretum (liste / Catalogue / fiche
-     * arbre). Tombe sur le binôme si le dataset n'expose pas de nom commun
-     * pour l'espèce.
-     */
+    /** Nom commun en priorité, fallback binôme. */
     val displayNomCommun: String get() = nomCommun ?: displayName
 }
 
@@ -37,10 +26,8 @@ class SpeciesIndex(entries: List<SpeciesEntry>) {
     private val byIndex: Map<Int, SpeciesEntry> = entries.associateBy { it.index }
     private val byKey: Map<Pair<String, String>, Int> =
         entries.associate { (it.genre to it.espece) to it.index }
-    // Ordre stable par speciesIndex croissant — c'est l'ordre « annuaire »
-    // de référence ; le Catalogue Arboretum réordonne par count Paris
-    // décroissant à l'affichage. Le tri est fait une fois à l'init et
-    // conservé en mémoire.
+    // Ordre annuaire de référence (par speciesIndex croissant). Le Catalogue
+    // Arboretum applique son propre tri par count Paris à l'affichage.
     private val ordered: List<SpeciesEntry> = entries.sortedBy { it.index }
 
     val total: Int get() = byIndex.size

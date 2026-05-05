@@ -62,10 +62,8 @@ import java.util.Locale
 import kotlin.math.cos
 import kotlin.math.sin
 
-/**
- * Bandeau retour + label espèce affiché en haut à gauche en mode `MAP_FILTERED`.
- * Remplace les FABs Profil/Arboretum/Remarquables qui n'ont pas de sens en mode
- * filtré (l'utilisateur chasse une espèce précise, pas le Catalogue global).
+/** Bandeau retour + label espèce, affiché en mode `MAP_FILTERED` à la place
+ *  des FABs Profil/Arboretum/Remarquables.
  */
 @Composable
 internal fun FilterBanner(
@@ -114,16 +112,9 @@ internal fun FilterBanner(
 }
 
 /**
- * Splash overlay du cold start — superposé tant que `arbresPrets == false`.
+ * Splash overlay du cold start, superposé tant que `arbresPrets == false`.
  * Couleur de fond synchronisée avec `@color/ic_launcher_background` du splash
- * natif (themes.xml) pour ne pas faire flasher la transition.
- *
- * Animation pure Compose (pas de Lottie) :
- * - Sway sinusoïdal ±3° de la silhouette d'arbre (rotation via graphicsLayer).
- * - Cascade fade+scale à l'apparition du hero (0→1 alpha + 0.85→1 scale, 600 ms).
- * - Couronne de mini-platanes flottants en boucle continue (cf.
- *   `MiniArbreCrown`) — porte le sentiment de vie pendant les 3-25 s
- *   d'attente cold-start, plutôt qu'une barre de progression sans signal réel.
+ * natif (themes.xml) — sans cela la transition flashe.
  */
 @Composable
 internal fun ColdStartSplash() {
@@ -141,10 +132,8 @@ internal fun ColdStartSplash() {
         ),
         label = "swayAngle",
     )
-    // `Animatable` plutôt que `animateFloatAsState(targetValue = 1f)` : le
-    // second saute directement à 1f à la 1re composition (pas d'animation
-    // visible) parce qu'il n'y a pas de valeur précédente vers laquelle
-    // interpoler. L'Animatable part explicitement de 0f puis va à 1f.
+    // `Animatable` (pas `animateFloatAsState`) : ce dernier saute direct à 1f
+    // à la 1re composition faute de valeur précédente.
     val intro = remember { Animatable(0f) }
     LaunchedEffect(Unit) {
         intro.animateTo(
@@ -153,9 +142,8 @@ internal fun ColdStartSplash() {
         )
     }
     val introValue = intro.value
-    // `derivedStateOf` plutôt qu'une lecture brute : la rotation des tips ne
-    // doit pas redémarrer à chaque frame du fade-in. Ne change qu'une fois,
-    // au passage 0.99 → 1f.
+    // `derivedStateOf` pour ne déclencher qu'au passage 0.99 → 1f — sinon la
+    // rotation des tips redémarrerait à chaque frame du fade-in.
     val canRotateTips by remember { derivedStateOf { intro.value >= 1f } }
 
     val splashTips = rememberSplashTipsRepository()
@@ -168,9 +156,8 @@ internal fun ColdStartSplash() {
         canRotate = canRotateTips,
     )
 
-    // Total réellement embarqué (arbres OpenData filtrés sur genre+espece
-    // connus). Doit matcher le `point_count` du cluster MapLibre dezoomé à
-    // fond — sinon le user croit qu'on lui en survend quelques milliers.
+    // DOIT matcher le `point_count` du cluster MapLibre dezoomé à fond — sinon
+    // l'utilisateur croit qu'on lui survend quelques milliers d'arbres.
     val datasetStats = rememberDatasetStats()
     val totalFormatted = remember(datasetStats.totalArbres) {
         NumberFormat.getInstance(Locale.FRANCE).format(datasetStats.totalArbres)
@@ -206,8 +193,8 @@ internal fun ColdStartSplash() {
                 color = Color.White.copy(alpha = 0.85f),
                 style = MaterialTheme.typography.bodyMedium,
             )
-            // Tip rotatif sous le wordmark, hauteur fixe pour éviter les sauts
-            // de layout entre une phrase courte et une longue (3 lignes max).
+            // Hauteur fixe pour éviter les sauts de layout entre une phrase
+            // courte et une longue.
             Spacer(Modifier.height(32.dp))
             Box(
                 modifier = Modifier
@@ -236,26 +223,22 @@ internal fun ColdStartSplash() {
                 }
             }
         }
-        // Couronne de mini-platanes flottants — apparition cascade puis
-        // boucle douce désynchronisée. Posée après la Column dans le Box
-        // pour que les platanes flottent au-dessus du hero (z-order).
+        // Posée après la Column pour que les platanes passent au-dessus
+        // du hero (z-order).
         MiniArbreCrown(motion = motion, cream = Color(0xFFF5F1E6))
     }
 }
 
 /**
  * Couronne décorative de 7 silhouettes de platane miniatures qui flottent
- * autour du hero du splash cold-start. Pensée pour donner du « vivant » au
- * splash pendant les 3-25 s de chargement asset DB + parsing GeoJSON 32 Mo
- * (le hero seul, statique sauf sway, paraissait figé en device cold).
+ * autour du hero. Sert à animer le splash pendant les 3-25 s de chargement
+ * (asset DB + GeoJSON 32 Mo) en lieu et place d'une barre de progression
+ * sans signal réel.
  *
- * Apparition séquentielle (delays 160→1000 ms, fade+scale `motion.short`),
- * puis boucle infinie sway rotatif + drift Y, désynchronisée par platane
- * via `phaseOffset = idx * 0.37f` (irrationnel-ish, évite les harmoniques).
- *
- * Disposition en arc semi-circulaire AU-DESSUS du hero (angles -88°→+88°,
- * rayons 115-155 dp). Pas de couronne 360° : la column descend (wordmark,
- * sous-titre, barre) et chevaucherait.
+ * Apparition séquentielle puis boucle infinie sway+drift, désynchronisée par
+ * platane via `phaseOffset` (multiples irrationnels, évite les harmoniques).
+ * Arc semi-circulaire AU-DESSUS du hero — pas de couronne 360°, la column
+ * descendante (wordmark, sous-titre, tip) chevaucherait.
  */
 private data class MiniArbre(
     val angleDeg: Float,
@@ -266,12 +249,10 @@ private data class MiniArbre(
     val phaseOffset: Float,
 )
 
-// Cycle complet par platane : fade in 600 ms → plateau visible 1300 ms →
-// fade out 600 ms → invisible 1000 ms = 3500 ms. Les `delayMs` sont étalés
-// sur 0-3000 ms (pas de 500), de sorte qu'à tout instant il y ait toujours
-// 1-2 platanes en train d'apparaître/disparaître et 2-3 en plateau visible.
-// L'effet « cascade » est ainsi continu pendant les 3-25 s du cold start,
-// pas réduit à 1 s d'intro suivie d'un état figé.
+// Cycle complet 3500 ms par platane (fade in 600 + plateau 1300 + fade out
+// 600 + invisible 1000). `delayMs` étalés 0-3000 ms : à tout instant 1-2
+// platanes en transition + 2-3 en plateau, donc cascade continue pendant
+// tout le cold start.
 private val miniArbres = listOf(
     MiniArbre(angleDeg = -88f, radiusDp = 130f, sizeDp = 22f, targetAlpha = 0.50f, delayMs = 0, phaseOffset = 0.00f),
     MiniArbre(angleDeg = -55f, radiusDp = 115f, sizeDp = 30f, targetAlpha = 0.62f, delayMs = 500, phaseOffset = 0.37f),
@@ -316,18 +297,14 @@ private fun MiniArbreItem(
     motion: ArbresMotion,
     cream: Color,
 ) {
-    // Cycle infini en `Animatable` + `LaunchedEffect { while(true) ... }`.
-    // L'`Animatable.value` est lu comme un `State` dans la lambda
-    // `graphicsLayer { }`, ce qui invalide le draw layer à chaque frame —
-    // contrairement à un `Float` plain passé en paramètre, qui serait
-    // capturé à la composition et figerait l'animation (cf. tentative
-    // précédente avec un `tick` global, abandonnée).
+    // `Animatable.value` lu comme `State` dans `graphicsLayer { }` invalide
+    // le draw layer à chaque frame ; un `Float` plain passé en param serait
+    // capturé à la composition et figerait l'animation.
     val alpha = remember { Animatable(0f) }
     val scale = remember { Animatable(0.6f) }
     LaunchedEffect(Unit) {
         delay(mini.delayMs.toLong())
         while (true) {
-            // Fade in : alpha 0 → targetAlpha + scale 0.6 → 1, en parallèle.
             launch {
                 alpha.animateTo(
                     targetValue = mini.targetAlpha,
@@ -338,9 +315,7 @@ private fun MiniArbreItem(
                 targetValue = 1f,
                 animationSpec = tween(durationMillis = 600, easing = motion.swayEasing),
             )
-            // Plateau visible.
             delay(1300)
-            // Fade out.
             launch {
                 alpha.animateTo(
                     targetValue = 0f,
@@ -351,22 +326,16 @@ private fun MiniArbreItem(
                 targetValue = 0.6f,
                 animationSpec = tween(durationMillis = 600, easing = motion.swayEasing),
             )
-            // Invisible : laisse respirer le cycle, et déphase
-            // suffisamment les 7 platanes pour qu'il y ait toujours
-            // 1-2 en transition + 2-3 en plateau (delays 0..3000 ms,
-            // cycle 3500 ms par platane).
             delay(1000)
         }
     }
-    // Angle 0° = vertical haut. Convention math : -90° = gauche horizontal,
-    // +90° = droite. On translate via `Modifier.offset` depuis le centre du
-    // Box parent (qui centre les enfants par `contentAlignment = Center`).
+    // Convention : 0° = vertical haut, -90° = gauche, +90° = droite. Le
+    // `Modifier.offset` translate depuis le centre du Box parent.
     val angleRad = Math.toRadians(mini.angleDeg.toDouble() - 90.0)
     val baseX = (cos(angleRad) * mini.radiusDp).toFloat().dp
     val baseY = (sin(angleRad) * mini.radiusDp).toFloat().dp
-    // L'amplitude de rotation varie un peu par platane (5°-7°) pour casser
-    // la régularité ; le `sin(phaseOffset)` donne un signe + magnitude
-    // continus → certains platanes oscillent en phase opposée, naturel.
+    // Amplitude variable 5°-7° par platane + signe via `sin(phaseOffset)`
+    // pour que certains oscillent en phase opposée.
     val rotationAmplitude = 5f + (mini.phaseOffset.mod(2f)) * 2f
     Image(
         painter = painterResource(R.drawable.ic_arbre_canonical),
@@ -386,11 +355,9 @@ private fun MiniArbreItem(
     )
 }
 
-/**
- * Splash overlay dédié au mode `MAP_FILTERED` : on ne charge pas 217k arbres,
- * juste une espèce filtrée (pré-filtre Kotlin < 1 s + setStyle MapLibre 1-3 s).
- * Pas de silhouette d'arbre (pas un boot), pas d'animation infinie — juste
- * un voile bref pour éviter le flash de carte vide.
+/** Splash bref du mode `MAP_FILTERED` (pré-filtre Kotlin < 1 s + setStyle
+ *  MapLibre 1-3 s). Pas un boot global, pas de silhouette ni d'animation
+ *  infinie — juste un voile pour masquer le flash de carte vide.
  */
 @Composable
 internal fun FilterSplash(speciesLabel: String) {

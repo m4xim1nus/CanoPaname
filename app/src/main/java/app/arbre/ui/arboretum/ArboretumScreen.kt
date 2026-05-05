@@ -91,10 +91,8 @@ fun ArboretumScreen(
 
     val captures by captureRepo.toutesLesCaptures().collectAsState(initial = emptyList())
 
-    // Captures non-remarquables filtrées sur la saison sélectionnée. Les
-    // remarquables ont leur propre écran (RemarquablesScreen). Les captures
-    // s'accumulent au fil des années dans le bucket de leur saison
-    // (cf. ROADMAP Sprint I).
+    // Captures non-remarquables filtrées sur la saison sélectionnée — les
+    // remarquables ont leur écran dédié.
     val speciesGroups: List<SpeciesGroup> = captures
         .filter { !it.remarquable && it.season == selectedSeason }
         .groupBy { it.speciesIndex }
@@ -222,15 +220,10 @@ private fun ListeView(
 
 /**
  * Vue annuaire : grille 3 colonnes ordonnée par count Paris décroissant.
- * #001 = espèce la plus présente dans le dataset OpenData (~Platane), les
- * derniers numéros sont les espèces uniques/quasi uniques. Les espèces
- * capturées révèlent leur photo et leur nom ; les autres restent en
- * silhouette « ??? » avec leur numéro pour donner une idée de l'avancement
- * sans spoiler l'identité.
- *
- * Pas de section remarquables ici : le speciesIndex est partagé avec les
- * arbres normaux, donc l'annuaire représente l'inventaire des espèces
- * tout court — pertinent autant pour les remarquables que les autres.
+ * #001 = espèce la plus présente dans le dataset (~Platane), les derniers
+ * numéros sont les espèces uniques. Les espèces capturées révèlent photo +
+ * nom, les autres restent en silhouette « ??? » avec leur numéro pour
+ * suggérer l'avancement sans spoiler l'identité.
  */
 @Composable
 private fun CatalogueView(
@@ -243,11 +236,9 @@ private fun CatalogueView(
     val firstPhotoBySk: Map<Int, File> = remember(speciesGroups, ctx) {
         speciesGroups.associate { it.entry.index to it.captures.first().resolvedFile(ctx) }
     }
-    // Tri indépendant des captures : count Paris décroissant (espèces sans
-    // SpeciesInfo → count = 0, alpha en queue). Mémoïsé sur (speciesIndex,
-    // speciesInfoRepo) — pas recalculé au switch de saison ni à l'INSERT
-    // d'une capture. Source unique partagée avec `SpeciesDetailScreen` pour
-    // que le `#NNN` soit cohérent entre Catalogue et fiche.
+    // Tri indépendant des captures : count Paris décroissant (sans info → 0,
+    // alpha en queue). Source unique avec `SpeciesDetailScreen` pour que le
+    // `#NNN` soit cohérent entre Catalogue et fiche.
     val ordered = remember(speciesIndex, speciesInfoRepo) {
         catalogueOrder(speciesIndex, speciesInfoRepo)
     }
@@ -262,9 +253,8 @@ private fun CatalogueView(
         itemsIndexed(ordered, key = { _, e -> e.index }) { position, entry ->
             val photoFile = firstPhotoBySk[entry.index]
             CatalogueCell(
-                // Numéro 1-based — rang d'affichage dans l'ordre count
-                // décroissant, distinct du speciesIndex Room (qui reflète
-                // l'ordre d'ingestion CSV).
+                // Rang 1-based dans l'ordre count décroissant — distinct du
+                // `speciesIndex` Room (ordre d'ingestion CSV).
                 displayNumber = position + 1,
                 entry = entry,
                 photoFile = photoFile,
@@ -398,7 +388,7 @@ private fun SpeciesCard(
 ) {
     val ctx = LocalContext.current
     val first = group.captures.first()
-    val firstChrono = group.captures.last() // 1re capture = la plus ancienne
+    val firstChrono = group.captures.last()
     var countInDataset by remember(group.entry) { mutableStateOf(-1) }
     LaunchedEffect(group.entry) {
         countInDataset = countParEspece(group.entry.genre, group.entry.espece)
@@ -424,9 +414,8 @@ private fun SpeciesCard(
                     group.entry.displayNomCommun,
                     style = MaterialTheme.typography.titleMedium,
                 )
-                // Sous-titre binomial italique tant que le nom commun est
-                // disponible — utile pour discriminer Acer platanoides /
-                // pseudoplatanus qui partagent l'étiquette « Erable ».
+                // Discrimine les espèces partageant un nom commun
+                // (Acer platanoides / pseudoplatanus = « Érable »).
                 if (group.entry.nomCommun != null) {
                     Text(
                         group.entry.displayName,

@@ -32,11 +32,9 @@ import app.arbre.data.Season
 import app.arbre.ui.theme.arbresMotion
 
 /**
- * Sélecteur de saison discret : pill `Surface` cliquable (icône + label de
- * la saison sélectionnée) qui ouvre un `DropdownMenu` avec les 4 saisons.
- *
- * Volontairement compact pour ne pas dominer la top-bar (cf. ROADMAP
- * Sprint I — « ne pas charger la top-bar avec 4 segments side-by-side »).
+ * Sélecteur de saison compact : pill `Surface` (icône + label) qui ouvre un
+ * `DropdownMenu` avec les 4 saisons. Compact volontairement pour ne pas
+ * dominer la top-bar (4 segments side-by-side surchargeraient).
  */
 @Composable
 fun SeasonSelector(

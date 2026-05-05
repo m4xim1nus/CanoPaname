@@ -11,14 +11,9 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * Tests de migration Room. `MigrationTestHelper` s'occupe de
- * 1) créer une base à la version cible avec le schéma JSON committé,
- * 2) appliquer les migrations,
- * 3) valider le résultat contre le schéma de la version d'arrivée.
- *
- * On utilise `*ALL_MIGRATIONS` exposé par `ArbreDatabase` pour rester aligné
- * avec ce qui tourne en prod — éviter qu'un nouveau Migration ajouté ne soit
- * pas testé.
+ * Tests de migration Room. On passe `*ALL_MIGRATIONS` exposé par
+ * `ArbreDatabase` pour rester aligné avec la prod — un nouveau Migration
+ * ajouté est ainsi automatiquement couvert.
  */
 @RunWith(AndroidJUnit4::class)
 class MigrationTest {
@@ -83,8 +78,7 @@ class MigrationTest {
 
     @Test
     fun migrate1To3_chained() {
-        // À la v1 la table `capture` n'existe pas encore — c'est exactement le
-        // cas d'un install qui n'aurait jamais ouvert l'app depuis Phase 9. La
+        // V1 = asset DB sans table `capture` (install jamais ouverte). La
         // chaîne v1 → v2 → v3 doit appliquer les deux migrations sans erreur.
         helper.createDatabase(DB_NAME, 1).apply { close() }
 
@@ -100,9 +94,7 @@ class MigrationTest {
 
     @Test
     fun openLatestDb_runsMigrationsCleanly() {
-        // Sanity check : ouvrir une instance complète après migration ne lève
-        // pas. Couvre le cas où le schemaCheck Room rejetterait la table
-        // post-migration.
+        // Couvre un schemaCheck Room qui rejetterait la table post-migration.
         helper.createDatabase(DB_NAME, 1).apply { close() }
         val ctx = InstrumentationRegistry.getInstrumentation().targetContext
         val db = Room.databaseBuilder(ctx, ArbreDatabase::class.java, DB_NAME)

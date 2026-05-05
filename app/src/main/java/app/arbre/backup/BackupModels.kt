@@ -3,14 +3,9 @@ package app.arbre.backup
 import app.arbre.data.CaptureEntity
 
 /**
- * Format de l'archive d'export/import.
- *
- * Versionné via [CURRENT_SCHEMA_VERSION] dans `meta.json` :
- * - import `schemaVersion > CURRENT_SCHEMA_VERSION` → refusé (`SCHEMA_TOO_NEW`).
- * - import `schemaVersion <= CURRENT_SCHEMA_VERSION` → accepté.
- *
- * Bumper [CURRENT_SCHEMA_VERSION] chaque fois que le format devient
- * incompatible (champ retiré, sémantique changée).
+ * Versionnage du format archive. Bumper [CURRENT_SCHEMA_VERSION] à chaque
+ * incompatibilité (champ retiré, sémantique changée). Import accepté ssi
+ * `schemaVersion <= CURRENT_SCHEMA_VERSION`.
  */
 const val CURRENT_SCHEMA_VERSION: Int = 1
 
@@ -27,14 +22,9 @@ data class BackupMeta(
 )
 
 /**
- * Représentation portable d'une capture. On exclut volontairement le `id`
- * Room autoincrement — il n'a aucun sens d'un device à l'autre, et le ré-
- * insérer comme primary key bloquerait les imports multi-source.
- *
- * `photoFilename` est le basename UUID (ex. `8f3b...uuid.jpg`). Depuis la
- * migration v3 c'est aussi exactement ce qu'on stocke dans `Capture.photoPath`,
- * d'où le mapping 1:1 (le chemin absolu est reconstruit à la lecture par
- * `Capture.resolvedFile(context)`).
+ * Capture portable. Pas de `id` Room — autoincrement, n'a aucun sens d'un
+ * device à l'autre. Depuis v3, `photoFilename == Capture.photoPath` (basename),
+ * mapping 1:1.
  */
 data class CaptureExport(
     val arbreId: Long,

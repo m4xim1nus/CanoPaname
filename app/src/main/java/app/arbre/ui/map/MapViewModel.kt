@@ -13,19 +13,17 @@ import org.maplibre.android.camera.CameraPosition
 import java.io.File
 
 /**
- * Survit à la nav stack : mémorise la position de la caméra et l'arbre
- * actuellement ouvert (en bottom sheet par-dessus la carte).
+ * Survit à la nav stack : mémorise la caméra et l'arbre actuellement ouvert.
  *
- * Le fetch de l'arbre se fait ici plutôt que dans le composable de la fiche :
- * sinon le sheet est mesuré pendant le « Chargement… » et fige une hauteur
- * tronquée à la 2e ouverture (cache Room chaud → fetch plus rapide que
- * l'animation d'ouverture). En préchargeant, le sheet n'apparaît qu'avec un
- * contenu réel, donc la mesure est correcte d'emblée.
+ * Le fetch de l'arbre est fait ici (pas dans le composable de la fiche) pour
+ * que le sheet n'apparaisse qu'avec un contenu réel — sinon il est mesuré
+ * pendant un état « Chargement… » et fige une hauteur tronquée à la 2e
+ * ouverture, quand le cache Room chaud rend le fetch plus rapide que
+ * l'animation d'ouverture.
  *
- * Le `SavedStateHandle` n'est utilisé que pour la capture en cours
- * (`pendingCapture`), parce que c'est le seul endroit où la perte d'état
- * pendant un intent externe (caméra système) ferait disparaître une donnée
- * non-récupérable côté utilisateur.
+ * `SavedStateHandle` n'est utilisé que pour la capture en cours, seul cas où
+ * une perte d'état pendant un intent externe (caméra système) ferait
+ * disparaître une donnée non-récupérable côté utilisateur.
  */
 class MapViewModel(
     private val repo: ArbreRepository,
@@ -64,11 +62,10 @@ class MapViewModel(
 
     fun consumePending(): PendingCapture? {
         val arbreId = state.get<Long>(K_ARBRE_ID) ?: return null
-        // Lecture tolérante : avant la migration v3, la clé stockait un chemin
-        // absolu. Si une capture a été ouverte juste avant l'upgrade et que le
-        // process est mort entre l'intent caméra et son résultat, on a encore
-        // l'ancienne clé en `SavedStateHandle`. On extrait alors le basename
-        // pour rester sain. À retirer en v1.0.1+ (probabilité d'occurrence ≈ 0).
+        // Garde legacy : si l'utilisateur a upgradé entre l'intent caméra
+        // ouvert et son résultat, l'ancienne clé `K_PHOTO_PATH_LEGACY`
+        // (chemin absolu pré-v3) est encore en `SavedStateHandle`. À
+        // retirer en v1.0.1+ (probabilité d'occurrence ≈ 0).
         val basename = state.get<String>(K_PHOTO_BASENAME)
             ?: state.get<String>(K_PHOTO_PATH_LEGACY)?.let { File(it).name }
             ?: return null

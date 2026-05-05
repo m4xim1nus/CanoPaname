@@ -1,12 +1,10 @@
 package app.arbre.data
 
 /**
- * Définition statique d'un badge. Pas de table Room : le déblocage se calcule
- * à partir des captures existantes (cf. `BadgeEvaluator`). Ajouter un badge =
- * ajouter une entrée à `BadgeCatalog` + son critère d'évaluation.
- *
- * `BadgeDef` reste dans la couche data (pas d'`ImageVector` Compose) — la
- * map id → icône est tenue côté UI dans `ui/badges/BadgeIcons.kt`.
+ * Définition statique d'un badge. Pas de table Room — le déblocage est
+ * calculé à partir des captures par `BadgeEvaluator`. Ajouter un badge :
+ * entrée dans `BadgeCatalog` + critère dans `BadgeEvaluator` + icône dans
+ * `ui/badges/BadgeIcons.kt`.
  */
 data class BadgeDef(
     val id: String,
@@ -32,7 +30,6 @@ data class BadgeState(
 }
 
 object BadgeCatalog {
-    // Découverte — # captures.
     val FIRST_CAPTURE = BadgeDef(
         id = "first_capture",
         label = "Première capture",
@@ -58,7 +55,6 @@ object BadgeCatalog {
         category = BadgeCategory.DECOUVERTE,
     )
 
-    // Botanique — # espèces distinctes.
     val BOTANISTE_AMATEUR = BadgeDef(
         id = "botaniste_amateur",
         label = "Botaniste amateur",
@@ -78,7 +74,6 @@ object BadgeCatalog {
         category = BadgeCategory.BOTANIQUE,
     )
 
-    // Géographie — arrondissements parcourus.
     val TOURNEUR_DE_PARIS = BadgeDef(
         id = "tourneur_de_paris",
         label = "Tourneur de Paris",
@@ -92,7 +87,6 @@ object BadgeCatalog {
         category = BadgeCategory.GEOGRAPHIE,
     )
 
-    // Remarquables.
     val CHASSEUR_REMARQUABLES = BadgeDef(
         id = "chasseur_remarquables",
         label = "Chasseur de remarquables",
@@ -106,7 +100,6 @@ object BadgeCatalog {
         category = BadgeCategory.REMARQUABLES,
     )
 
-    // Saisons.
     val RONDE_DES_SAISONS = BadgeDef(
         id = "ronde_des_saisons",
         label = "Ronde des saisons",
@@ -120,7 +113,6 @@ object BadgeCatalog {
         category = BadgeCategory.SAISONS,
     )
 
-    // Démesure — caractéristiques exceptionnelles d'un arbre capturé.
     val GEANT = BadgeDef(
         id = "geant",
         label = "Géant",

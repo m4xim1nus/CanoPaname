@@ -38,37 +38,32 @@ import kotlinx.coroutines.withContext
 internal const val MAX_GPS_AGE_MS = 30_000L
 internal const val MAX_DISTANCE_M = 30f
 
-// Cible de compression appliquée juste après l'intent caméra. Une photo brute
-// 12 MP / quality ~95 sortie d'OEM pèse ~10 MB ; on la ramène à ~400-700 KB
-// (×15-25) sans dégradation visible sur vignettes Arboretum + lightbox HD.
+// Une photo brute 12 MP / quality ~95 d'OEM pèse ~10 MB ; on la ramène à
+// ~400-700 KB (×15-25) sans dégradation visible sur vignette ou lightbox HD.
 private const val TARGET_LONG_EDGE = 1600
 private const val JPEG_QUALITY = 85
 
 /**
- * État du bouton « Capturer » du sheet, calculé une fois à l'ouverture pour ne
- * pas laisser un bouton cliquable qui ne fait rien (cf. Sprint D). Les mêmes
- * seuils sont vérifiés à nouveau dans [runCapture] comme garde-fou — si la
- * position devenue stale entre l'ouverture du sheet et le tap, on renvoie
- * simplement l'utilisateur via Snackbar.
+ * État du bouton « Capturer » du sheet. Les mêmes seuils sont revalidés dans
+ * [runCapture] comme garde-fou : si la position est devenue stale entre
+ * l'ouverture du sheet et le tap, on retombe sur une snackbar.
  */
 sealed class CaptureAvailability {
     object Ready : CaptureAvailability()
     object NoGps : CaptureAvailability()
     data class TooFar(val meters: Int) : CaptureAvailability()
-    /** Saison sélectionnée ≠ saison vive : capture désactivée (cf. Sprint I). */
+    /** Saison archivée ≠ saison vive : capture désactivée. */
     object Archived : CaptureAvailability()
 }
 
 /**
  * Lecture pure du `currentLocation` — pas de fallback bloquant. Si notre
- * listener n'a pas encore reçu de fix (cold start post-onboarding,
- * permission tout juste accordée), retourne `NoGps` instantanément. Le
+ * listener n'a pas encore reçu de fix (cold start post-onboarding, permission
+ * tout juste accordée), retourne `NoGps` instantanément. Le
  * `LaunchedEffect(openedArbre.id, currentLocation)` côté `MapScreen` recompute
  * dès que `LocationProvider.currentLocation` émet, donc le bouton bascule de
- * « Active le GPS » à « Capturer » dans la seconde. Cf. Phase 10.5 sous-groupe
- * F : l'ancien fallback `currentOrLastKnown` faisait un `getCurrentLocation`
- * synchrone qui pouvait suspendre jusqu'à 10 s, gardant le bouton « Capturer »
- * non-cliquable pendant tout ce délai.
+ * « Active le GPS » à « Capturer » dans la seconde. Tout fallback synchrone
+ * (`getCurrentLocation`) gèlerait le bouton jusqu'à 10 s post-permission.
  */
 fun captureAvailability(arbre: Arbre): CaptureAvailability {
     val loc = LocationProvider.currentLocation.value
@@ -89,15 +84,12 @@ fun captureAvailability(arbre: Arbre): CaptureAvailability {
 }
 
 /**
- * Pipeline de capture : demande la permission caméra si besoin, lit le GPS
- * frais, vérifie la proximité < 30 m, génère un fichier photo via FileProvider,
- * sauve l'état pendant en `SavedStateHandle`, lance l'intent caméra système.
- *
- * Au retour de l'intent (qui peut survenir après un process death), récupère
- * l'état pendant, contrôle que le fichier a bien été écrit (> 0 octet — certains
- * camera-apps OEM tirent un fichier vide même quand l'utilisateur a pris la
- * photo), puis INSERT la `Capture` en Room. Le Flow `capturedSpeciesIndices`
- * propage la bascule grise → verte sur la layer MapLibre.
+ * Pipeline de capture : permission caméra → GPS frais → proximité < 30 m →
+ * fichier photo via FileProvider → état pendant en `SavedStateHandle` → intent
+ * caméra système. Au retour (qui peut survenir après un process death),
+ * relit l'état pendant, vérifie que le fichier > 0 octet (certains camera-apps
+ * OEM écrivent un fichier vide même après prise réussie), puis INSERT la
+ * `Capture`. Le Flow `capturedSpeciesIndices` propage gris → vert sur la carte.
  *
  * @return un callback à brancher sur le bouton « Capturer » du sheet.
  */
@@ -130,20 +122,18 @@ fun rememberCaptureController(
                 snackbar.showSnackbar("Photo vide — caméra a échoué")
                 return@launch
             }
-            // Recompresse en background avant l'INSERT — sans ça, chaque
-            // capture pèse ~10 MB (résolution native OEM, quality ~95). Le
-            // decode/scale/encode est CPU-bound (~200-500 ms) donc IO pour
-            // ne pas bloquer le main thread.
+            // CPU-bound (~200-500 ms decode/scale/encode), donc IO pour ne pas
+            // bloquer le main thread. Sans recompression chaque capture pèse
+            // ~10 MB (résolution native OEM).
             val compressed = withContext(Dispatchers.IO) { compressCapture(file) }
             if (!compressed) {
                 file.delete()
                 snackbar.showSnackbar("Erreur traitement photo")
                 return@launch
             }
-            // Snapshot AVANT insert : sinon on lit le set qui contient déjà
-            // notre nouvelle espèce et on rate la transition « 1re capture ».
-            // Scopé sur la saison de la capture pour le catalogue saisonnier
-            // (cf. Sprint I) : la même espèce capturée 2 saisons compte 2 fois.
+            // Snapshot AVANT insert — sinon le set contient déjà la nouvelle
+            // espèce et on rate la transition « 1re capture ». Scopé sur la
+            // saison de la capture : la même espèce capturée 2 saisons compte 2 fois.
             val captureSeason = Season.fromTimestamp(pending.captureTimestamp)
             val previouslyCaptured = captureRepo.capturedSpeciesIndices(captureSeason).first()
             captureRepo.insertCapture(
@@ -157,12 +147,10 @@ fun rememberCaptureController(
             )
             captureHaptic()
             onCaptured()
-            // Effet « waouh » : uniquement si l'espèce vient juste d'être
-            // débloquée. On exclut les remarquables (le speciesIndex y est
-            // technique mais le set capturedSpeciesIndices ne les compte pas
-            // — cf. requête DAO `WHERE remarquable = 0`). Pour un remarquable
-            // dont l'espèce était inconnue, l'utilisateur verra la fiche
-            // standard et débloquera l'espèce à la prochaine capture normale.
+            // Célébration uniquement si l'espèce vient d'être débloquée. Les
+            // remarquables sont exclus : `capturedSpeciesIndices` filtre déjà
+            // `WHERE remarquable = 0`, donc on ne ferait pas la transition.
+            // L'utilisateur débloquera l'espèce à la prochaine capture normale.
             if (!pending.remarquable && pending.speciesIndex !in previouslyCaptured) {
                 onFirstSpeciesCapture(pending.speciesIndex)
             }
@@ -212,10 +200,9 @@ private suspend fun runCapture(
         return
     }
 
-    // Lecture pure du flow temps réel — cf. `captureAvailability`. Si on
-    // arrive ici sans fix, c'est qu'un état de course très court a permis
-    // au bouton d'être tappé avant la propagation. La snackbar reste un
-    // garde-fou théorique.
+    // Garde-fou : si une race condition entre la propagation de
+    // `captureAvailability` et le tap a laissé passer un état stale, on
+    // retombe sur la snackbar plutôt que d'INSERT une capture sans GPS.
     val loc = LocationProvider.currentLocation.value?.takeIf { it.ageMs() <= MAX_GPS_AGE_MS }
     if (loc == null) {
         snackbar.showSnackbar("Position indisponible (active le GPS)")
@@ -259,15 +246,14 @@ private suspend fun runCapture(
 }
 
 /**
- * Décode, redimensionne et recompresse le JPEG écrit par la caméra OEM.
- * Overwrite le fichier d'origine. Retourne `false` si le fichier est illisible
- * (HEIC sur API < 28, JPEG corrompu, OOM imprévu) — l'appelant abort l'INSERT
- * Room pour ne pas pointer vers un fichier corrompu.
+ * Décode, redimensionne et recompresse le JPEG écrit par la caméra OEM ;
+ * overwrite le fichier d'origine. Retourne `false` si lecture impossible
+ * (HEIC sur API < 28, JPEG corrompu, OOM) — l'appelant abort l'INSERT Room.
  *
- * Pipeline : `inJustDecodeBounds` pour lire les dims sans charger le bitmap,
- * `inSampleSize` (puissance de 2) pour décoder à ~2× la cible (mitige OOM sur
- * Pro mode 50 MP), resize fin via `createScaledBitmap`, rotation EXIF appliquée
- * pixel-side puis EXIF normalisé (sinon les viewers pivoteraient en double).
+ * Pipeline : `inJustDecodeBounds` pour les dims sans charger le bitmap,
+ * `inSampleSize` (puissance de 2) à ~2× la cible (mitige OOM sur Pro mode
+ * 50 MP), resize fin via `createScaledBitmap`, rotation EXIF pixel-side puis
+ * EXIF normalisé (sinon les viewers pivoteraient en double).
  */
 private fun compressCapture(file: File): Boolean {
     val path = file.absolutePath
@@ -283,8 +269,7 @@ private fun compressCapture(file: File): Boolean {
             ExifInterface.ORIENTATION_NORMAL,
         )
 
-        // Plus grande puissance de 2 telle que dim/sample reste >= 2× cible
-        // (garde de la marge pour le resize fin sans flou de quantization).
+        // Marge ×2 pour que le resize fin ne souffre pas de la quantization.
         var sampleSize = 1
         val margin = TARGET_LONG_EDGE * 2
         while (srcW / (sampleSize * 2) >= margin && srcH / (sampleSize * 2) >= margin) {
@@ -323,10 +308,9 @@ private fun compressCapture(file: File): Boolean {
     }
 }
 
-// `Bitmap.compress(JPEG)` produit déjà un fichier sans EXIF, mais on force
-// explicitement le strip pour garantir le contrat (cf. PRIVACY.md : « la photo
-// ne contient ni GPS, ni signature matériel »). Ceinture-bretelles si le
-// pipeline d'encodage change un jour.
+// `Bitmap.compress(JPEG)` ne ré-injecte aucun EXIF, mais on strip
+// explicitement pour garantir le contrat « ni GPS ni signature matériel »
+// si le pipeline d'encodage change un jour.
 private fun stripSensitiveExif(file: File) {
     val exif = ExifInterface(file.absolutePath)
     listOf(

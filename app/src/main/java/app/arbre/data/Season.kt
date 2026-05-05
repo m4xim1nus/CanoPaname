@@ -9,14 +9,10 @@ import java.util.Date
 import java.util.TimeZone
 
 /**
- * Saisons calendaires fixes (déc-fév / mar-mai / juin-août / sep-nov),
- * indépendantes de l'année. Une espèce capturée à 2 saisons compte pour 2
- * entrées dans le catalogue saisonnier ; les captures s'accumulent au fil
- * des années dans le bucket de leur saison (cf. ROADMAP Sprint I).
- *
- * Stockage : `CaptureEntity.season: Int` reste tel quel pour ne pas migrer
- * la table — l'`ordinal` de l'enum est aligné avec les anciennes constantes
- * (WINTER=0, SPRING=1, SUMMER=2, AUTUMN=3).
+ * Saisons calendaires fixes (déc-fév, mar-mai, juin-août, sep-nov),
+ * indépendantes de l'année. **Ne pas réordonner** : `ordinal` est persisté
+ * tel quel dans `CaptureEntity.season` (WINTER=0, SPRING=1, SUMMER=2,
+ * AUTUMN=3) — toute permutation casserait les rows existantes.
  */
 enum class Season(val label: String) {
     WINTER("Hiver"),
@@ -26,10 +22,7 @@ enum class Season(val label: String) {
 
     val storedValue: Int get() = ordinal
 
-    /**
-     * Préposition française correcte devant le nom de saison :
-     * « au printemps » mais « en hiver / été / automne ».
-     */
+    /** « au printemps » mais « en hiver / été / automne ». */
     val preposition: String get() = if (this == SPRING) "au" else "en"
 
     companion object {
@@ -55,10 +48,7 @@ enum class Season(val label: String) {
             }
         }
 
-        /**
-         * Saison courante calculée à la volée — pas de cache. Le coût est nul
-         * et on évite les bugs de bascule à minuit (cf. ROADMAP Sprint I).
-         */
+        /** Calculée à la volée — pas de cache, bascule de minuit gratuite. */
         fun current(clock: Clock = Clock.systemDefaultZone()): Season =
             fromInstant(clock.instant(), clock)
     }

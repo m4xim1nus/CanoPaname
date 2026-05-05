@@ -47,15 +47,12 @@ import app.arbre.ui.theme.arbresColors
 import app.arbre.util.LocationProvider
 
 /**
- * Écran de bienvenue + explication minimale du jeu, montré une seule fois
- * au premier lancement (cf. `OnboardingStore.onboardingDone`). Aussi
- * accessible en mode replay depuis le Profil (« Comment jouer »).
+ * Bienvenue + explication minimale du jeu, montré une fois au 1er lancement
+ * (`OnboardingStore.onboardingDone`). Replay possible depuis le Profil.
  *
- * Au tap « Commencer » :
- * - demande la permission `ACCESS_FINE_LOCATION` avec rationale juste
- *   au-dessus dans la dernière bullet ;
- * - quel que soit le résultat (granted/denied), `onContinue` est appelé.
- *   Refus → carte centrée sur Paris, retentable plus tard via le FAB GPS.
+ * Tap « Commencer » : demande `ACCESS_FINE_LOCATION` puis appelle
+ * `onContinue` quel que soit le résultat — un refus laisse l'utilisateur
+ * sur la carte centrée Paris, retentable via le FAB GPS.
  */
 @Composable
 fun WelcomeScreen(
@@ -67,11 +64,10 @@ fun WelcomeScreen(
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { granted ->
-        // L'onboarding est validé que la permission soit accordée ou non,
-        // mais on amorce le `LocationProvider` immédiatement si grant : sinon
-        // le 1er sheet de capture (avant que `MapScreen.DisposableEffect`
-        // n'ait re-amorcé) trouve `currentLocation == null` et affiche
-        // « Activer le GPS » pendant le TTFF (Phase 10.5 sous-groupe F).
+        // Amorce `LocationProvider` immédiatement sur grant — sinon le 1er
+        // sheet de capture (avant que `MapScreen.DisposableEffect` ait
+        // re-amorcé) verrait `currentLocation == null` et afficherait
+        // « Activer le GPS » pendant le TTFF.
         if (granted) LocationProvider.start(ctx)
         onContinue()
     }
@@ -169,10 +165,8 @@ private fun HeroLogo() {
     }
 }
 
-/**
- * Boucle Compose pure qui montre la mécanique : silhouette grise petite
- * (« pas encore capturé ») → silhouette verte pleine grandeur (« capturé »),
- * avec interpolation continue. 4 s par cycle, repeat infini en reverse.
+/** Animation pédagogique : silhouette grise (« non capturé ») ↔ silhouette
+ *  verte pleine taille (« capturé »), interpolation continue 4 s reverse.
  */
 @Composable
 private fun WelcomeAnimation() {
@@ -186,7 +180,6 @@ private fun WelcomeAnimation() {
         ),
         label = "welcomeProgress",
     )
-    // 0 = silhouette grise petite (pas encore capturé), 1 = vert plein scale 1.0 (capturé)
     val grey = MaterialTheme.arbresColors.ecorce.copy(alpha = 0.5f)
     val green = MaterialTheme.arbresColors.feuilleSombre
     val tint = lerp(grey, green, progress)

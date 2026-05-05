@@ -1,9 +1,6 @@
 package app.arbre.data
 
-/**
- * Modèle d'arbre minimal aligné sur le dataset OpenData Paris `les-arbres`.
- * Champs réduits au strict nécessaire pour le MVP.
- */
+/** Modèle d'arbre minimal aligné sur le dataset OpenData Paris `les-arbres`. */
 data class Arbre(
     val id: Long,
     val genre: String,

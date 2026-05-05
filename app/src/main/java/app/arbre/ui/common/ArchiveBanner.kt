@@ -18,13 +18,9 @@ import androidx.compose.ui.unit.dp
 import app.arbre.data.Season
 
 /**
- * Bandeau pleine largeur affiché en haut des écrans quand la saison
- * sélectionnée n'est pas la saison vive. Pas d'année : on cumule toutes
- * les années dans le bucket de saison (cf. ROADMAP Sprint I).
- *
- * Conséquences UX gérées par les écrans appelants : capture désactivée,
- * loupe « + proche remarquable » désactivée, couleurs de pins reflétant
- * l'état figé de la saison sélectionnée.
+ * Bandeau d'écran affiché quand la saison sélectionnée ≠ saison vive.
+ * Sémantique « figée » — capture/loupe désactivées par les écrans
+ * appelants ; couleurs de pins reflètent l'état historique du bucket.
  */
 @Composable
 fun ArchiveBanner(

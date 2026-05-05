@@ -52,21 +52,17 @@ fun rememberSplashTipText(
 ): State<String?> {
     val state = remember { mutableStateOf<String?>(null) }
     val playerSnapshot = remember { mutableStateOf<Map<String, Int>?>(null) }
-    // Mode (intro vs random) figé une seule fois au mount via `.first()`.
-    // Surtout PAS via `collectAsState` : on appelle `markSplashIntroSeen()`
-    // pendant la session, ce qui ferait re-emit le Flow → re-launch du
+    // Mode figé une fois au mount via `.first()` — surtout PAS `collectAsState` :
+    // `markSplashIntroSeen()` ferait re-emit le Flow → re-launch du
     // LaunchedEffect rotation → reset de la séquence en plein milieu.
-    // Bug constaté : la séquence intro était cassée dès la 1re rotation.
     val isIntroMode = remember { mutableStateOf<Boolean?>(null) }
 
     LaunchedEffect(Unit) {
         isIntroMode.value = !onboardingStore.splashIntroSeen.first()
     }
 
-    // 1. Snapshot une-fois des stats joueur. Les Flows Room sont cold ; un
-    //    `.first()` suffit, pas besoin de re-collect — pendant le splash,
-    //    aucune capture n'est possible (la map n'est pas encore prête), la
-    //    photo est figée pour toute la session.
+    // Snapshot unique des stats joueur. Pendant le splash, aucune capture
+    // n'est possible (la map n'est pas prête), la photo est donc figée.
     LaunchedEffect(repository) {
         try {
             val (captures, speciesCount, remarquableCount, firstTs) = combine(
@@ -98,22 +94,15 @@ fun rememberSplashTipText(
         }
     }
 
-    // 2. Rotation. Keys volontairement réduites :
-    //    - `isIntroMode.value` change au plus une fois (null → true/false).
-    //    - PAS de `playerSnapshot.value` en key : en mode intro le pool est
-    //      figé sur `repository.intro`, en mode random le shuffle initial est
-    //      OK même si le snapshot arrive après. Sinon on perdrait l'idx
-    //      courant à chaque arrivée du snapshot Room.
+    // Keys minimales : `isIntroMode` change au plus une fois ; surtout PAS
+    // `playerSnapshot.value` ici sinon on perdrait l'idx courant à chaque
+    // arrivée du snapshot Room.
     LaunchedEffect(repository, isIntroMode.value, canRotate) {
         val mode = isIntroMode.value ?: return@LaunchedEffect
 
         val sequence: List<SplashTip> = if (mode) {
-            // Mode intro : ordre figé des 10 ids d'accueil.
             repository.intro.mapNotNull { repository.tipsById[it] }
         } else {
-            // Mode random : pool basé sur le snapshot courant. Les tips
-            // restent éligibles sur tout le splash (snapshot évolue rarement
-            // pendant cette fenêtre).
             val player = playerSnapshot.value
             val pool = if (player == null) {
                 repository.unconditionalTips
@@ -130,12 +119,10 @@ fun rememberSplashTipText(
             return@LaunchedEffect
         }
 
-        // Affiche le 1er tip immédiatement, **avant** d'attendre `canRotate` —
-        // l'utilisateur voit du contenu dès le fade-in du hero.
+        // 1er tip avant `canRotate` : du contenu pendant le fade-in du hero.
         state.value = render(sequence[0], playerSnapshot.value ?: emptyMap())
 
-        // Tant que le hero anime, on ne tourne pas (évite un crossfade dans
-        // un fade-in déjà en cours = double-fade gênant).
+        // Pas de rotation pendant l'animation hero — sinon double-fade.
         if (!canRotate) return@LaunchedEffect
 
         var idx = 0
@@ -146,11 +133,10 @@ fun rememberSplashTipText(
             state.value = render(sequence[idx], playerSnapshot.value ?: emptyMap())
             rotations++
 
-            // Pose le flag persistant après la 1re rotation en mode intro :
-            // l'utilisateur a vu au moins 2 tips d'accueil (≈ 7-14 s). Avant
-            // ça, kill app = on rejoue l'intro à la prochaine session.
-            // Le LaunchedEffect ne re-fire PAS sur cette écriture car le
-            // mode est figé via `remember` (cf. `isIntroMode`).
+            // Marque l'intro vue après la 1re rotation (≈ 2 tips, 7-14 s).
+            // Kill app avant ce seuil = rejouer l'intro à la prochaine session.
+            // Le mode est figé via `remember`, donc cette écriture ne re-fire
+            // pas le LaunchedEffect.
             if (mode && rotations == 1) {
                 onboardingStore.markSplashIntroSeen()
             }
@@ -161,10 +147,8 @@ fun rememberSplashTipText(
 }
 
 /**
- * Substitue les placeholders `{xxx}` par les valeurs entières du snapshot.
- * Une clé absente est rendue par `"0"` — en pratique le filtre `requires`
- * empêche déjà ce cas, mais on reste défensif (une phrase mal taggée ne
- * crashe pas, elle affiche juste "0").
+ * Substitue les placeholders `{xxx}`. Clé absente → `"0"` (défensif : une
+ * phrase mal taggée n'explose pas le splash, elle affiche `"0"`).
  */
 private fun render(tip: SplashTip, substitutions: Map<String, Int>): String {
     return PLACEHOLDER_REGEX.replace(tip.text) { match ->

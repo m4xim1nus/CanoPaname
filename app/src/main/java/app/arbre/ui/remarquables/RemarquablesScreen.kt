@@ -80,8 +80,7 @@ fun RemarquablesScreen(
     val currentSeason = Season.current()
     val isArchive = selectedSeason != currentSeason
 
-    // Liste statique des 183 arbres remarquables — chargée une seule fois.
-    // Pas de Flow : le set ne change pas après le premier launch.
+    // Liste statique côté DB — pas de Flow, le set ne change pas au runtime.
     var tousRemarquables by remember { mutableStateOf<List<Arbre>>(emptyList()) }
     LaunchedEffect(Unit) {
         tousRemarquables = arbreRepo.arbresRemarquables()
@@ -89,12 +88,9 @@ fun RemarquablesScreen(
 
     val capturesRemarquables by captureRepo.capturesRemarquables()
         .collectAsState(initial = emptyList())
-    // Set scopé sur la saison sélectionnée — un même remarquable capturé
-    // en hiver et en été compte 2 fois dans le catalogue saisonnier.
     val capturedIds by captureRepo.capturedRemarquableIds(selectedSeason)
         .collectAsState(initial = emptySet())
 
-    // 1re photo de la saison sélectionnée pour chaque arbre.
     val ctx = LocalContext.current
     val capturesInSeason = remember(capturesRemarquables, selectedSeason) {
         capturesRemarquables.filter { it.season == selectedSeason }
@@ -113,9 +109,7 @@ fun RemarquablesScreen(
     val total = tousRemarquables.size
     val nbDecouverts = tousRemarquables.count { it.id in capturedIds }
 
-    // `rememberSaveable` pour conserver le mode au retour de la fiche-arbre —
-    // miroir de l'Arboretum (cf. ArboretumScreen.kt : aller-retour Catalogue →
-    // fiche → Catalogue sans flash sur la vue Liste).
+    // `rememberSaveable` : conserver le mode au retour de la fiche-arbre.
     var viewMode by rememberSaveable { mutableStateOf(RemarquablesViewMode.LISTE) }
 
     Scaffold(
@@ -238,14 +232,8 @@ private fun ListeView(
 
 /**
  * Vue annuaire : `LazyColumn` groupé par arrondissement avec `stickyHeader`
- * (« 1er », « 2e », …, « 20e », puis « Bois de Vincennes », « Bois de
- * Boulogne » et enfin « Hors Paris »). Tri intra-section : alpha genre/espèce.
- * Effet : navigation géographique du catalogue, on voit ce qui reste à chasser
- * arr par arr.
- *
- * Réutilise `parseArrKey` (`data/ArrKey.kt`) — tolère le format sans
- * virgule de tête (« 5e » seul) que produit `tools/build_dataset.py` quand la
- * voie est vide, fréquent chez les remarquables.
+ * (1er → 20e, Bois de Vincennes/Boulogne, Hors Paris), tri intra-section
+ * alpha genre/espèce. Permet de chasser arr par arr.
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -278,9 +266,8 @@ private fun CatalogueView(
         contentPadding = PaddingValues(bottom = 16.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        // `for` (pas `forEach`) pour préserver le scope LazyListScope —
-        // `stickyHeader` est une extension de LazyListScope, qu'une lambda
-        // de forEach masquerait.
+        // `for` (pas `forEach`) : `stickyHeader` est une extension du
+        // LazyListScope, qu'une lambda de `forEach` masquerait.
         for (section in sections) {
             stickyHeader(key = "header-${section.key.sortKey()}") {
                 ArrondissementHeader(section.key.label())

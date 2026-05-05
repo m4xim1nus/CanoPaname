@@ -27,13 +27,9 @@ private val BaseDarkColors = darkColorScheme(
 )
 
 /**
- * Tinting saisonnier discret du `surface` selon `Season.current()`.
- * L'écart est volontairement minuscule — c'est un trait de personnalité, pas
- * une recoloration. Ne touche **jamais** `primary` (le vert du logo/splash
- * doit rester stable, sinon flash entre splash natif et overlay).
- *
- * Sprint I réutilisera `Season.current()` pour le bucket de captures ; ce
- * helper reste l'API canonique de la saisonnalité.
+ * Tint discret du `surface` selon la saison vive — trait de personnalité,
+ * pas recoloration. Ne **jamais** toucher `primary` : le vert du logo/splash
+ * doit rester stable pour éviter le flash splash natif → overlay Compose.
  */
 private fun seasonalSurface(season: Season, dark: Boolean): Color = when (season) {
     Season.SPRING -> if (dark) SaisonPrintempsDark else SaisonPrintemps

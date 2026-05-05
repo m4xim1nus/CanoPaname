@@ -7,11 +7,8 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 
 /**
- * Tokens couleur custom hors M3 ColorScheme.
- *
- * Material3 ne couvre pas les concepts métier de l'app (or remarquable, écorce,
- * feuille…). Ces tokens sont exposés en parallèle via [LocalArbresColors] et
- * accessibles par [MaterialTheme.arbresColors] dans tout composable.
+ * Tokens couleur custom hors M3 (or remarquable, écorce, feuille…). Exposés
+ * via [LocalArbresColors], accessibles par [MaterialTheme.arbresColors].
  */
 data class ArbresColors(
     val or: Color,

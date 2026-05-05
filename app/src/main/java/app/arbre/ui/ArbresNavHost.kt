@@ -30,13 +30,11 @@ object Routes {
     const val BADGES = "badges"
     const val REMARQUABLES = "remarquables"
     const val REMARQUABLE_DETAIL = "remarquable_detail/{arbreId}"
-    // Le flag `celebrate` est passé en query param (compose-navigation gère
-    // les optionnels uniquement après `?`). Permet la transition « waouh »
-    // depuis CaptureLauncher sans dupliquer la destination.
+    // `celebrate` en query param — compose-navigation n'autorise les
+    // optionnels qu'après `?`.
     const val SPECIES = "species/{speciesIndex}?celebrate={celebrate}"
-    // Carte filtrée sur une espèce — destination distincte de MAP pour avoir
-    // un MapViewModel propre (caméra à Paris z11, pas la dernière position
-    // mémorisée par l'écran principal) et une entrée séparée sur le backstack.
+    // Destination distincte de MAP : MapViewModel propre + caméra Paris z11
+    // + entrée séparée du backstack.
     const val MAP_FILTERED = "map_filtered/{speciesIndex}"
     const val ABOUT = "about"
 
@@ -51,12 +49,11 @@ fun ArbresNavHost() {
     val nav = rememberNavController()
     val onboardingStore = rememberOnboardingStore()
     val coScope = rememberCoroutineScope()
-    // initial = null pendant le 1er round-trip DataStore (quelques ms). Pendant
-    // ce délai, le splash overlay du MapScreen précédent couvre déjà l'écran —
-    // pas de flicker visible.
+    // `null` = round-trip DataStore en cours. Pendant ce délai (quelques ms),
+    // le splash overlay du MapScreen masque déjà l'écran.
     val onboardingDone by onboardingStore.onboardingDone.collectAsState(initial = null)
     val start = when (onboardingDone) {
-        null -> Routes.MAP // fallback transitoire ; l'utilisateur arrivera sur la carte
+        null -> Routes.MAP
         true -> Routes.MAP
         false -> Routes.WELCOME
     }

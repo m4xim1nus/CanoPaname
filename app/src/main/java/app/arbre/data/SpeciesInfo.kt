@@ -5,13 +5,9 @@ import org.json.JSONArray
 import org.json.JSONObject
 
 /**
- * Fiche pré-cuite par espèce, alignée avec `assets/species-info.json` produit
- * par `tools/build_dataset.py`. Contient :
- *  - texte Wikipedia (summary FR + page title pour lien externe + QID),
- *  - stats parisiennes : count, proportion du dataset, médianes, top arr.
- *
- * Champs Wikipedia optionnels : si l'espèce n'a pas de page (hybride obscur,
- * cultivar, n. sp.), on garde les stats et on affiche un placeholder côté UI.
+ * Fiche pré-cuite par espèce (texte Wikipedia FR + stats parisiennes).
+ * Champs Wikipedia optionnels : pour une espèce sans page, on conserve les
+ * stats et on affiche un placeholder côté UI.
  */
 data class SpeciesInfo(
     val index: Int,
@@ -31,10 +27,7 @@ data class SpeciesStats(
     val topArrOver: List<ArrCount>,
 )
 
-/**
- * Une ligne de stats par arrondissement. `ratio` n'est rempli que pour la
- * sur-représentation (top topArrOver), sinon null.
- */
+/** Une ligne par arrondissement ; `ratio` rempli seulement pour topArrOver. */
 data class ArrCount(
     val arr: String,
     val count: Int,
