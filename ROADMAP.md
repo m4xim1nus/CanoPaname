@@ -329,7 +329,7 @@ Les sous-phases sont **ordonnées chronologiquement** (pas par axe de l'audit). 
 - [ ] **P1** Épurer `ROADMAP.md` (ce fichier) : supprimer `## Idées en vrac`, supprimer `### Bugs Phase 9 corrigés`, condenser Phase 10.5 (lignes 183-303 → ~15 lignes). Cible ~80 lignes au total.
 - [ ] **P1** Sélectionner les screenshots depuis l'archive `manual_tests/20260505/` vers `docs/screenshots/` (recadrer si besoin).
 - [ ] **P1** Créer `.github/release-template.md` (highlights + permissions + checksum + lien Obtainium). Draft annexe I du rapport d'audit.
-- [ ] **P2** Créer `SECURITY.md` ~8 lignes (contact + scope perso).
+- [ ] **P2** Créer `SECURITY.md` ~8 lignes : projet personnel sans bounty, vulnérabilités → email `canopaname@pm.me` ou issue GitHub, scope local-only.
 
 ### 11B — Légal & attributions parallélisable *(0,5 j, en parallèle des tests live)*
 
@@ -380,8 +380,9 @@ Les sous-phases sont **ordonnées chronologiquement** (pas par axe de l'audit). 
 
 - [ ] **P0** Backup git complet : `git clone --mirror . /tmp/arbre-app-backup-$(date +%Y%m%d).git`.
 - [ ] **P0** Renommer le repo GitHub `m4xim1nus/Arbres` → `m4xim1nus/CanoPaname` (Settings → General → Rename, action manuelle web). GitHub installe une redirection 301 automatique depuis l'ancien nom. Mettre à jour le remote local : `git remote set-url origin git@github.com:m4xim1nus/CanoPaname.git`. À faire **avant** le rewrite filter-repo.
-- [ ] **P0** `git filter-repo --email-callback` pour remplacer `mlv@spirtech.com` par `m4xim1nus@users.noreply.github.com` (40 commits affectés).
-- [ ] **P0** Vérification post-rewrite : `git log --all --pretty=format:'%ae' | sort -u` ne contient plus que l'alias GitHub + `noreply@anthropic.com`.
+- [ ] **P0** Préalable acté côté GitHub : `canopaname@pm.me` ajouté + vérifié dans Settings → Emails ; "Keep my email addresses private" coché (filet de sécurité bloquant le push d'un commit avec l'ancien email pro).
+- [ ] **P0** `git filter-repo --email-callback` pour remplacer `mlv@spirtech.com` par `canopaname@pm.me` (40 commits affectés). Aussi en local : `git config user.email canopaname@pm.me` pour les futurs commits.
+- [ ] **P0** Vérification post-rewrite : `git log --all --pretty=format:'%ae' | sort -u` ne contient plus que `canopaname@pm.me` + `noreply@anthropic.com`.
 - [ ] **P1** Étendre `.gitignore` : `tools/.essences-cache/`, `tools/.remarquables-cache/`, `__pycache__/`, `*.pyc`, `manual_tests/`, `.claude/`.
 - [ ] **P1** Déplacer `manual_tests/` (3,9 Mo screenshots dev) hors repo (`~/dev/arbre-app-private/manual_tests/`).
 - [ ] **P1** Committer le wrapper Gradle : `gradlew`, `gradlew.bat`, `gradle/wrapper/gradle-wrapper.jar`, `gradle/wrapper/gradle-wrapper.properties`.

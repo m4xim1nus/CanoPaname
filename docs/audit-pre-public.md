@@ -32,7 +32,7 @@
 
 | # | Source | Item | Preuve | Effort |
 |---|---|---|---|---|
-| 1 | Repo F1 | **Réécrire l'historique git** — remplacer `mlv@spirtech.com` par `m4xim1nus@users.noreply.github.com` via `git filter-repo` (40 commits) | `git log --all --pretty=format:'%ae' \| sort -u` | M |
+| 1 | Repo F1 | **Réécrire l'historique git** — remplacer `mlv@spirtech.com` par `canopaname@pm.me` via `git filter-repo` (40 commits). Email projet dédié, vérifié sur GitHub Settings → Emails pour attribution profil. | `git log --all --pretty=format:'%ae' \| sort -u` | M |
 | 1bis | — | **Renommer le repo GitHub** `Arbres` → `CanoPaname` (action web Settings → Rename ; redirect 301 auto ; à faire avant le filter-repo) | manuel UI GitHub | XS |
 | 2 | Légal F1 | **Embarquer OFL.txt** pour Fraunces dans `app/src/main/assets/licenses/Fraunces-OFL.txt` | `ls app/src/main/res/font/` (pas d'OFL) | S |
 | 3 | Légal F2 | **Attribution ODbL OpenData Paris** — `NOTICE.md` racine + écran in-app + `assets/databases/ODbL-NOTICE.txt` | grep "ville de paris" UI = 0 hit | S |
@@ -82,7 +82,7 @@
 | P2-03 | Sécu F4 | Smoke release après bumps R8/proguard (couvert par P1-21) | — |
 | P2-04 | Repo F8 | `rootProject.name = "canopaname"` dans `settings.gradle.kts` (cosmétique, package `app.arbre` reste pour stabilité `applicationId`) | XS |
 | P2-05 | Repo F9 | Ajouter `.claude/` au `.gitignore` | XS |
-| P2-06 | Doc F4 | `SECURITY.md` minimaliste ~8 lignes (contact + scope perso) | XS |
+| P2-06 | Doc F4 | `SECURITY.md` minimaliste ~8 lignes (contact `canopaname@pm.me` + scope perso) | XS |
 | P2-07 | Doc F5 | Note "no PR externe" en bas de README (pas de CONTRIBUTING.md séparé) | XS |
 | P2-08 | Doc F2 | Sélectionner 3-4 screenshots `manual_tests/20260504/` → `docs/screenshots/` (vérifier coords GPS visibles ne pointent pas le domicile) | S |
 | P2-09 | Légal F5 | Étoffer copyright `LICENSE` : `Copyright (c) 2026 m4xim1nus (https://github.com/m4xim1nus)` | XS |
@@ -160,7 +160,7 @@
 
 1. Backup git complet (`git clone --mirror` vers `/tmp`).
 2. **Rename GitHub** `Arbres` vers `CanoPaname` (action UI web), puis `git remote set-url origin git@github.com:m4xim1nus/CanoPaname.git`. Redirect 301 auto sur l'ancien nom.
-3. `git filter-repo --email-callback` sur `mlv@spirtech.com` vers alias `m4xim1nus@users.noreply.github.com`.
+3. `git filter-repo --email-callback` sur `mlv@spirtech.com` vers `canopaname@pm.me` (email projet dédié, vérifié sur GitHub Settings → Emails). `git config user.email canopaname@pm.me` aussi en local.
 4. Vérification post-rewrite : `git log --all --pretty=format:'%ae' | sort -u`.
 5. Étendre `.gitignore` (P1-06).
 6. Déplacer `manual_tests/` hors repo (P1-05).
@@ -207,13 +207,15 @@ cd /tmp/arbre-app-rewrite
 # 3. Réécriture
 git filter-repo --email-callback '
   if email == b"mlv@spirtech.com":
-    return b"m4xim1nus@users.noreply.github.com"
+    return b"canopaname@pm.me"
   return email
 '
+# Reconfigurer l'email local pour les futurs commits
+git config user.email canopaname@pm.me
 
 # 4. Vérification
 git log --all --pretty=format:'%ae' | sort -u
-# Attendu : m4xim1nus@users.noreply.github.com + noreply@anthropic.com
+# Attendu : canopaname@pm.me + noreply@anthropic.com
 
 # 5. Force-push après reconnexion remote (repo encore privé à ce stade)
 git remote add public git@github.com:m4xim1nus/canopaname.git
@@ -318,7 +320,7 @@ n'est pas chiffré — choisis un cloud chiffré (Cryptomator, Tresorit) si tu
 veux protéger ce backup.
 
 ## Contact
-Question ou bug : ouvre une issue sur le repo GitHub.
+Question ou bug : ouvre une issue sur le repo GitHub, ou écris à `canopaname@pm.me`.
 ```
 
 ### D. README — squelette des sections
