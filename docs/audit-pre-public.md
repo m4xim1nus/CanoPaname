@@ -104,27 +104,45 @@
 
 ---
 
-## 3. Plan d'exécution Phase 11 — sous-phases ordonnées
+## 3. Plan d'exécution Phase 11 — sous-phases ordonnées chronologiquement
 
-Dépendances : (A) doit passer avant tout push public ; (B+C+D) avant le tag v1.0.0 ; (E) au moment du tag.
+> **Important** : l'ordre ci-dessous est **temporel**, pas thématique. Les sous-phases A et B sont parallélisables avec une dernière journée de tests live device ; un **🛑 cut "stop fix"** matérialise la fin des fix de fond avant que les sous-phases bloquantes (C, D, E) ne touchent à la surface code, à l'historique git et au tag.
+>
+> **Branches** : `main` toujours mergeable. `live-test/v1-fixes` pour les petits fix issus des tests, mergés au fil de l'eau. `phase-11/docs`, `phase-11/legal`, `phase-11/hardening`, `phase-11/identity` pour les sous-phases.
 
-### Phase 11A — Identité & nettoyage repo *(0,5 j)*
-**Objectif** : que le repo, à l'instant t où il devient public, ne contienne ni email pro ni artefacts dev privés, et porte le bon nom.
+### Phase 11A — Documentation publique parallélisable *(0,5 j, en parallèle des tests live)*
+**Objectif** : tous les `.md` user-facing prêts. Aucun conflit possible avec d'éventuels fix UX.
 
-1. Backup git complet (`git clone --mirror` vers `/tmp`).
-2. **Rename GitHub** `Arbres` → `CanoPaname` (action UI web), puis `git remote set-url origin git@github.com:m4xim1nus/CanoPaname.git`. Redirect 301 auto sur l'ancien nom.
-3. `git filter-repo --email-callback` sur `mlv@spirtech.com` → alias.
-4. Vérification post-rewrite : `git log --all --pretty=format:'%ae' | sort -u`.
-5. Étendre `.gitignore` (P1-06).
-6. Déplacer `manual_tests/` hors repo (P1-05).
-7. Supprimer `TESTS.md` (P1-08).
-8. Committer wrapper Gradle (P1-07).
-9. `gitleaks detect --source .` ceinture-bretelles.
+1. Refonte `README.md` (P0 #7). Squelette en annexe.
+2. `CHANGELOG.md` Keep-a-Changelog avec `[1.0.0]` (P0 #8). Draft en annexe.
+3. `PRIVACY.md` ~200 mots tutoiement (P0 #9). Draft en annexe.
+4. Épurer `CLAUDE.md` (garder le nom pour auto-load Claude Code) + préambule 2 lignes (P1-09).
+5. Épuration `ROADMAP.md` (P1-10).
+6. Sélection screenshots vers `docs/screenshots/` (P2-08).
+7. `SECURITY.md` ~8 lignes (P2-06).
+8. `.github/release-template.md` (P1-12). Draft en annexe.
 
-**Sortie** : repo prêt à être basculé public côté contenu, mais encore privé.
+### Phase 11B — Légal & attributions parallélisable *(0,5 j, en parallèle des tests live)*
+**Objectif** : toutes les obligations OFL / ODbL / CC BY-SA / BSD-2 satisfaites. Ces ajouts (NOTICE.md, OFL.txt, AboutScreen) n'entrent pas en conflit avec des fix UX.
 
-### Phase 11B — Hardening code & assets *(1 j)*
-**Objectif** : tous les correctifs P0/P1 dans le code Kotlin/Manifest/Gradle.
+1. `app/src/main/assets/licenses/Fraunces-OFL.txt` (P0 #2).
+2. `app/src/main/assets/databases/ODbL-NOTICE.txt` (P0 #3).
+3. `NOTICE.md` racine (P0 #3 + P1-13). Draft en annexe.
+4. `Routes.ABOUT` + `AboutScreen` Compose (P1-11) avec attribution complète (Ville de Paris ODbL, OSM, OpenFreeMap, Fraunces OFL, MapLibre BSD-2, Wikipedia CC BY-SA, AndroidX/Compose/Kotlin Apache-2.0).
+5. `WikipediaBlock` : ajouter ligne "Source : Wikipedia FR · CC BY-SA 4.0" (P0 #5).
+6. Vérifier `uiSettings.isAttributionEnabled = true` sur `MapScreen` (P0 #4) — par défaut `true` mais à confirmer device.
+7. (Optionnel P3) recherche INPI "CanoPaname" (P3-07).
+
+---
+
+### 🛑 Cut "stop fix" — fin des tests live, gel de la surface code applicatif
+
+À l'issue des tests live device : tous les petits fix mergés dans `main`, plus aucun changement applicatif sauf items Phase 11 ou bugs critiques. Le but : éviter qu'un fix UX qui arrive après le hardening 11C ne réintroduise un trou de sécurité (ex. `photoPath` absolu, oubli EXIF strip, oubli migration).
+
+---
+
+### Phase 11C — Hardening code & assets *(1 j, après le cut)*
+**Objectif** : tous les correctifs sécurité + migration + pass commentaires sur le code Kotlin/Manifest/Gradle.
 
 1. Privacy / sécurité manifeste : `allowBackup=false` (P1-02), supprimer `ACCESS_COARSE_LOCATION` (P2-01), `network_security_config.xml` HTTPS-only (P1-03).
 2. Strip EXIF dans `CaptureLauncher.kt` (P1-01).
@@ -135,30 +153,23 @@ Dépendances : (A) doit passer avant tout push public ; (B+C+D) avant le tag v1.
    - `exportSchema = true` + KSP arg + commit `schemas/2.json` (P1-15).
    - `MIGRATION_2_3` + helper `Capture.resolvedFile()` (P1-14).
    - `MigrationTest.kt` androidTest (P1-16).
+6. **Pass d'épuration des commentaires Kotlin** sur fichiers non-triviaux (P1-09b). Volontairement après le hardening pour ne pas masquer un commentaire utile sur du code qui va changer.
 
-### Phase 11C — Légal & attributions *(0,5 j)*
-**Objectif** : toutes les obligations OFL / ODbL / CC BY-SA / BSD-2 satisfaites.
+### Phase 11D — Identité & rewrite history *(0,5 j, après 11C consolidé sur main)*
+**Objectif** : que le repo, à l'instant t où il devient public, ne contienne ni email pro ni artefacts dev privés, et porte le bon nom.
 
-1. `app/src/main/assets/licenses/Fraunces-OFL.txt` (P0 #2).
-2. `app/src/main/assets/databases/ODbL-NOTICE.txt` (P0 #3).
-3. `NOTICE.md` racine (P0 #3 + P1-13). Draft en annexe.
-4. `Routes.ABOUT` + `AboutScreen` Compose (P1-11) avec attribution complète (Ville de Paris ODbL, OSM, OpenFreeMap, Fraunces OFL, MapLibre BSD-2, Wikipedia CC BY-SA, AndroidX/Compose/Kotlin Apache-2.0).
-5. `WikipediaBlock` : ajouter ligne "Source : Wikipedia FR · CC BY-SA 4.0" (P0 #5).
-6. Vérifier `uiSettings.isAttributionEnabled = true` sur `MapScreen` (P0 #4) — par défaut `true` mais à confirmer device.
-7. (Optionnel P3) recherche INPI "CanoPaname" (P3-07).
+1. Backup git complet (`git clone --mirror` vers `/tmp`).
+2. **Rename GitHub** `Arbres` vers `CanoPaname` (action UI web), puis `git remote set-url origin git@github.com:m4xim1nus/CanoPaname.git`. Redirect 301 auto sur l'ancien nom.
+3. `git filter-repo --email-callback` sur `mlv@spirtech.com` vers alias `m4xim1nus@users.noreply.github.com`.
+4. Vérification post-rewrite : `git log --all --pretty=format:'%ae' | sort -u`.
+5. Étendre `.gitignore` (P1-06).
+6. Déplacer `manual_tests/` hors repo (P1-05).
+7. Supprimer `TESTS.md` (P1-08).
+8. Committer wrapper Gradle (P1-07).
+9. `rootProject.name = "canopaname"` (P2-04).
+10. `gitleaks detect --source .` ceinture-bretelles.
 
-### Phase 11D — Documentation publique *(0,5 j)*
-**Objectif** : un visiteur GitHub et un user Obtainium trouvent ce qu'ils cherchent.
-
-1. Refonte `README.md` (P0 #7). Squelette en annexe.
-2. `CHANGELOG.md` Keep-a-Changelog avec `[1.0.0]` (P0 #8). Draft en annexe.
-3. `PRIVACY.md` ~200 mots tutoiement (P0 #9). Draft en annexe.
-4. Épurer `CLAUDE.md` (garder le nom pour auto-load Claude Code) + préambule 2 lignes (P1-09).
-5. **Pass d'épuration des commentaires Kotlin** sur fichiers non-triviaux (P1-09b).
-6. Épuration `ROADMAP.md` (P1-10).
-7. Sélection screenshots → `docs/screenshots/` (P2-08).
-8. `SECURITY.md` ~8 lignes (P2-06).
-9. `.github/release-template.md` (P1-12). Draft en annexe.
+**Sortie** : repo prêt à être basculé public côté contenu, mais encore privé.
 
 ### Phase 11E — Pipeline release & passage public *(1 j)*
 **Objectif** : un tag git produit un APK signé prod, vérifié, publié.
@@ -572,13 +583,16 @@ Pour calibrer les attentes :
 
 ## 6. Estimation effort total
 
-| Sous-phase | Charge | Cumul |
-|---|---|---|
-| 11A Identité & nettoyage | 0,5 j | 0,5 j |
-| 11B Hardening code | 1 j | 1,5 j |
-| 11C Légal & attributions | 0,5 j | 2 j |
-| 11D Documentation publique (incl. pass commentaires Kotlin) | 1 j | 3 j |
-| 11E Pipeline release & passage public | 1 j | 4 j |
+| Sous-phase | Charge | Cumul | Track |
+|---|---|---|---|
+| 11A Documentation publique | 0,5 j | 0,5 j | parallèle tests live |
+| 11B Légal & attributions | 0,5 j | 1 j | parallèle tests live |
+| 🛑 Cut "stop fix" | — | — | — |
+| 11C Hardening code (incl. pass commentaires Kotlin) | 1 j | 2 j | bloquant |
+| 11D Identité & rewrite history | 0,5 j | 2,5 j | bloquant |
+| 11E Pipeline release & passage public | 1 j | 3,5 j | bloquant |
+
+**Note charge** : 11A + 11B en parallèle des tests live = ~0,5 j wall-clock chacun mais peuvent s'étaler sur plusieurs jours. Après le cut, 11C → 11D → 11E sont séquentielles, ~2,5 j d'affilée.
 
 **Total : ~4 jours de travail effectif** réparti à la convenance, sans dépendance externe (sauf temps de provision des secrets GitHub UI et rename repo). Aucun blocage architectural identifié.
 
