@@ -83,7 +83,7 @@ ESSENCES_URL = (
 ESSENCES_CACHE_DIR = ROOT / "tools" / ".essences-cache"
 ESSENCES_PAGE_SIZE = 100
 
-WIKI_USER_AGENT = "arbre-app-build/0.1 (personal Android app, https://github.com/local/arbre-app)"
+WIKI_USER_AGENT = "canopaname-build/0.1 (personal Android app, https://github.com/m4xim1nus/CanoPaname)"
 WIKIDATA_CACHE_DIR = ROOT / "tools" / ".wikidata-cache"
 WIKIDATA_SPARQL_URL = "https://query.wikidata.org/sparql"
 WIKIDATA_BATCH_SIZE = 50  # Wikidata accepte largement plus, 50 garde la requête lisible
