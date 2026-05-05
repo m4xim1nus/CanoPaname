@@ -1,0 +1,42 @@
+name: Build & Test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - uses: gradle/actions/setup-gradle@v3
+
+      - name: Stub asset DB & GeoJSON (gitignored, suffisant pour assembleDebug)
+        run: |
+          mkdir -p app/src/main/assets/databases
+          touch app/src/main/assets/databases/arbres-paris.db
+          touch app/src/main/assets/arbres-paris.geojson
+
+      - run: ./gradlew assembleDebug test detekt lint --stacktrace
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: reports
+          path: |
+            app/build/reports/
+            app/build/outputs/apk/debug/*.apk
+          retention-days: 7

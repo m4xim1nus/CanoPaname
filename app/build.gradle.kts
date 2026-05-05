@@ -53,8 +53,8 @@ android {
         applicationId = "app.arbre"
         minSdk = 26
         targetSdk = 35
-        versionCode = 8
-        versionName = "0.8.0"
+        versionCode = 10000
+        versionName = "1.0.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables { useSupportLibrary = true }
     }
@@ -84,6 +84,14 @@ android {
             } else {
                 signingConfigs.getByName("debug")
             }
+        }
+    }
+
+    applicationVariants.all {
+        val variant = this
+        outputs.all {
+            (this as com.android.build.gradle.internal.api.BaseVariantOutputImpl).outputFileName =
+                "canopaname-v${variant.versionName}-${variant.buildType.name}.apk"
         }
     }
 

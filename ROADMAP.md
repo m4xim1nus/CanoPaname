@@ -53,17 +53,17 @@ App perso, pas de calendrier engageant. Phases ordonnées du plus pragmatique au
 > Plan détaillé issu de l'audit pré-public ; détail complet des findings, drafts et commandes : [docs/audit-pre-public.md](docs/audit-pre-public.md).
 
 - [x] **Pré-requis** Recherche manuelle « CanoPaname » sur https://bases-marques.inpi.fr/ — vérifié 2026-05-05, marque libre.
-- [ ] **P0** Générer keystore release prod (`keytool -genkey -v -keystore arbres-release.jks ...` cf. CLAUDE.md). Conserver hors-repo + hors-machine (perte = plus jamais d'update).
+- [ ] **P0** Générer keystore release prod (`keytool -genkey -v -keystore canopaname-release.jks ...` cf. CLAUDE.md). Conserver hors-repo + hors-machine (perte = plus jamais d'update).
 - [ ] **P0** Créer 4 secrets GitHub : `RELEASE_KEYSTORE_BASE64`, `RELEASE_STORE_PASSWORD`, `RELEASE_KEY_ALIAS`, `RELEASE_KEY_PASSWORD`.
-- [ ] **P0** Créer `.github/workflows/release.yml` avec décodage keystore + **guard anti-debug-signing** (apksigner CN check, fail si `CN=Android Debug`) + génération SHA256. Draft annexe G du rapport d'audit.
-- [ ] **P1** Créer `.github/workflows/build.yml` avec `assembleDebug + test + detekt + lint` sur push/PR (stub assets gitignored). Draft annexe F du rapport d'audit.
-- [ ] **P1** Naming APK Obtainium : `applicationVariants.all { outputFileName = "canopaname-v\${versionName}-\${buildType}.apk" }` dans `app/build.gradle.kts`.
-- [ ] **P1** Créer `RELEASE.md` (procédure pré-requis + checklist 10 étapes). Draft annexe H du rapport d'audit.
-- [ ] **P1** Bump `versionCode = 10000`, `versionName = "1.0.0"` (scheme `major*10000 + minor*100 + patch`).
+- [x] **P0** Créer `.github/workflows/release.yml` avec décodage keystore + **guard anti-debug-signing** (apksigner CN check, fail si `CN=Android Debug`) + génération SHA256 + cache `tools/.wikipedia-cache/`. Draft annexe G du rapport d'audit.
+- [x] **P1** Créer `.github/workflows/build.yml` avec `assembleDebug + test + detekt + lint` sur push/PR (stub assets gitignored). Draft annexe F du rapport d'audit.
+- [x] **P1** Naming APK Obtainium : `applicationVariants.all { outputFileName = "canopaname-v\${versionName}-\${buildType}.apk" }` dans `app/build.gradle.kts`.
+- [x] **P1** Créer `RELEASE.md` (procédure pré-requis + checklist 10 étapes). Draft annexe H du rapport d'audit.
+- [x] **P1** Bump `versionCode = 10000`, `versionName = "1.0.0"` (scheme `major*10000 + minor*100 + patch`).
 - [ ] **P1** **Smoke test manuel APK release signé prod sur device GrapheneOS** : carte (MapLibre), capture (Room insert + EXIF strip), redémarrage app (Room read + DataStore), export+import ZIP. Si OK → bon pour tag.
 - [ ] **P1** Bascule visibilité GitHub : Settings → Make public.
 - [ ] **P1** Tag : `git tag v1.0.0 && git push origin v1.0.0`. Vérifier que le workflow release se déclenche, produit l'APK draft.
 - [ ] **P1** Tester l'APK draft sur device fresh, vérifier signature `apksigner verify --print-certs`. Publier la Release.
 - [ ] **P1** Configurer Obtainium : URL repo `https://github.com/m4xim1nus/CanoPaname`, regex APK `canopaname-v.*-release\.apk$`, version detection par tag.
-- [ ] **P2** Squelette `fastlane/metadata/android/fr-FR/{title,short_description,full_description,changelogs/}.txt` (option F-Droid future).
-- [ ] **P3** ABI splits : trancher **non**, garder universel (59 Mo OK pour family & friends, simplifie Obtainium).
+- [x] **P2** Squelette `fastlane/metadata/android/fr-FR/{title,short_description,full_description,changelogs/}.txt` (option F-Droid future).
+- [x] **P3** ABI splits : tranché **non**, garder universel (~59 Mo OK pour family & friends, simplifie Obtainium).

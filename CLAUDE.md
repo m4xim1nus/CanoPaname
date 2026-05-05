@@ -50,23 +50,23 @@ Pour pousser sur le téléphone GrapheneOS sans Studio : `adb install -r app/bui
 Pour produire un APK release signé prod :
 
 ```bash
-# 1. Générer le keystore (une seule fois, à conserver hors-repo)
-keytool -genkey -v -keystore arbres-release.jks -keyalg RSA -keysize 2048 \
-        -validity 10000 -alias arbres
+# 1. Générer le keystore (une seule fois, à conserver hors-repo et hors-machine)
+keytool -genkey -v -keystore canopaname-release.jks -keyalg RSA -keysize 2048 \
+        -validity 10000 -alias canopaname
 
 # 2. Renseigner local.properties (jamais committé, déjà dans .gitignore) :
-#   RELEASE_STORE_FILE=arbres-release.jks
+#   RELEASE_STORE_FILE=canopaname-release.jks
 #   RELEASE_STORE_PASSWORD=...
-#   RELEASE_KEY_ALIAS=arbres
+#   RELEASE_KEY_ALIAS=canopaname
 #   RELEASE_KEY_PASSWORD=...
 
 # 3. Build
 JAVA_HOME=/opt/android-studio/jbr ./gradlew assembleRelease
-# → app/build/outputs/apk/release/app-release.apk (signé prod)
+# → app/build/outputs/apk/release/canopaname-vX.Y.Z-release.apk (signé prod)
 
 # 4. Vérifier la signature
 $ANDROID_HOME/build-tools/35.0.0/apksigner verify --verbose \
-    app/build/outputs/apk/release/app-release.apk
+    app/build/outputs/apk/release/canopaname-vX.Y.Z-release.apk
 ```
 
 Sans clé renseignée dans `local.properties`, `assembleRelease` continue de marcher (fallback signing debug) — utile pour smoke-test `isMinifyEnabled = true` sans manipuler de secrets. Le fallback est implémenté côté `app/build.gradle.kts` (lecture conditionnelle de `local.properties`). Le `.gitignore` exclut déjà `*.jks`, `*.keystore` et `local.properties`.

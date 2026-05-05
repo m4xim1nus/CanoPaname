@@ -12,7 +12,7 @@
 SHA-256 du certificat de signature attendu :
 
 ```
-<fingerprint à figer à v1.0.0>
+A6:83:F1:99:B0:4A:43:34:03:06:3C:AB:4E:D1:14:15:74:2D:CE:14:8A:67:EF:65:F2:94:35:DF:80:DA:33:34
 ```
 
 Vérifier : `apksigner verify --print-certs canopaname-vX.Y.Z-release.apk`

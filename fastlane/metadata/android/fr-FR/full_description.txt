@@ -1,0 +1,23 @@
+CanoPaname est une app Android pour partir à la chasse aux arbres remarquables de Paris, collectionner les espèces et redécouvrir la ville par sa canopée. Inspirée de Pokémon GO mais avec de vrais arbres : ceux du dataset OpenData Paris « les-arbres » (213 042 arbres géolocalisés, dont 169 remarquables).
+
+213 042 arbres parisiens sur une carte plein écran, 907 espèces à découvrir, 169 arbres remarquables à dénicher. Capture par proximité (moins de 30 mètres) avec une photo prise depuis l'app. La carte se colore au fil de tes découvertes. Catalogue à 907 espèces avec fiches Wikipedia FR, badges, saisonnalité, export ZIP.
+
+Pensé pour un usage personnel et family & friends : pas de classement, pas de social, pas de compte. Tout est stocké localement sur ton appareil.
+
+Vie privée :
+- Aucune connexion réseau au runtime, sauf le téléchargement des tuiles cartographiques OpenFreeMap.
+- Position GPS jamais envoyée, jamais stockée hors de la photo de capture.
+- Pas de Google Play Services, pas de tracking, pas de pub.
+- Compatible GrapheneOS.
+
+Permissions demandées :
+- Position fine : pour mesurer les moins de 30 mètres d'un arbre et autoriser la capture.
+- Caméra : pour photographier l'arbre capturé.
+- Vibrer : retour haptique court à la capture.
+
+Sources de données :
+- OpenData Paris « les-arbres » et « arbresremarquablesparis » sous Open Database Licence (ODbL).
+- Fiches Wikipedia FR sous CC BY-SA 4.0.
+- Tuiles OpenFreeMap (OpenStreetMap).
+
+Licence MIT. Code source ouvert sur GitHub.
