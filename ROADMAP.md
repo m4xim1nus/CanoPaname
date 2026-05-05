@@ -304,5 +304,76 @@ Bonus product décidé en cours de Phase 10.5 (avant bump `versionCode 9`). Le `
 
 ## Phase 11 — Préparation de la release v1.0.0
 
-- [ ] **CI GitHub Actions** — workflow `.github/workflows/build.yml` qui exécute `./gradlew assembleDebug test detekt` sur push et PR (le test passera grâce à Phase 8, detekt aussi). Job de release optionnel sur tag `v*` qui produit l'APK signé via secrets GitHub (keystore + passwords stockés en `secrets.RELEASE_KEYSTORE_BASE64` etc.). 1-2 h de setup.
-- [ ] À la veille de la `v1.0.0` : générer keystore release prod, pousser repo public sur GitHub, créer GitHub Release avec APK signé, exposer URL Obtainium. La machinerie côté `build.gradle.kts` est prête (Phase 6) — ne reste plus qu'à provisionner le keystore et le rendre public.
+> Plan détaillé issu de l'audit pré-public (équipe de 7 sous-agents — privacy, sécurité, hygiène repo, doc, légal, migration, release). Détail complet des findings, drafts et commandes : [docs/audit-pre-public.md](docs/audit-pre-public.md). Charge totale ~3,5 j, ordre logique : identité → code → légal → doc → release.
+
+### 11A — Identité & nettoyage repo (avant tout push public)
+
+- [ ] **P0** Backup git complet : `git clone --mirror . /tmp/arbre-app-backup-$(date +%Y%m%d).git`.
+- [ ] **P0** Renommer le repo GitHub `m4xim1nus/Arbres` → `m4xim1nus/CanoPaname` (Settings → General → Rename, action manuelle web). GitHub installe une redirection 301 automatique depuis l'ancien nom. Mettre à jour le remote local : `git remote set-url origin git@github.com:m4xim1nus/CanoPaname.git`. À faire **avant** le rewrite filter-repo.
+- [ ] **P0** `git filter-repo --email-callback` pour remplacer `mlv@spirtech.com` par `m4xim1nus@users.noreply.github.com` (40 commits affectés).
+- [ ] **P0** Vérification post-rewrite : `git log --all --pretty=format:'%ae' | sort -u` ne contient plus que l'alias GitHub + `noreply@anthropic.com`.
+- [ ] **P1** Étendre `.gitignore` : `tools/.essences-cache/`, `tools/.remarquables-cache/`, `__pycache__/`, `*.pyc`, `manual_tests/`, `.claude/`.
+- [ ] **P1** Déplacer `manual_tests/` (3,9 Mo screenshots dev) hors repo (`~/dev/arbre-app-private/manual_tests/`).
+- [ ] **P1** Committer le wrapper Gradle : `gradlew`, `gradlew.bat`, `gradle/wrapper/gradle-wrapper.jar`, `gradle/wrapper/gradle-wrapper.properties`.
+- [ ] **P1** Supprimer `TESTS.md` du repo (archive locale).
+- [ ] **P3** Validation : `gitleaks detect --source .` retourne 0 finding.
+
+### 11B — Hardening code & assets (avant tag v1.0.0)
+
+#### Privacy & sécurité Manifest
+- [ ] **P1** `android:allowBackup="false"` dans `AndroidManifest.xml:16` (cohérent avec promesse "tout reste local"). Vider ou supprimer `backup_rules.xml` / `data_extraction_rules.xml`.
+- [ ] **P1** Ajouter `app/src/main/res/xml/network_security_config.xml` HTTPS-only + référencer via `android:networkSecurityConfig` dans `AndroidManifest.xml:14`.
+- [ ] **P2** Supprimer `<uses-permission ACCESS_COARSE_LOCATION>` (FINE l'inclut déjà sur API 31+, COARSE inutile vu `MAX_DISTANCE_M = 30`).
+
+#### Capture & backup
+- [ ] **P1** Strip EXIF (GPS, Make, Model, Software, ImageUniqueId) après chaque `TakePicture()` dans `CaptureLauncher.kt:107-118` via `androidx.exifinterface`.
+- [ ] **P1** Hardener `BackupImporter.kt:80-104` : cap `MAX_PHOTO_BYTES = 10 MB`, `MAX_TOTAL_BYTES = 500 MB`, `entryCount ≤ 10000`, magic bytes JPEG `FF D8 FF`, refus `\\` et `..` dans basename.
+- [ ] **P2** Strip `Log.i/v/d` en release via `proguard-rules.pro` (`-assumenosideeffects class android.util.Log { ... }`).
+
+#### Migration & forward-compat
+- [ ] **P0** Retirer `fallbackToDestructiveMigration()` de `ArbreDatabase.kt:64` — sinon wipe silencieux des captures à toute future migration foireuse.
+- [ ] **P1** `exportSchema = true` dans `@Database`, KSP arg `room.schemaLocation` dans `app/build.gradle.kts`, committer `app/schemas/app.arbre.data.ArbreDatabase/2.json`.
+- [ ] **P1** Migrer `photoPath` en basename relatif (`{uuid}.jpg`) — `MIGRATION_2_3` + helper `Capture.resolvedFile(context)` + adapter `PhotoThumbnail.decodeFile`. Évite la casse au device transfer / multi-user / debug↔release.
+- [ ] **P1** Test `MigrationTestHelper` : `app/src/androidTest/java/app/arbre/data/MigrationTest.kt` couvrant `MIGRATION_1_2` et `MIGRATION_2_3`.
+- [ ] **P2** `tools/build_dataset.py` crash explicite si `species-index.json` absent **et** `arbres-paris.db` existe déjà avec rows (au lieu du `[warn]` actuel).
+
+### 11C — Légal & attributions
+
+- [ ] **P0** Embarquer `app/src/main/assets/licenses/Fraunces-OFL.txt` (texte OFL 1.1 + copyright "Copyright 2020 The Fraunces Project Authors…"). Bloquant légal sans ça.
+- [ ] **P0** Créer `NOTICE.md` racine (draft annexe B du rapport d'audit) listant : OpenData Paris ODbL, OSM, OpenFreeMap, Wikipedia FR CC BY-SA, Fraunces OFL, MapLibre BSD-2, AndroidX/Compose/Kotlin/Room Apache-2.0, org.json.
+- [ ] **P0** Créer `app/src/main/assets/databases/ODbL-NOTICE.txt` avec wording §4.3 ODbL pour les 2 datasets (`les-arbres` + `arbresremarquablesparis`).
+- [ ] **P0** Ajouter ligne "Source : Wikipedia FR · CC BY-SA 4.0" sous le summary dans `WikipediaBlock` (`SpeciesDetailScreen.kt:435-475`) avec lien `https://creativecommons.org/licenses/by-sa/4.0/`.
+- [ ] **P0** Vérifier sur device que MapLibre affiche le bouton attribution OSM/OpenFreeMap (par défaut `uiSettings.isAttributionEnabled = true`). Si non visible, le forcer.
+- [ ] **P1** `Routes.ABOUT` + `AboutScreen` Compose accessible depuis `ProfileScreen.kt` sous `HowToPlayEntry` : version (BuildConfig), attributions complètes, licences tierces, lien repo, mention "non affilié à la Ville de Paris".
+- [ ] **P2** Étoffer copyright `LICENSE` : `Copyright (c) 2026 m4xim1nus (https://github.com/m4xim1nus)`.
+- [ ] **P3** Recherche manuelle "CanoPaname" sur https://bases-marques.inpi.fr/ (5 min avant push public).
+
+### 11D — Documentation publique
+
+- [ ] **P0** Refonte `README.md` (statut v1.0, 3-4 screenshots `docs/screenshots/`, install Obtainium + fingerprint, permissions justifiées, lien PRIVACY, FAQ, attributions, note "no PR externe"). Squelette annexe D du rapport d'audit.
+- [ ] **P0** Créer `CHANGELOG.md` Keep-a-Changelog avec `[1.0.0]` = synthèse phases 0 → 10.5 (draft annexe E du rapport d'audit).
+- [ ] **P0** Créer `PRIVACY.md` ~200 mots tutoiement (draft annexe C du rapport d'audit).
+- [ ] **P1** Épurer `CLAUDE.md` (garder le nom pour l'auto-load Claude Code) : supprimer la section `## Setup (déjà fait sur cette machine)`, neutraliser les marqueurs « Phase 10.5 sous-groupe X » dans le corps technique, ajouter un préambule de 2 lignes clarifiant que le fichier est consommé par Claude Code et sert de guide structurel pour le dev assisté.
+- [ ] **P1** Pass d'épuration des commentaires Kotlin (~0,5 j) : relire les fichiers non-triviaux (`MapScreen`, `MapLayers`, `BackupImporter`, `BadgeEvaluator`, `CaptureLauncher`, `ArbreDatabase`, `SplashTipsController`, `SpeciesDetailScreen`) et appliquer la règle « garder uniquement ce qui justifie un *pourquoi* non-évident — supprimer tout ce qui décrit *quoi* ». Les marqueurs de phase (`// Phase 10.5 sous-groupe F`, `// Sprint I`) et les explications de cycle de dev partent. Garder les commentaires sur les contraintes cachées (thread MapLibre, ordinal Season persisté, contrat de format GeoJSON, etc.).
+- [ ] **P1** Épurer `ROADMAP.md` (ce fichier) : supprimer `## Idées en vrac`, supprimer `### Bugs Phase 9 corrigés`, condenser Phase 10.5 (lignes 183-303 → ~15 lignes). Cible ~80 lignes au total.
+- [ ] **P1** Sélectionner 3-4 screenshots depuis l'archive `manual_tests/20260504/` vers `docs/screenshots/` (recadrer + vérifier que coords GPS visibles ne pointent pas le domicile).
+- [ ] **P1** Créer `.github/release-template.md` (highlights + permissions + checksum + lien Obtainium). Draft annexe I du rapport d'audit.
+- [ ] **P2** Créer `SECURITY.md` ~8 lignes (contact + scope perso).
+- [ ] **P2** Aligner `settings.gradle.kts` : `rootProject.name = "canopaname"`.
+
+### 11E — Pipeline release & passage public
+
+- [ ] **P0** Générer keystore release prod (`keytool -genkey -v -keystore arbres-release.jks ...` cf. DEVELOPING.md). Conserver hors-repo + hors-machine (perte = plus jamais d'update).
+- [ ] **P0** Créer 4 secrets GitHub : `RELEASE_KEYSTORE_BASE64`, `RELEASE_STORE_PASSWORD`, `RELEASE_KEY_ALIAS`, `RELEASE_KEY_PASSWORD`.
+- [ ] **P0** Créer `.github/workflows/release.yml` avec décodage keystore + **guard anti-debug-signing** (apksigner CN check, fail si `CN=Android Debug`) + génération SHA256. Draft annexe G du rapport d'audit.
+- [ ] **P1** Créer `.github/workflows/build.yml` avec `assembleDebug + test + detekt + lint` sur push/PR (stub assets gitignored). Draft annexe F du rapport d'audit.
+- [ ] **P1** Naming APK Obtainium : `applicationVariants.all { outputFileName = "canopaname-v\${versionName}-\${buildType}.apk" }` dans `app/build.gradle.kts`.
+- [ ] **P1** Créer `RELEASE.md` (procédure pré-requis + checklist 10 étapes). Draft annexe H du rapport d'audit.
+- [ ] **P1** Bump `versionCode = 10000`, `versionName = "1.0.0"` (scheme `major*10000 + minor*100 + patch`).
+- [ ] **P1** **Smoke test manuel APK release signé prod sur device GrapheneOS** : carte (MapLibre), capture (Room insert + EXIF strip), redémarrage app (Room read + DataStore), export+import ZIP. Si OK → bon pour tag.
+- [ ] **P1** Bascule visibilité GitHub : Settings → Make public.
+- [ ] **P1** Tag : `git tag v1.0.0 && git push origin v1.0.0`. Vérifier que le workflow release se déclenche, produit l'APK draft.
+- [ ] **P1** Tester l'APK draft sur device fresh, vérifier signature `apksigner verify --print-certs`. Publier la Release.
+- [ ] **P1** Configurer Obtainium : URL repo `https://github.com/<user>/canopaname`, regex APK `canopaname-v.*-release\.apk$`, version detection par tag.
+- [ ] **P2** Squelette `fastlane/metadata/android/fr-FR/{title,short_description,full_description,changelogs/}.txt` (option F-Droid future).
+- [ ] **P3** ABI splits : trancher **non**, garder universel (59 Mo OK pour family & friends, simplifie Obtainium).
