@@ -10,7 +10,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 @Database(
     entities = [ArbreEntity::class, CaptureEntity::class],
     version = 2,
-    exportSchema = false,
+    exportSchema = true,
 )
 abstract class ArbreDatabase : RoomDatabase() {
 
@@ -61,7 +61,6 @@ abstract class ArbreDatabase : RoomDatabase() {
             )
                 .createFromAsset("databases/arbres-paris.db")
                 .addMigrations(MIGRATION_1_2)
-                .fallbackToDestructiveMigration()
                 .build()
                 .also { INSTANCE = it }
         }
