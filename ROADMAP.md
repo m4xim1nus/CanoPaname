@@ -327,7 +327,7 @@ Les sous-phases sont **ordonnées chronologiquement** (pas par axe de l'audit). 
 - [ ] **P0** Créer `PRIVACY.md` ~200 mots tutoiement (draft annexe C du rapport d'audit).
 - [ ] **P1** Épurer `CLAUDE.md` (garder le nom pour l'auto-load Claude Code) : supprimer la section `## Setup (déjà fait sur cette machine)`, neutraliser les marqueurs « Phase 10.5 sous-groupe X » dans le corps technique, ajouter un préambule de 2 lignes clarifiant que le fichier est consommé par Claude Code et sert de guide structurel pour le dev assisté.
 - [ ] **P1** Épurer `ROADMAP.md` (ce fichier) : supprimer `## Idées en vrac`, supprimer `### Bugs Phase 9 corrigés`, condenser Phase 10.5 (lignes 183-303 → ~15 lignes). Cible ~80 lignes au total.
-- [ ] **P1** Sélectionner 3-4 screenshots depuis l'archive `manual_tests/20260504/` vers `docs/screenshots/` (recadrer + vérifier que coords GPS visibles ne pointent pas le domicile).
+- [ ] **P1** Sélectionner les screenshots depuis l'archive `manual_tests/20260505/` vers `docs/screenshots/` (recadrer si besoin).
 - [ ] **P1** Créer `.github/release-template.md` (highlights + permissions + checksum + lien Obtainium). Draft annexe I du rapport d'audit.
 - [ ] **P2** Créer `SECURITY.md` ~8 lignes (contact + scope perso).
 
