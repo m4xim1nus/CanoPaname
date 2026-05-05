@@ -1,0 +1,30 @@
+arbres-paris.db — ODbL Notice
+==============================
+
+This SQLite database is a Derivative Database (ODbL §4.4) built from two
+public datasets produced by the Ville de Paris and published on its
+OpenData portal:
+
+  - "Les arbres"
+    https://opendata.paris.fr/explore/dataset/les-arbres/
+    © Ville de Paris
+
+  - "Les arbres remarquables"
+    https://opendata.paris.fr/explore/dataset/arbresremarquablesparis/
+    © Ville de Paris
+
+Both source datasets, and therefore this Derivative Database, are
+licensed under the Open Database License (ODbL) v1.0:
+
+  https://opendatacommons.org/licenses/odbl/1-0/
+
+In accordance with ODbL §4.3 (Notices for Public Use), any public use of
+this database, or of works produced from it, must keep this notice intact
+and provide the same attribution to the original producer.
+
+The transformation script that produced this database from the source
+CSV files is published under MIT in the source repository
+(tools/build_dataset.py).
+
+CanoPaname is an independent project and is not affiliated with the
+Ville de Paris.
