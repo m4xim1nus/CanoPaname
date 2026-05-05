@@ -20,5 +20,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "arbre-app"
+rootProject.name = "canopaname"
 include(":app")
