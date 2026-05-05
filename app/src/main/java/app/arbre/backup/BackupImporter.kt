@@ -87,60 +87,66 @@ class BackupImporter(
  * tests JVM purs. Top-level `internal` pour rester appelable depuis le
  * dossier `test/` sans instance de [BackupImporter].
  */
+private class ZipAccumulator {
+    var meta: BackupMeta? = null
+    var capturesJson: String? = null
+    val photoBytes = HashMap<String, ByteArray>()
+    var totalBytes = 0L
+    var entryCount = 0
+}
+
+private fun ZipInputStream.handleEntry(name: String, acc: ZipAccumulator) {
+    when {
+        name == META_JSON -> {
+            val bytes = readBytesCapped(MAX_ENTRY_BYTES)
+            acc.totalBytes = checkTotal(acc.totalBytes + bytes.size)
+            acc.meta = parseMeta(bytes)
+        }
+        name == CAPTURES_JSON -> {
+            val bytes = readBytesCapped(MAX_ENTRY_BYTES)
+            acc.totalBytes = checkTotal(acc.totalBytes + bytes.size)
+            acc.capturesJson = String(bytes)
+        }
+        name.startsWith(PHOTOS_DIR) -> handlePhotoEntry(name, acc)
+    }
+}
+
+private fun ZipInputStream.handlePhotoEntry(name: String, acc: ZipAccumulator) {
+    val basename = name.removePrefix(PHOTOS_DIR)
+    if (basename.isEmpty() || basename.contains('/')) return
+    val bytes = readBytesCapped(MAX_ENTRY_BYTES)
+    acc.totalBytes = checkTotal(acc.totalBytes + bytes.size)
+    // Photo non-JPEG : skip silencieux, sera comptée photosMissing si une
+    // capture y réfère.
+    if (hasJpegMagic(bytes)) acc.photoBytes[basename] = bytes
+}
+
+private fun extractZip(input: InputStream): ZipAccumulator {
+    val acc = ZipAccumulator()
+    ZipInputStream(input.buffered()).use { zip ->
+        while (true) {
+            val entry = zip.nextEntry ?: break
+            acc.entryCount++
+            if (acc.entryCount > MAX_ENTRY_COUNT) {
+                throw BackupTooLargeException("Backup contient > $MAX_ENTRY_COUNT entrées")
+            }
+            val name = entry.name
+            if (!entry.isDirectory && !isPathSuspicious(name)) {
+                zip.handleEntry(name, acc)
+            }
+            zip.closeEntry()
+        }
+    }
+    return acc
+}
+
 internal suspend fun importStream(
     input: InputStream,
     photosDir: File,
     captureDao: CaptureDao,
 ): ImportResult = withContext(Dispatchers.IO) {
-    var meta: BackupMeta? = null
-    var capturesJson: String? = null
-    val photoBytes = HashMap<String, ByteArray>()
-    var entryCount = 0
-    var totalBytes = 0L
-    try {
-        ZipInputStream(input.buffered()).use { zip ->
-            while (true) {
-                val entry = zip.nextEntry ?: break
-                entryCount++
-                if (entryCount > MAX_ENTRY_COUNT) {
-                    throw BackupTooLargeException("Backup contient > $MAX_ENTRY_COUNT entrées")
-                }
-                val name = entry.name
-                if (entry.isDirectory) {
-                    zip.closeEntry()
-                    continue
-                }
-                if (isPathSuspicious(name)) {
-                    zip.closeEntry()
-                    continue
-                }
-                when {
-                    name == META_JSON -> {
-                        val bytes = zip.readBytesCapped(MAX_ENTRY_BYTES)
-                        totalBytes = checkTotal(totalBytes + bytes.size)
-                        meta = parseMeta(bytes)
-                    }
-                    name == CAPTURES_JSON -> {
-                        val bytes = zip.readBytesCapped(MAX_ENTRY_BYTES)
-                        totalBytes = checkTotal(totalBytes + bytes.size)
-                        capturesJson = String(bytes)
-                    }
-                    name.startsWith(PHOTOS_DIR) -> {
-                        val basename = name.removePrefix(PHOTOS_DIR)
-                        if (basename.isNotEmpty() && !basename.contains('/')) {
-                            val bytes = zip.readBytesCapped(MAX_ENTRY_BYTES)
-                            totalBytes = checkTotal(totalBytes + bytes.size)
-                            if (hasJpegMagic(bytes)) {
-                                photoBytes[basename] = bytes
-                            }
-                            // sinon : skip silencieux, la capture sera comptée
-                            // photosMissing si elle référence cette photo.
-                        }
-                    }
-                }
-                zip.closeEntry()
-            }
-        }
+    val parsed = try {
+        extractZip(input)
     } catch (e: BackupTooLargeException) {
         Log.e(TAG, "Backup trop volumineux", e)
         return@withContext ImportResult.Failure(ImportError.TOO_LARGE)
@@ -155,11 +161,12 @@ internal suspend fun importStream(
         return@withContext ImportResult.Failure(ImportError.CORRUPT_ZIP)
     }
 
-    if (entryCount == 0) {
+    if (parsed.entryCount == 0) {
         return@withContext ImportResult.Failure(ImportError.CORRUPT_ZIP)
     }
-    val resolvedMeta = meta ?: return@withContext ImportResult.Failure(ImportError.META_MISSING)
-    val resolvedCaptures = capturesJson
+    val resolvedMeta = parsed.meta
+        ?: return@withContext ImportResult.Failure(ImportError.META_MISSING)
+    val resolvedCaptures = parsed.capturesJson
         ?: return@withContext ImportResult.Failure(ImportError.CAPTURES_MISSING)
     if (resolvedMeta.schemaVersion > CURRENT_SCHEMA_VERSION) {
         return@withContext ImportResult.Failure(ImportError.SCHEMA_TOO_NEW)
@@ -171,6 +178,7 @@ internal suspend fun importStream(
         Log.e(TAG, "captures.json illisible", t)
         return@withContext ImportResult.Failure(ImportError.CAPTURES_MISSING)
     }
+    val photoBytes: Map<String, ByteArray> = parsed.photoBytes
 
     var imported = 0
     var skipped = 0
