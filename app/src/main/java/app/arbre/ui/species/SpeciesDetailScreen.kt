@@ -470,6 +470,35 @@ private fun WikipediaBlock(info: SpeciesInfo?) {
                         )
                     }
                 }
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable {
+                            runCatching {
+                                ctx.startActivity(
+                                    Intent(
+                                        Intent.ACTION_VIEW,
+                                        Uri.parse("https://creativecommons.org/licenses/by-sa/4.0/"),
+                                    )
+                                )
+                            }
+                        }
+                        .padding(vertical = 4.dp),
+                ) {
+                    Text(
+                        "Source : Wikipédia FR · CC BY-SA 4.0",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Icon(
+                        Icons.AutoMirrored.Outlined.OpenInNew,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(12.dp),
+                    )
+                }
             }
         }
     }
