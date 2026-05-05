@@ -53,6 +53,7 @@ App perso, pas de calendrier engageant. Phases ordonnées du plus pragmatique au
 - [ ] **12.3** Célébration nouvelle espèce — remplacer `Icons.Outlined.Park` (sapin Material) par `R.drawable.ic_arbre_canonical` (platane canonique tintable) dans `CelebrationHero` (`SpeciesDetailScreen.kt:287-298`). Cleanup import `androidx.compose.material.icons.outlined.Park` si devenu inutilisé.
 - [ ] **12.4** Carte filtrée espèce — masquer les arbres remarquables non capturés. Étendre `filterGeoJsonBySpecies` (MapLayers.kt:156-187) avec un param `capturedRemarquables: Set<Long>` ; skipper les features `remarquable=true && id !in capturedRemarquables`. Adapter le call site `MapScreen.kt:354`. **Non-régression** : la carte principale (mode non filtré) doit continuer à montrer tous les remarquables (gris si non capturé, orange si capturé).
 - [ ] **12.5** Modal détail arbre — gater le bouton « Fiche espèce » sur la capture de l'espèce. Côté `MapScreen`, passer `onSpeciesClick = null` à `ArbreDetailContent` si `arbre.speciesIndex !in capturedSpecies`. Réplique du pattern `RemarquableDetailScreen.kt:77-78,129-131`. Concerne en pratique les remarquables capturés dont l'espèce n'est pas par ailleurs débloquée.
+- [x] **12.6** Capture photos : recompress JPEG long-edge 1600 / quality 85 + rotation EXIF appliquée pixel-side, ~10 MB → ~500 KB par capture (×15-25). `CaptureLauncher.kt` + dépendance `androidx.exifinterface 1.3.7`. Validé device (Pixel 9a).
 
 ### Validation device Phase 12
 

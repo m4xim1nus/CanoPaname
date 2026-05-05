@@ -3,7 +3,11 @@ package app.arbre.ui.map
 import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.graphics.Matrix
 import android.location.Location
+import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
@@ -15,6 +19,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
+import androidx.exifinterface.media.ExifInterface
 import app.arbre.data.Arbre
 import app.arbre.data.CaptureRepository
 import app.arbre.data.Season
@@ -23,12 +28,21 @@ import app.arbre.util.LocationProvider
 import app.arbre.util.ageMs
 import app.arbre.util.rememberCaptureHaptic
 import java.io.File
+import java.io.FileOutputStream
 import java.util.UUID
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 internal const val MAX_GPS_AGE_MS = 30_000L
 internal const val MAX_DISTANCE_M = 30f
+
+// Cible de compression appliquée juste après l'intent caméra. Une photo brute
+// 12 MP / quality ~95 sortie d'OEM pèse ~10 MB ; on la ramène à ~400-700 KB
+// (×15-25) sans dégradation visible sur vignettes Arboretum + lightbox HD.
+private const val TARGET_LONG_EDGE = 1600
+private const val JPEG_QUALITY = 85
 
 /**
  * État du bouton « Capturer » du sheet, calculé une fois à l'ouverture pour ne
@@ -114,6 +128,16 @@ fun rememberCaptureController(
             if (file.length() == 0L) {
                 file.delete()
                 snackbar.showSnackbar("Photo vide — caméra a échoué")
+                return@launch
+            }
+            // Recompresse en background avant l'INSERT — sans ça, chaque
+            // capture pèse ~10 MB (résolution native OEM, quality ~95). Le
+            // decode/scale/encode est CPU-bound (~200-500 ms) donc IO pour
+            // ne pas bloquer le main thread.
+            val compressed = withContext(Dispatchers.IO) { compressCapture(file) }
+            if (!compressed) {
+                file.delete()
+                snackbar.showSnackbar("Erreur traitement photo")
                 return@launch
             }
             // Snapshot AVANT insert : sinon on lit le set qui contient déjà
@@ -232,4 +256,87 @@ private suspend fun runCapture(
     )
 
     launcher.launch(photoUri)
+}
+
+/**
+ * Décode, redimensionne et recompresse le JPEG écrit par la caméra OEM.
+ * Overwrite le fichier d'origine. Retourne `false` si le fichier est illisible
+ * (HEIC sur API < 28, JPEG corrompu, OOM imprévu) — l'appelant abort l'INSERT
+ * Room pour ne pas pointer vers un fichier corrompu.
+ *
+ * Pipeline : `inJustDecodeBounds` pour lire les dims sans charger le bitmap,
+ * `inSampleSize` (puissance de 2) pour décoder à ~2× la cible (mitige OOM sur
+ * Pro mode 50 MP), resize fin via `createScaledBitmap`, rotation EXIF appliquée
+ * pixel-side puis EXIF normalisé (sinon les viewers pivoteraient en double).
+ */
+private fun compressCapture(file: File): Boolean {
+    val path = file.absolutePath
+    return try {
+        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        BitmapFactory.decodeFile(path, bounds)
+        val srcW = bounds.outWidth
+        val srcH = bounds.outHeight
+        if (srcW <= 0 || srcH <= 0) return false
+
+        val orientation = ExifInterface(path).getAttributeInt(
+            ExifInterface.TAG_ORIENTATION,
+            ExifInterface.ORIENTATION_NORMAL,
+        )
+
+        // Plus grande puissance de 2 telle que dim/sample reste >= 2× cible
+        // (garde de la marge pour le resize fin sans flou de quantization).
+        var sampleSize = 1
+        val margin = TARGET_LONG_EDGE * 2
+        while (srcW / (sampleSize * 2) >= margin && srcH / (sampleSize * 2) >= margin) {
+            sampleSize *= 2
+        }
+
+        val decoded = BitmapFactory.decodeFile(
+            path,
+            BitmapFactory.Options().apply { inSampleSize = sampleSize },
+        ) ?: return false
+
+        val maxEdge = maxOf(decoded.width, decoded.height)
+        val scaled = if (maxEdge > TARGET_LONG_EDGE) {
+            val scale = TARGET_LONG_EDGE.toFloat() / maxEdge
+            val newW = (decoded.width * scale).toInt().coerceAtLeast(1)
+            val newH = (decoded.height * scale).toInt().coerceAtLeast(1)
+            val s = Bitmap.createScaledBitmap(decoded, newW, newH, true)
+            if (s !== decoded) decoded.recycle()
+            s
+        } else {
+            decoded
+        }
+
+        val rotated = applyExifRotation(scaled, orientation)
+        if (rotated !== scaled) scaled.recycle()
+
+        FileOutputStream(file).use { fos ->
+            rotated.compress(Bitmap.CompressFormat.JPEG, JPEG_QUALITY, fos)
+        }
+        rotated.recycle()
+        true
+    } catch (t: Throwable) {
+        Log.w("CaptureLauncher", "compressCapture failed for $path", t)
+        false
+    }
+}
+
+private fun applyExifRotation(bitmap: Bitmap, orientation: Int): Bitmap {
+    val matrix = Matrix()
+    when (orientation) {
+        ExifInterface.ORIENTATION_ROTATE_90 -> matrix.postRotate(90f)
+        ExifInterface.ORIENTATION_ROTATE_180 -> matrix.postRotate(180f)
+        ExifInterface.ORIENTATION_ROTATE_270 -> matrix.postRotate(270f)
+        ExifInterface.ORIENTATION_FLIP_HORIZONTAL -> matrix.postScale(-1f, 1f)
+        ExifInterface.ORIENTATION_FLIP_VERTICAL -> matrix.postScale(1f, -1f)
+        ExifInterface.ORIENTATION_TRANSPOSE -> {
+            matrix.postRotate(90f); matrix.postScale(-1f, 1f)
+        }
+        ExifInterface.ORIENTATION_TRANSVERSE -> {
+            matrix.postRotate(270f); matrix.postScale(-1f, 1f)
+        }
+        else -> return bitmap
+    }
+    return Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
 }
