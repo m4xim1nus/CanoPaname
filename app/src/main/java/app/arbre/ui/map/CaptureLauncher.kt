@@ -315,11 +315,34 @@ private fun compressCapture(file: File): Boolean {
             rotated.compress(Bitmap.CompressFormat.JPEG, JPEG_QUALITY, fos)
         }
         rotated.recycle()
+        stripSensitiveExif(file)
         true
     } catch (t: Throwable) {
         Log.w("CaptureLauncher", "compressCapture failed for $path", t)
         false
     }
+}
+
+// `Bitmap.compress(JPEG)` produit déjà un fichier sans EXIF, mais on force
+// explicitement le strip pour garantir le contrat (cf. PRIVACY.md : « la photo
+// ne contient ni GPS, ni signature matériel »). Ceinture-bretelles si le
+// pipeline d'encodage change un jour.
+private fun stripSensitiveExif(file: File) {
+    val exif = ExifInterface(file.absolutePath)
+    listOf(
+        ExifInterface.TAG_GPS_LATITUDE, ExifInterface.TAG_GPS_LATITUDE_REF,
+        ExifInterface.TAG_GPS_LONGITUDE, ExifInterface.TAG_GPS_LONGITUDE_REF,
+        ExifInterface.TAG_GPS_ALTITUDE, ExifInterface.TAG_GPS_ALTITUDE_REF,
+        ExifInterface.TAG_GPS_TIMESTAMP, ExifInterface.TAG_GPS_DATESTAMP,
+        ExifInterface.TAG_GPS_PROCESSING_METHOD,
+        ExifInterface.TAG_MAKE, ExifInterface.TAG_MODEL,
+        ExifInterface.TAG_SOFTWARE,
+        ExifInterface.TAG_IMAGE_UNIQUE_ID,
+        ExifInterface.TAG_BODY_SERIAL_NUMBER,
+        ExifInterface.TAG_LENS_MAKE, ExifInterface.TAG_LENS_MODEL,
+        ExifInterface.TAG_LENS_SERIAL_NUMBER,
+    ).forEach { exif.setAttribute(it, null) }
+    exif.saveAttributes()
 }
 
 private fun applyExifRotation(bitmap: Bitmap, orientation: Int): Bitmap {
