@@ -163,7 +163,7 @@ private fun HeroLogo() {
         Icon(
             painter = painterResource(R.drawable.ic_arbre_canonical),
             contentDescription = null,
-            tint = MaterialTheme.arbresColors.or,
+            tint = MaterialTheme.arbresColors.remarquableOrange,
             modifier = Modifier.size(56.dp),
         )
     }

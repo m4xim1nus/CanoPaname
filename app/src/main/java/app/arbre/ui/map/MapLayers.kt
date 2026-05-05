@@ -147,16 +147,28 @@ internal fun setArbresGeoJson(style: Style, json: String) {
  * le clustering sur la source filtrée — donc une carte lisible avec
  * clusters d'espèce au dezoom et pins individuels au z14+.
  *
+ * Filtre additionnel : sur cette carte filtrée, on retire aussi les arbres
+ * remarquables que le joueur n'a pas encore capturés. Sans cela, leur seule
+ * présence (même rendue en gris) trahit leur position et rend la chasse
+ * triviale. La carte principale (mode non filtré) n'utilise pas cette
+ * fonction et garde donc tous les remarquables visibles (gris ou orange).
+ *
  * Implémentation : la sortie de `tools/build_dataset.py` est très régulière
  * (`json.dumps(separators=(",", ":"))`, ordre des clés stable), donc on peut
  * tokeniser sur `,{"type":"Feature"` et tester le suffixe `"sk":N}}` au lieu
  * de parser/reconstruire 32 Mo de JSON via `JSONObject` (qui exploserait la
  * heap). Coût : un seul scan linéaire de la string + StringBuilder.
  */
-internal fun filterGeoJsonBySpecies(json: String, sk: Int): String {
+internal fun filterGeoJsonBySpecies(
+    json: String,
+    sk: Int,
+    capturedRemarquables: Set<Long>,
+): String {
     val featureSeparator = ",{\"type\":\"Feature\""
     val skSuffix = "\"sk\":$sk}}"
     val featuresMarker = "\"features\":["
+    val idMarker = "\"id\":"
+    val remarquableMarker = "\"remarquable\":"
     val openIdx = json.indexOf(featuresMarker).let {
         if (it == -1) return EMPTY_GEOJSON else it + featuresMarker.length
     }
@@ -175,9 +187,20 @@ internal fun filterGeoJsonBySpecies(json: String, sk: Int): String {
         // dump JSON l'utilise). Si on change l'ordre côté Python, casser ce
         // contrat ici se traduit par une carte filtrée vide — ne pas rater.
         if (json.regionMatches(end - skSuffix.length, skSuffix, 0, skSuffix.length)) {
-            if (!first) sb.append(",")
-            sb.append(json, pos, end)
-            first = false
+            // Skip les remarquables non encore capturés. Mêmes markers que
+            // `enrichGeoJsonWithDiscovery` ci-dessous : `id` puis `remarquable`
+            // dans l'ordre d'insertion stable.
+            val idStart = json.indexOf(idMarker, pos) + idMarker.length
+            val idEnd = json.indexOf(',', idStart)
+            val id = json.substring(idStart, idEnd).toLong()
+            val remStart = json.indexOf(remarquableMarker, idEnd) + remarquableMarker.length
+            val remarquable = json[remStart] == 't'
+            val keep = !remarquable || id in capturedRemarquables
+            if (keep) {
+                if (!first) sb.append(",")
+                sb.append(json, pos, end)
+                first = false
+            }
         }
         if (nextSep == -1 || nextSep >= closeIdx) break
         pos = nextSep + 1

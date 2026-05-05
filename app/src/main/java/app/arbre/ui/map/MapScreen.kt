@@ -351,7 +351,11 @@ fun MapScreen(
                                 } ?: (emptySet<Int>() to emptySet<Long>())
                                 val json = withContext(Dispatchers.Default) {
                                     enrichGeoJsonWithDiscovery(
-                                        filterGeoJsonBySpecies(rawJson, filterSpecies),
+                                        filterGeoJsonBySpecies(
+                                            rawJson,
+                                            filterSpecies,
+                                            initialCaptures.second,
+                                        ),
                                         initialCaptures.first,
                                         initialCaptures.second,
                                     )
@@ -646,7 +650,7 @@ fun MapScreen(
                     nbPhotos = capturesArbre.size,
                     onCapturer = { capturer(openedArbre) },
                     captureAvailability = availability,
-                    onSpeciesClick = if (isDiscovered && sk != null) {
+                    onSpeciesClick = if (sk != null && sk in capturedSpecies) {
                         {
                             viewModel.closeDetail()
                             onSpeciesClick(sk)

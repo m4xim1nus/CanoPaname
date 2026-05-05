@@ -22,7 +22,6 @@ import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.outlined.OpenInNew
 import androidx.compose.material.icons.outlined.Map
-import androidx.compose.material.icons.outlined.Park
 import androidx.compose.material.icons.outlined.PictureAsPdf
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -285,7 +284,7 @@ private fun CelebrationHero(entry: SpeciesEntry) {
                 verticalArrangement = Arrangement.Center,
             ) {
                 Icon(
-                    imageVector = Icons.Outlined.Park,
+                    painter = painterResource(R.drawable.ic_arbre_canonical),
                     contentDescription = null,
                     tint = arbresColors.feuilleSombre,
                     modifier = Modifier

@@ -38,59 +38,50 @@ App perso, pas de calendrier engageant. Phases ordonnées du plus pragmatique au
 
 **Phase 10.5 — Polish post-smoke 2026-05 ✅** : 9 sous-groupes A→I traitant 11+ remarques de la session device du 2026-05-04. Refonte iconographie remarquables (plaque chanfreinée → disque orange + platane crème, contrat couleur orange stabilisé), fiche remarquable enrichie + parcours croisé (boutons « Fiche remarquable » / « Fiche espèce » conditionnés), `PhotoLightbox` plein écran, renommage `Pokédex → Catalogue` + tris (Arboretum par count Paris décroissant, Remarquables groupé par arrondissement avec sticky headers), splash cascade de mini-platanes en boucle + empty state Profil refondu + rotation carte bloquée, conditionnement à la capture (info masquée tant que non gagnée), polish + GPS first-launch via bridge MapLibre → `LocationProvider`, banque ~240 tips informatifs rotatifs sur le splash, coloration progressive des clusters carte (3 buckets gris/vert clair/vert foncé via `clusterProperty discovered_count`), alignement compteur splash avec carte (213 042). Bump `versionCode → 9` / `versionName → "0.9.0"`.
 
-## Phase 11 — Préparation de la release v1.0.0
+**Phase 11 — Préparation de la release v1.0.0 (11A+11B) ✅** : sous-phases livrées du plan d'audit pré-public (cf. [docs/audit-pre-public.md](docs/audit-pre-public.md)).
+- **11A documentation publique** : refonte `README.md` v1.0 (3 screenshots, install Obtainium, permissions, FAQ, attributions), `CHANGELOG.md` Keep-a-Changelog `[1.0.0]`, `PRIVACY.md` ~200 mots tutoiement, `SECURITY.md` projet perso, `.github/release-template.md`, épuration `CLAUDE.md` + `ROADMAP.md` (408 → 144 lignes).
+- **11B légal & attributions** : `app/src/main/assets/licenses/Fraunces-OFL.txt` (OFL 1.1 intégral), `NOTICE.md` racine, `app/src/main/assets/databases/ODbL-NOTICE.txt` (les-arbres + arbresremarquablesparis), mention « Source : Wikipédia FR · CC BY-SA 4.0 » sous le summary `WikipediaBlock`, `Routes.ABOUT` + `AboutScreen` accessible depuis le Profil, copyright `LICENSE` étoffé.
 
-> Plan détaillé issu de l'audit pré-public (équipe de 7 sous-agents — privacy, sécurité, hygiène repo, doc, légal, migration, release). Détail complet des findings, drafts et commandes : [docs/audit-pre-public.md](docs/audit-pre-public.md). Charge totale ~4 j. Cut retenu : **P0 + P1 + P2 triviaux**.
+> **Reste à valider/faire avant tag** : (1) check device que MapLibre affiche bien le bouton attribution OSM/OpenFreeMap (déplacé en validation Phase 12) ; (2) recherche manuelle « CanoPaname » sur https://bases-marques.inpi.fr/ (déplacée en pré-requis Phase 13C, juste avant le passage public).
+
+## Phase 12 — Hot fixes post-tests live
+
+> 5 retours UX/visuels remontés après les sessions live device de la Phase 11. Périmètre volontairement chirurgical : aucun changement d'architecture, aucune migration Room, aucun nouveau package. On reste sur `main` directement, vu la trivialité des changements.
+
+- [ ] **12.1** WelcomeScreen — passer le tint du platane circulaire `HeroLogo` de `arbresColors.or` à `arbresColors.remarquableOrange` (cohérence visuelle avec les pins remarquables capturés).
+- [ ] **12.2** Splash tips — insérer un retour à la ligne entre les phrases des tips rotatifs : pass éditorial sur `tools/splash-tips-static.json` + adaptation des templates dans `tools/build_dataset.py:write_splash_tips()`, régénération de `app/src/main/assets/splash-tips.json`. Bump `maxLines = 3` → `maxLines = 4` dans `MapOverlays.kt:227-234` (marge pour les tips à 3 phrases).
+- [ ] **12.3** Célébration nouvelle espèce — remplacer `Icons.Outlined.Park` (sapin Material) par `R.drawable.ic_arbre_canonical` (platane canonique tintable) dans `CelebrationHero` (`SpeciesDetailScreen.kt:287-298`). Cleanup import `androidx.compose.material.icons.outlined.Park` si devenu inutilisé.
+- [ ] **12.4** Carte filtrée espèce — masquer les arbres remarquables non capturés. Étendre `filterGeoJsonBySpecies` (MapLayers.kt:156-187) avec un param `capturedRemarquables: Set<Long>` ; skipper les features `remarquable=true && id !in capturedRemarquables`. Adapter le call site `MapScreen.kt:354`. **Non-régression** : la carte principale (mode non filtré) doit continuer à montrer tous les remarquables (gris si non capturé, orange si capturé).
+- [ ] **12.5** Modal détail arbre — gater le bouton « Fiche espèce » sur la capture de l'espèce. Côté `MapScreen`, passer `onSpeciesClick = null` à `ArbreDetailContent` si `arbre.speciesIndex !in capturedSpecies`. Réplique du pattern `RemarquableDetailScreen.kt:77-78,129-131`. Concerne en pratique les remarquables capturés dont l'espèce n'est pas par ailleurs débloquée.
+
+### Validation device Phase 12
+
+- [ ] Smoke des 5 fixes ci-dessus (cf. plan d'implémentation, vérification end-to-end).
+- [ ] **P0 hérité 11B** : confirmer que MapLibre affiche bien le bouton attribution OSM/OpenFreeMap (par défaut `uiSettings.isAttributionEnabled = true`). Si non visible, le forcer.
+
+---
+
+### 🛑 Cut « stop fix » — fin des tests live, gel de la surface code applicatif
+
+> **Au moment où cette ligne est cochée** : les 5 fixes Phase 12 sont mergés sur `main`, le smoke device est OK. À partir d'ici, plus aucun commit qui touche du code applicatif sauf s'il vient de la checklist Phase 13 ci-dessous, ou exception bug critique.
+>
+> Rappel pour Claude Code : si on relance une session après ce point et qu'un nouveau fix UX/feature est demandé, **rappeler ce cut au user et demander confirmation** avant de toucher au code applicatif. Un fix de fond qui contourne le hardening 13A est un risque (ex. réintroduire `photoPath` absolu, sauter l'EXIF strip, oublier la migration).
+
+- [ ] **🛑 Cut acté** : tests live et hot fixes Phase 12 terminés, on entre dans les sous-phases bloquantes.
+
+---
+
+## Phase 13 — Hardening, identité, release
+
+> Plan détaillé issu de l'audit pré-public (équipe de 7 sous-agents — privacy, sécurité, hygiène repo, doc, légal, migration, release). Détail complet des findings, drafts et commandes : [docs/audit-pre-public.md](docs/audit-pre-public.md). Charge totale ~2,5 j sur ce qui reste. Cut retenu : **P0 + P1 + P2 triviaux**.
 
 ### Stratégie d'exécution & git
 
-Les sous-phases sont **ordonnées chronologiquement** (pas par axe de l'audit). Logique :
+Les sous-phases sont **ordonnées chronologiquement** (pas par axe de l'audit). Logique : 13A, 13B, 13C sont *bloquantes* l'une de l'autre — elles touchent à la surface code, à l'historique git, et au tag final. Un fix UX qui arrive dans cette fenêtre risque de réintroduire un trou de sécurité ou de casser le rewrite history.
 
-1. **11A & 11B parallélisables** avec une dernière journée de tests live sur device : ce sont des ajouts de fichiers (docs, NOTICE, AboutScreen, screenshots) qui n'entrent pas en conflit avec d'éventuels petits fix UX/feature.
-2. **🛑 Cut "stop fix"** : à l'issue des tests live, on déclare la fin du flow "fix de fond". Plus aucun changement applicatif sauf bugs critiques ou items Phase 11.
-3. **11C, 11D, 11E** sont *bloquantes* : elles touchent à la surface code, à l'historique git, et au tag final — un fix UX qui arrive dans cette fenêtre risque de réintroduire un trou de sécurité ou de casser le rewrite history.
+**Branches recommandées** : `phase-13/hardening`, `phase-13/identity`, `phase-13/release` — branches courtes mergées séquentiellement dans `main`.
 
-**Branches recommandées** :
-- `main` toujours mergeable, état "production".
-- `live-test/v1-fixes` : tes petits fix issus des tests live, mergés dans `main` au fil de l'eau.
-- `phase-11/docs`, `phase-11/legal` : branches courtes en parallèle des tests, mergées dans `main` quand prêtes.
-- `phase-11/hardening`, `phase-11/identity` : branches courtes après le cut, mergées séquentiellement.
-
-### 11A — Documentation publique parallélisable *(0,5 j, en parallèle des tests live)*
-
-- [x] **P0** Refonte `README.md` ✅ — statut v1.0, 3 screenshots `docs/screenshots/`, install Obtainium + fingerprint placeholder, permissions justifiées, lien PRIVACY, FAQ, attributions, note "no PR externe".
-- [x] **P0** Créer `CHANGELOG.md` ✅ — Keep-a-Changelog avec `[1.0.0]` = synthèse phases 0 → 10.5, date placeholder à figer au tag.
-- [x] **P0** Créer `PRIVACY.md` ✅ — ~200 mots tutoiement (draft annexe C).
-- [x] **P1** Épurer `CLAUDE.md` ✅ — section `## Setup (déjà fait sur cette machine)` retirée, marqueurs « Phase X » / « Sprint Y » neutralisés (zéro hit `grep -E '(Phase [0-9]|Sprint [A-Z])'`), préambule de 2 lignes ajouté en tête.
-- [x] **P1** Épurer `ROADMAP.md` ✅ — `## Idées en vrac` retirée, `### Bugs Phase 9 corrigés` retirée, phases 0 → 10.5 condensées en paragraphes courts (1-3 lignes par phase). Phase 11 conservée intégralement. 408 → 144 lignes.
-- [x] **P1** Sélectionner les screenshots ✅ — `docs/screenshots/{01-onboarding,02-carte,03-fiche-arbre}.png` depuis `manual_tests/20260505/`.
-- [x] **P1** Créer `.github/release-template.md` ✅ — draft annexe I.
-- [x] **P2** Créer `SECURITY.md` ✅ — ~8 lignes : projet personnel sans bounty, vulnérabilités → email `canopaname@pm.me` ou issue GitHub, scope local-only.
-
-### 11B — Légal & attributions parallélisable *(0,5 j, en parallèle des tests live)*
-
-- [x] **P0** Embarquer `app/src/main/assets/licenses/Fraunces-OFL.txt` ✅ (texte OFL 1.1 intégral + copyright Fraunces Project Authors).
-- [x] **P0** Créer `NOTICE.md` racine ✅ (data, fonts, libs ; mention « projet indépendant, non affilié à la Ville de Paris »).
-- [x] **P0** Créer `app/src/main/assets/databases/ODbL-NOTICE.txt` ✅ (wording §4.3 ODbL + Derivative Database §4.4 pour les 2 datasets).
-- [x] **P0** Ajouter ligne « Source : Wikipédia FR · CC BY-SA 4.0 » sous le summary dans `WikipediaBlock` ✅ (Row clickable bodySmall sous le CTA Wikipedia).
-- [ ] **P0** Vérifier sur device que MapLibre affiche le bouton attribution OSM/OpenFreeMap (par défaut `uiSettings.isAttributionEnabled = true`). Si non visible, le forcer. *(Smoke device à valider — pas touché côté code car le défaut MapLibre 11.x est déjà true.)*
-- [x] **P1** `Routes.ABOUT` + `AboutScreen` Compose accessible depuis `ProfileScreen.kt` sous `HowToPlayEntry` ✅ (identité + version BuildConfig + lien repo + 6 attributions + lien NOTICE.md).
-- [x] **P2** Étoffer copyright `LICENSE` ✅ : `Copyright (c) 2026 m4xim1nus (https://github.com/m4xim1nus)`.
-- [ ] **P3** Recherche manuelle "CanoPaname" sur https://bases-marques.inpi.fr/ (5 min avant push public).
-
----
-
-### 🛑 Cut "stop fix" — fin des tests live, gel de la surface code applicatif
-
-> **Au moment où cette ligne est cochée** : les tests live device sont terminés, tous les petits fix issus des tests sont mergés dans `main`. À partir d'ici, plus aucun commit qui touche du code applicatif sauf s'il vient de la checklist Phase 11 ci-dessous, ou exception bug critique.
-> 
-> Rappel pour Claude Code : si on relance une session après ce point et qu'un nouveau fix UX/feature est demandé, **rappeler ce cut au user et demander confirmation** avant de toucher au code applicatif. Un fix de fond qui contourne le hardening 11C est un risque (ex. réintroduire `photoPath` absolu, sauter l'EXIF strip, oublier la migration).
-
-- [ ] **🛑 Cut acté** : tests live terminés, fix de fond mergés, on entre dans les sous-phases bloquantes.
-
----
-
-### 11C — Hardening code & assets *(1 j, après le cut)*
+### 13A — Hardening code & assets *(1 j, après le cut)*
 
 #### Privacy & sécurité Manifest
 - [ ] **P1** `android:allowBackup="false"` dans `AndroidManifest.xml:16` (cohérent avec promesse "tout reste local"). Vider ou supprimer `backup_rules.xml` / `data_extraction_rules.xml`.
@@ -112,7 +103,7 @@ Les sous-phases sont **ordonnées chronologiquement** (pas par axe de l'audit). 
 #### Code source — pass épuration commentaires
 - [ ] **P1** Pass d'épuration des commentaires Kotlin (~0,5 j) : relire les fichiers non-triviaux (`MapScreen`, `MapLayers`, `BackupImporter`, `BadgeEvaluator`, `CaptureLauncher`, `ArbreDatabase`, `SplashTipsController`, `SpeciesDetailScreen`) et appliquer la règle « garder uniquement ce qui justifie un *pourquoi* non-évident — supprimer tout ce qui décrit *quoi* ». Les marqueurs de phase (`// Phase 10.5 sous-groupe F`, `// Sprint I`) et les explications de cycle de dev partent. Garder les commentaires sur les contraintes cachées (thread MapLibre, ordinal Season persisté, contrat de format GeoJSON, etc.).
 
-### 11D — Identité & rewrite history *(0,5 j, après 11C consolidé sur main)*
+### 13B — Identité & rewrite history *(0,5 j, après 13A consolidé sur main)*
 
 - [ ] **P0** Backup git complet : `git clone --mirror . /tmp/arbre-app-backup-$(date +%Y%m%d).git`.
 - [ ] **P0** Renommer le repo GitHub `m4xim1nus/Arbres` → `m4xim1nus/CanoPaname` (Settings → General → Rename, action manuelle web). GitHub installe une redirection 301 automatique depuis l'ancien nom. Mettre à jour le remote local : `git remote set-url origin git@github.com:m4xim1nus/CanoPaname.git`. À faire **avant** le rewrite filter-repo.
@@ -126,8 +117,9 @@ Les sous-phases sont **ordonnées chronologiquement** (pas par axe de l'audit). 
 - [ ] **P2** Aligner `settings.gradle.kts` : `rootProject.name = "canopaname"`.
 - [ ] **P3** Validation : `gitleaks detect --source .` retourne 0 finding.
 
-### 11E — Pipeline release & passage public *(1 j, après 11D)*
+### 13C — Pipeline release & passage public *(1 j, après 13B)*
 
+- [ ] **Pré-requis** Recherche manuelle « CanoPaname » sur https://bases-marques.inpi.fr/ (5 min, hérité Phase 11B item P3).
 - [ ] **P0** Générer keystore release prod (`keytool -genkey -v -keystore arbres-release.jks ...` cf. CLAUDE.md). Conserver hors-repo + hors-machine (perte = plus jamais d'update).
 - [ ] **P0** Créer 4 secrets GitHub : `RELEASE_KEYSTORE_BASE64`, `RELEASE_STORE_PASSWORD`, `RELEASE_KEY_ALIAS`, `RELEASE_KEY_PASSWORD`.
 - [ ] **P0** Créer `.github/workflows/release.yml` avec décodage keystore + **guard anti-debug-signing** (apksigner CN check, fail si `CN=Android Debug`) + génération SHA256. Draft annexe G du rapport d'audit.

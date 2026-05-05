@@ -1449,8 +1449,18 @@ def write_splash_tips(
         if t["id"] in seen_ids:
             raise ValueError(f"id en doublon : {t['id']}")
         seen_ids.add(t["id"])
-        # On ne sérialise que les champs utiles côté Kotlin.
-        out = {"id": t["id"], "category": t["category"], "text": t["text"]}
+        # On ne sérialise que les champs utiles côté Kotlin. Le `". "` séparant
+        # les phrases est rendu en `\n` à la sortie : le splash Compose les
+        # affiche sur des lignes distinctes (cf. `MapOverlays.ColdStartSplash`,
+        # `Text(..., maxLines = 4)`). Idempotent — `.replace(". ", ".\n")` est
+        # no-op sur un texte déjà splitté. À ne pas faire : utiliser des
+        # abréviations type « M. Dupont » ou « cf. … » dans les tips, elles
+        # seraient splittées au mauvais endroit.
+        out = {
+            "id": t["id"],
+            "category": t["category"],
+            "text": t["text"].replace(". ", ".\n"),
+        }
         if t.get("requires"):
             out["requires"] = list(t["requires"])
         final_tips.append(out)
