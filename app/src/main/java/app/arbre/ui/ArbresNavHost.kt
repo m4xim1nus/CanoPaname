@@ -10,6 +10,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import app.arbre.data.rememberOnboardingStore
+import app.arbre.ui.about.AboutScreen
 import app.arbre.ui.arboretum.ArboretumScreen
 import app.arbre.ui.badges.BadgesScreen
 import app.arbre.ui.map.MapScreen
@@ -37,6 +38,7 @@ object Routes {
     // un MapViewModel propre (caméra à Paris z11, pas la dernière position
     // mémorisée par l'écran principal) et une entrée séparée sur le backstack.
     const val MAP_FILTERED = "map_filtered/{speciesIndex}"
+    const val ABOUT = "about"
 
     fun species(speciesIndex: Int, celebrate: Boolean = false): String =
         "species/$speciesIndex?celebrate=$celebrate"
@@ -94,7 +96,11 @@ fun ArbresNavHost() {
                 onBack = { nav.popBackStack() },
                 onBadgesClick = { nav.navigate(Routes.BADGES) },
                 onHowToPlayClick = { nav.navigate(Routes.WELCOME_REPLAY) },
+                onAboutClick = { nav.navigate(Routes.ABOUT) },
             )
+        }
+        composable(Routes.ABOUT) {
+            AboutScreen(onBack = { nav.popBackStack() })
         }
         composable(Routes.BADGES) {
             BadgesScreen(onBack = { nav.popBackStack() })

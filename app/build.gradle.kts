@@ -92,7 +92,10 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
     kotlinOptions { jvmTarget = "17" }
-    buildFeatures { compose = true }
+    buildFeatures {
+        compose = true
+        buildConfig = true
+    }
     testOptions {
         // Neutralise les exceptions android.util.Log dans les tests JVM purs
         // (BackupImporter logue erreurs sans qu'on veuille tirer Robolectric).
