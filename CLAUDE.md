@@ -132,6 +132,29 @@ Conventions :
 - **Pas de feature flags, pas d'A/B**. C'est une app perso.
 - **Pas de service externe au runtime.** La fiche-espèce ne fait pas exception : tout est pré-baké dans `assets/species-info.json` (texte Wikipedia FR + stats Paris) à build-time par `tools/build_dataset.py`. Les images Wikipedia sont volontairement absentes — les photos des captures utilisateur servent d'illustration.
 
+## Workflow & docs
+
+Trois fichiers se partagent la planification produit, sans recouvrement :
+
+| Fichier | Rôle | Quand l'éditer |
+|---|---|---|
+| `ROADMAP.md` | Plan opérationnel vivant : *Cycle en cours* (très détaillé), *Prochains cycles* (1-3 noms, scope dégradé), *Cycles livrés post-1.0* (résumé 3-5 lignes), *Historique pré-1.0* (figé). | À chaque rotation de cycle, et quand le détail d'un prochain cycle se précise. |
+| `BACKLOG.md` | File d'attente non ordonnée des items capturés (audit, retours, idées, bugs). 1 ligne = 1 item, format `- [TAG] description (origine, date)`. | Append-only en cours de session. Tri en lot au début d'un cycle. |
+| `CHANGELOG.md` | Vérité release immuable (Keep a Changelog, SemVer). | À chaque tag, et là **seulement**. |
+
+**Naming** : les cycles sont nommés par codename court (ex. *Vérité*, *Photos*, *Variantes*) — **jamais** par numéro SemVer. SemVer n'apparaît que dans `CHANGELOG.md` au moment du tag, choisi a posteriori selon ce qui a réellement shippé.
+
+**Tags BACKLOG** : `[ ]` (à trier), `[→Codename]` (rangé dans un cycle), `[creuser]` (mérite réflexion avant arbitrage), `[refusé]` (tranché négatif, conserver la trace pour ne pas re-débattre). Origine : `audit`, `user:moi`, `user:F&F`, `gh#42`, `device-test`. Triage en 5 min en début de cycle.
+
+**Procédure de rotation d'un cycle** (à exécuter quand l'utilisateur dit « ferme le cycle X » ou équivalent) :
+1. Compresser le bloc « Cycle en cours » de `ROADMAP.md` à 3-5 lignes (intent + résultat + lien CHANGELOG entry).
+2. Pousser ce résumé en tête de « Cycles livrés post-1.0 » avec date et version SemVer effective.
+3. Vérifier que `CHANGELOG.md` a bien la nouvelle entrée `[X.Y.Z]` détaillée.
+4. Promouvoir le cycle suivant de « Prochains cycles » → « Cycle en cours », et le détailler item par item depuis le BACKLOG (items `[→Codename]` du nouveau cycle).
+5. Marquer dans `BACKLOG.md` les items absorbés par le cycle clôturé comme livrés (les retirer ou ligne barrée).
+
+**GitHub Issues** = boîte aux lettres externe, pas backlog. Quand un retour arrive en issue, le rapatrier dans `BACKLOG.md` (avec `gh#N` en origine), répondre « noté, suivi via CHANGELOG » et fermer. Évite de gérer deux backlogs.
+
 ## Quand tu travailles ici
 
 - Avant de toucher au build, regarde `gradle/libs.versions.toml` — c'est la source de vérité des versions.
@@ -143,4 +166,4 @@ Conventions :
 - Si tu ajoutes un badge : `BadgeDef` dans `data/Badge.kt` (l'enregistrer dans `BadgeCatalog.ALL`) + branche dans `BadgeEvaluator.evaluate(...)` + icône dans `ui/badges/BadgeIcons.kt`. Le compteur `« X / 15 »` du `BadgesScreen` se base sur `BadgeCatalog.ALL.size` — pas de constante hardcodée.
 - Si tu changes le format de backup : bumper `BackupModels.CURRENT_SCHEMA_VERSION`, garder un path d'import versionné (le format actuel = v1), tester re-import du même zip = idempotent.
 - Si tu ajoutes une route : la déclarer dans `Routes` (avec helper de construction si paramétrée) **et** ajouter le `composable(...)` correspondant dans `ArbresNavHost`. Les paramètres typés passent par `navArgument(...)`.
-- Mets à jour `ROADMAP.md` quand tu termines une étape ou quand tu changes le périmètre d'une phase.
+- Tout retour, idée ou bug capté en cours de session va d'abord dans `BACKLOG.md` (1 ligne, tag `[ ]` si non trié). Ne pas écrire directement dans `ROADMAP.md` — c'est la rotation de cycle qui promeut.

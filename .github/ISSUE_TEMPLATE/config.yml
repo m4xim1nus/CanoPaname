@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Lire le CHANGELOG
+    url: https://github.com/m4xim1nus/CanoPaname/blob/main/CHANGELOG.md
+    about: Voir ce qui a été livré, version par version.
+  - name: Lire la roadmap
+    url: https://github.com/m4xim1nus/CanoPaname/blob/main/ROADMAP.md
+    about: Voir le cycle en cours et les prochains cycles avant d'ouvrir une idée.

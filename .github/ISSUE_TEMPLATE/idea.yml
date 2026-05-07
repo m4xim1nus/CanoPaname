@@ -1,0 +1,38 @@
+name: Idée
+description: Suggestion de feature, d'amélioration UX, de retour produit.
+title: "[Idée] "
+labels: ["idée"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Merci pour l'idée. CanoPaname suit une vision *single-player, family & friends, simplicité avant scale, sans Google Play Services* — toute idée qui s'aligne avec ça est lue avec attention. Les autres aussi, mais peuvent être refusées avec courtoisie.
+
+        Le suivi se fait dans `BACKLOG.md` au repo. L'issue sera fermée après rapatriement, et le sort de l'idée sera visible dans le `CHANGELOG.md` si elle est livrée.
+
+  - type: textarea
+    id: pitch
+    attributes:
+      label: L'idée en 2-3 phrases
+      description: Ce que ça change pour toi/le joueur. Pas besoin de design détaillé.
+      placeholder: |
+        Quand je tape sur un cluster avec des arbres déjà capturés, j'aimerais voir directement combien j'en ai capturé sur le total du cluster.
+    validations:
+      required: true
+
+  - type: textarea
+    id: why
+    attributes:
+      label: Pourquoi (optionnel)
+      description: Le besoin sous-jacent, le moment où tu en as eu envie.
+
+  - type: dropdown
+    id: scope
+    attributes:
+      label: À ton sens, c'est plutôt
+      options:
+        - Un petit polish
+        - Une vraie feature
+        - Un changement structurel
+        - Je ne sais pas
+      default: 3
