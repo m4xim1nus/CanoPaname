@@ -10,6 +10,10 @@ import android.view.ViewGroup
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.layout.Arrangement
@@ -25,7 +29,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.MenuBook
 import androidx.compose.material.icons.outlined.MyLocation
 import androidx.compose.material.icons.outlined.Person
-import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -45,7 +49,10 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -61,6 +68,7 @@ import app.arbre.data.rememberCaptureRepository
 import app.arbre.data.rememberSpeciesIndex
 import app.arbre.data.rememberRemarquableInfoRepository
 import app.arbre.data.rememberSpeciesInfoRepository
+import app.arbre.ui.common.showSnackbarFor
 import app.arbre.ui.detail.ArbreDetailContent
 import app.arbre.ui.theme.arbresColors
 import app.arbre.ui.theme.arbresMotion
@@ -68,6 +76,7 @@ import app.arbre.util.LocationProvider
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -159,6 +168,11 @@ fun MapScreen(
     var maplibreLocationCleanup by remember { mutableStateOf<(() -> Unit)?>(null) }
     val snackbar = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
+    // Vrai pendant la fenêtre [grant permission GPS → 1er fix]. Pilote le pulse
+    // du FAB GPS et la snackbar « Localisation en cours… ». Volontairement
+    // non persisté : un process death pendant l'attente repart de zéro et le
+    // user re-tap si besoin.
+    var awaitingFirstFix by remember { mutableStateOf(false) }
 
     LaunchedEffect(styleRef) {
         val style = styleRef ?: return@LaunchedEffect
@@ -259,9 +273,34 @@ fun MapScreen(
     ) { granted ->
         if (granted) {
             LocationProvider.start(ctx)
+            // Bascule le FAB en mode pulse jusqu'au 1er fix (cf. LaunchedEffect
+            // ci-dessous). Si on a déjà un last-known en mémoire, le flow
+            // émettra immédiatement et le pulse s'éteindra dans la foulée.
+            awaitingFirstFix = true
             scope.launch { centerOnUser() }
         } else {
             scope.launch { snackbar.showSnackbar("Permission de localisation refusée") }
+        }
+    }
+
+    // Observer du 1er fix après grant permission. Tant que `awaitingFirstFix`
+    // est vrai, on affiche une snackbar « Localisation en cours… » et on
+    // attend le 1er fix non-null avec timeout 30 s. Au-delà, on stoppe le pulse
+    // et on affiche un warning — le téléphone est probablement en intérieur ou
+    // capteur HS.
+    LaunchedEffect(awaitingFirstFix) {
+        if (!awaitingFirstFix) return@LaunchedEffect
+        val snackJob = launch {
+            showSnackbarFor(snackbar, "Localisation en cours…")
+        }
+        val fix = withTimeoutOrNull(30_000) {
+            LocationProvider.currentLocation.filterNotNull().first()
+        }
+        awaitingFirstFix = false
+        snackJob.cancel()
+        snackbar.currentSnackbarData?.dismiss()
+        if (fix == null) {
+            showSnackbarFor(snackbar, "GPS indisponible — sors à découvert")
         }
     }
 
@@ -453,8 +492,9 @@ fun MapScreen(
                 )
                 rem to results[0]
             }.minBy { it.second }
-            snackbar.showSnackbar(
-                "Plus proche remarquable non découvert : ${nearest.second.toInt()} m"
+            showSnackbarFor(
+                snackbar,
+                "Plus proche remarquable non découvert : ${nearest.second.toInt()} m",
             )
         }
     }
@@ -518,12 +558,24 @@ fun MapScreen(
                     .padding(16.dp),
             ) {
                 Icon(
-                    Icons.Outlined.Search,
+                    Icons.Outlined.Star,
                     contentDescription = "Plus proche remarquable",
                     tint = MaterialTheme.arbresColors.remarquableOrange,
                 )
             }
         }
+        // Pulse infini 1.0 → 1.12 pendant `awaitingFirstFix`. `Modifier.scale`
+        // affecte le draw, pas le layout, donc la hitbox du FAB reste stable.
+        val pulse = rememberInfiniteTransition(label = "gpsFabPulse")
+        val pulseScale by pulse.animateFloat(
+            initialValue = 1f,
+            targetValue = if (awaitingFirstFix) 1.12f else 1f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(durationMillis = 800),
+                repeatMode = RepeatMode.Reverse,
+            ),
+            label = "gpsFabPulseScale",
+        )
         FloatingActionButton(
             onClick = {
                 if (LocationProvider.hasFineLocationPermission(ctx)) {
@@ -535,7 +587,8 @@ fun MapScreen(
             modifier = Modifier
                 .align(Alignment.BottomEnd)
                 .windowInsetsPadding(WindowInsets.navigationBars)
-                .padding(16.dp),
+                .padding(16.dp)
+                .scale(pulseScale),
         ) {
             Icon(Icons.Outlined.MyLocation, contentDescription = "Me localiser")
         }
@@ -574,6 +627,14 @@ fun MapScreen(
         val openedArbre = viewModel.openedArbre
         if (openedArbre != null) {
             val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+            val haptic = LocalHapticFeedback.current
+            // Tic LongPress au mount du sheet : la transition pin → fiche
+            // mérite un retour kinesthésique. Keyé sur `openedArbre.id` pour
+            // refire à chaque nouveau pin sélectionné sans recompositions
+            // parasites (la lambda n'est appelée qu'à la transition d'id).
+            LaunchedEffect(openedArbre.id) {
+                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+            }
             val sk = speciesIndex.indexOf(openedArbre)
             val isDiscovered = if (openedArbre.remarquable) {
                 openedArbre.id in capturedRemarquables

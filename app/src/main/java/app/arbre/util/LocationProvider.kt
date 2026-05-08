@@ -2,7 +2,10 @@ package app.arbre.util
 
 import android.Manifest
 import android.annotation.SuppressLint
+import android.content.BroadcastReceiver
 import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.location.Location
 import android.location.LocationListener
@@ -35,6 +38,10 @@ object LocationProvider {
 
     private var manager: LocationManager? = null
     private var listener: LocationListener? = null
+    // Mémorisé pour pouvoir désenregistrer le receiver sans le contexte
+    // d'origine (évite la fuite Activity et permet le rebind depuis le receiver).
+    private var appContext: Context? = null
+    private var providersReceiver: BroadcastReceiver? = null
 
     fun hasFineLocationPermission(context: Context): Boolean =
         ContextCompat.checkSelfPermission(
@@ -52,8 +59,9 @@ object LocationProvider {
     fun start(context: Context) {
         if (!hasFineLocationPermission(context)) return
         if (listener != null) return
-        val lm = context.applicationContext
-            .getSystemService(Context.LOCATION_SERVICE) as? LocationManager
+        val app = context.applicationContext
+        appContext = app
+        val lm = app.getSystemService(Context.LOCATION_SERVICE) as? LocationManager
             ?: return
 
         val l = LocationListener { newLoc ->
@@ -85,6 +93,33 @@ object LocationProvider {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             requestOneShotSeed(lm)
         }
+
+        // Receiver système : si le user toggle GPS dans les paramètres pendant
+        // que l'app est ouverte, on rebind notre listener au lieu de rester
+        // muet. Idempotent via le check `listener != null` au-dessus —
+        // `stop() + start()` repart proprement.
+        if (providersReceiver == null) {
+            val receiver = object : BroadcastReceiver() {
+                override fun onReceive(c: Context, i: Intent) {
+                    if (i.action != LocationManager.PROVIDERS_CHANGED_ACTION) return
+                    val mgr = c.getSystemService(LocationManager::class.java) ?: return
+                    if (mgr.isProviderEnabled(LocationManager.GPS_PROVIDER) ||
+                        mgr.isProviderEnabled(LocationManager.NETWORK_PROVIDER)
+                    ) {
+                        val ctx = appContext ?: return
+                        stop()
+                        start(ctx)
+                    }
+                }
+            }
+            ContextCompat.registerReceiver(
+                app,
+                receiver,
+                IntentFilter(LocationManager.PROVIDERS_CHANGED_ACTION),
+                ContextCompat.RECEIVER_NOT_EXPORTED,
+            )
+            providersReceiver = receiver
+        }
     }
 
     @SuppressLint("MissingPermission")
@@ -102,6 +137,18 @@ object LocationProvider {
     }
 
     fun stop() {
+        // Désenregistre le receiver d'abord — sinon un PROVIDERS_CHANGED qui
+        // arrive entre les deux unbind redéclencherait `start()` orphelin.
+        val receiver = providersReceiver
+        val app = appContext
+        if (receiver != null && app != null) {
+            try {
+                app.unregisterReceiver(receiver)
+            } catch (_: IllegalArgumentException) {
+                // Déjà désenregistré (cycles parallèles).
+            }
+        }
+        providersReceiver = null
         listener?.let { manager?.removeUpdates(it) }
         listener = null
         manager = null

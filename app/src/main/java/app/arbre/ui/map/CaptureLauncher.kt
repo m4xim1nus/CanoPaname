@@ -16,7 +16,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import androidx.exifinterface.media.ExifInterface
@@ -24,6 +26,7 @@ import app.arbre.data.Arbre
 import app.arbre.data.CaptureRepository
 import app.arbre.data.Season
 import app.arbre.data.SpeciesIndex
+import app.arbre.ui.common.showSnackbarFor
 import app.arbre.util.LocationProvider
 import app.arbre.util.ageMs
 import app.arbre.util.rememberCaptureHaptic
@@ -104,6 +107,7 @@ fun rememberCaptureController(
     val scope = rememberCoroutineScope()
     val pendingArbre = remember { mutableStateOf<Arbre?>(null) }
     val captureHaptic = rememberCaptureHaptic()
+    val haptic = LocalHapticFeedback.current
 
     val takePictureLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.TakePicture()
@@ -113,6 +117,11 @@ fun rememberCaptureController(
             val file = File(File(ctx.getExternalFilesDir(null), "captures"), pending.photoBasename)
             if (!success) {
                 file.delete()
+                // Tic discret + retour textuel : annuler depuis l'app caméra
+                // n'avait aucun feedback in-app. TextHandleMove est l'haptic
+                // « light » Material — alignement avec le geste « j'annule ».
+                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                showSnackbarFor(snackbar, "Capture annulée", 2500)
                 return@launch
             }
             if (file.length() == 0L) {
@@ -143,7 +152,9 @@ fun rememberCaptureController(
                 photoPath = pending.photoBasename,
                 timestamp = pending.captureTimestamp,
             )
-            captureHaptic()
+            // Note : `captureHaptic()` a été déplacé en amont (juste avant
+            // `launcher.launch`) — le retour kinesthésique mérite d'arriver au
+            // tap sur « Capturer », pas à la fin du pipeline d'INSERT.
             onCaptured()
             // Célébration uniquement si l'espèce vient d'être débloquée. Les
             // remarquables sont exclus : `capturedSpeciesIndices` filtre déjà
@@ -162,7 +173,7 @@ fun rememberCaptureController(
         pendingArbre.value = null
         if (granted && arbre != null) {
             scope.launch {
-                runCapture(ctx, arbre, viewModel, speciesIndex, snackbar, takePictureLauncher)
+                runCapture(ctx, arbre, viewModel, speciesIndex, snackbar, takePictureLauncher, captureHaptic)
             }
         } else if (!granted) {
             scope.launch { snackbar.showSnackbar("Permission caméra requise") }
@@ -174,7 +185,7 @@ fun rememberCaptureController(
             val perm = ContextCompat.checkSelfPermission(ctx, Manifest.permission.CAMERA)
             if (perm == PackageManager.PERMISSION_GRANTED) {
                 scope.launch {
-                    runCapture(ctx, arbre, viewModel, speciesIndex, snackbar, takePictureLauncher)
+                    runCapture(ctx, arbre, viewModel, speciesIndex, snackbar, takePictureLauncher, captureHaptic)
                 }
             } else {
                 pendingArbre.value = arbre
@@ -191,6 +202,7 @@ private suspend fun runCapture(
     speciesIndex: SpeciesIndex,
     snackbar: SnackbarHostState,
     launcher: ActivityResultLauncher<android.net.Uri>,
+    captureHaptic: () -> Unit,
 ) {
     val sk = speciesIndex.indexOf(arbre)
     if (sk == null) {
@@ -240,6 +252,9 @@ private suspend fun runCapture(
         )
     )
 
+    // Tap → tic au moment où on lance l'intent caméra (après tous les checks).
+    // Auparavant joué post-INSERT, ce qui plaçait le retour ~3 s après le geste.
+    captureHaptic()
     launcher.launch(photoUri)
 }
 

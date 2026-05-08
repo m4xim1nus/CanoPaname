@@ -57,6 +57,19 @@ internal fun addArbresLayers(style: Style, json: String) {
                     Expression.toNumber(Expression.get("discovered_count"))
                 ),
                 Expression.toNumber(Expression.get("discovered"))
+            )
+            // Accumule le sous-ensemble « remarquables capturés » pour
+            // déclencher le ring orange sur la layer cluster (cf. plus bas).
+            // Sémantique : célébrer les remarquables découverts dans la zone,
+            // pas signaler ce qui reste à trouver — distinct du FAB ★ qui lui
+            // pointe vers les non découverts.
+            .withClusterProperty(
+                "discovered_remarquable_count",
+                Expression.sum(
+                    Expression.accumulated(),
+                    Expression.toNumber(Expression.get("discovered_remarquable_count"))
+                ),
+                Expression.toNumber(Expression.get("discovered_remarquable"))
             ),
     )
     style.addSource(source)
@@ -96,8 +109,31 @@ internal fun addArbresLayers(style: Style, json: String) {
                 Expression.color(android.graphics.Color.parseColor(CLUSTER_MIXED))
             )
         ),
-        PropertyFactory.circleStrokeColor("#FFFFFF"),
-        PropertyFactory.circleStrokeWidth(2f),
+        // Ring orange ssi ≥1 remarquable a été capturé dans le cluster.
+        // Empilé par-dessus le bucket gris/vert clair/vert foncé du cluster.
+        // L'expression `switchCase` sur stroke n'est pas utilisée ailleurs dans
+        // le projet — si MapLibre Native 11.11.0 venait à ne pas la supporter,
+        // fallback double-layer (ring orange filtré dédié, sous la principale).
+        PropertyFactory.circleStrokeColor(
+            Expression.switchCase(
+                Expression.gt(
+                    Expression.toNumber(Expression.get("discovered_remarquable_count")),
+                    Expression.literal(0)
+                ),
+                Expression.color(android.graphics.Color.parseColor(PIN_ORANGE)),
+                Expression.color(android.graphics.Color.parseColor("#FFFFFF"))
+            )
+        ),
+        PropertyFactory.circleStrokeWidth(
+            Expression.switchCase(
+                Expression.gt(
+                    Expression.toNumber(Expression.get("discovered_remarquable_count")),
+                    Expression.literal(0)
+                ),
+                Expression.literal(3f),
+                Expression.literal(2f)
+            )
+        ),
         PropertyFactory.circleOpacity(0.85f),
         PropertyFactory.circleRadius(20f),
     )
@@ -206,14 +242,17 @@ internal fun filterGeoJsonBySpecies(
 }
 
 /**
- * Réécrit le GeoJSON brut en injectant une propriété `discovered: 0|1` dans
- * chaque feature, calculée d'après les sets de captures du joueur :
- *   - feature `remarquable: true` → 1 ssi `id ∈ capturedRemarquables`
- *   - feature `remarquable: false` → 1 ssi `sk ∈ capturedSpecies`
+ * Réécrit le GeoJSON brut en injectant deux propriétés par feature, calculées
+ * d'après les sets de captures du joueur :
+ *   - `discovered: 0|1` :
+ *       feature `remarquable: true` → 1 ssi `id ∈ capturedRemarquables`
+ *       feature `remarquable: false` → 1 ssi `sk ∈ capturedSpecies`
+ *   - `discovered_remarquable: 0|1` : 1 ssi `remarquable && id ∈ capturedRemarquables`.
  *
- * Le flag est ensuite accumulé par Supercluster via la `clusterProperty`
- * `discovered_count` (cf. `addArbresLayers`), ce qui permet de colorer le
- * cluster en 3 buckets selon la progression locale du joueur.
+ * Les deux flags sont ensuite accumulés par Supercluster via les
+ * `clusterProperty` `discovered_count` et `discovered_remarquable_count`
+ * (cf. `addArbresLayers`), pour colorer le cluster en 3 buckets selon la
+ * progression locale + un ring orange si ≥1 remarquable y a été capturé.
  *
  * Pourquoi un scan linéaire string et pas un parse JSON : la sortie de
  * `tools/build_dataset.py` est très régulière (`json.dumps(separators=(",", ":"))`,
@@ -268,16 +307,20 @@ internal fun enrichGeoJsonWithDiscovery(
         val skStart = json.indexOf(skMarker, remStart) + skMarker.length
         val sk = json.substring(skStart, end - 2).toInt()
 
+        val remarquableCaptured = remarquable && id in capturedRemarquables
         val discovered = if (remarquable) {
-            if (id in capturedRemarquables) 1 else 0
+            if (remarquableCaptured) 1 else 0
         } else {
             if (sk in capturedSpecies) 1 else 0
         }
+        val discoveredRemarquable = if (remarquableCaptured) 1 else 0
 
         if (!first) sb.append(",")
         sb.append(json, pos, end - 2)
         sb.append(",\"discovered\":")
         sb.append(discovered)
+        sb.append(",\"discovered_remarquable\":")
+        sb.append(discoveredRemarquable)
         sb.append("}}")
         first = false
 

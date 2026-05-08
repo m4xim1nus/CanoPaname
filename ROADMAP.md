@@ -69,69 +69,32 @@ Fichiers modifiés :
 
 Résultat : `assembleDebug + lint + test` PASS.
 
-### Sprint 5 — Map UX
+### Sprint 5 — Map UX ✅ livré
 
-#### FAB ★ : icône Search → Star
+Sémantique du ring orange tranchée user (2026-05-08) : ring orange = mémoriser les découvertes remarquables (≥1 remarquable capturé dans le cluster), pas radar de ce qui reste à trouver.
 
-`ui/map/MapScreen.kt` ligne ~528 (avant sprint 1 — décaler après vérification) :
-```kotlin
-Icons.Outlined.Search → Icons.Outlined.Star
-```
-Tint `MaterialTheme.arbresColors.remarquableOrange` conservé.
+Fichiers modifiés / créés :
+- `ui/common/Snackbars.kt` (nouveau) — helper `showSnackbarFor(host, msg, ms = 5000)` : `SnackbarDuration.Indefinite` + `delay` + `dismiss`, cancellable via `coroutineScope`. Réutilisé dans MapScreen et CaptureLauncher.
+- `ui/map/MapScreen.kt` :
+  - Import `Search` → `Star` ; FAB ★ utilise `Icons.Outlined.Star` (tint `remarquableOrange` conservé).
+  - Snackbar distance remarquable passe à `showSnackbarFor(...)` (5 s).
+  - State `awaitingFirstFix` + `LaunchedEffect(awaitingFirstFix)` qui montre « Localisation en cours… » et attend `LocationProvider.currentLocation.filterNotNull().first()` avec `withTimeoutOrNull(30_000)` ; warning « GPS indisponible — sors à découvert » si timeout.
+  - FAB GPS : `rememberInfiniteTransition` + `animateFloat(1f → 1.12f, tween 800 ms, RepeatMode.Reverse)` + `Modifier.scale(pulseScale)` (draw-only, hitbox stable).
+  - `LaunchedEffect(openedArbre.id)` dans le bloc `if (openedArbre != null)` : `haptic.performHapticFeedback(HapticFeedbackType.LongPress)` au mount du sheet.
+- `util/LocationProvider.kt` :
+  - Champ `private var appContext: Context?` mémorisé dans `start(...)` pour permettre le rebind depuis le receiver.
+  - `BroadcastReceiver` privé sur `PROVIDERS_CHANGED_ACTION` : rebind via `stop() + start(appContext)` quand GPS/NETWORK redevient enabled.
+  - `ContextCompat.registerReceiver(..., RECEIVER_NOT_EXPORTED)` dans `start(...)` ; unregister défensif (try/catch `IllegalArgumentException`) AVANT `removeUpdates(listener)` dans `stop()`.
+- `ui/map/MapLayers.kt` :
+  - `enrichGeoJsonWithDiscovery` : injection `discovered_remarquable: 0|1` (1 ssi `remarquable && id ∈ capturedRemarquables`) à côté de `discovered`, dans la même boucle.
+  - `addArbresLayers` : `clusterProperty("discovered_remarquable_count", sum, get("discovered_remarquable"))` accumulé par Supercluster.
+  - Layer `arbres-clusters` : `circleStrokeColor` et `circleStrokeWidth` passent en `switchCase(gt(discovered_remarquable_count, 0), orange/3dp, white/2dp)`. **Test device requis** : aucune autre expression `switchCase` sur stroke n'existe dans le projet (1re utilisation pour MapLibre Native 11.11.0). Fallback double-layer prêt si KO.
+- `ui/map/CaptureLauncher.kt` :
+  - `val haptic = LocalHapticFeedback.current` ajouté à `rememberCaptureController`.
+  - Bloc `if (!success)` du callback `TakePicture` : `haptic.performHapticFeedback(TextHandleMove)` + `showSnackbarFor(snackbar, "Capture annulée", 2500)`.
+  - `runCapture(...)` reçoit `captureHaptic: () -> Unit` en param. Appel `captureHaptic()` déplacé juste avant `launcher.launch(photoUri)` ; ancien appel post-INSERT retiré.
 
-#### Snackbar distance remarquable 3-4 s → 5 s
-
-`ui/map/MapScreen.kt` ligne ~462-464 : `snackbar.showSnackbar("Plus proche remarquable non découvert : ${nearest.second.toInt()} m")` sans paramètre `duration` → default `Short` (4 s).
-
-Approche : nouveau helper `ui/common/Snackbars.kt` :
-```kotlin
-suspend fun showSnackbarFor(host: SnackbarHostState, msg: String, ms: Long = 5000) {
-    val job = CoroutineScope(currentCoroutineContext()).launch {
-        host.showSnackbar(msg, duration = SnackbarDuration.Indefinite)
-    }
-    delay(ms)
-    host.currentSnackbarData?.dismiss()
-    job.cancel()
-}
-```
-À utiliser dans MapScreen et partout où on veut 5 s pile.
-
-#### FAB GPS pulse pendant gap permission → 1er fix
-
-`ui/map/MapScreen.kt` lignes ~534-548 (FAB GPS) :
-- State `awaitingFirstFix: Boolean`. True quand `permissionLauncher` callback reçoit `granted=true`. False dès que `LocationProvider.currentLocation.collectAsState()` passe non-null.
-- Pulse via `Modifier.scale(...)` ou `Modifier.alpha(...)` animé via `rememberInfiniteTransition` quand `awaitingFirstFix == true`.
-- Snackbar « Localisation en cours… » à l'entrée dans `awaitingFirstFix` ; dismiss au passage à `false`.
-
-#### BroadcastReceiver `PROVIDERS_CHANGED_ACTION`
-
-`util/LocationProvider.kt` :
-- BroadcastReceiver privé écoutant `LocationManager.PROVIDERS_CHANGED_ACTION`. Sur réception : si `isProviderEnabled(GPS_PROVIDER)` ou `NETWORK_PROVIDER` redevient true → redémarrer le listener (`stop()` + `start()`).
-- Enregistrement dans `start(ctx)` (ligne 68 actuel), désenregistrement dans `stop()` (ligne 105). `ctx.applicationContext` pour éviter fuite Activity.
-- `RECEIVER_NOT_EXPORTED` (Android 13+).
-
-#### Cluster ★ ring orange
-
-`ui/map/MapLayers.kt` lignes 53-60 :
-- Ajouter `clusterProperty` `has_remarquable_count`. Comme MapLibre n'auto-cast pas `boolean`, injecter `remarquable_int` (0/1) côté Kotlin dans `enrichGeoJsonWithDiscovery` (zero-coût, même boucle que `discovered`). Ne PAS modifier `tools/build_dataset.py` (invaliderait l'asset GeoJSON pré-cuit).
-- Sur la layer `arbres-clusters` (lignes 83-105) : remplacer `circleStrokeColor("#FFFFFF")` et `circleStrokeWidth(2f)` par expressions `switchCase` qui passent à orange (`0xFFFB8C00`, ring 3 dp) si `has_remarquable_count > 0`.
-- **Risque** : si MapLibre Native 11.11.0 ne supporte pas l'expression sur `circleStrokeColor`, fallback double-layer (ring orange filtré sur `has_remarquable_count > 0`, sous la principale). À tester device.
-- Token `remarquableOrange` dispo : `Color.kt:16` `RemarquableOrange = Color(0xFFFB8C00)` ; `ArbresColors.kt:18` exposé via `MaterialTheme.arbresColors`.
-
-#### Haptiques
-
-`ui/map/MapScreen.kt` ligne ~603-631 (ouverture `ModalBottomSheet`) :
-- Wrapper avec `LaunchedEffect(openedArbre.id)` qui appelle `LocalHapticFeedback.current.performHapticFeedback(HapticFeedbackType.LongPress)`.
-
-`ui/map/CaptureLauncher.kt` ligne 148 (haptique capture déplacée) :
-- Aujourd'hui : `captureHaptic()` post-INSERT.
-- Cible : déplacer au début de `runCapture()` après les checks GPS/distance, avant `launcher.launch(photoUri)`.
-
-`ui/map/CaptureLauncher.kt` lignes 112-118 (annulation caméra) :
-- Aujourd'hui : `if (!success) { file.delete(); return@launch }` silencieux.
-- Cible : ajouter `HapticFeedbackType.TextHandleMove` (équivalent Tick) + `snackbar.showSnackbar("Capture annulée")` (durée Short).
-
-Critère : FAB ★ étoile, pulse FAB GPS post-permission, BroadcastReceiver, cluster ring orange, annulation caméra avec Tick + snackbar, haptique sheet ouverture, haptique capture au tap.
+Résultat : `assembleDebug + lint + test` PASS. Smoke device en attente (cf. `VERIFICATIONS.md` pour la check-list).
 
 ### Sprint 6 — Clôture cycle (procédure CLAUDE.md)
 
