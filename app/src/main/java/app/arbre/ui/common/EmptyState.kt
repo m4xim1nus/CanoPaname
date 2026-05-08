@@ -52,7 +52,7 @@ fun EmptyState(
         Spacer(Modifier.height(8.dp))
         Text(
             text = body,
-            style = MaterialTheme.typography.bodyMedium,
+            style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.arbresColors.ecorce,
             textAlign = TextAlign.Center,
         )

@@ -52,8 +52,6 @@ sealed class CaptureAvailability {
     object Ready : CaptureAvailability()
     object NoGps : CaptureAvailability()
     data class TooFar(val meters: Int) : CaptureAvailability()
-    /** Saison archivée ≠ saison vive : capture désactivée. */
-    object Archived : CaptureAvailability()
 }
 
 /**

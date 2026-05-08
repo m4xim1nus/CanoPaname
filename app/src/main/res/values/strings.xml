@@ -7,10 +7,6 @@
     <!-- Onboarding (Phase 5.5) -->
     <string name="welcome_title">CanoPaname</string>
     <string name="welcome_tagline">Chasse les arbres remarquables de Paris</string>
-    <string name="welcome_bullet_grey">Tous les pins de la carte commencent gris.</string>
-    <string name="welcome_bullet_proximity">Approche-toi à moins de 30 m d\'un arbre pour le capturer.</string>
-    <string name="welcome_bullet_species">Capture une espèce, et tous les arbres du même genre passent au vert.</string>
-    <string name="welcome_bullet_remarquables">Les arbres remarquables sont une chasse spéciale, à débloquer un par un.</string>
     <string name="welcome_caption">Approche-toi d\'un arbre, capture-le, et regarde son espèce passer au vert sur toute la carte.</string>
     <string name="welcome_privacy">Tout reste sur ton téléphone : pas de cloud, pas de compte.</string>
     <string name="welcome_cta_start">Commencer</string>

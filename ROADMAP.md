@@ -30,7 +30,7 @@ Fichiers modifiés :
 
 Résultat : `assembleDebug + lint + test` PASS.
 
-### Sprint 2 — Communication & docs
+### Sprint 2 — Communication & docs ✅ livré
 
 | Fichier | Édit |
 |---|---|
@@ -42,17 +42,15 @@ Résultat : `assembleDebug + lint + test` PASS.
 
 Critère de done : diff lisible, aucune promesse cassée (« 907 espèces » seul → toujours suivi de « dont X enrichies »).
 
-### Sprint 3 — Copy in-app
+### Sprint 3 — Copy in-app ✅ livré
 
-| Fichier | Édit |
-|---|---|
-| `app/src/main/res/values/strings.xml` L10-13 | Supprimer `welcome_bullet_grey`, `welcome_bullet_proximity`, `welcome_bullet_species`, `welcome_bullet_remarquables` (non utilisées). |
-| `ui/detail/ArbreDetailScreen.kt` L249-257 (`UnknownContent`) | Branche non-remarquable : « Capture cet arbre pour révéler son espèce. » → « Non capturé. Capture un arbre de cette espèce et tous les semblables se déverrouilleront. < 30 m. ». Branche remarquable inchangée. |
-| `ui/detail/ArbreDetailScreen.kt` L263 | `"Trop loin (${availability.meters} m)"` → `"Trop loin (${availability.meters} m / max 30 m). Rapproche-toi."`. Constante `MAX_DISTANCE_M = 30f` dans `CaptureLauncher.kt:39`. |
-| `ui/detail/ArbreDetailScreen.kt` L264 | Case `CaptureAvailability.Archived -> "Saison archivée"` devient mort suite au sprint 1. Vérifier si `Archived` est encore référencé : si non, retirer le case. Aussi nettoyer la sealed class côté `CaptureLauncher.kt:51-57` (case `Archived`). |
-| `ui/common/EmptyState.kt` L55 | `style = MaterialTheme.typography.bodyMedium` → `bodyLarge` (16 sp). Affecte les 4 usages (Profile, Arboretum, Badges, Remarquables). |
+Fichiers modifiés :
+- `app/src/main/res/values/strings.xml` : retirées `welcome_bullet_grey`/`proximity`/`species`/`remarquables` (jamais référencées en Kotlin).
+- `ui/detail/ArbreDetailScreen.kt` : copy `UnknownContent` non-remarquable refondue (« Non capturé. … < 30 m. ») ; label `TooFar` enrichi (« Trop loin (X m / max 30 m). Rapproche-toi. ») ; case `CaptureAvailability.Archived` retiré du `when` (mort depuis sprint 1).
+- `ui/map/CaptureLauncher.kt` : `CaptureAvailability.Archived` retiré de la sealed class.
+- `ui/common/EmptyState.kt` : body passe de `bodyMedium` à `bodyLarge` (16 sp) — propage Profile, Arboretum, Badges, Remarquables.
 
-Critère : sheet sur arbre non capturé montre la nouvelle copy ; EmptyState lisible 16 sp ; aucun appel à `R.string.welcome_bullet_*` ne subsiste.
+Résultat : `assembleDebug + lint + test` PASS.
 
 ### Sprint 4 — Profil (compteurs, row badges, bug date, label progress)
 

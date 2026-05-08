@@ -250,7 +250,7 @@ private fun UnknownContent(
         if (arbre.remarquable) {
             "Remarquable non découvert. Capture-le pour révéler sa fiche."
         } else {
-            "Capture cet arbre pour révéler son espèce."
+            "Non capturé. Capture un arbre de cette espèce et tous les semblables se déverrouilleront. < 30 m."
         },
         style = MaterialTheme.typography.bodyMedium,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -260,8 +260,7 @@ private fun UnknownContent(
     val label = when (availability) {
         CaptureAvailability.Ready -> "Capturer"
         CaptureAvailability.NoGps -> "Active le GPS"
-        is CaptureAvailability.TooFar -> "Trop loin (${availability.meters} m)"
-        CaptureAvailability.Archived -> "Saison archivée"
+        is CaptureAvailability.TooFar -> "Trop loin (${availability.meters} m / max 30 m). Rapproche-toi."
         null -> "Capturer"
     }
     Button(
