@@ -14,13 +14,12 @@ App Android pour partir à la chasse aux arbres remarquables de Paris, collectio
 
 ## Ce que c'est
 
-213 042 arbres parisiens géolocalisés sur une carte plein écran, 907 espèces à découvrir, 169 arbres remarquables à dénicher. Capture par proximité (< 30 m) avec une photo prise depuis l'app. La carte se colore au fil de tes découvertes. Pokédex à 907 espèces avec fiches Wikipedia FR, badges, saisonnalité, export ZIP. Pensé family & friends, pas de classement, pas de social.
+213 042 arbres parisiens géolocalisés sur une carte plein écran, 907 espèces à découvrir (dont 528 avec fiches enrichies), 169 arbres remarquables à dénicher. Capture par proximité (< 30 m) avec une photo prise depuis l'app. La carte se colore au fil de tes découvertes. Pokédex à 907 espèces avec fiches Wikipedia FR, badges, export ZIP. Pensé family & friends, pas de classement, pas de social.
 
 ## Pourquoi
 
 - Les arbres sont déjà là, déjà géolocalisés, déjà documentés (espèce, hauteur, circonférence, date de plantation, statut remarquable).
 - Pas besoin de licence IP, pas besoin de serveur de spawning, pas besoin de Google Play Services.
-- Différenciateur clé vs. Pokémon : la **saisonnalité réelle** (un platane en mai ≠ en novembre) multiplie naturellement le contenu.
 
 ## Installation (Android 8.0+)
 
@@ -36,7 +35,7 @@ App Android pour partir à la chasse aux arbres remarquables de Paris, collectio
 
 ## Données et vie privée
 
-Tout reste sur ton téléphone. Pas de cloud, pas de compte, pas de tracker. Détails dans [PRIVACY.md](PRIVACY.md).
+Tout reste sur ton téléphone. Pas de cloud, pas de compte, pas de tracker. Tuiles cartographiques OpenStreetMap via OpenFreeMap, sans envoi de données personnelles. Détails dans [PRIVACY.md](PRIVACY.md).
 
 ## FAQ
 
