@@ -65,6 +65,12 @@ fun rememberSplashTipsRepository(): SplashTipsRepository {
 }
 
 @Composable
+fun rememberBadgeRepository(): BadgeRepository {
+    val ctx = LocalContext.current
+    return remember(ctx) { ctx.app().badgeRepository }
+}
+
+@Composable
 fun rememberBackupExporter(): BackupExporter {
     val ctx = LocalContext.current
     return remember(ctx) { ctx.app().backupExporter }
@@ -85,3 +91,4 @@ fun Context.remarquableInfoRepository(): RemarquableInfoRepository = app().remar
 fun Context.seasonStore(): SeasonStore = app().seasonStore
 fun Context.onboardingStore(): OnboardingStore = app().onboardingStore
 fun Context.splashTipsRepository(): SplashTipsRepository = app().splashTipsRepository
+fun Context.badgeRepository(): BadgeRepository = app().badgeRepository

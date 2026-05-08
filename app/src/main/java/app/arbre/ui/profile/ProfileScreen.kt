@@ -41,6 +41,7 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -57,19 +58,26 @@ import app.arbre.backup.ExportResult
 import app.arbre.backup.ImportError
 import app.arbre.backup.ImportResult
 import app.arbre.backup.defaultExportFilename
-import app.arbre.data.BadgeCatalog
 import app.arbre.data.BadgeState
+import app.arbre.data.rememberArbreRepository
 import app.arbre.data.rememberBackupExporter
 import app.arbre.data.rememberBackupImporter
+import app.arbre.data.rememberBadgeRepository
 import app.arbre.data.rememberCaptureRepository
+import app.arbre.data.rememberDatasetStats
+import app.arbre.data.rememberSpeciesIndex
 import app.arbre.R
 import app.arbre.ui.common.EmptyState
 import androidx.compose.foundation.Image
 import androidx.compose.ui.res.painterResource
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.text.DateFormat
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
+import java.time.temporal.ChronoUnit
 import java.util.Date
-import java.util.concurrent.TimeUnit
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -80,6 +88,10 @@ fun ProfileScreen(
     onAboutClick: () -> Unit = {},
 ) {
     val captureRepo = rememberCaptureRepository()
+    val arbreRepo = rememberArbreRepository()
+    val badgeRepo = rememberBadgeRepository()
+    val datasetStats = rememberDatasetStats()
+    val speciesIndex = rememberSpeciesIndex()
     val backupExporter = rememberBackupExporter()
     val backupImporter = rememberBackupImporter()
     val coScope = rememberCoroutineScope()
@@ -140,14 +152,35 @@ fun ProfileScreen(
     val capturedRemarquables by captureRepo.capturedRemarquableIds()
         .collectAsState(initial = emptySet())
     val captureCount by captureRepo.captureCount().collectAsState(initial = 0)
+    val allBadges by badgeRepo.badges().collectAsState(initial = emptyList())
 
     val nbSpecies = capturedSpecies.size
     val nbRemarquables = capturedRemarquables.size
 
-    // « 1re capture » est un événement unique. `BadgesScreen` expose le
-    // catalogue complet ; on n'affiche ici que le highlight.
-    val firstCaptureBadge = remember(firstCaptureTs) {
-        BadgeState(def = BadgeCatalog.FIRST_CAPTURE, unlockedAt = firstCaptureTs)
+    var arbresDecouverts by remember { mutableStateOf<Int?>(null) }
+    LaunchedEffect(capturedSpecies, capturedRemarquables) {
+        arbresDecouverts = arbreRepo.nombreArbresDecouverts(
+            capturedSpecies,
+            capturedRemarquables,
+            speciesIndex,
+        )
+    }
+
+    val recentBadges = remember(allBadges) {
+        allBadges
+            .filter { it.unlocked && it.unlockedAt != null }
+            .sortedByDescending { it.unlockedAt }
+            .take(3)
+    }
+
+    LaunchedEffect(backupBusy) {
+        if (backupBusy !is BackupBusy.Idle) {
+            delay(60_000)
+            backupBusy = BackupBusy.Idle
+            snackbar.showSnackbar(
+                "L'opération prend plus de 60 s — réessaie ou vérifie l'app système"
+            )
+        }
     }
 
     Scaffold(
@@ -189,8 +222,11 @@ fun ProfileScreen(
                 StatsCard(
                     firstCaptureTs = firstCaptureTs,
                     nbSpecies = nbSpecies,
+                    totalEspeces = datasetStats.totalEspeces,
                     nbRemarquables = nbRemarquables,
                     nbCaptures = captureCount,
+                    arbresDecouverts = arbresDecouverts,
+                    totalArbres = datasetStats.totalArbres,
                 )
             }
             item {
@@ -199,8 +235,10 @@ fun ProfileScreen(
                     style = MaterialTheme.typography.titleLarge,
                 )
             }
-            item {
-                BadgeGrid(badges = listOf(firstCaptureBadge))
+            if (recentBadges.isNotEmpty()) {
+                item {
+                    BadgeGrid(badges = recentBadges)
+                }
             }
             item {
                 AllBadgesEntry(onClick = onBadgesClick)
@@ -223,6 +261,7 @@ fun ProfileScreen(
                     icon = Icons.Outlined.Upload,
                     busy = backupBusy is BackupBusy.Exporting,
                     enabled = backupBusy is BackupBusy.Idle,
+                    progressLabel = "Export en cours…",
                     onClick = { exportLauncher.launch(defaultExportFilename()) },
                 )
             }
@@ -232,6 +271,7 @@ fun ProfileScreen(
                     icon = Icons.Outlined.Download,
                     busy = backupBusy is BackupBusy.Importing,
                     enabled = backupBusy is BackupBusy.Idle,
+                    progressLabel = "Import en cours…",
                     onClick = {
                         importLauncher.launch(arrayOf("application/zip", "application/octet-stream"))
                     },
@@ -315,6 +355,7 @@ private fun BackupActionCard(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     busy: Boolean,
     enabled: Boolean,
+    progressLabel: String,
     onClick: () -> Unit,
 ) {
     Card(
@@ -343,6 +384,12 @@ private fun BackupActionCard(
             }
             if (busy) {
                 LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                Text(
+                    progressLabel,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
+                )
             }
         }
     }
@@ -352,8 +399,11 @@ private fun BackupActionCard(
 private fun StatsCard(
     firstCaptureTs: Long?,
     nbSpecies: Int,
+    totalEspeces: Int,
     nbRemarquables: Int,
     nbCaptures: Int,
+    arbresDecouverts: Int?,
+    totalArbres: Int,
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -381,8 +431,12 @@ private fun StatsCard(
                 } else "—",
             )
             StatLine(
-                label = "Espèces capturées",
-                value = nbSpecies.toString(),
+                label = "Espèces du Catalogue",
+                value = formatProgress(nbSpecies, totalEspeces),
+            )
+            StatLine(
+                label = "Arbres déverrouillés",
+                value = arbresDecouverts?.let { formatProgress(it, totalArbres) } ?: "…",
             )
             StatLine(
                 label = "Arbres remarquables",
@@ -394,6 +448,12 @@ private fun StatsCard(
             )
         }
     }
+}
+
+private fun formatProgress(value: Int, total: Int): String {
+    if (total <= 0) return value.toString()
+    val pct = (value.toLong() * 100 / total).toInt().coerceIn(0, 100)
+    return "$value / $total ($pct %)"
 }
 
 @Composable
@@ -529,8 +589,10 @@ private fun AllBadgesEntry(onClick: () -> Unit) {
 }
 
 private fun daysSince(epochMillis: Long): Long {
-    val delta = System.currentTimeMillis() - epochMillis
-    return TimeUnit.MILLISECONDS.toDays(delta).coerceAtLeast(0L)
+    val zone = ZoneId.of("Europe/Paris")
+    val captureDate = Instant.ofEpochMilli(epochMillis).atZone(zone).toLocalDate()
+    val today = LocalDate.now(zone)
+    return ChronoUnit.DAYS.between(captureDate, today).coerceAtLeast(0L)
 }
 
 private val DATE_FORMAT: DateFormat = DateFormat.getDateInstance(DateFormat.SHORT)

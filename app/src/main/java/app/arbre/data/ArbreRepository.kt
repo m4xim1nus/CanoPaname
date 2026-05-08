@@ -36,6 +36,25 @@ class ArbreRepository(private val dao: ArbreDao) {
     suspend fun compterParEspece(genre: String, espece: String): Int =
         dao.compterParEspece(genre, espece)
 
+    /**
+     * Cohérent avec la coloration carte : un arbre non-remarquable « se déverrouille »
+     * dès que son espèce est capturée ; un remarquable se déverrouille uniquement
+     * via sa propre capture. Pas de double-comptage.
+     */
+    suspend fun nombreArbresDecouverts(
+        capturedSk: Set<Int>,
+        capturedRemarquableIds: Set<Long>,
+        speciesIndex: SpeciesIndex,
+    ): Int {
+        if (capturedSk.isEmpty() && capturedRemarquableIds.isEmpty()) return 0
+        var count = capturedRemarquableIds.size
+        for (sk in capturedSk) {
+            val entry = speciesIndex.get(sk) ?: continue
+            count += dao.compterArbresOrdinairesParEspece(entry.genre, entry.espece)
+        }
+        return count
+    }
+
     suspend fun unArbreParEspece(genre: String, espece: String): Arbre? =
         dao.unArbreParEspece(genre, espece)?.toArbre()
 

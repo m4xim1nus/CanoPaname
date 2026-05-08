@@ -29,21 +29,15 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.produceState
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import app.arbre.data.Arbre
 import app.arbre.data.BadgeCatalog
-import app.arbre.data.BadgeEvaluator
 import app.arbre.data.BadgeState
-import app.arbre.data.rememberArbreRepository
-import app.arbre.data.rememberCaptureRepository
-import app.arbre.data.rememberSpeciesInfoRepository
+import app.arbre.data.rememberBadgeRepository
 import app.arbre.R
 import app.arbre.ui.common.EmptyState
 import androidx.compose.foundation.Image
@@ -59,26 +53,8 @@ import java.util.Date
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BadgesScreen(onBack: () -> Unit) {
-    val captureRepo = rememberCaptureRepository()
-    val arbreRepo = rememberArbreRepository()
-    val speciesInfoRepo = rememberSpeciesInfoRepository()
-
-    val captures by captureRepo.toutesLesCaptures().collectAsState(initial = emptyList())
-
-    // Batch-fetch des arbres référencés (Géant, Vieux sage, arrondissements,
-    // espèce rare). Re-déclenché sur changement du set d'ids, pas à chaque tick.
-    val arbreIds = remember(captures) { captures.map { it.arbreId }.toSet() }
-    @Suppress("ProduceStateDoesNotAssignValue")
-    val arbresById by produceState(
-        initialValue = emptyMap<Long, Arbre>(),
-        key1 = arbreIds,
-    ) {
-        value = arbreRepo.arbresParIds(arbreIds)
-    }
-
-    val badges = remember(captures, arbresById) {
-        BadgeEvaluator.evaluate(captures, arbresById, speciesInfoRepo)
-    }
+    val badgeRepo = rememberBadgeRepository()
+    val badges by badgeRepo.badges().collectAsState(initial = emptyList())
     val unlocked = badges.filter { it.unlocked }
         .sortedByDescending { it.unlockedAt }
     val locked = badges.filter { !it.unlocked }

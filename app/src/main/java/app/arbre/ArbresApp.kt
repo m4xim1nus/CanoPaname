@@ -7,6 +7,7 @@ import app.arbre.backup.BackupExporter
 import app.arbre.backup.BackupImporter
 import app.arbre.data.ArbreDatabase
 import app.arbre.data.ArbreRepository
+import app.arbre.data.BadgeRepository
 import app.arbre.data.CaptureRepository
 import app.arbre.data.DatasetStats
 import app.arbre.data.OnboardingStore
@@ -45,6 +46,10 @@ class ArbresApp : Application() {
     }
     val splashTipsRepository: SplashTipsRepository by lazy {
         SplashTipsRepository.load(this)
+    }
+
+    val badgeRepository: BadgeRepository by lazy {
+        BadgeRepository(captureRepository, arbreRepository, speciesInfoRepository)
     }
 
     val seasonStore: SeasonStore = SeasonStore()

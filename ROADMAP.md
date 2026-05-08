@@ -52,50 +52,22 @@ Fichiers modifiés :
 
 Résultat : `assembleDebug + lint + test` PASS.
 
-### Sprint 4 — Profil (compteurs, row badges, bug date, label progress)
+### Sprint 4 — Profil (compteurs, row badges, bug date, label progress) ✅ livré
 
-#### Bug date « aujourd'hui »
+Fichiers modifiés :
+- `data/ArbreDao.kt` : ajout `compterArbresOrdinairesParEspece(genre, espece)` (filtre `remarquable = 0`).
+- `data/ArbreRepository.kt` : ajout `nombreArbresDecouverts(capturedSk, capturedRemarquableIds, speciesIndex)` — boucle reverse-lookup + `compterArbresOrdinairesParEspece` ; cohérent avec la coloration carte (pas de double-comptage).
+- `data/BadgeRepository.kt` (nouveau) : `fun badges(): Flow<List<BadgeState>>` qui combine `CaptureRepository.toutesLesCaptures()` + `ArbreRepository.arbresParIds(...)` + `SpeciesInfoRepository`. Source unique partagée Profile + Badges.
+- `ArbresApp.kt` + `data/RepositoryProvider.kt` : exposition `badgeRepository` + `rememberBadgeRepository()` + extension Context.
+- `ui/profile/ProfileScreen.kt` :
+  - `daysSince(epochMillis)` recodée en `ChronoUnit.DAYS.between(LocalDate, LocalDate)` zone `Europe/Paris` (corrige le « aujourd'hui » bidon quand la capture posée hier soir est vue ce matin).
+  - 2 nouvelles `StatLine` : « Espèces du Catalogue » (`X / 907 (Y %)`) + « Arbres déverrouillés » (`X / 213 042 (Y %)`, calculé en async via `LaunchedEffect`). Helper `formatProgress`.
+  - `BadgeGrid(listOf(firstCaptureBadge))` → row des 3 derniers badges débloqués (`badgeRepo.badges()` → filter + sortByDesc(unlockedAt) + take(3)). Section masquée si vide. `firstCaptureBadge` supprimé.
+  - `BackupActionCard` reçoit `progressLabel: String` ; texte « Export/Import en cours… » sous le `LinearProgressIndicator`. `LaunchedEffect(backupBusy)` au top-level : timeout d'affichage 60 s qui rebascule à `Idle` + snackbar warning, **sans** cancel de la coroutine SAF.
+  - Imports : `java.time.{Instant, LocalDate, ZoneId}`, `java.time.temporal.ChronoUnit`, `kotlinx.coroutines.delay`, `LaunchedEffect`, `rememberArbreRepository`, `rememberBadgeRepository`, `rememberDatasetStats`, `rememberSpeciesIndex`. Retirés : `TimeUnit`, `BadgeCatalog`.
+- `ui/badges/BadgesScreen.kt` : remplace le pipeline `produceState` + `BadgeEvaluator.evaluate(...)` local par `badgeRepo.badges().collectAsState(emptyList())`. Imports `Arbre`, `BadgeEvaluator`, `produceState`, `remember`, `rememberArbreRepository`, `rememberCaptureRepository`, `rememberSpeciesInfoRepository` retirés.
 
-`ProfileScreen.kt:581` (après nettoyage sprint 1 : ligne probablement décalée — chercher `private fun daysSince`) :
-
-```kotlin
-// Bug : TimeUnit.toDays arrondit en buckets de 24h flottants (capture
-// hier 22h vue ce matin 8h → delta < 24h → 0 jour → « aujourd'hui »).
-private fun daysSince(epochMillis: Long): Long {
-    val zone = ZoneId.of("Europe/Paris")
-    val captureDate = Instant.ofEpochMilli(epochMillis).atZone(zone).toLocalDate()
-    val today = LocalDate.now(zone)
-    return ChronoUnit.DAYS.between(captureDate, today).coerceAtLeast(0L)
-}
-```
-
-Imports : `java.time.{Instant, LocalDate, ZoneId}`, `java.time.temporal.ChronoUnit`. Retirer `java.util.concurrent.TimeUnit`.
-
-#### Compteurs globaux dataset
-
-Dans `StatsCard` (ligne ~390-440 après sprint 1) :
-- Récupérer `DatasetStats` via `rememberDatasetStats()` (déjà exposé).
-- Champs : `totalArbres = 213042`, `totalEspeces = 907`, `totalRemarquables = 183` (`data/SpeciesIndex.kt` lignes 67-83).
-- Ajouter 2 `StatLine` : « Espèces du Pokédex » (`$nbSpecies / ${stats.totalEspeces} (${pct}%)`) et « Arbres déverrouillés » (`$arbresDecouverts / ${stats.totalArbres} (${pct}%)`).
-- **« Arbres déverrouillés »** = somme des counts par espèce capturée + count remarquables capturés. Vérifier si `ArbreRepository.compterParEspece(genre, espece)` existe (cf. `ArboretumScreen.kt:211` : `arbreRepo::compterParEspece` est une `suspend fun`). Si pas de méthode batch dispo, ajouter `suspend fun nombreArbresDecouverts(capturedSk: Set<Int>, capturedRemarquableIds: Set<Long>): Int` qui agrège côté DAO (`SELECT COUNT(*) WHERE speciesIndex IN (...) OR id IN (...)`).
-
-#### Row preview des derniers badges débloqués
-
-Dans `ProfileScreen` (item après stats) :
-- Remplacer `BadgeGrid(badges = listOf(firstCaptureBadge))` par une rangée des N derniers badges débloqués.
-- **Source** : exposer un `Flow<List<BadgeState>>` partagé. Recommandation = ajouter `fun badges(): Flow<List<BadgeState>>` dans `CaptureRepository` ou un nouveau `BadgeRepository` qui combine `toutesLesCaptures()` + `arbreRepo.arbresParIds()` + `speciesInfoRepo`. Réutilisable par `BadgesScreen`.
-- Dans `ProfileScreen` : `val badges by badgeRepo.badges.collectAsState(emptyList())` ; filtrer `unlocked && unlockedAt != null`, `sortedByDescending { it.unlockedAt }`, `take(3)` (cohérent avec `GridCells.Fixed(3)`).
-- Réutiliser `BadgeGrid` existant. Si aucun badge débloqué : cacher la rangée ou placeholder.
-- Le `firstCaptureBadge` n'est plus nécessaire en variable séparée.
-
-#### Label + timeout progress bar
-
-`ProfileScreen.kt` `BackupActionCard` (ligne ~360-374 actuel) :
-- Ajouter un `Text("Export en cours…" / "Import en cours…")` sous `LinearProgressIndicator` selon `BackupBusy`.
-- Timeout 60 s : `LaunchedEffect(backupBusy)` qui sur `busy != Idle` lance `delay(60_000)` puis bascule `backupBusy = Idle` + snackbar warning.
-- **Décision** : timeout d'affichage uniquement, ne PAS cancel la coroutine d'export/import sous-jacente (cancel sur SAF en cours = corruption potentielle du fichier choisi).
-
-Critère : 6 stats (4 + 2 compteurs %) + rangée 3 badges récents + 2 cards backup avec label. Capture posée hier soir, vue ce matin → « il y a 1 jour ».
+Résultat : `assembleDebug + lint + test` PASS.
 
 ### Sprint 5 — Map UX
 

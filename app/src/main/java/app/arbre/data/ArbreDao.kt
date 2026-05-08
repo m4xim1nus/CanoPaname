@@ -35,6 +35,9 @@ interface ArbreDao {
     @Query("SELECT COUNT(*) FROM arbre WHERE genre = :genre AND espece = :espece")
     suspend fun compterParEspece(genre: String, espece: String): Int
 
+    @Query("SELECT COUNT(*) FROM arbre WHERE genre = :genre AND espece = :espece AND remarquable = 0")
+    suspend fun compterArbresOrdinairesParEspece(genre: String, espece: String): Int
+
     @Query("SELECT * FROM arbre WHERE genre = :genre AND espece = :espece LIMIT 1")
     suspend fun unArbreParEspece(genre: String, espece: String): ArbreEntity?
 }
