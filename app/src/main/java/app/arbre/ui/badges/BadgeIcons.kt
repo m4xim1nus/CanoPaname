@@ -2,8 +2,6 @@ package app.arbre.ui.badges
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AutoAwesome
-import androidx.compose.material.icons.outlined.CalendarMonth
-import androidx.compose.material.icons.outlined.DateRange
 import androidx.compose.material.icons.outlined.DirectionsRun
 import androidx.compose.material.icons.outlined.DirectionsWalk
 import androidx.compose.material.icons.outlined.EmojiEvents
@@ -36,8 +34,6 @@ fun BadgeDef.icon(): ImageVector = when (id) {
     BadgeCatalog.TOUR_COMPLET.id -> Icons.Outlined.Explore
     BadgeCatalog.CHASSEUR_REMARQUABLES.id -> Icons.Outlined.Star
     BadgeCatalog.LEGENDE.id -> Icons.Outlined.EmojiEvents
-    BadgeCatalog.RONDE_DES_SAISONS.id -> Icons.Outlined.CalendarMonth
-    BadgeCatalog.ANNEE_COMPLETE.id -> Icons.Outlined.DateRange
     BadgeCatalog.GEANT.id -> Icons.Outlined.Height
     BadgeCatalog.VIEUX_SAGE.id -> Icons.Outlined.Park
     else -> Icons.Outlined.EmojiEvents

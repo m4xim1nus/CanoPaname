@@ -46,19 +46,15 @@ import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.unit.dp
 import app.arbre.data.Arbre
 import app.arbre.data.ArrKey
-import app.arbre.data.Season
 import app.arbre.data.label
 import app.arbre.data.parseArrKey
 import app.arbre.data.sortKey
 import app.arbre.data.rememberArbreRepository
 import app.arbre.data.rememberCaptureRepository
-import app.arbre.data.rememberSeasonStore
 import app.arbre.data.resolvedFile
 import app.arbre.R
-import app.arbre.ui.common.ArchiveBanner
 import app.arbre.ui.common.EmptyState
 import app.arbre.ui.common.PhotoThumbnail
-import app.arbre.ui.common.SeasonSelector
 import app.arbre.ui.theme.arbresColors
 import androidx.compose.foundation.Image
 import androidx.compose.ui.res.painterResource
@@ -75,10 +71,6 @@ fun RemarquablesScreen(
 ) {
     val arbreRepo = rememberArbreRepository()
     val captureRepo = rememberCaptureRepository()
-    val seasonStore = rememberSeasonStore()
-    val selectedSeason by seasonStore.selected.collectAsState()
-    val currentSeason = Season.current()
-    val isArchive = selectedSeason != currentSeason
 
     // Liste statique côté DB — pas de Flow, le set ne change pas au runtime.
     var tousRemarquables by remember { mutableStateOf<List<Arbre>>(emptyList()) }
@@ -88,20 +80,17 @@ fun RemarquablesScreen(
 
     val capturesRemarquables by captureRepo.capturesRemarquables()
         .collectAsState(initial = emptyList())
-    val capturedIds by captureRepo.capturedRemarquableIds(selectedSeason)
+    val capturedIds by captureRepo.capturedRemarquableIds()
         .collectAsState(initial = emptySet())
 
     val ctx = LocalContext.current
-    val capturesInSeason = remember(capturesRemarquables, selectedSeason) {
-        capturesRemarquables.filter { it.season == selectedSeason }
-    }
-    val firstPhotoByArbreId: Map<Long, File> = remember(capturesInSeason, ctx) {
-        capturesInSeason
+    val firstPhotoByArbreId: Map<Long, File> = remember(capturesRemarquables, ctx) {
+        capturesRemarquables
             .groupBy { it.arbreId }
             .mapValues { (_, caps) -> caps.minBy { it.timestamp }.resolvedFile(ctx) }
     }
-    val lastCaptureTsByArbreId: Map<Long, Long> = remember(capturesInSeason) {
-        capturesInSeason
+    val lastCaptureTsByArbreId: Map<Long, Long> = remember(capturesRemarquables) {
+        capturesRemarquables
             .groupBy { it.arbreId }
             .mapValues { (_, caps) -> caps.maxOf { it.timestamp } }
     }
@@ -121,14 +110,6 @@ fun RemarquablesScreen(
                         Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Retour")
                     }
                 },
-                actions = {
-                    SeasonSelector(
-                        selected = selectedSeason,
-                        onSelect = { seasonStore.select(it) },
-                        isCurrent = !isArchive,
-                        modifier = Modifier.padding(end = 8.dp),
-                    )
-                },
             )
         },
     ) { padding ->
@@ -137,13 +118,9 @@ fun RemarquablesScreen(
                 .fillMaxSize()
                 .padding(padding),
         ) {
-            if (isArchive) {
-                ArchiveBanner(season = selectedSeason)
-            }
             HeaderCard(
                 nbDecouverts = nbDecouverts,
                 total = total,
-                season = selectedSeason,
                 modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 16.dp),
             )
             ViewModeSelector(
@@ -355,7 +332,6 @@ private fun LockedRemarquableCard() {
 private fun HeaderCard(
     nbDecouverts: Int,
     total: Int,
-    season: Season,
     modifier: Modifier = Modifier,
 ) {
     Card(
@@ -372,11 +348,6 @@ private fun HeaderCard(
                     "Chargement…"
                 },
                 style = MaterialTheme.typography.titleLarge,
-            )
-            Text(
-                "${season.preposition} ${season.label.lowercase()}",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onPrimaryContainer,
             )
         }
     }

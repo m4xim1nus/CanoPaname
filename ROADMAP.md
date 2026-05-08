@@ -4,34 +4,174 @@ App perso, pas de calendrier engageant. Single-player, stockage local strict —
 
 ## Cycle en cours — Vérité & Friction
 
-Patch copy + UX + dette saison. **Zéro nouvelle feature, zéro casse de schéma.** Cible : ~3-5 jours cumulés.
+Patch copy + UX + dette saison. **Zéro nouvelle feature, zéro casse de schéma.** Cible : version `1.1.0`.
 
-- **Suppression UI saisons** (préparation cycle Variantes). Cacher `SeasonSelector` (Map, Arboretum, Remarquables, Profil), retirer `ArchiveBanner`, basculer Profil/Arboretum/Remarquables en mode global-only. **Garder** l'enum `Season`, le store `SeasonStore` et la colonne `CaptureEntity.season` côté schéma — réutilisés par Variantes. Retirer les 3 badges saisonniers du catalogue (devenus impossibles à débloquer).
-- **Communication honnête** :
-  - `README.md` : « 907 espèces » → « 907 espèces dont 528 avec fiches enrichies ».
-  - `README.md` : retirer « saisonnalité réelle » (puisque l'UI saison disparaît).
-  - `README.md` + `PRIVACY.md` : mention OpenStreetMap (« tuiles cartographiques OSM via OpenFreeMap, sans envoi de données personnelles »).
-  - `CHANGELOG.md` `[1.0.0]` : préciser « fiches remarquables enrichies accessibles après capture ».
-- **`UnknownContent` pédagogique** (`ArbreDetailScreen.kt`) : « Non capturé. Capture un arbre de cette espèce et tous les semblables se déverrouilleront. < 30 m. »
-- **`CaptureAvailability.TooFar` distance affichée** : « Trop loin (X m / max 30 m). Rapproche-toi. »
-- **Bullet remarquables Welcome** étoffé : « Les arbres remarquables (★) sont une chasse spéciale. Le bouton ★ en haut à droite trouve le plus proche. »
-- **Feedback GPS post-permission** : snackbar « Localisation en cours… » + pulse FAB GPS pendant le gap 7-10 s avant 1er fix.
-- **Réactivité loc système** : `BroadcastReceiver` sur `LocationManager.PROVIDERS_CHANGED_ACTION` pour réagir si l'utilisateur active la localisation après ouverture de l'app.
-- **Bug date « aujourd'hui »** au Profil : un fix capturé hier affiche « aujourd'hui » au lieu de « il y a un jour ». Vérifier l'arrondi `Duration` vs jour calendaire (zone Europe/Paris).
-- **Compteur global Profil** :
-  - « X / 907 espèces (Y %) » + « Z / 213 042 arbres déverrouillés (W %) » sous les stats existantes.
-  - Rend visible la progression et la nature démesurée du dataset.
-- **Badges débloqués sur ProfileScreen** : remplacer la card unique « Première capture » par une rangée preview des N derniers badges débloqués (3-4 max), en plus du lien `AllBadgesEntry`.
-- **Cluster contenant ★** : ring orange fin si `has_remarquable_count > 0` (cluster property additionnelle dans `MapLayers.kt`). Léger, pas de halo agressif.
-- **Polish haptique & feedback** :
-  - Haptique `LongPress` à l'ouverture du sheet `ArbreDetailContent`.
-  - Déplacer haptique capture du post-INSERT vers le tap « Capturer » (synchronise tactile et action perçue).
-  - Snackbar + `Tick` haptique à l'annulation caméra (`CaptureLauncher.kt:116-119`).
-  - Label + timeout 60 s sur `LinearProgressIndicator` export/import (`ProfileScreen.kt:370`).
-- **Détails iconographie & timing** :
-  - FAB ★ : icône `Search` → `Star` (signal « quête » au lieu de « tool »).
-  - Snackbar distance remarquable 3 s → 5 s.
-  - `EmptyState` `bodyMedium` 14 sp → 16 sp (ProfileScreen, ArboretumScreen, BadgesScreen, RemarquablesScreen).
+Décisions cycle :
+- **Découpage 5 sprints / 5 commits autonomes**. Chacun compile et passe `./gradlew lint test`. Tag SemVer après sprint 5.
+- **Bullets Welcome supprimés net** (les 4 `welcome_bullet_*` de `strings.xml` étaient déclarés mais jamais rendus depuis longtemps — décision user 2026-05-08 : couper plutôt que ressusciter).
+- **2 badges saisonniers**, pas 3 (la ROADMAP/BACKLOG initiale parlait de 3, mais le code n'en a que deux : `RONDE_DES_SAISONS`, `ANNEE_COMPLETE`).
+- **Snackbar 5 s** : `SnackbarDuration` Material 3 ne propose que `Short` (4 s) / `Long` (10 s) / `Indefinite`. Solution = helper `showSnackbarFor(host, msg, ms = 5000)` via `Indefinite` + `delay` + `dismiss()`.
+
+### Sprint 1 — Suppression UI saisons + 2 badges saisonniers ✅ livré
+
+Schéma DB intact (`Season.ordinal` dans `CaptureEntity.season`, enum `Season`, `SeasonStore`, `rememberSeasonStore` conservés pour le cycle Variantes). Composables `SeasonSelector` / `ArchiveBanner` / `SeasonAmbience` également laissés en place mais plus appelés.
+
+Fichiers modifiés :
+- `data/Badge.kt` : retiré `RONDE_DES_SAISONS`, `ANNEE_COMPLETE`, `BadgeCategory.SAISONS`. `BadgeCatalog.ALL.size` passe à **13**.
+- `data/BadgeEvaluator.kt` : retirées les branches `seenSeasons` et `seenYearMonths` ; supprimés `yearMonthOf` et `hasTwelveConsecutiveMonths` ; imports `java.time.{Instant, YearMonth, ZoneId}` retirés.
+- `ui/badges/BadgeIcons.kt` : retirés mappings `CalendarMonth` / `DateRange`.
+- `ui/theme/Theme.kt` : `seasonalSurface` + `animateColorAsState` supprimés ; le scheme Material 3 est posé direct.
+- `ui/theme/Color.kt` : tokens `Saison*` retirés.
+- `ui/arboretum/ArboretumScreen.kt` : SeasonSelector/ArchiveBanner retirés, filtre `it.season == selectedSeason` retiré, `HeaderCard` simplifié, `ArboretumEmptyState` global.
+- `ui/remarquables/RemarquablesScreen.kt` : idem ; `capturedRemarquableIds(season)` → `capturedRemarquableIds()`.
+- `ui/profile/ProfileScreen.kt` : `ScopeSelector` + enum `ProfileScope` + Flows `capturedSpeciesSeason` / `capturedRemarquablesSeason` + `seasonSuffix` retirés. Stats global-only.
+- `ui/map/MapScreen.kt` : `SeasonAmbience` retiré, Flows captures passent en versions sans paramètre saison (cold-start filtré inclus).
+- `test/data/BadgeEvaluatorTest.kt` : retirés tests `yearMonthOf`, `hasTwelveConsecutiveMonths`, `ronde des saisons`, `annee complete`. `evaluate with no captures` : `15` → `13`.
+
+Résultat : `assembleDebug + lint + test` PASS.
+
+### Sprint 2 — Communication & docs
+
+| Fichier | Édit |
+|---|---|
+| `README.md` L17 | « 907 espèces à découvrir » → « 907 espèces à découvrir, dont 528 avec fiches enrichies » ; retirer « saisonnalité » de la liste features. |
+| `README.md` L23 | Supprimer la phrase « Différenciateur clé vs. Pokémon : la **saisonnalité réelle**… » (caduque). |
+| `README.md` Section « Données et vie privée » | Ajouter « Tuiles cartographiques OpenStreetMap via OpenFreeMap, sans envoi de données personnelles. » |
+| `PRIVACY.md` L18-20 | Vérifier formulation `tiles.openfreemap.org` et OpenStreetMap (déjà mentionnés, ajustement mineur si besoin). |
+| `CHANGELOG.md` | Ne pas modifier `[1.0.0]` (figé Keep a Changelog). Ajouter section `[1.1.0]` ou `[Unreleased]` en tête : `Modifié` (precision « fiches remarquables enrichies accessibles après capture »), `Retiré` (UI saisonnalité, 2 badges saisonniers), `Corrigé` (bug date Profil, etc.) — détails à compléter à la rotation. |
+
+Critère de done : diff lisible, aucune promesse cassée (« 907 espèces » seul → toujours suivi de « dont X enrichies »).
+
+### Sprint 3 — Copy in-app
+
+| Fichier | Édit |
+|---|---|
+| `app/src/main/res/values/strings.xml` L10-13 | Supprimer `welcome_bullet_grey`, `welcome_bullet_proximity`, `welcome_bullet_species`, `welcome_bullet_remarquables` (non utilisées). |
+| `ui/detail/ArbreDetailScreen.kt` L249-257 (`UnknownContent`) | Branche non-remarquable : « Capture cet arbre pour révéler son espèce. » → « Non capturé. Capture un arbre de cette espèce et tous les semblables se déverrouilleront. < 30 m. ». Branche remarquable inchangée. |
+| `ui/detail/ArbreDetailScreen.kt` L263 | `"Trop loin (${availability.meters} m)"` → `"Trop loin (${availability.meters} m / max 30 m). Rapproche-toi."`. Constante `MAX_DISTANCE_M = 30f` dans `CaptureLauncher.kt:39`. |
+| `ui/detail/ArbreDetailScreen.kt` L264 | Case `CaptureAvailability.Archived -> "Saison archivée"` devient mort suite au sprint 1. Vérifier si `Archived` est encore référencé : si non, retirer le case. Aussi nettoyer la sealed class côté `CaptureLauncher.kt:51-57` (case `Archived`). |
+| `ui/common/EmptyState.kt` L55 | `style = MaterialTheme.typography.bodyMedium` → `bodyLarge` (16 sp). Affecte les 4 usages (Profile, Arboretum, Badges, Remarquables). |
+
+Critère : sheet sur arbre non capturé montre la nouvelle copy ; EmptyState lisible 16 sp ; aucun appel à `R.string.welcome_bullet_*` ne subsiste.
+
+### Sprint 4 — Profil (compteurs, row badges, bug date, label progress)
+
+#### Bug date « aujourd'hui »
+
+`ProfileScreen.kt:581` (après nettoyage sprint 1 : ligne probablement décalée — chercher `private fun daysSince`) :
+
+```kotlin
+// Bug : TimeUnit.toDays arrondit en buckets de 24h flottants (capture
+// hier 22h vue ce matin 8h → delta < 24h → 0 jour → « aujourd'hui »).
+private fun daysSince(epochMillis: Long): Long {
+    val zone = ZoneId.of("Europe/Paris")
+    val captureDate = Instant.ofEpochMilli(epochMillis).atZone(zone).toLocalDate()
+    val today = LocalDate.now(zone)
+    return ChronoUnit.DAYS.between(captureDate, today).coerceAtLeast(0L)
+}
+```
+
+Imports : `java.time.{Instant, LocalDate, ZoneId}`, `java.time.temporal.ChronoUnit`. Retirer `java.util.concurrent.TimeUnit`.
+
+#### Compteurs globaux dataset
+
+Dans `StatsCard` (ligne ~390-440 après sprint 1) :
+- Récupérer `DatasetStats` via `rememberDatasetStats()` (déjà exposé).
+- Champs : `totalArbres = 213042`, `totalEspeces = 907`, `totalRemarquables = 183` (`data/SpeciesIndex.kt` lignes 67-83).
+- Ajouter 2 `StatLine` : « Espèces du Pokédex » (`$nbSpecies / ${stats.totalEspeces} (${pct}%)`) et « Arbres déverrouillés » (`$arbresDecouverts / ${stats.totalArbres} (${pct}%)`).
+- **« Arbres déverrouillés »** = somme des counts par espèce capturée + count remarquables capturés. Vérifier si `ArbreRepository.compterParEspece(genre, espece)` existe (cf. `ArboretumScreen.kt:211` : `arbreRepo::compterParEspece` est une `suspend fun`). Si pas de méthode batch dispo, ajouter `suspend fun nombreArbresDecouverts(capturedSk: Set<Int>, capturedRemarquableIds: Set<Long>): Int` qui agrège côté DAO (`SELECT COUNT(*) WHERE speciesIndex IN (...) OR id IN (...)`).
+
+#### Row preview des derniers badges débloqués
+
+Dans `ProfileScreen` (item après stats) :
+- Remplacer `BadgeGrid(badges = listOf(firstCaptureBadge))` par une rangée des N derniers badges débloqués.
+- **Source** : exposer un `Flow<List<BadgeState>>` partagé. Recommandation = ajouter `fun badges(): Flow<List<BadgeState>>` dans `CaptureRepository` ou un nouveau `BadgeRepository` qui combine `toutesLesCaptures()` + `arbreRepo.arbresParIds()` + `speciesInfoRepo`. Réutilisable par `BadgesScreen`.
+- Dans `ProfileScreen` : `val badges by badgeRepo.badges.collectAsState(emptyList())` ; filtrer `unlocked && unlockedAt != null`, `sortedByDescending { it.unlockedAt }`, `take(3)` (cohérent avec `GridCells.Fixed(3)`).
+- Réutiliser `BadgeGrid` existant. Si aucun badge débloqué : cacher la rangée ou placeholder.
+- Le `firstCaptureBadge` n'est plus nécessaire en variable séparée.
+
+#### Label + timeout progress bar
+
+`ProfileScreen.kt` `BackupActionCard` (ligne ~360-374 actuel) :
+- Ajouter un `Text("Export en cours…" / "Import en cours…")` sous `LinearProgressIndicator` selon `BackupBusy`.
+- Timeout 60 s : `LaunchedEffect(backupBusy)` qui sur `busy != Idle` lance `delay(60_000)` puis bascule `backupBusy = Idle` + snackbar warning.
+- **Décision** : timeout d'affichage uniquement, ne PAS cancel la coroutine d'export/import sous-jacente (cancel sur SAF en cours = corruption potentielle du fichier choisi).
+
+Critère : 6 stats (4 + 2 compteurs %) + rangée 3 badges récents + 2 cards backup avec label. Capture posée hier soir, vue ce matin → « il y a 1 jour ».
+
+### Sprint 5 — Map UX
+
+#### FAB ★ : icône Search → Star
+
+`ui/map/MapScreen.kt` ligne ~528 (avant sprint 1 — décaler après vérification) :
+```kotlin
+Icons.Outlined.Search → Icons.Outlined.Star
+```
+Tint `MaterialTheme.arbresColors.remarquableOrange` conservé.
+
+#### Snackbar distance remarquable 3-4 s → 5 s
+
+`ui/map/MapScreen.kt` ligne ~462-464 : `snackbar.showSnackbar("Plus proche remarquable non découvert : ${nearest.second.toInt()} m")` sans paramètre `duration` → default `Short` (4 s).
+
+Approche : nouveau helper `ui/common/Snackbars.kt` :
+```kotlin
+suspend fun showSnackbarFor(host: SnackbarHostState, msg: String, ms: Long = 5000) {
+    val job = CoroutineScope(currentCoroutineContext()).launch {
+        host.showSnackbar(msg, duration = SnackbarDuration.Indefinite)
+    }
+    delay(ms)
+    host.currentSnackbarData?.dismiss()
+    job.cancel()
+}
+```
+À utiliser dans MapScreen et partout où on veut 5 s pile.
+
+#### FAB GPS pulse pendant gap permission → 1er fix
+
+`ui/map/MapScreen.kt` lignes ~534-548 (FAB GPS) :
+- State `awaitingFirstFix: Boolean`. True quand `permissionLauncher` callback reçoit `granted=true`. False dès que `LocationProvider.currentLocation.collectAsState()` passe non-null.
+- Pulse via `Modifier.scale(...)` ou `Modifier.alpha(...)` animé via `rememberInfiniteTransition` quand `awaitingFirstFix == true`.
+- Snackbar « Localisation en cours… » à l'entrée dans `awaitingFirstFix` ; dismiss au passage à `false`.
+
+#### BroadcastReceiver `PROVIDERS_CHANGED_ACTION`
+
+`util/LocationProvider.kt` :
+- BroadcastReceiver privé écoutant `LocationManager.PROVIDERS_CHANGED_ACTION`. Sur réception : si `isProviderEnabled(GPS_PROVIDER)` ou `NETWORK_PROVIDER` redevient true → redémarrer le listener (`stop()` + `start()`).
+- Enregistrement dans `start(ctx)` (ligne 68 actuel), désenregistrement dans `stop()` (ligne 105). `ctx.applicationContext` pour éviter fuite Activity.
+- `RECEIVER_NOT_EXPORTED` (Android 13+).
+
+#### Cluster ★ ring orange
+
+`ui/map/MapLayers.kt` lignes 53-60 :
+- Ajouter `clusterProperty` `has_remarquable_count`. Comme MapLibre n'auto-cast pas `boolean`, injecter `remarquable_int` (0/1) côté Kotlin dans `enrichGeoJsonWithDiscovery` (zero-coût, même boucle que `discovered`). Ne PAS modifier `tools/build_dataset.py` (invaliderait l'asset GeoJSON pré-cuit).
+- Sur la layer `arbres-clusters` (lignes 83-105) : remplacer `circleStrokeColor("#FFFFFF")` et `circleStrokeWidth(2f)` par expressions `switchCase` qui passent à orange (`0xFFFB8C00`, ring 3 dp) si `has_remarquable_count > 0`.
+- **Risque** : si MapLibre Native 11.11.0 ne supporte pas l'expression sur `circleStrokeColor`, fallback double-layer (ring orange filtré sur `has_remarquable_count > 0`, sous la principale). À tester device.
+- Token `remarquableOrange` dispo : `Color.kt:16` `RemarquableOrange = Color(0xFFFB8C00)` ; `ArbresColors.kt:18` exposé via `MaterialTheme.arbresColors`.
+
+#### Haptiques
+
+`ui/map/MapScreen.kt` ligne ~603-631 (ouverture `ModalBottomSheet`) :
+- Wrapper avec `LaunchedEffect(openedArbre.id)` qui appelle `LocalHapticFeedback.current.performHapticFeedback(HapticFeedbackType.LongPress)`.
+
+`ui/map/CaptureLauncher.kt` ligne 148 (haptique capture déplacée) :
+- Aujourd'hui : `captureHaptic()` post-INSERT.
+- Cible : déplacer au début de `runCapture()` après les checks GPS/distance, avant `launcher.launch(photoUri)`.
+
+`ui/map/CaptureLauncher.kt` lignes 112-118 (annulation caméra) :
+- Aujourd'hui : `if (!success) { file.delete(); return@launch }` silencieux.
+- Cible : ajouter `HapticFeedbackType.TextHandleMove` (équivalent Tick) + `snackbar.showSnackbar("Capture annulée")` (durée Short).
+
+Critère : FAB ★ étoile, pulse FAB GPS post-permission, BroadcastReceiver, cluster ring orange, annulation caméra avec Tick + snackbar, haptique sheet ouverture, haptique capture au tap.
+
+### Sprint 6 — Clôture cycle (procédure CLAUDE.md)
+
+1. Compresser ce bloc « Cycle en cours » en 3-5 lignes.
+2. Pousser le résumé en tête de « Cycles livrés post-1.0 » avec date et `1.1.0` (MINOR : retrait de feature + UX).
+3. `CHANGELOG.md` : entrée `[1.1.0]` détaillée.
+4. Promouvoir « Photos » → « Cycle en cours » avec items détaillés depuis BACKLOG.
+5. Marquer dans `BACKLOG.md` les 22 items absorbés comme livrés.
+6. Bumper `versionCode` (10000 → 10100 ?) et `versionName` ("1.1.0") dans `app/build.gradle.kts`.
+7. Tag `v1.1.0` (sous validation user).
 
 ## Prochains cycles
 

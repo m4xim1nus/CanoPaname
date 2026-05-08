@@ -18,7 +18,6 @@ enum class BadgeCategory(val label: String) {
     BOTANIQUE("Botanique"),
     GEOGRAPHIE("Géographie"),
     REMARQUABLES("Remarquables"),
-    SAISONS("Saisons"),
     DEMESURE("Démesure"),
 }
 
@@ -100,19 +99,6 @@ object BadgeCatalog {
         category = BadgeCategory.REMARQUABLES,
     )
 
-    val RONDE_DES_SAISONS = BadgeDef(
-        id = "ronde_des_saisons",
-        label = "Ronde des saisons",
-        description = "Au moins une capture dans chacune des 4 saisons.",
-        category = BadgeCategory.SAISONS,
-    )
-    val ANNEE_COMPLETE = BadgeDef(
-        id = "annee_complete",
-        label = "Année complète",
-        description = "Une capture chaque mois sur 12 mois consécutifs.",
-        category = BadgeCategory.SAISONS,
-    )
-
     val GEANT = BadgeDef(
         id = "geant",
         label = "Géant",
@@ -138,8 +124,6 @@ object BadgeCatalog {
         TOUR_COMPLET,
         CHASSEUR_REMARQUABLES,
         LEGENDE,
-        RONDE_DES_SAISONS,
-        ANNEE_COMPLETE,
         GEANT,
         VIEUX_SAGE,
     )

@@ -7,7 +7,6 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.time.Instant
-import java.time.YearMonth
 
 class BadgeEvaluatorTest {
 
@@ -92,52 +91,11 @@ class BadgeEvaluatorTest {
         assertEquals(ArrKey.Other, parseArrKey("Hauts-de-Seine"))
     }
 
-    // ---------- yearMonthOf (Europe/Paris) ----------
-
-    @Test fun `yearMonthOf returns Paris-zoned YearMonth`() {
-        // 2025-03-15 12:00 UTC → 13:00 Paris (CET) → mars 2025.
-        val ts = Instant.parse("2025-03-15T12:00:00Z").toEpochMilli()
-        assertEquals(YearMonth.of(2025, 3), BadgeEvaluator.yearMonthOf(ts))
-    }
-
-    @Test fun `yearMonthOf handles UTC midnight rollover into Paris`() {
-        // 2025-01-31 23:30 UTC = 2025-02-01 00:30 Paris (hiver, +1) → février.
-        val ts = Instant.parse("2025-01-31T23:30:00Z").toEpochMilli()
-        assertEquals(YearMonth.of(2025, 2), BadgeEvaluator.yearMonthOf(ts))
-    }
-
-    // ---------- hasTwelveConsecutiveMonths ----------
-
-    @Test fun `hasTwelveConsecutiveMonths returns false below twelve months`() {
-        val months = (1..11).map { YearMonth.of(2025, it) }.toSet()
-        assertFalse(BadgeEvaluator.hasTwelveConsecutiveMonths(months))
-    }
-
-    @Test fun `hasTwelveConsecutiveMonths returns true on exactly twelve consecutive`() {
-        val months = (1..12).map { YearMonth.of(2025, it) }.toSet()
-        assertTrue(BadgeEvaluator.hasTwelveConsecutiveMonths(months))
-    }
-
-    @Test fun `hasTwelveConsecutiveMonths spans year boundary`() {
-        // Mai 2025 → avril 2026.
-        val months = (0L until 12L).map { YearMonth.of(2025, 5).plusMonths(it) }.toSet()
-        assertTrue(BadgeEvaluator.hasTwelveConsecutiveMonths(months))
-    }
-
-    @Test fun `hasTwelveConsecutiveMonths returns false with a gap`() {
-        // 13 mois mais avec un trou (skip septembre 2025).
-        val months = (1..13)
-            .map { YearMonth.of(2025, 1).plusMonths(it.toLong()) }
-            .filter { it != YearMonth.of(2025, 9) }
-            .toSet()
-        assertFalse(BadgeEvaluator.hasTwelveConsecutiveMonths(months))
-    }
-
     // ---------- evaluate : aucun, premier ----------
 
-    @Test fun `evaluate with no captures returns 15 locked badges`() {
+    @Test fun `evaluate with no captures returns 13 locked badges`() {
         val states = BadgeEvaluator.evaluate(emptyList(), emptyMap(), emptySpeciesInfo())
-        assertEquals(15, states.size)
+        assertEquals(13, states.size)
         assertTrue(states.all { !it.unlocked })
         assertEquals(BadgeCatalog.ALL.map { it.id }, states.map { it.def.id })
     }
@@ -262,36 +220,6 @@ class BadgeEvaluatorTest {
         val states = BadgeEvaluator.evaluate(captures, arbres, emptySpeciesInfo())
         assertNotNull(unlockedAt(states, BadgeCatalog.PROMENADE.id))
         assertNull(unlockedAt(states, BadgeCatalog.TOURNEUR_DE_PARIS.id))
-    }
-
-    // ---------- saisons ----------
-
-    @Test fun `evaluate unlocks ronde des saisons after each of 4 seasons`() {
-        val captures = listOf(
-            capture(arbreId = 1L, ts = 1L, season = Season.WINTER),
-            capture(arbreId = 2L, ts = 2L, season = Season.SPRING),
-            capture(arbreId = 3L, ts = 3L, season = Season.SUMMER),
-            capture(arbreId = 4L, ts = 4L, season = Season.AUTUMN),
-        )
-        val arbres = captures.associate { it.arbreId to arbre(id = it.arbreId) }
-        val states = BadgeEvaluator.evaluate(captures, arbres, emptySpeciesInfo())
-        assertEquals(4L, unlockedAt(states, BadgeCatalog.RONDE_DES_SAISONS.id))
-    }
-
-    @Test fun `evaluate unlocks annee complete on twelfth consecutive month`() {
-        val captures = (0 until 12).map { i ->
-            // Une capture le 15 de chaque mois, mai 2025 → avril 2026.
-            val ym = YearMonth.of(2025, 5).plusMonths(i.toLong())
-            capture(
-                arbreId = i.toLong(),
-                ts = parisTs("${ym}-15T12:00:00Z"),
-                season = Season.SPRING,
-            )
-        }
-        val arbres = captures.associate { it.arbreId to arbre(id = it.arbreId) }
-        val states = BadgeEvaluator.evaluate(captures, arbres, emptySpeciesInfo())
-        // Le 12ème mois (avril 2026) déclenche le badge.
-        assertEquals(captures.last().timestamp, unlockedAt(states, BadgeCatalog.ANNEE_COMPLETE.id))
     }
 
     // ---------- remarquables ----------

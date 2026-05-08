@@ -1,9 +1,5 @@
 package app.arbre.data
 
-import java.time.Instant
-import java.time.YearMonth
-import java.time.ZoneId
-
 /**
  * Évalue l'état des badges. Balayage chronologique unique : pour chaque
  * badge, le `unlockedAt` est figé sur la capture qui a fait basculer le
@@ -21,9 +17,7 @@ object BadgeEvaluator {
 
         val seenSpecies = mutableSetOf<Int>()
         val seenRemarquables = mutableSetOf<Long>()
-        val seenSeasons = mutableSetOf<Season>()
         val seenArrondissements = mutableSetOf<Int>()
-        val seenYearMonths = sortedSetOf<YearMonth>()
         var totalCount = 0
 
         for (capture in sorted) {
@@ -63,14 +57,6 @@ object BadgeEvaluator {
             unlockOnce(unlocks, BadgeCatalog.CHASSEUR_REMARQUABLES.id, seenRemarquables.size >= 10, ts)
             unlockOnce(unlocks, BadgeCatalog.LEGENDE.id, seenRemarquables.size >= 50, ts)
 
-            seenSeasons.add(capture.season)
-            unlockOnce(unlocks, BadgeCatalog.RONDE_DES_SAISONS.id, seenSeasons.size == 4, ts)
-
-            seenYearMonths.add(yearMonthOf(ts))
-            if (hasTwelveConsecutiveMonths(seenYearMonths)) {
-                unlockOnce(unlocks, BadgeCatalog.ANNEE_COMPLETE.id, true, ts)
-            }
-
             val hauteur = arbre?.hauteurM
             if (hauteur != null && hauteur > 30) {
                 unlockOnce(unlocks, BadgeCatalog.GEANT.id, true, ts)
@@ -89,19 +75,6 @@ object BadgeEvaluator {
     /** 1..20 ou `null` pour les bois et exclaves. */
     fun parseArrondissement(adresse: String): Int? =
         (parseArrKey(adresse) as? ArrKey.Paris)?.num
-
-    private val PARIS_ZONE: ZoneId = ZoneId.of("Europe/Paris")
-
-    internal fun yearMonthOf(epochMillis: Long): YearMonth =
-        YearMonth.from(Instant.ofEpochMilli(epochMillis).atZone(PARIS_ZONE))
-
-    /** Cherche une fenêtre de 12 mois consécutifs entièrement dans [months]. */
-    internal fun hasTwelveConsecutiveMonths(months: Set<YearMonth>): Boolean {
-        if (months.size < 12) return false
-        return months.any { start ->
-            (0 until 12).all { offset -> start.plusMonths(offset.toLong()) in months }
-        }
-    }
 
     private fun unlockOnce(
         target: MutableMap<String, Long>,

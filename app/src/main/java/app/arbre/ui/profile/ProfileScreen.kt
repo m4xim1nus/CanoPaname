@@ -36,9 +36,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SegmentedButton
-import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
@@ -49,7 +46,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -63,7 +59,6 @@ import app.arbre.backup.ImportResult
 import app.arbre.backup.defaultExportFilename
 import app.arbre.data.BadgeCatalog
 import app.arbre.data.BadgeState
-import app.arbre.data.Season
 import app.arbre.data.rememberBackupExporter
 import app.arbre.data.rememberBackupImporter
 import app.arbre.data.rememberCaptureRepository
@@ -138,30 +133,19 @@ fun ProfileScreen(
         }
     }
 
-    // Toggle binaire (Global / Saison vive) — pas de sélecteur multi-saison ici.
-    val currentSeason = Season.current()
-
-    var scope by rememberSaveable { mutableStateOf(ProfileScope.GLOBAL) }
-
     val firstCaptureTs by captureRepo.firstCaptureTimestamp()
         .collectAsState(initial = null)
-    // Les deux Flows scopés sont collectés en parallèle pour éviter un
-    // re-collect au switch GLOBAL ↔ SEASON.
-    val capturedSpeciesGlobal by captureRepo.capturedSpeciesIndices()
+    val capturedSpecies by captureRepo.capturedSpeciesIndices()
         .collectAsState(initial = emptySet())
-    val capturedRemarquablesGlobal by captureRepo.capturedRemarquableIds()
-        .collectAsState(initial = emptySet())
-    val capturedSpeciesSeason by captureRepo.capturedSpeciesIndices(currentSeason)
-        .collectAsState(initial = emptySet())
-    val capturedRemarquablesSeason by captureRepo.capturedRemarquableIds(currentSeason)
+    val capturedRemarquables by captureRepo.capturedRemarquableIds()
         .collectAsState(initial = emptySet())
     val captureCount by captureRepo.captureCount().collectAsState(initial = 0)
 
-    val nbSpecies = if (scope == ProfileScope.GLOBAL) capturedSpeciesGlobal.size else capturedSpeciesSeason.size
-    val nbRemarquables = if (scope == ProfileScope.GLOBAL) capturedRemarquablesGlobal.size else capturedRemarquablesSeason.size
+    val nbSpecies = capturedSpecies.size
+    val nbRemarquables = capturedRemarquables.size
 
-    // « 1re capture » reste global, c'est un événement unique. `BadgesScreen`
-    // expose les 15 badges complets ; on n'affiche ici que le highlight.
+    // « 1re capture » est un événement unique. `BadgesScreen` expose le
+    // catalogue complet ; on n'affiche ici que le highlight.
     val firstCaptureBadge = remember(firstCaptureTs) {
         BadgeState(def = BadgeCatalog.FIRST_CAPTURE, unlockedAt = firstCaptureTs)
     }
@@ -186,18 +170,11 @@ fun ProfileScreen(
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            item {
-                ScopeSelector(
-                    current = scope,
-                    onSelect = { scope = it },
-                    currentSeason = currentSeason,
-                )
-            }
             if (firstCaptureTs == null) {
                 item {
                     EmptyState(
                         title = "Ton aventure commence ici",
-                        body = "Approche-toi d'un arbre, capture-le pour révéler son espèce. Tes stats et tes badges s'écriront ici au fil des saisons.",
+                        body = "Approche-toi d'un arbre, capture-le pour révéler son espèce. Tes stats et tes badges s'écriront ici au fil des captures.",
                         illustration = {
                             Image(
                                 painter = painterResource(R.drawable.illus_empty_profile),
@@ -214,8 +191,6 @@ fun ProfileScreen(
                     nbSpecies = nbSpecies,
                     nbRemarquables = nbRemarquables,
                     nbCaptures = captureCount,
-                    scope = scope,
-                    currentSeason = currentSeason,
                 )
             }
             item {
@@ -373,38 +348,13 @@ private fun BackupActionCard(
     }
 }
 
-private enum class ProfileScope { GLOBAL, SEASON }
-
-@Composable
-private fun ScopeSelector(
-    current: ProfileScope,
-    onSelect: (ProfileScope) -> Unit,
-    currentSeason: Season,
-) {
-    SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-        SegmentedButton(
-            selected = current == ProfileScope.GLOBAL,
-            onClick = { onSelect(ProfileScope.GLOBAL) },
-            shape = SegmentedButtonDefaults.itemShape(0, 2),
-        ) { Text("Global") }
-        SegmentedButton(
-            selected = current == ProfileScope.SEASON,
-            onClick = { onSelect(ProfileScope.SEASON) },
-            shape = SegmentedButtonDefaults.itemShape(1, 2),
-        ) { Text(currentSeason.label) }
-    }
-}
-
 @Composable
 private fun StatsCard(
     firstCaptureTs: Long?,
     nbSpecies: Int,
     nbRemarquables: Int,
     nbCaptures: Int,
-    scope: ProfileScope,
-    currentSeason: Season,
 ) {
-    val seasonSuffix = if (scope == ProfileScope.SEASON) " (${currentSeason.label.lowercase()})" else ""
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
@@ -431,11 +381,11 @@ private fun StatsCard(
                 } else "—",
             )
             StatLine(
-                label = "Espèces capturées$seasonSuffix",
+                label = "Espèces capturées",
                 value = nbSpecies.toString(),
             )
             StatLine(
-                label = "Arbres remarquables$seasonSuffix",
+                label = "Arbres remarquables",
                 value = nbRemarquables.toString(),
             )
             StatLine(

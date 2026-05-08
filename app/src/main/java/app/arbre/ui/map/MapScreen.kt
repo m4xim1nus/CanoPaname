@@ -56,13 +56,11 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import app.arbre.ArbresApp
 import app.arbre.R
-import app.arbre.data.Season
 import app.arbre.data.rememberArbreRepository
 import app.arbre.data.rememberCaptureRepository
 import app.arbre.data.rememberSpeciesIndex
 import app.arbre.data.rememberRemarquableInfoRepository
 import app.arbre.data.rememberSpeciesInfoRepository
-import app.arbre.ui.common.SeasonAmbience
 import app.arbre.ui.detail.ArbreDetailContent
 import app.arbre.ui.theme.arbresColors
 import app.arbre.ui.theme.arbresMotion
@@ -139,13 +137,9 @@ fun MapScreen(
     val filteredEntry = filterSpecies?.let { speciesIndex.get(it) }
     val filteredCount = filterSpecies?.let { speciesInfoRepo.get(it)?.stats?.count }
 
-    // La carte affiche toujours la saison vive — la sélection d'archive vit
-    // dans Profil/Arboretum/Remarquables, pas sur le hub.
-    val currentSeason = Season.current()
-
-    val capturedSpecies by captureRepo.capturedSpeciesIndices(currentSeason)
+    val capturedSpecies by captureRepo.capturedSpeciesIndices()
         .collectAsState(initial = emptySet())
-    val capturedRemarquables by captureRepo.capturedRemarquableIds(currentSeason)
+    val capturedRemarquables by captureRepo.capturedRemarquableIds()
         .collectAsState(initial = emptySet())
 
     val mapView = remember {
@@ -166,11 +160,11 @@ fun MapScreen(
     val snackbar = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
 
-    LaunchedEffect(styleRef, currentSeason) {
+    LaunchedEffect(styleRef) {
         val style = styleRef ?: return@LaunchedEffect
         combine(
-            captureRepo.capturedSpeciesIndices(currentSeason),
-            captureRepo.capturedRemarquableIds(currentSeason),
+            captureRepo.capturedSpeciesIndices(),
+            captureRepo.capturedRemarquableIds(),
         ) { species, remarquables -> species to remarquables }
             .collect { (species, remarquables) ->
                 applyDiscoveryColor(style, species, remarquables)
@@ -185,12 +179,12 @@ fun MapScreen(
     // mounts suivants, `app.enrichedGeoJson` permet au cold-start de poser
     // direct l'enrichi ; ici on skip le re-enrich si les sets sont identiques
     // à `lastEnrichmentKey`. Skip total en mode filtré (déjà enrichi cold).
-    LaunchedEffect(styleRef, currentSeason, filterSpecies) {
+    LaunchedEffect(styleRef, filterSpecies) {
         if (filterSpecies != null) return@LaunchedEffect
         val style = styleRef ?: return@LaunchedEffect
         combine(
-            captureRepo.capturedSpeciesIndices(currentSeason),
-            captureRepo.capturedRemarquableIds(currentSeason),
+            captureRepo.capturedSpeciesIndices(),
+            captureRepo.capturedRemarquableIds(),
         ) { species, remarquables -> species to remarquables }
             .debounce(1000)
             .collect { (species, remarquables) ->
@@ -322,8 +316,8 @@ fun MapScreen(
                                 // Coût négligeable sur < 1 Mo.
                                 val initialCaptures = withTimeoutOrNull(2000) {
                                     combine(
-                                        captureRepo.capturedSpeciesIndices(currentSeason),
-                                        captureRepo.capturedRemarquableIds(currentSeason),
+                                        captureRepo.capturedSpeciesIndices(),
+                                        captureRepo.capturedRemarquableIds(),
                                     ) { s, r -> s to r }.first()
                                 } ?: (emptySet<Int>() to emptySet<Long>())
                                 val json = withContext(Dispatchers.Default) {
@@ -467,7 +461,6 @@ fun MapScreen(
 
     Box(modifier = Modifier.fillMaxSize()) {
         AndroidView(factory = { mapView })
-        SeasonAmbience(season = currentSeason)
         CaptureCelebrationOverlay(
             captureRepo = captureRepo,
             mapRef = mapRef,

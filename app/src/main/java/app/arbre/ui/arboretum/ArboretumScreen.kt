@@ -48,7 +48,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.arbre.data.Capture
-import app.arbre.data.Season
 import app.arbre.data.SpeciesEntry
 import app.arbre.data.SpeciesIndex
 import app.arbre.data.SpeciesInfoRepository
@@ -56,15 +55,12 @@ import app.arbre.data.catalogueOrder
 import app.arbre.data.rememberArbreRepository
 import app.arbre.data.rememberCaptureRepository
 import app.arbre.data.rememberDatasetStats
-import app.arbre.data.rememberSeasonStore
 import app.arbre.data.rememberSpeciesIndex
 import app.arbre.data.rememberSpeciesInfoRepository
 import app.arbre.data.resolvedFile
 import app.arbre.R
-import app.arbre.ui.common.ArchiveBanner
 import app.arbre.ui.common.EmptyState
 import app.arbre.ui.common.PhotoThumbnail
-import app.arbre.ui.common.SeasonSelector
 import androidx.compose.foundation.Image
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -84,17 +80,13 @@ fun ArboretumScreen(
     val speciesInfoRepo = rememberSpeciesInfoRepository()
     val stats = rememberDatasetStats()
     val arbreRepo = rememberArbreRepository()
-    val seasonStore = rememberSeasonStore()
-    val selectedSeason by seasonStore.selected.collectAsState()
-    val currentSeason = Season.current()
-    val isArchive = selectedSeason != currentSeason
 
     val captures by captureRepo.toutesLesCaptures().collectAsState(initial = emptyList())
 
-    // Captures non-remarquables filtrées sur la saison sélectionnée — les
-    // remarquables ont leur écran dédié.
+    // Les remarquables ont leur écran dédié — on agrège les autres captures
+    // par espèce, toutes saisons confondues.
     val speciesGroups: List<SpeciesGroup> = captures
-        .filter { !it.remarquable && it.season == selectedSeason }
+        .filter { !it.remarquable }
         .groupBy { it.speciesIndex }
         .mapNotNull { (sk, caps) ->
             val entry = speciesIndex.get(sk) ?: return@mapNotNull null
@@ -113,14 +105,6 @@ fun ArboretumScreen(
                         Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Retour")
                     }
                 },
-                actions = {
-                    SeasonSelector(
-                        selected = selectedSeason,
-                        onSelect = { seasonStore.select(it) },
-                        isCurrent = !isArchive,
-                        modifier = Modifier.padding(end = 8.dp),
-                    )
-                },
             )
         },
     ) { padding ->
@@ -129,13 +113,9 @@ fun ArboretumScreen(
                 .fillMaxSize()
                 .padding(padding),
         ) {
-            if (isArchive) {
-                ArchiveBanner(season = selectedSeason)
-            }
             HeaderCard(
                 speciesGroups.size,
                 stats.totalEspeces,
-                season = selectedSeason,
                 modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 16.dp),
             )
             ViewModeSelector(
@@ -151,8 +131,6 @@ fun ArboretumScreen(
                     totalEspeces = stats.totalEspeces,
                     arbreRepo = arbreRepo,
                     onSpeciesClick = onSpeciesClick,
-                    selectedSeason = selectedSeason,
-                    isArchive = isArchive,
                 )
                 ArboretumViewMode.CATALOGUE -> CatalogueView(
                     speciesIndex = speciesIndex,
@@ -193,8 +171,6 @@ private fun ListeView(
     totalEspeces: Int,
     arbreRepo: app.arbre.data.ArbreRepository,
     onSpeciesClick: (Int) -> Unit,
-    selectedSeason: Season,
-    isArchive: Boolean,
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -213,7 +189,7 @@ private fun ListeView(
                 )
             }
         } else {
-            item { ArboretumEmptyState(season = selectedSeason, isArchive = isArchive) }
+            item { ArboretumEmptyState() }
         }
     }
 }
@@ -348,7 +324,6 @@ private data class SpeciesGroup(
 private fun HeaderCard(
     nbEspeces: Int,
     totalEspeces: Int,
-    season: Season,
     modifier: Modifier = Modifier,
 ) {
     Card(
@@ -361,11 +336,6 @@ private fun HeaderCard(
             Text(
                 "$nbEspeces / $totalEspeces espèces découvertes",
                 style = MaterialTheme.typography.titleLarge,
-            )
-            Text(
-                "${season.preposition} ${season.label.lowercase()}",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onPrimaryContainer,
             )
         }
     }
@@ -447,14 +417,10 @@ private fun SpeciesCard(
 }
 
 @Composable
-private fun ArboretumEmptyState(season: Season, isArchive: Boolean) {
-    val title = if (isArchive) "Aucune capture ${season.preposition} ${season.label.lowercase()}."
-                else "Premier ${season.label.lowercase()} ?"
-    val body = if (isArchive) "Reviens à la saison vive pour capturer."
-               else "Approche-toi d'un arbre, tape son pin gris et capture-le pour révéler son espèce."
+private fun ArboretumEmptyState() {
     EmptyState(
-        title = title,
-        body = body,
+        title = "Ton arboretum est vide.",
+        body = "Approche-toi d'un arbre, tape son pin gris et capture-le pour révéler son espèce.",
         illustration = {
             Image(
                 painter = painterResource(R.drawable.illus_empty_arboretum),
