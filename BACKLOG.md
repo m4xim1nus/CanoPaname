@@ -13,31 +13,6 @@ Triage en lot au début de chaque cycle. Process complet dans `CLAUDE.md` (*Work
 
 ---
 
-## Cycle Vérité & Friction
-
-- [→Vérité] Retirer UI saisons (SeasonSelector caché, ArchiveBanner retiré, Profil/Arboretum/Remarquables global-only) ; garder schéma `Season` + colonne `season` (user:moi, 2026-05-07)
-- [→Vérité] Retirer 3 badges saisonniers du catalogue (cohérence suppression UI saisons) (user:moi, 2026-05-07)
-- [→Vérité] README : « 907 espèces » → « 907 dont 528 fiches enrichies » (audit#1, 2026-05-06)
-- [→Vérité] README : retirer « saisonnalité réelle » (audit#2, 2026-05-06)
-- [→Vérité] PRIVACY + README : mention OpenStreetMap / OpenFreeMap (audit#3, 2026-05-06)
-- [→Vérité] CHANGELOG [1.0.0] : « fiches remarquables accessibles après capture » (audit#4, 2026-05-06)
-- [→Vérité] `UnknownContent` rappelle la mécanique de déverrouillage par espèce (audit#5, 2026-05-06)
-- [→Vérité] `CaptureAvailability.TooFar` affiche la distance courante vs max 30 m (audit#6, 2026-05-06)
-- [→Vérité] Bullet remarquables Welcome étoffé (audit#7, 2026-05-06)
-- [→Vérité] Feedback GPS post-permission : snackbar + pulse FAB pendant le gap 7-10 s (audit#8, 2026-05-06)
-- [→Vérité] BroadcastReceiver `PROVIDERS_CHANGED_ACTION` pour réagir si la loc système est activée après ouverture app (user:moi, 2026-05-07)
-- [→Vérité] Bug Profil : « aujourd'hui » affiché pour une 1re capture d'hier (user:moi, 2026-05-07)
-- [→Vérité] Compteur global Profil : « X / 907 espèces (Y %) » + « Z / 213 042 arbres (W %) » (audit#16 + user:moi, 2026-05-07)
-- [→Vérité] Badges débloqués sur ProfileScreen : preview rangée 3-4 derniers (user:moi, 2026-05-07)
-- [→Vérité] Cluster contenant ★ : ring orange fin via `has_remarquable_count` (user:moi, 2026-05-07)
-- [→Vérité] Haptique `LongPress` à l'ouverture du sheet `ArbreDetailContent` (audit#12, 2026-05-06)
-- [→Vérité] Haptique capture déplacée du post-INSERT vers le tap « Capturer » (audit#13, 2026-05-06)
-- [→Vérité] Snackbar + Tick haptique à l'annulation caméra (audit#14, 2026-05-06)
-- [→Vérité] Label + timeout 60 s sur progress bar export/import (audit#15, 2026-05-06)
-- [→Vérité] FAB ★ : icône `Search` → `Star` (audit#10, 2026-05-06)
-- [→Vérité] Snackbar distance remarquable 3 s → 5 s (audit#11, 2026-05-06)
-- [→Vérité] `EmptyState` `bodyMedium` 14 sp → 16 sp (audit#9, 2026-05-06)
-
 ## Cycle Photos
 
 - [→Photos] Photos multiples par espèce et par arbre individuel (user:moi, 2026-05-07)
@@ -54,8 +29,16 @@ Triage en lot au début de chaque cycle. Process complet dans `CLAUDE.md` (*Work
 - [→Variantes] Refonte Arboretum « états » : la colonne `season` devient `variants` (en fleur, tout nu, fruits, bébé, géant) (user:moi, 2026-05-07)
 - [→Variantes] Détection auto bébé/géant via circonférence ; déclaration utilisateur sinon (user:moi, 2026-05-07)
 - [→Variantes] Re-capture du même arbre dans un état nouveau = upgrade visible élément Arboretum (user:moi + audit V2#4, 2026-05-07)
-- [→Variantes] `MIGRATION_3_4` + backup `schemaVersion = 3` (user:moi, 2026-05-07)
+- [→Variantes] `MIGRATION_4_5` + backup `schemaVersion = 3` (user:moi, 2026-05-07)
 - [→Variantes] Badges variantes émergent du nouveau modèle (user:moi, 2026-05-07)
+- [→Variantes] Sort des entrées `Non spécifié` (677 arbres, 3 entrées) : drop dur côté `tools/build_dataset.py` ou affichage gris non-cliquable ? (claude:analyse, 2026-05-08)
+- [→Variantes] Sort des entrées `sp.` / `n. sp.` (8 793 arbres, 4,1 % du dataset) : tag `unknownSpecies` + regroupement Arboretum sous le `nc` parent ? (claude:analyse, 2026-05-08)
+- [→Variantes] Table `SPECIES_FIXUPS` côté `tools/build_dataset.py` pour coquilles OpenData (`Olea europea` → `europaea`, etc.) (claude:analyse, 2026-05-08)
+- [→Variantes] Extraction nom vernaculaire FR (Wikidata `P1843` propre vs regex summary ~85 % vs les deux) (claude:analyse, 2026-05-08)
+- [→Variantes] Compteur Arboretum à deux niveaux (`X / 221 noms communs` + `Y / 907 espèces`) (claude:analyse, 2026-05-08)
+- [→Variantes] Carte filtrée par nom commun (set de `sk` fusionnés en expression `match`) (claude:analyse, 2026-05-08)
+- [→Variantes] Sanity checks au build dataset (espèce > 100 perd sa page WP, `sk` existant disparaît, nouveau genre `Non spécifié` count > 50) (claude:analyse, 2026-05-08)
+- [→Variantes] Affichage du nom vernaculaire FR sur la fiche-espèce (claude:analyse, 2026-05-08)
 
 ## Cycle Endgame
 
@@ -76,6 +59,8 @@ Triage en lot au début de chaque cycle. Process complet dans `CLAUDE.md` (*Work
 - [creuser] Phénologie réelle (dates floraison/feuillage par espèce) — décision structurante v2 (audit V2#1)
 - [creuser] Étendre screenshots README de 3 à 6 (audit#17 : à faire après Photos pour avoir les nouveaux écrans)
 - [creuser] Script `tools/scout_other_cities.py` qui interroge OpenData de villes du Grand Paris et produit un md de faisabilité (user:moi, 2026-05-07)
+- [creuser] Mini-quiz d'identification entre espèces partageant le même `nc` (Quercus robur vs petraea, Tilia cordata vs platyphyllos) (claude:analyse, 2026-05-08)
+- [creuser] Badges « Inspecteur » (capturer N arbres `sp.`) et « Mosaïque de chênes » (10 espèces sous le même `nc`) (claude:analyse, 2026-05-08)
 
 ## Refusé
 
