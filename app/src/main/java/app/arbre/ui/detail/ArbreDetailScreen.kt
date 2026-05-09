@@ -250,7 +250,7 @@ private fun UnknownContent(
         if (arbre.remarquable) {
             "Remarquable non découvert. Capture-le pour révéler sa fiche."
         } else {
-            "Non capturé. Capture un arbre de cette espèce et tous les semblables se déverrouilleront. < 30 m."
+            "Non capturé. Capture un arbre de cette espèce et tous les semblables se déverrouilleront."
         },
         style = MaterialTheme.typography.bodyMedium,
         color = MaterialTheme.colorScheme.onSurfaceVariant,

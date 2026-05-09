@@ -18,8 +18,10 @@ private val SPLASH_INTRO_SEEN_KEY = booleanPreferencesKey("splash_intro_seen")
  * Deux flags one-shot par install :
  * - [onboardingDone] : pilote le `startDestination` du NavHost.
  * - [splashIntroSeen] : passe la rotation tips du `ColdStartSplash` du mode
- *   intro figé au shuffle. Posé à la *fin* du splash, pas au mount, pour
- *   qu'un kill prématuré ne consume pas l'intro.
+ *   intro figé au shuffle. Posé dès l'affichage du 1er tip d'intro **dans
+ *   une session post-onboarding** (pas pendant le mount transient du fallback
+ *   `MAP` du NavHost pré-Welcome), pour qu'un crash *avant* mount post-Welcome
+ *   ne consume pas l'intro.
  */
 class OnboardingStore(private val context: Context) {
 

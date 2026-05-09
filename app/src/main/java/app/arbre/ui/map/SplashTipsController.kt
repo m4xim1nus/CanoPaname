@@ -36,9 +36,11 @@ private val PLACEHOLDER_REGEX = Regex("""\{([a-zA-Z]+)\}""")
  * - Rotation : tick de [ROTATION_INTERVAL_MS] ms, démarrée seulement quand
  *   `canRotate == true` (= l'`Animatable` du hero a fini son fade-in, sinon
  *   double-fade visuel au tout 1er affichage).
- * - Persistance : pose `splashIntroSeen=true` après la **1re rotation** en
- *   mode intro — l'utilisateur a vu au moins 2 tips d'accueil. Un kill avant
- *   ce seuil garde l'intro pour la session suivante.
+ * - Persistance : pose `splashIntroSeen=true` dès l'affichage du 1er tip
+ *   d'intro **dans une session post-onboarding** (`onboardingDone == true`).
+ *   Le mount transient du fallback `MAP` du NavHost (round-trip DataStore
+ *   initial pré-Welcome) ne consume pas l'intro. Un crash *avant* le mount
+ *   post-Welcome garde l'intro pour la session suivante.
  *
  * @param canRotate `false` tant que l'animation hero (`intro.value < 1f`) tourne.
  *                  `true` une fois posée → la rotation démarre.
@@ -58,6 +60,14 @@ fun rememberSplashTipText(
     val isIntroMode = remember { mutableStateOf<Boolean?>(null) }
 
     LaunchedEffect(Unit) {
+        // Suspend jusqu'à `onboardingDone == true`. Deux cas couverts :
+        // - Mount transient du fallback `MAP` du `ArbresNavHost` pré-Welcome :
+        //   `onboardingDone` reste à `false` jusqu'à cancellation par démontage,
+        //   l'intro n'est pas consommée.
+        // - Mount post-Welcome : `WelcomeScreen.onContinue` lance `markDone()`
+        //   en parallèle de `nav.navigate(MAP)` — un `.first()` nu attraperait
+        //   souvent encore `false`. `.first { it }` attend l'edit DataStore.
+        onboardingStore.onboardingDone.first { it }
         isIntroMode.value = !onboardingStore.splashIntroSeen.first()
     }
 
@@ -122,24 +132,21 @@ fun rememberSplashTipText(
         // 1er tip avant `canRotate` : du contenu pendant le fade-in du hero.
         state.value = render(sequence[0], playerSnapshot.value ?: emptyMap())
 
+        // Consomme l'intro dès le 1er tip posé : un splash court suffit à
+        // faire basculer en mode random aux sessions suivantes. Le mode est
+        // figé via `remember`, cette écriture ne re-fire pas le LaunchedEffect.
+        if (mode) {
+            onboardingStore.markSplashIntroSeen()
+        }
+
         // Pas de rotation pendant l'animation hero — sinon double-fade.
         if (!canRotate) return@LaunchedEffect
 
         var idx = 0
-        var rotations = 0
         while (true) {
             delay(ROTATION_INTERVAL_MS)
             idx = (idx + 1) % sequence.size
             state.value = render(sequence[idx], playerSnapshot.value ?: emptyMap())
-            rotations++
-
-            // Marque l'intro vue après la 1re rotation (≈ 2 tips, 7-14 s).
-            // Kill app avant ce seuil = rejouer l'intro à la prochaine session.
-            // Le mode est figé via `remember`, donc cette écriture ne re-fire
-            // pas le LaunchedEffect.
-            if (mode && rotations == 1) {
-                onboardingStore.markSplashIntroSeen()
-            }
         }
     }
 
