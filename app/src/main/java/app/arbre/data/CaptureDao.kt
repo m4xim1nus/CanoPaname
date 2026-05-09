@@ -47,4 +47,7 @@ interface CaptureDao {
 
     @Query("SELECT EXISTS(SELECT 1 FROM capture WHERE speciesIndex = :speciesIndex AND remarquable = 0)")
     suspend fun speciesAlreadyCaptured(speciesIndex: Int): Boolean
+
+    @Query("DELETE FROM capture WHERE id = :captureId")
+    suspend fun deleteById(captureId: Long)
 }

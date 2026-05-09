@@ -34,9 +34,12 @@ import app.arbre.data.rememberCaptureRepository
 import app.arbre.data.rememberRemarquableInfoRepository
 import app.arbre.data.rememberSpeciesIndex
 import app.arbre.data.resolvedFile
+import androidx.compose.runtime.rememberCoroutineScope
+import app.arbre.ui.common.DeleteCaptureDialog
 import app.arbre.ui.common.PhotoGallery
 import app.arbre.ui.common.PhotoLightbox
 import app.arbre.ui.detail.ArbreDetailContent
+import kotlinx.coroutines.launch
 
 /**
  * Fiche plein-écran d'un arbre remarquable, atteinte uniquement après
@@ -50,6 +53,7 @@ fun RemarquableDetailScreen(
     arbreId: Long,
     onBack: () -> Unit,
     onSpeciesClick: (Int) -> Unit = {},
+    onUnlockLost: () -> Unit = {},
 ) {
     val arbreRepo = rememberArbreRepository()
     val captureRepo = rememberCaptureRepository()
@@ -73,6 +77,8 @@ fun RemarquableDetailScreen(
     val info = remarquableInfoRepo.get(arbreId)
 
     var lightboxIndex by remember(arbreId) { mutableStateOf<Int?>(null) }
+    var pendingDeleteIndex by remember(arbreId) { mutableStateOf<Int?>(null) }
+    val scope = rememberCoroutineScope()
 
     Scaffold(
         topBar = {
@@ -113,6 +119,7 @@ fun RemarquableDetailScreen(
                         photoFiles = photoFiles,
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                         onPhotoClick = { idx -> lightboxIndex = idx },
+                        onPhotoLongClick = { idx -> pendingDeleteIndex = idx },
                     )
                     Spacer(Modifier.height(8.dp))
                 }
@@ -131,7 +138,32 @@ fun RemarquableDetailScreen(
                 photoFiles = photoFiles,
                 selectedIndex = lightboxIndex,
                 onDismiss = { lightboxIndex = null },
+                onDeleteAt = { idx -> pendingDeleteIndex = idx },
             )
+
+            pendingDeleteIndex?.let { idx ->
+                val capture = captures.getOrNull(idx)
+                val file = photoFiles.getOrNull(idx)
+                if (capture == null || file == null) {
+                    pendingDeleteIndex = null
+                    return@let
+                }
+                DeleteCaptureDialog(
+                    isLastOfEntity = captures.size == 1,
+                    entityKindLabel = "cet arbre remarquable",
+                    entityName = current.nomAffichage,
+                    onConfirm = {
+                        val wasLast = captures.size == 1
+                        pendingDeleteIndex = null
+                        lightboxIndex = null
+                        scope.launch {
+                            captureRepo.deleteCapture(capture, file)
+                            if (wasLast) onUnlockLost()
+                        }
+                    },
+                    onDismiss = { pendingDeleteIndex = null },
+                )
+            }
         }
     }
 }

@@ -271,4 +271,5 @@ private class FakeCaptureDao : CaptureDao {
     override fun captureCount(): Flow<Int> = flowOf(0)
     override suspend fun allCapturesSnapshot(): List<CaptureEntity> = emptyList()
     override suspend fun speciesAlreadyCaptured(speciesIndex: Int): Boolean = false
+    override suspend fun deleteById(captureId: Long) {}
 }

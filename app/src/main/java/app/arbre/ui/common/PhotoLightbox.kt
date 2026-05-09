@@ -7,7 +7,17 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.rememberTransformableState
 import androidx.compose.foundation.gestures.transformable
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -16,6 +26,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
@@ -23,6 +34,7 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import kotlinx.coroutines.Dispatchers
@@ -42,6 +54,7 @@ fun PhotoLightbox(
     photoFiles: List<File>,
     selectedIndex: Int?,
     onDismiss: () -> Unit,
+    onDeleteAt: ((Int) -> Unit)? = null,
 ) {
     if (selectedIndex == null) return
     val file = photoFiles.getOrNull(selectedIndex) ?: return
@@ -101,6 +114,25 @@ fun PhotoLightbox(
                             translationY = offset.y
                         },
                 )
+            }
+            if (onDeleteAt != null) {
+                val statusBarPadding = WindowInsets.statusBars.asPaddingValues()
+                IconButton(
+                    onClick = { onDeleteAt(selectedIndex) },
+                    colors = IconButtonDefaults.iconButtonColors(
+                        contentColor = Color.White,
+                    ),
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(top = statusBarPadding.calculateTopPadding() + 8.dp, end = 8.dp)
+                        .clip(CircleShape)
+                        .background(Color.Black.copy(alpha = 0.4f)),
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.Delete,
+                        contentDescription = "Supprimer cette photo",
+                    )
+                }
             }
         }
     }

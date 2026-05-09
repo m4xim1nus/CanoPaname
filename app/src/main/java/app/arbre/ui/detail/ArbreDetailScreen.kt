@@ -67,6 +67,8 @@ fun ArbreDetailContent(
                 onSpeciesClick = onSpeciesClick,
                 onRemarquableClick = onRemarquableClick,
                 remarquableInfo = remarquableInfo,
+                onCapturer = onCapturer,
+                captureAvailability = captureAvailability,
             )
         } else {
             UnknownContent(arbre, onCapturer, captureAvailability)
@@ -83,6 +85,8 @@ private fun DiscoveredContent(
     onSpeciesClick: (() -> Unit)?,
     onRemarquableClick: (() -> Unit)?,
     remarquableInfo: RemarquableInfo?,
+    onCapturer: (() -> Unit)?,
+    captureAvailability: CaptureAvailability?,
 ) {
     Text(
         arbre.nomAffichage,
@@ -172,6 +176,14 @@ private fun DiscoveredContent(
             )
         }
     }
+    if (onCapturer != null) {
+        Spacer(Modifier.height(8.dp))
+        CaptureButton(
+            defaultLabel = "Recapturer",
+            onCapturer = onCapturer,
+            availability = captureAvailability,
+        )
+    }
 }
 
 /** « (médiane X · au-dessus/en-dessous) » — repère compact, pas de percentile. */
@@ -257,11 +269,24 @@ private fun UnknownContent(
     )
 
     Spacer(Modifier.height(8.dp))
+    CaptureButton(
+        defaultLabel = "Capturer",
+        onCapturer = onCapturer,
+        availability = availability,
+    )
+}
+
+@Composable
+private fun CaptureButton(
+    defaultLabel: String,
+    onCapturer: (() -> Unit)?,
+    availability: CaptureAvailability?,
+) {
     val label = when (availability) {
-        CaptureAvailability.Ready -> "Capturer"
+        CaptureAvailability.Ready -> defaultLabel
         CaptureAvailability.NoGps -> "Active le GPS"
         is CaptureAvailability.TooFar -> "Trop loin (${availability.meters} m / max 30 m). Rapproche-toi."
-        null -> "Capturer"
+        null -> defaultLabel
     }
     Button(
         onClick = { onCapturer?.invoke() },

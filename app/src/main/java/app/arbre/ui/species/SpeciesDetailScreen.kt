@@ -67,11 +67,14 @@ import app.arbre.data.rememberCaptureRepository
 import app.arbre.data.rememberSpeciesIndex
 import app.arbre.data.rememberSpeciesInfoRepository
 import app.arbre.data.resolvedFile
+import app.arbre.ui.common.DeleteCaptureDialog
 import app.arbre.ui.common.PhotoGallery
 import app.arbre.ui.common.PhotoLightbox
 import java.text.NumberFormat
 import java.util.Locale
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
+import androidx.compose.runtime.rememberCoroutineScope
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -80,6 +83,7 @@ fun SpeciesDetailScreen(
     onBack: () -> Unit,
     onShowOnMap: () -> Unit = {},
     onRemarquableClick: (Long) -> Unit = {},
+    onUnlockLost: () -> Unit = {},
     celebrate: Boolean = false,
 ) {
     val speciesIndexRepo = rememberSpeciesIndex()
@@ -118,7 +122,9 @@ fun SpeciesDetailScreen(
         .collectAsState(initial = emptySet())
 
     var lightboxIndex by remember(speciesIndex) { mutableStateOf<Int?>(null) }
+    var pendingDeleteIndex by remember(speciesIndex) { mutableStateOf<Int?>(null) }
     val ctx = LocalContext.current
+    val scope = rememberCoroutineScope()
     val photoFiles = captures.map { it.resolvedFile(ctx) }
 
     val title = arbreSample?.nomCommun ?: entry.displayName
@@ -153,6 +159,7 @@ fun SpeciesDetailScreen(
                     PhotoGallery(
                         photoFiles = photoFiles,
                         onPhotoClick = { idx -> lightboxIndex = idx },
+                        onPhotoLongClick = { idx -> pendingDeleteIndex = idx },
                     )
                 }
             }
@@ -183,7 +190,32 @@ fun SpeciesDetailScreen(
             photoFiles = photoFiles,
             selectedIndex = lightboxIndex,
             onDismiss = { lightboxIndex = null },
+            onDeleteAt = { idx -> pendingDeleteIndex = idx },
         )
+
+        pendingDeleteIndex?.let { idx ->
+            val capture = captures.getOrNull(idx)
+            val file = photoFiles.getOrNull(idx)
+            if (capture == null || file == null) {
+                pendingDeleteIndex = null
+                return@let
+            }
+            DeleteCaptureDialog(
+                isLastOfEntity = captures.size == 1,
+                entityKindLabel = "cette espèce",
+                entityName = arbreSample?.nomCommun ?: entry.displayName,
+                onConfirm = {
+                    val wasLast = captures.size == 1
+                    pendingDeleteIndex = null
+                    lightboxIndex = null
+                    scope.launch {
+                        captureRepo.deleteCapture(capture, file)
+                        if (wasLast) onUnlockLost()
+                    }
+                },
+                onDismiss = { pendingDeleteIndex = null },
+            )
+        }
     }
 }
 

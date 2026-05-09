@@ -2,6 +2,15 @@
 
 Format basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions [SemVer](https://semver.org/lang/fr/).
 
+## [Unreleased]
+
+Cycle *Photos et progressivité* en cours. Items consolidés au tag.
+
+### Ajouté
+
+- Sheet détail : bouton « Recapturer » dès qu'une espèce ou un remarquable est débloqué (modèle Room déjà N captures par arbre, pas de nouveau schéma).
+- Galerie photos : long-press sur une vignette ou icône poubelle dans la lightbox plein-écran ouvrent un dialog de confirmation. Si c'est la dernière capture de l'espèce / du remarquable, le dialog prévient du re-verrouillage et la suppression renvoie sur la Map.
+
 ## [1.0.1] — 2026-05-09
 
 Patch dette + UX. Cinq sprints atomiques sous le codename *Vérité & Friction*. Aucune casse de schéma, aucune nouvelle feature visible.

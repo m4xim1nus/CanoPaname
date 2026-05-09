@@ -123,6 +123,7 @@ fun ArbresNavHost() {
                 arbreId = arbreId,
                 onBack = { nav.popBackStack() },
                 onSpeciesClick = { sk -> nav.navigate(Routes.species(sk)) },
+                onUnlockLost = { nav.popBackStack(Routes.MAP, inclusive = false) },
             )
         }
         composable(
@@ -142,6 +143,7 @@ fun ArbresNavHost() {
                 onBack = { nav.popBackStack() },
                 onShowOnMap = { nav.navigate(Routes.mapFiltered(sk)) },
                 onRemarquableClick = { id -> nav.navigate(Routes.remarquableDetail(id)) },
+                onUnlockLost = { nav.popBackStack(Routes.MAP, inclusive = false) },
                 celebrate = celebrate,
             )
         }

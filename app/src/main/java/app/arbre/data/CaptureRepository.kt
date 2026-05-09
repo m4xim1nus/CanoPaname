@@ -1,5 +1,6 @@
 package app.arbre.data
 
+import java.io.File
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -89,5 +90,17 @@ class CaptureRepository(private val dao: CaptureDao) {
             )
         )
         return rowId
+    }
+
+    /**
+     * Suppression d'une capture : DELETE row d'abord (cascade Flow immédiate),
+     * puis fichier disque en best-effort. Une photo orpheline ne casse rien
+     * (aucun écran ne liste le filesystem) ; à l'inverse, un fichier supprimé
+     * sous une row vivante laisserait un thumbnail cassé.
+     */
+    suspend fun deleteCapture(capture: Capture, photoFile: File): Boolean {
+        dao.deleteById(capture.id)
+        return runCatching { !photoFile.exists() || photoFile.delete() }
+            .getOrDefault(false)
     }
 }
