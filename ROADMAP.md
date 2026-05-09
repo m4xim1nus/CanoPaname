@@ -6,12 +6,23 @@ App perso, pas de calendrier engageant. Single-player, stockage local strict —
 
 Profondeur et lisibilité de l'expérience après v1.0.1, sans casse de schéma. On garde le modèle Room (1 capture = 1 photo, `arbreId` + `speciesIndex` portés par la row), on rend la re-capture explicite et on permet l'inverse : supprimer. En parallèle, refonte des badges progressifs en multi-paliers visibles, et deux items lisibilité (tranches Arboretum, voir-sur-carte remarquables).
 
-Items (issus du BACKLOG, à détailler en sprints) :
-- **Re-capture autorisée et lisible** : sur un arbre déjà capturé, le bouton `Capturer` devient `Recapturer`. Pipeline inchangé (GPS frais, photo, INSERT row), N captures par arbre supportées nativement.
-- **Suppression d'une capture** (icône poubelle dans `PhotoLightbox` + long-press dans `PhotoGallery`) : si c'était la dernière capture de l'espèce, dialog explicite annonce le déverrouillage perdu, navigation back vers la Map à la confirmation. Cascade automatique sur les Flows et sur `BadgeEvaluator` (pur).
-- **Tranches de fréquence Arboretum** (`+10 000`, `2 000-10 000`, `1 000-2 000`, `100-1 000`, `< 100`) sur l'onglet LISTE, sticky headers — miroir des arrondissements remarquables. Source : `SpeciesInfo.stats.count` déjà chargé.
-- **Refonte des badges progressifs en multi-paliers visibles** : 6 badges fusionnés en 3 (`Marcheur` 1/10/25/50/100/250 ; `Botaniste` 1/10/25/50/100/200 ; `Chasseur` 1/5/10/25/50). Catalogue 13 → 10 badges. Barre + jalons dans `BadgesScreen`.
-- **Bouton « Voir sur la carte »** depuis `RemarquableDetailScreen` : param `pulseArbreId` sur `Routes.MAP`, animation caméra + pulse 2 s, contexte de quartier préservé.
+Découpage en sprints (1 item BACKLOG = 1 sprint, atomiques) :
+
+### Sprint 1 — Re-capture + suppression — livré 2026-05-09
+
+CRUD complet sur les captures, sans casse de schéma. Sur un arbre dont l'espèce est débloquée, le bouton `Capturer` devient `Recapturer` (pipeline GPS+photo+INSERT inchangé, N captures par arbre supportées nativement). Suppression via icône poubelle dans `PhotoLightbox` + long-press dans `PhotoGallery` ; si c'est la dernière capture de l'espèce / du remarquable, dialog explicite annonce le re-verrouillage et la suppression renvoie sur la Map. Cascade automatique sur les Flows Room (`SELECT DISTINCT`, `BadgeEvaluator` pur, `applyDiscoveryColor` reactive). Ajouts ciblés : `CaptureDao.deleteById`, `CaptureRepository.deleteCapture`, `CaptureButton` factorisé dans `ArbreDetailScreen`, `DeleteCaptureDialog`, slot `onDeleteAt` sur `PhotoLightbox`, `combinedClickable` sur `PhotoGallery`, `onUnlockLost` câblé dans `ArbresNavHost` via `popBackStack(Routes.MAP, inclusive = false)`.
+
+### Sprint 2 — Tranches de fréquence Arboretum
+
+Sticky headers `+10 000` / `2 000-10 000` / `1 000-2 000` / `100-1 000` / `< 100` sur l'onglet LISTE de l'Arboretum. Miroir des sections d'arrondissements de la liste remarquables. Source : `SpeciesInfo.stats.count` déjà chargé en mémoire — pas de nouveau chargement.
+
+### Sprint 3 — Refonte badges progressifs en multi-paliers visibles
+
+Fusion de 6 badges en 3 multi-paliers : `Marcheur` 1/10/25/50/100/250, `Botaniste` 1/10/25/50/100/200, `Chasseur` 1/5/10/25/50. Catalogue passe de 13 → 10 badges. UI : barre de progression + jalons cliquables dans `BadgesScreen`. `BadgeEvaluator` reste pur, balayage chronologique unique.
+
+### Sprint 4 — Bouton « Voir sur la carte » depuis fiche remarquable
+
+Depuis `RemarquableDetailScreen`, action « Voir sur la carte » qui pose un param `pulseArbreId` sur `Routes.MAP`, déclenche une animation caméra (fly-to ~600 ms) et un pulse 2 s sur le pin. Le contexte de quartier reste préservé (zoom approprié au z16-17 selon densité).
 
 ## Prochains cycles
 
