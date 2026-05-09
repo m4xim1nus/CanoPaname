@@ -17,9 +17,9 @@ Triage en lot au début de chaque cycle. Process complet dans `CLAUDE.md` (*Work
 
 - ~~[→PhotosEtProgressivité] Re-capture autorisée et lisible : bouton `Capturer` → `Recapturer` sur arbre déjà capturé, pipeline inchangé~~ — livré sprint 1 (2026-05-09)
 - ~~[→PhotosEtProgressivité] Suppression d'une capture (icône PhotoLightbox + long-press PhotoGallery), avec dialog uncapture si dernière de l'espèce → nav back Map~~ — livré sprint 1 (2026-05-09)
-- [→PhotosEtProgressivité] Tranches de fréquence Arboretum (+10k, 2k-10k, 1k-2k, 100-1k, <100) avec sticky headers, onglet LISTE (user:moi, 2026-05-07)
+- [→PhotosEtProgressivité] PhotoLightbox : bornes zoom (pas plus petit que le cadre) + bornes pan (bords scotchés au cadre) + navigation entre photos (swipe horizontal + chevrons gauche/droite) (user:moi, 2026-05-09)
 - [→PhotosEtProgressivité] Refonte badges progressifs : 3 badges multi-paliers (Marcheur 1/10/25/50/100/250, Botaniste 1/10/25/50/100/200, Chasseur 1/5/10/25/50), catalogue 13 → 10 (audit-B + user:moi, 2026-05-07)
-- [→PhotosEtProgressivité] Depuis fiche remarquable, bouton « Voir sur la carte » : param `pulseArbreId` sur `Routes.MAP`, animation caméra + pulse 2 s (user:moi, 2026-05-07)
+- [→PhotosEtProgressivité] Sauter à un arbre sur la carte depuis (a) fiche remarquable et (b) PhotoLightbox de n'importe quel arbre capturé : param `pulseArbreId` sur `Routes.MAP`, fly-to ~600 ms + pulse 2 s (user:moi, 2026-05-07 ; élargi 2026-05-09)
 
 ## Cycle Variantes
 
@@ -36,6 +36,7 @@ Triage en lot au début de chaque cycle. Process complet dans `CLAUDE.md` (*Work
 - [→Variantes] Carte filtrée par nom commun (set de `sk` fusionnés en expression `match`) (claude:analyse, 2026-05-08)
 - [→Variantes] Sanity checks au build dataset (espèce > 100 perd sa page WP, `sk` existant disparaît, nouveau genre `Non spécifié` count > 50) (claude:analyse, 2026-05-08)
 - [→Variantes] Affichage du nom vernaculaire FR sur la fiche-espèce (claude:analyse, 2026-05-08)
+- [→Variantes] Tranches de fréquence Arboretum (+10k, 2k-10k, 1k-2k, 100-1k, <100) avec sticky headers, onglet LISTE — décalé du cycle Photos parce que plus cohérent **après** le nettoyage catalogue d'espèces (user:moi, 2026-05-07 ; décalé 2026-05-09)
 
 ## Cycle Endgame
 

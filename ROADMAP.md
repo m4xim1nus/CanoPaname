@@ -12,17 +12,19 @@ Découpage en sprints (1 item BACKLOG = 1 sprint, atomiques) :
 
 CRUD complet sur les captures, sans casse de schéma. Sur un arbre dont l'espèce est débloquée, le bouton `Capturer` devient `Recapturer` (pipeline GPS+photo+INSERT inchangé, N captures par arbre supportées nativement). Suppression via icône poubelle dans `PhotoLightbox` + long-press dans `PhotoGallery` ; si c'est la dernière capture de l'espèce / du remarquable, dialog explicite annonce le re-verrouillage et la suppression renvoie sur la Map. Cascade automatique sur les Flows Room (`SELECT DISTINCT`, `BadgeEvaluator` pur, `applyDiscoveryColor` reactive). Ajouts ciblés : `CaptureDao.deleteById`, `CaptureRepository.deleteCapture`, `CaptureButton` factorisé dans `ArbreDetailScreen`, `DeleteCaptureDialog`, slot `onDeleteAt` sur `PhotoLightbox`, `combinedClickable` sur `PhotoGallery`, `onUnlockLost` câblé dans `ArbresNavHost` via `popBackStack(Routes.MAP, inclusive = false)`.
 
-### Sprint 2 — Tranches de fréquence Arboretum
+### Sprint 2 — PhotoLightbox : zoom borné, pan borné, navigation entre photos
 
-Sticky headers `+10 000` / `2 000-10 000` / `1 000-2 000` / `100-1 000` / `< 100` sur l'onglet LISTE de l'Arboretum. Miroir des sections d'arrondissements de la liste remarquables. Source : `SpeciesInfo.stats.count` déjà chargé en mémoire — pas de nouveau chargement.
+Trois frictions identifiées sur la lightbox actuelle. **Bornes zoom** : empêcher le dézoom sous le scale qui remplit le plus petit côté de l'écran (état actuel : photo réduite à une vignette sur fond noir). **Bornes pan** : clamp des offsets pour qu'à n'importe quel niveau de zoom les bords de la photo ne décollent pas du cadre visible (état actuel : on peut faire glisser la photo quasi hors écran). **Navigation latérale** quand la lightbox est ouverte sur une liste de photos (galerie fiche-espèce, galerie fiche-arbre) : swipe horizontal + chevrons cliquables gauche/droite, désactivés aux bornes. Pré-requis pour Sprint 4 (la lightbox devient le hub photo dont on peut sauter vers la carte).
 
 ### Sprint 3 — Refonte badges progressifs en multi-paliers visibles
 
 Fusion de 6 badges en 3 multi-paliers : `Marcheur` 1/10/25/50/100/250, `Botaniste` 1/10/25/50/100/200, `Chasseur` 1/5/10/25/50. Catalogue passe de 13 → 10 badges. UI : barre de progression + jalons cliquables dans `BadgesScreen`. `BadgeEvaluator` reste pur, balayage chronologique unique.
 
-### Sprint 4 — Bouton « Voir sur la carte » depuis fiche remarquable
+### Sprint 4 — Sauter à un arbre sur la carte depuis ses points de contact
 
-Depuis `RemarquableDetailScreen`, action « Voir sur la carte » qui pose un param `pulseArbreId` sur `Routes.MAP`, déclenche une animation caméra (fly-to ~600 ms) et un pulse 2 s sur le pin. Le contexte de quartier reste préservé (zoom approprié au z16-17 selon densité).
+Mécanisme partagé : param `pulseArbreId` sur `Routes.MAP`, animation caméra (fly-to ~600 ms) et pulse 2 s sur le pin, zoom approprié au z16-17 selon densité. Deux points d'entrée :
+- depuis `RemarquableDetailScreen` (action « Voir sur la carte »),
+- depuis `PhotoLightbox` (icône « Voir sur la carte ») pour n'importe quel arbre capturé : la photo affichée porte un `arbreId`, on saute à cet individu précis. Particulièrement utile depuis la galerie d'une fiche-espèce où plusieurs captures de l'espèce coexistent.
 
 ## Prochains cycles
 
@@ -41,6 +43,7 @@ Inspiration : Dave the Diver / Pokédex enrichi. Re-capture du même arbre dans 
 - Compteur Arboretum à deux niveaux (`X / 221 noms communs` + `Y / 907 espèces`) ?
 - Carte filtrée par nom commun (set de `sk` fusionnés en expression `match` MapLibre).
 - Sanity checks au build dataset (espèce > 100 perd sa page WP entre 2 builds, `sk` existant disparaît, nouveau genre `Non spécifié` avec count > 50).
+- Tranches de fréquence Arboretum (sticky headers `+10 000` / `2 000-10 000` / `1 000-2 000` / `100-1 000` / `< 100` sur l'onglet LISTE) — décalé du cycle Photos parce qu'il est plus cohérent de figer les tranches **après** le nettoyage du catalogue d'espèces (drop des `Non spécifié`, sort des `sp.`, regroupements `nc`).
 
 Pistes gameplay associées (à arbitrer en début de cycle, refusables) :
 - Mini-quiz d'identification entre espèces partageant le même `nc` (ex. `Quercus robur` vs `Q. petraea`) — réutilise les summaries Wikipedia déjà bakés.
