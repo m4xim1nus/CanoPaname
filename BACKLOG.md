@@ -13,16 +13,13 @@ Triage en lot au début de chaque cycle. Process complet dans `CLAUDE.md` (*Work
 
 ---
 
-## Cycle Photos
+## Cycle Photos et progressivité
 
-- [→Photos] Photos multiples par espèce et par arbre individuel (user:moi, 2026-05-07)
-- [→Photos] Photo visible dans le modal détail espèce + remarquable (user:moi, 2026-05-07)
-- [→Photos] Suppression d'une photo possible tant qu'il en reste ≥ 1 sur l'espèce (user:moi, 2026-05-07)
-- [→Photos] Backup `schemaVersion = 2` rétro-compatible lecture v1 (user:moi, 2026-05-07)
-- [→Photos] Tranches de fréquence Arboretum (+10k, 2k-10k, 1k-2k, 100-1k, <100) avec sticky headers (user:moi, 2026-05-07)
-- [→Photos] Liste « Espèces manquantes » + bouton « Trouver le plus proche » sur fiche espèce non capturée (audit-A, 2026-05-06)
-- [→Photos] Restructuration badges progressifs : barres + paliers visibles (1, 10, 25, 50, 100, 250…) (audit-B + user:moi, 2026-05-07)
-- [→Photos] Depuis fiche remarquable, bouton « Voir sur la carte » (recentre + zoom + pulse 2 s) (user:moi, 2026-05-07)
+- [→PhotosEtProgressivité] Re-capture autorisée et lisible : bouton `Capturer` → `Recapturer` sur arbre déjà capturé, pipeline inchangé (user:moi, 2026-05-09)
+- [→PhotosEtProgressivité] Suppression d'une capture (icône PhotoLightbox + long-press PhotoGallery), avec dialog uncapture si dernière de l'espèce → nav back Map (user:moi, 2026-05-09)
+- [→PhotosEtProgressivité] Tranches de fréquence Arboretum (+10k, 2k-10k, 1k-2k, 100-1k, <100) avec sticky headers, onglet LISTE (user:moi, 2026-05-07)
+- [→PhotosEtProgressivité] Refonte badges progressifs : 3 badges multi-paliers (Marcheur 1/10/25/50/100/250, Botaniste 1/10/25/50/100/200, Chasseur 1/5/10/25/50), catalogue 13 → 10 (audit-B + user:moi, 2026-05-07)
+- [→PhotosEtProgressivité] Depuis fiche remarquable, bouton « Voir sur la carte » : param `pulseArbreId` sur `Routes.MAP`, animation caméra + pulse 2 s (user:moi, 2026-05-07)
 
 ## Cycle Variantes
 
@@ -64,6 +61,8 @@ Triage en lot au début de chaque cycle. Process complet dans `CLAUDE.md` (*Work
 
 ## Refusé
 
+- [refusé] Liste « Espèces manquantes » + bouton « Trouver le plus proche » sur fiche espèce non capturée (audit-A, 2026-05-06 ; user:moi 2026-05-09 : philosophie « découverte en marchant », la 81e espèce se trouve en tapant un pin gris à proximité, le côté quête est porté par les Remarquables ★)
+- [refusé] Table `photo` 1:N + backup `schemaVersion = 2` (BACKLOG cycle Photos d'origine ; user:moi 2026-05-09 : le modèle Room actuel 1 capture = 1 photo supporte déjà N photos par arbre/espèce via N captures, pas de migration nécessaire)
 - [refusé] Cold-start « 7-10 s freeze » signalé par audit (user:moi 2026-05-07 : audit faux, pas de problème de temps long bloquant au 1er lancement)
 - [refusé] 4 badges saisonniers v1.1.0 proposés par audit (user:moi 2026-05-07 : caduques, on supprime les saisons)
 - [refusé] Mini-transition d'ambiance switch saison (audit-D2 ; user:moi 2026-05-07 : caduque, suppression saisons)

@@ -2,18 +2,16 @@
 
 App perso, pas de calendrier engageant. Single-player, stockage local strict — pas de cloud, pas de multi-device synchronisé. Ce doc est le **plan opérationnel** : pour la vérité release voir `CHANGELOG.md`, pour les idées non planifiées voir `BACKLOG.md`. Process décrit dans `CLAUDE.md` (section *Workflow & docs*).
 
-## Cycle en cours — Photos
+## Cycle en cours — Photos et progressivité
 
-Profondeur photo + Arboretum, sans toucher au modèle de capture lui-même (toujours 1 photo + 1 GPS au tap). Migration `MIGRATION_3_4` vers une table `photo` 1:N, backup `schemaVersion = 2` rétro-compatible lecture v1.
+Profondeur et lisibilité de l'expérience après v1.0.1, sans casse de schéma. On garde le modèle Room (1 capture = 1 photo, `arbreId` + `speciesIndex` portés par la row), on rend la re-capture explicite et on permet l'inverse : supprimer. En parallèle, refonte des badges progressifs en multi-paliers visibles, et deux items lisibilité (tranches Arboretum, voir-sur-carte remarquables).
 
-Items (issus du BACKLOG, à détailler en sprints au démarrage effectif) :
-- **Photos multiples par espèce et par arbre individuel** : table dédiée + UI fiche-espèce et fiche-remarquable. Galerie horizontale + lightbox déjà en place côté affichage.
-- **Suppression d'une photo** possible tant qu'il en reste ≥ 1 sur l'espèce (UI long-press ou action explicite).
-- **Backup `schemaVersion = 2`** : import v1 toujours accepté (champ `photos: List<String>` rétrocompatible avec l'ancien `photoPath: String` unique).
-- **Tranches de fréquence Arboretum** (`+10 000`, `2 000-10 000`, `1 000-2 000`, `100-1 000`, `< 100`) avec sticky headers — miroir des arrondissements pour les remarquables.
-- **Liste « Espèces manquantes »** + bouton « Trouver le plus proche » sur fiche d'espèce non capturée (symétrise le radar ★).
-- **Restructuration des badges progressifs** en barres + paliers visibles (1, 10, 25, 50, 100, 250…), en place des 4 marches abruptes actuelles.
-- **Bouton « Voir sur la carte »** depuis la fiche d'un remarquable (recentre + zoome + pulse 2 s sur le pin).
+Items (issus du BACKLOG, à détailler en sprints) :
+- **Re-capture autorisée et lisible** : sur un arbre déjà capturé, le bouton `Capturer` devient `Recapturer`. Pipeline inchangé (GPS frais, photo, INSERT row), N captures par arbre supportées nativement.
+- **Suppression d'une capture** (icône poubelle dans `PhotoLightbox` + long-press dans `PhotoGallery`) : si c'était la dernière capture de l'espèce, dialog explicite annonce le déverrouillage perdu, navigation back vers la Map à la confirmation. Cascade automatique sur les Flows et sur `BadgeEvaluator` (pur).
+- **Tranches de fréquence Arboretum** (`+10 000`, `2 000-10 000`, `1 000-2 000`, `100-1 000`, `< 100`) sur l'onglet LISTE, sticky headers — miroir des arrondissements remarquables. Source : `SpeciesInfo.stats.count` déjà chargé.
+- **Refonte des badges progressifs en multi-paliers visibles** : 6 badges fusionnés en 3 (`Marcheur` 1/10/25/50/100/250 ; `Botaniste` 1/10/25/50/100/200 ; `Chasseur` 1/5/10/25/50). Catalogue 13 → 10 badges. Barre + jalons dans `BadgesScreen`.
+- **Bouton « Voir sur la carte »** depuis `RemarquableDetailScreen` : param `pulseArbreId` sur `Routes.MAP`, animation caméra + pulse 2 s, contexte de quartier préservé.
 
 ## Prochains cycles
 
