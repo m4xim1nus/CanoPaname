@@ -20,6 +20,7 @@ Triage en lot au début de chaque cycle. Process complet dans `CLAUDE.md` (*Work
 - [→PhotosEtProgressivité] PhotoLightbox : bornes zoom (pas plus petit que le cadre) + bornes pan (bords scotchés au cadre) + navigation entre photos (swipe horizontal + chevrons gauche/droite) (user:moi, 2026-05-09)
 - [→PhotosEtProgressivité] Refonte badges progressifs : 3 badges multi-paliers (Marcheur 1/10/25/50/100/250, Botaniste 1/10/25/50/100/200, Chasseur 1/5/10/25/50), catalogue 13 → 10 (audit-B + user:moi, 2026-05-07)
 - [→PhotosEtProgressivité] Sauter à un arbre sur la carte depuis (a) fiche remarquable et (b) PhotoLightbox de n'importe quel arbre capturé : param `pulseArbreId` sur `Routes.MAP`, fly-to ~600 ms + pulse 2 s (user:moi, 2026-05-07 ; élargi 2026-05-09)
+- [→PhotosEtProgressivité] Galerie photos dans le sheet de l'arbre (remarquable et non) : remplacer le texte « N photo(s) de capture » par `PhotoGallery` cliquable → `PhotoLightbox` + long-press suppression (user:moi, 2026-05-10)
 
 ## Cycle Variantes
 

@@ -63,11 +63,16 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import app.arbre.ArbresApp
 import app.arbre.R
+import app.arbre.data.Arbre
+import app.arbre.data.Capture
 import app.arbre.data.rememberArbreRepository
 import app.arbre.data.rememberCaptureRepository
 import app.arbre.data.rememberSpeciesIndex
 import app.arbre.data.rememberRemarquableInfoRepository
 import app.arbre.data.rememberSpeciesInfoRepository
+import app.arbre.data.resolvedFile
+import app.arbre.ui.common.DeleteCaptureDialog
+import app.arbre.ui.common.PhotoLightbox
 import app.arbre.ui.common.showSnackbarFor
 import app.arbre.ui.detail.ArbreDetailContent
 import app.arbre.ui.theme.arbresColors
@@ -671,6 +676,16 @@ fun MapScreen(
             }
             val capturesArbre by captureRepo.capturesPourArbre(openedArbre.id)
                 .collectAsState(initial = emptyList())
+            // Toutes les captures user — léger (Flow Room déjà cached côté
+            // app), nécessaire seulement pour calculer si une suppression
+            // re-verrouillerait l'espèce (cf. computeDeleteContext).
+            val allCaptures by captureRepo.toutesLesCaptures()
+                .collectAsState(initial = emptyList())
+            val photoFiles = remember(capturesArbre) {
+                capturesArbre.map { it.resolvedFile(ctx) }
+            }
+            var lightboxIndex by remember(openedArbre.id) { mutableStateOf<Int?>(null) }
+            var pendingDeleteIndex by remember(openedArbre.id) { mutableStateOf<Int?>(null) }
             // `captureAvailability` lit le flow `currentLocation` filtré sur
             // âge (non-bloquant) ; recompute live à chaque émission pour que
             // « Active le GPS » bascule vers « Capturer » dès le 1er fix.
@@ -689,7 +704,9 @@ fun MapScreen(
                 ArbreDetailContent(
                     arbre = openedArbre,
                     isDiscovered = isDiscovered,
-                    nbPhotos = capturesArbre.size,
+                    photoFiles = photoFiles,
+                    onPhotoClick = { idx -> lightboxIndex = idx },
+                    onPhotoLongClick = { idx -> pendingDeleteIndex = idx },
                     onCapturer = { capturer(openedArbre) },
                     captureAvailability = availability,
                     onSpeciesClick = if (sk != null && sk in capturedSpecies) {
@@ -709,6 +726,43 @@ fun MapScreen(
                     medianHeightM = info?.stats?.medianHeightM,
                     medianCircCm = info?.stats?.medianCircCm,
                     remarquableInfo = remarquableInfo,
+                )
+            }
+
+            PhotoLightbox(
+                photoFiles = photoFiles,
+                selectedIndex = lightboxIndex,
+                onDismiss = { lightboxIndex = null },
+                onDeleteAt = { idx -> pendingDeleteIndex = idx },
+                // Pas d'onJumpToMapAt : on est déjà sur la carte sur ce pin.
+            )
+
+            pendingDeleteIndex?.let { idx ->
+                val capture = capturesArbre.getOrNull(idx)
+                val file = photoFiles.getOrNull(idx)
+                if (capture == null || file == null) {
+                    pendingDeleteIndex = null
+                    return@let
+                }
+                val (isLast, kindLabel, entityName) = computeDeleteContext(
+                    arbre = openedArbre,
+                    capture = capture,
+                    capturesArbre = capturesArbre,
+                    allCaptures = allCaptures,
+                )
+                DeleteCaptureDialog(
+                    isLastOfEntity = isLast,
+                    entityKindLabel = kindLabel,
+                    entityName = entityName,
+                    onConfirm = {
+                        pendingDeleteIndex = null
+                        lightboxIndex = null
+                        scope.launch { captureRepo.deleteCapture(capture, file) }
+                        // Pas d'onUnlockLost : on est déjà sur la carte ; le
+                        // sheet recompose tout seul en UnknownContent via les
+                        // Flows réactifs (capturedSpecies / capturedRemarquables).
+                    },
+                    onDismiss = { pendingDeleteIndex = null },
                 )
             }
         }
@@ -739,4 +793,34 @@ private fun attachMapLibreLocationBridge(component: LocationComponent): (() -> U
     // était déjà à l'écran avant que ce bridge ne s'attache.
     engine.getLastLocation(callback)
     return { engine.removeLocationUpdates(callback) }
+}
+
+/**
+ * Décide le wording du `DeleteCaptureDialog` selon que la suppression
+ * va re-verrouiller l'entité ou non. Pour un remarquable, c'est la
+ * dernière capture **de cet arbre** qui re-verrouille (1 arbre = 1
+ * remarquable). Pour une espèce, c'est la dernière capture **de
+ * l'espèce** (toutes captures user confondues, indépendamment de
+ * l'arbre individuel).
+ */
+private fun computeDeleteContext(
+    arbre: Arbre,
+    capture: Capture,
+    capturesArbre: List<Capture>,
+    allCaptures: List<Capture>,
+): Triple<Boolean, String, String?> {
+    return if (arbre.remarquable) {
+        Triple(
+            capturesArbre.size == 1,
+            "cet arbre remarquable",
+            arbre.adresse,
+        )
+    } else {
+        val countSpecies = allCaptures.count { it.speciesIndex == capture.speciesIndex }
+        Triple(
+            countSpecies == 1,
+            "cette espèce",
+            arbre.nomCommun ?: arbre.nomAffichage,
+        )
+    }
 }

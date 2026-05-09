@@ -128,7 +128,8 @@ fun RemarquableDetailScreen(
                 ArbreDetailContent(
                     arbre = current,
                     isDiscovered = true,
-                    nbPhotos = captures.size,
+                    // photoFiles laissé vide : la PhotoGallery est déjà rendue
+                    // juste au-dessus dans cet écran plein-écran.
                     onSpeciesClick = if (sk != null && sk in capturedSpecies) {
                         { onSpeciesClick(sk) }
                     } else null,

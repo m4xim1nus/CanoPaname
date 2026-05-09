@@ -26,6 +26,10 @@ Mécanisme partagé livré : `Routes.MAP` accepte désormais un query param opti
 - `RemarquableDetailScreen` : `ShowOnMapButton` (factorisé dans `ui/common/`, partagé avec `SpeciesDetailScreen` qui filtre par espèce — sémantique distincte) en bas du scroll, `onShowOnMap(arbreId)` → `nav.navigate(Routes.map(id)) { popUpTo(Routes.MAP, false) }`.
 - `PhotoLightbox` : nouvelle icône `Outlined.Map` en `Alignment.TopStart` (slot laissé libre par sprint 2), param `onJumpToMapAt: ((Int) -> Unit)? = null`. Les callers `RemarquableDetailScreen` (1 arbre) et `SpeciesDetailScreen` (galerie multi-arbres) passent `arbreId` via `captures[idx].arbreId` selon le contexte.
 
+### Sprint 6 — Galerie photos dans le sheet d'un arbre — à livrer
+
+Le sheet `ArbreDetailContent` ouvert au tap d'un pin (remarquable ou non) remplace son texte « N photo(s) de capture » par une `PhotoGallery` cliquable (vignettes 120 dp, titre « Tes photos (N) »). Click → `PhotoLightbox` (sprints 2 & 4 : zoom/pan/swipe + delete). Long-press → `DeleteCaptureDialog` avec wording adaptatif `isLastOfEntity` calculé par `computeDeleteContext` (file-private dans `MapScreen.kt`) : pour un remarquable c'est la dernière capture de l'arbre qui re-verrouille, pour une espèce c'est la dernière capture **de l'espèce** (filtrée sur `allCaptures`). `PhotoLightbox` et `DeleteCaptureDialog` sont mountés au niveau `MapScreen` (à côté du `ModalBottomSheet`, pas dedans) pour préserver la séparation rendu/état. Pas de `onJumpToMapAt` câblé : on est déjà sur la carte sur ce pin. Pas d'`onUnlockLost` non plus : à la suppression de la dernière capture, le sheet recompose tout seul en `UnknownContent` via les Flows réactifs (`capturedSpecies` / `capturedRemarquables`). Aucune nouvelle API data ni migration : composition pure de `PhotoGallery`, `PhotoLightbox`, `DeleteCaptureDialog`, `capturesPourArbre` et `toutesLesCaptures`.
+
 ## Prochains cycles
 
 ### Variantes

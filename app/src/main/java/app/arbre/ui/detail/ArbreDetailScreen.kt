@@ -30,8 +30,10 @@ import androidx.compose.ui.unit.dp
 import app.arbre.R
 import app.arbre.data.Arbre
 import app.arbre.data.RemarquableInfo
+import app.arbre.ui.common.PhotoGallery
 import app.arbre.ui.map.CaptureAvailability
 import app.arbre.ui.theme.arbresColors
+import java.io.File
 
 /**
  * Rendu du sheet selon l'état de découverte. Un remarquable non capturé
@@ -42,7 +44,9 @@ import app.arbre.ui.theme.arbresColors
 fun ArbreDetailContent(
     arbre: Arbre,
     isDiscovered: Boolean,
-    nbPhotos: Int = 0,
+    photoFiles: List<File> = emptyList(),
+    onPhotoClick: (Int) -> Unit = {},
+    onPhotoLongClick: ((Int) -> Unit)? = null,
     onCapturer: (() -> Unit)? = null,
     captureAvailability: CaptureAvailability? = null,
     onSpeciesClick: (() -> Unit)? = null,
@@ -61,7 +65,9 @@ fun ArbreDetailContent(
         if (isDiscovered) {
             DiscoveredContent(
                 arbre = arbre,
-                nbPhotos = nbPhotos,
+                photoFiles = photoFiles,
+                onPhotoClick = onPhotoClick,
+                onPhotoLongClick = onPhotoLongClick,
                 medianHeightM = medianHeightM,
                 medianCircCm = medianCircCm,
                 onSpeciesClick = onSpeciesClick,
@@ -79,7 +85,9 @@ fun ArbreDetailContent(
 @Composable
 private fun DiscoveredContent(
     arbre: Arbre,
-    nbPhotos: Int,
+    photoFiles: List<File>,
+    onPhotoClick: (Int) -> Unit,
+    onPhotoLongClick: ((Int) -> Unit)?,
     medianHeightM: Int?,
     medianCircCm: Int?,
     onSpeciesClick: (() -> Unit)?,
@@ -130,11 +138,12 @@ private fun DiscoveredContent(
         Text("Circonférence : $c cm" + medianComparison(c, medianCircCm))
     }
     arbre.adresse?.let { Text("Adresse : $it") }
-    if (nbPhotos > 0) {
-        Text(
-            "$nbPhotos photo${if (nbPhotos > 1) "s" else ""} de capture",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.primary,
+    if (photoFiles.isNotEmpty()) {
+        Spacer(Modifier.height(4.dp))
+        PhotoGallery(
+            photoFiles = photoFiles,
+            onPhotoClick = onPhotoClick,
+            onPhotoLongClick = onPhotoLongClick,
         )
     }
     Text("ID OpenData : ${arbre.id}", style = MaterialTheme.typography.bodySmall)
