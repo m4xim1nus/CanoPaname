@@ -2,9 +2,9 @@
 
 Format basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions [SemVer](https://semver.org/lang/fr/).
 
-## [Unreleased]
+## [1.0.2] — 2026-05-10
 
-Cycle *Photos et progressivité* en cours. Items consolidés au tag.
+Profondeur et lisibilité après v1.0.1, sans casse de schéma. Six sprints atomiques sous le codename *Photos et progressivité* : re-capture + suppression de captures, refonte `PhotoLightbox` (bornes zoom/pan, swipe entre photos), refonte badges en multi-paliers visibles (catalogue 13 → 8, 22 paliers cumulés), saut vers l'arbre exact sur la carte (fly-to + pulse), galerie photos cliquable dans le sheet de détail arbre.
 
 ### Ajouté
 
@@ -12,9 +12,11 @@ Cycle *Photos et progressivité* en cours. Items consolidés au tag.
 - Galerie photos : long-press sur une vignette ou icône poubelle dans la lightbox plein-écran ouvrent un dialog de confirmation. Si c'est la dernière capture de l'espèce / du remarquable, le dialog prévient du re-verrouillage et la suppression renvoie sur la Map.
 - Badges : 3 badges progressifs multi-paliers `Marcheur` (1/10/25/50/100/250 captures), `Botaniste` (1/10/25/50/100/200 espèces), `Chasseur` (1/5/10/25/50 remarquables). Card pleine largeur avec barre + jalons et score absolu (« 37 / 50 »). Catalogue passe de 13 à 8 badges (5 binaires + 3 progressifs, 22 paliers au total).
 - Saut vers un arbre exact sur la carte depuis ses points de contact : bouton « Voir sur la carte » plein écran sur la fiche-remarquable, icône Map en haut à gauche de la `PhotoLightbox` (universelle, fiche-espèce comme fiche-remarquable). La nav passe par `Routes.map(arbreId)` (query param `pulseArbreId`), qui déclenche un fly-to ~600 ms à zoom 20 (très fort zoom — un seul pin à l'écran, aucun doute sur l'individu ciblé) et un pulse blanc 2 s sur la position. Pas d'ouverture du sheet : on tape l'arbre soi-même si on veut la fiche.
+- Sheet détail arbre : galerie photos cliquable (`PhotoGallery` avec vignettes 120 dp et titre « Tes photos (N) ») en lieu et place du texte « N photo(s) de capture ». Click → `PhotoLightbox` plein écran (zoom/pan/swipe). Long-press → dialog suppression avec wording adaptatif (re-verrouillage si dernière capture de l'espèce ou du remarquable, recompose en `UnknownContent` via les Flows réactifs).
 
 ### Modifié
 
+- `PhotoLightbox` : pinch-zoom toujours 1×→5× avec pan désormais clampé aux bords (calcul `boxSize × ratio bitmap × scale`), plus de photo qui s'évade en vignette dans un coin. Galerie ≥ 2 photos : navigation entre photos via `HorizontalPager` (swipe horizontal + chevrons `Outlined.ChevronLeft/Right` désactivés aux bornes), pager gelé dès `scale > 1f`. Détecteur custom `awaitEachGesture` qui ne consomme rien à 1 doigt + scale=1 (laisse passer le pager) et reset auto du zoom à la transition de page.
 - Profil : « Derniers badges » liste maintenant les 3 derniers événements de déblocage (chaque palier de progressif compte indépendamment).
 - Compteur global de l'écran Badges passe de « X / 13 » à « X / 22 » paliers — progression plus continue qu'un saut binaire.
 

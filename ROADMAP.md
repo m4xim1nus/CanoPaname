@@ -2,33 +2,9 @@
 
 App perso, pas de calendrier engageant. Single-player, stockage local strict — pas de cloud, pas de multi-device synchronisé. Ce doc est le **plan opérationnel** : pour la vérité release voir `CHANGELOG.md`, pour les idées non planifiées voir `BACKLOG.md`. Process décrit dans `CLAUDE.md` (section *Workflow & docs*).
 
-## Cycle en cours — Photos et progressivité
+## Cycle en cours
 
-Profondeur et lisibilité de l'expérience après v1.0.1, sans casse de schéma. On garde le modèle Room (1 capture = 1 photo, `arbreId` + `speciesIndex` portés par la row), on rend la re-capture explicite et on permet l'inverse : supprimer. En parallèle, refonte des badges progressifs en multi-paliers visibles, et deux items lisibilité (tranches Arboretum, voir-sur-carte remarquables).
-
-Découpage en sprints (1 item BACKLOG = 1 sprint, atomiques) :
-
-### Sprint 1 — Re-capture + suppression — livré 2026-05-09
-
-CRUD complet sur les captures, sans casse de schéma. Sur un arbre dont l'espèce est débloquée, le bouton `Capturer` devient `Recapturer` (pipeline GPS+photo+INSERT inchangé, N captures par arbre supportées nativement). Suppression via icône poubelle dans `PhotoLightbox` + long-press dans `PhotoGallery` ; si c'est la dernière capture de l'espèce / du remarquable, dialog explicite annonce le re-verrouillage et la suppression renvoie sur la Map. Cascade automatique sur les Flows Room (`SELECT DISTINCT`, `BadgeEvaluator` pur, `applyDiscoveryColor` reactive). Ajouts ciblés : `CaptureDao.deleteById`, `CaptureRepository.deleteCapture`, `CaptureButton` factorisé dans `ArbreDetailScreen`, `DeleteCaptureDialog`, slot `onDeleteAt` sur `PhotoLightbox`, `combinedClickable` sur `PhotoGallery`, `onUnlockLost` câblé dans `ArbresNavHost` via `popBackStack(Routes.MAP, inclusive = false)`.
-
-### Sprint 2 — PhotoLightbox : zoom borné, pan borné, navigation entre photos — livré 2026-05-09
-
-Lightbox transformée en visionneuse propre. Pinch-zoom toujours 1×→5× mais le pan est désormais clampé aux bords (calcul `boxSize × ratio bitmap × scale`), plus de photo qui s'évade en vignette dans un coin. Galerie ≥ 2 photos : swipe horizontal entre photos via `HorizontalPager` (foundation), chevrons `Outlined.ChevronLeft/Right` `CenterStart/End` désactivés aux bornes ; pager gelé dès que `scale > 1f`. Le `Modifier.transformable` standard volait le drag 1-doigt à scale=1 et bloquait le swipe — remplacé par un détecteur custom `awaitEachGesture` qui ne consomme rien à 1 doigt + scale=1 (le pager prend), consomme le pinch multi-touch et le pan 1-doigt à scale > 1. Sous-composable interne `ZoomablePage` avec état `scale`/`offset`/`boxSize` recréé via `remember(file)` → reset auto à la transition de page. Signature publique de `PhotoLightbox` inchangée (callers `SpeciesDetailScreen` et `RemarquableDetailScreen` intacts) ; `onDeleteAt(idx)` passe maintenant `pagerState.currentPage`. `Alignment.TopStart` laissé libre pour Sprint 4.
-
-### Sprint 3 — Refonte badges progressifs en multi-paliers visibles — livré 2026-05-10
-
-Fusion de 8 badges en 3 multi-paliers (le décompte initial « 6 → 3 » sous-estimait l'absorption de `FIRST_CAPTURE` et `CENTURION` par les paliers 1 et 100 du Marcheur). Catalogue passe de 13 → 8 (5 binaires + 3 progressifs, 22 paliers cumulés). `BadgeEvaluator` reste pur, balayage chronologique unique : `unlockOnce` factorisé en `unlockProgressive` qui balaye tous les tiers d'un badge à chaque pas. Modèle data passé en `sealed class BadgeState { Binary, Progressive }` ; chaque `BadgeTier` porte son `unlockedAt` figé. UI : `ProgressiveBadgeCard` full-width avec barre + jalons et score absolu (« 37 / 50 ») — choix valeur absolue plutôt que pourcentage pour préserver la lisibilité des paliers irréguliers (1→10 ne fait pas la même fraction visuelle que 100→250). Compteur global passe de « X / 13 » à « X / 22 » paliers. Card Profil « Derniers badges » aplatit les paliers en événements indépendants. Jalons non-cliquables (slot réservé pour itération future, pas de destination définie). `BadgeEvaluatorTest` réécrit avec helpers `progressive()` / `tierUnlockedAt()` / `binaryUnlockedAt()` ; tests intermédiaires (37 captures, 12 espèces) et figement chronologique couverts.
-
-### Sprint 4 — Sauter à un arbre sur la carte depuis ses points de contact — livré 2026-05-10
-
-Mécanisme partagé livré : `Routes.MAP` accepte désormais un query param optionnel `pulseArbreId` (helper `Routes.map(id)`). Quand il est présent, `MapScreen` lookup l'arbre, `animateCamera(...)` fly-to ~600 ms à zoom 20 (très fort zoom — un seul pin tient à l'écran, aucun doute sur l'individu ciblé), et au callback `onFinish` déclenche un halo pulse 2 s (anneau blanc dédié à `MapLayers.kt` : `addOrUpdatePulseSource` + `animatePulse` via `ValueAnimator` JVM, retrait auto à la fin). Pas d'ouverture du sheet : l'utilisateur tape l'arbre lui-même s'il veut la fiche. Approche layer plutôt que Compose overlay : le halo suit naturellement la caméra. Deux points d'entrée câblés :
-- `RemarquableDetailScreen` : `ShowOnMapButton` (factorisé dans `ui/common/`, partagé avec `SpeciesDetailScreen` qui filtre par espèce — sémantique distincte) en bas du scroll, `onShowOnMap(arbreId)` → `nav.navigate(Routes.map(id)) { popUpTo(Routes.MAP, false) }`.
-- `PhotoLightbox` : nouvelle icône `Outlined.Map` en `Alignment.TopStart` (slot laissé libre par sprint 2), param `onJumpToMapAt: ((Int) -> Unit)? = null`. Les callers `RemarquableDetailScreen` (1 arbre) et `SpeciesDetailScreen` (galerie multi-arbres) passent `arbreId` via `captures[idx].arbreId` selon le contexte.
-
-### Sprint 6 — Galerie photos dans le sheet d'un arbre — à livrer
-
-Le sheet `ArbreDetailContent` ouvert au tap d'un pin (remarquable ou non) remplace son texte « N photo(s) de capture » par une `PhotoGallery` cliquable (vignettes 120 dp, titre « Tes photos (N) »). Click → `PhotoLightbox` (sprints 2 & 4 : zoom/pan/swipe + delete). Long-press → `DeleteCaptureDialog` avec wording adaptatif `isLastOfEntity` calculé par `computeDeleteContext` (file-private dans `MapScreen.kt`) : pour un remarquable c'est la dernière capture de l'arbre qui re-verrouille, pour une espèce c'est la dernière capture **de l'espèce** (filtrée sur `allCaptures`). `PhotoLightbox` et `DeleteCaptureDialog` sont mountés au niveau `MapScreen` (à côté du `ModalBottomSheet`, pas dedans) pour préserver la séparation rendu/état. Pas de `onJumpToMapAt` câblé : on est déjà sur la carte sur ce pin. Pas d'`onUnlockLost` non plus : à la suppression de la dernière capture, le sheet recompose tout seul en `UnknownContent` via les Flows réactifs (`capturedSpecies` / `capturedRemarquables`). Aucune nouvelle API data ni migration : composition pure de `PhotoGallery`, `PhotoLightbox`, `DeleteCaptureDialog`, `capturesPourArbre` et `toutesLesCaptures`.
+*Cycle en attente de promotion. Le prochain cycle sera arbitré et détaillé en début de session dédiée — voir « Prochains cycles » ci-dessous et `BACKLOG.md` pour les items candidats.*
 
 ## Prochains cycles
 
@@ -63,6 +39,10 @@ Cycle de rétention long terme à programmer après stabilisation Variantes :
 - Fallback Wikipedia pour les 379 espèces sans fiche (« Famille X. Y individus à Paris. »).
 
 ## Cycles livrés post-1.0
+
+### Photos et progressivité — `1.0.2` (2026-05-10)
+
+Profondeur et lisibilité après v1.0.1, zéro casse de schéma. Six sprints atomiques : re-capture + suppression de captures (CRUD complet sans table photo 1:N), refonte `PhotoLightbox` (bornes zoom/pan + swipe `HorizontalPager`), refonte badges en multi-paliers visibles (catalogue 13 → 8, 22 paliers, `BadgeState` sealed binaire/progressif), saut vers l'arbre exact sur la carte (`Routes.map(pulseArbreId)` fly-to zoom 20 + halo pulse 2 s), galerie photos cliquable dans le sheet de détail arbre. Détails dans `CHANGELOG.md` `[1.0.2]`.
 
 ### Vérité & Friction — `1.0.1` (2026-05-09)
 
