@@ -21,6 +21,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ChevronLeft
 import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.Map
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
@@ -67,6 +68,7 @@ fun PhotoLightbox(
     selectedIndex: Int?,
     onDismiss: () -> Unit,
     onDeleteAt: ((Int) -> Unit)? = null,
+    onJumpToMapAt: ((Int) -> Unit)? = null,
 ) {
     if (selectedIndex == null) return
     if (photoFiles.isEmpty()) return
@@ -146,8 +148,32 @@ fun PhotoLightbox(
                 }
             }
 
+            val statusBarPadding = WindowInsets.statusBars.asPaddingValues()
+            if (onJumpToMapAt != null) {
+                IconButton(
+                    onClick = {
+                        // Ferme la lightbox avant la navigation, évite le
+                        // flicker à l'ouverture du sheet de la map.
+                        val idx = pagerState.currentPage
+                        onDismiss()
+                        onJumpToMapAt(idx)
+                    },
+                    colors = IconButtonDefaults.iconButtonColors(
+                        contentColor = Color.White,
+                    ),
+                    modifier = Modifier
+                        .align(Alignment.TopStart)
+                        .padding(top = statusBarPadding.calculateTopPadding() + 8.dp, start = 8.dp)
+                        .clip(CircleShape)
+                        .background(Color.Black.copy(alpha = 0.4f)),
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.Map,
+                        contentDescription = "Voir sur la carte",
+                    )
+                }
+            }
             if (onDeleteAt != null) {
-                val statusBarPadding = WindowInsets.statusBars.asPaddingValues()
                 IconButton(
                     onClick = { onDeleteAt(pagerState.currentPage) },
                     colors = IconButtonDefaults.iconButtonColors(

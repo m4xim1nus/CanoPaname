@@ -128,6 +128,7 @@ fun MapScreen(
     onFirstSpeciesCapture: (Int) -> Unit = {},
     onBack: (() -> Unit)? = null,
     filterSpecies: Int? = null,
+    pulseArbreId: Long? = null,
 ) {
     val ctx = LocalContext.current
     val app = ctx.applicationContext as ArbresApp
@@ -302,6 +303,33 @@ fun MapScreen(
         if (fix == null) {
             showSnackbarFor(snackbar, "GPS indisponible — sors à découvert")
         }
+    }
+
+    // Saut vers un arbre exact (sprint 4 « Photos et progressivité ») : depuis
+    // la fiche-remarquable ou la `PhotoLightbox`, on navigue vers
+    // `Routes.map(arbreId)`. Au mount, on attend que la map ET les layers
+    // soient prêtes, puis fly-to ~600 ms à zoom élevé (z20) pour qu'aucun
+    // doute ne subsiste sur le pin ciblé, et au callback `onFinish` on
+    // déclenche le pulse — pas d'ouverture du sheet, l'utilisateur tape
+    // l'arbre lui-même s'il veut la fiche.
+    LaunchedEffect(pulseArbreId, mapRef, styleRef, arbresPrets) {
+        val id = pulseArbreId ?: return@LaunchedEffect
+        val map = mapRef ?: return@LaunchedEffect
+        val style = styleRef ?: return@LaunchedEffect
+        if (!arbresPrets) return@LaunchedEffect
+        val arbre = repo.arbreParId(id) ?: return@LaunchedEffect
+        val target = LatLng(arbre.latitude, arbre.longitude)
+        map.animateCamera(
+            CameraUpdateFactory.newLatLngZoom(target, 20.0),
+            600,
+            object : MapLibreMap.CancelableCallback {
+                override fun onCancel() = Unit
+                override fun onFinish() {
+                    addOrUpdatePulseSource(style, target.latitude, target.longitude)
+                    animatePulse(style)
+                }
+            },
+        )
     }
 
     DisposableEffect(Unit) {

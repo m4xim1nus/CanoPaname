@@ -1,5 +1,8 @@
 package app.arbre.ui.map
 
+import android.animation.ValueAnimator
+import android.animation.AnimatorListenerAdapter
+import android.animation.Animator
 import app.arbre.ui.theme.MapColors
 import org.maplibre.android.style.expressions.Expression
 import org.maplibre.android.style.expressions.Expression.eq
@@ -20,6 +23,8 @@ internal const val ARBRES_SOURCE_ID = "arbres-source"
 internal const val POINTS_LAYER_ID = "arbres-points"
 internal const val CLUSTERS_LAYER_ID = "arbres-clusters"
 internal const val CLUSTER_COUNT_LAYER_ID = "arbres-cluster-count"
+internal const val PULSE_SOURCE_ID = "arbres-pulse-source"
+internal const val PULSE_LAYER_ID = "arbres-pulse-layer"
 
 private val PIN_GREEN: String = MapColors.PIN_GREEN
 private val PIN_ORANGE: String = MapColors.PIN_ORANGE
@@ -391,4 +396,82 @@ private fun buildDiscoveryExpression(
         remarquableExpr,
         speciesExpr,
     )
+}
+
+/**
+ * Halo "pulse" autour d'un arbre cible, déclenché après un fly-to depuis la
+ * fiche-remarquable ou la `PhotoLightbox` (cf. sprint « Photos et progressivité »
+ * sprint 4). On pose une source GeoJSON à 1 feature centrée sur l'arbre, puis
+ * une `CircleLayer` au-dessus de `POINTS_LAYER_ID` (anneau visible par-dessus
+ * le pin). L'animation `circleRadius` + `circleOpacity` est portée par un
+ * `ValueAnimator` JVM standard, repeats configurable.
+ *
+ * Approche layer plutôt que Compose overlay : le halo suit naturellement la
+ * caméra si l'utilisateur dezoome/pan pendant l'animation — pas de listener
+ * `OnCameraMove` à câbler. Coût négligeable (1 feature, ~120 ticks JVM sur 2 s).
+ */
+internal fun addOrUpdatePulseSource(style: Style, lat: Double, lon: Double) {
+    val featureJson = """{"type":"FeatureCollection","features":[""" +
+        """{"type":"Feature","geometry":{"type":"Point","coordinates":[$lon,$lat]},"properties":{}}""" +
+        """]}"""
+    val existing = style.getSourceAs<GeoJsonSource>(PULSE_SOURCE_ID)
+    if (existing != null) {
+        existing.setGeoJson(featureJson)
+    } else {
+        style.addSource(GeoJsonSource(PULSE_SOURCE_ID, featureJson))
+    }
+    if (style.getLayer(PULSE_LAYER_ID) == null) {
+        val layer = CircleLayer(PULSE_LAYER_ID, PULSE_SOURCE_ID).withProperties(
+            PropertyFactory.circleColor("#FFFFFF"),
+            PropertyFactory.circleRadius(6f),
+            PropertyFactory.circleOpacity(0.0f),
+            PropertyFactory.circleStrokeColor("#FFFFFF"),
+            PropertyFactory.circleStrokeWidth(2f),
+            PropertyFactory.circleStrokeOpacity(0.0f),
+        )
+        // Au-dessus de la layer pins pour que l'anneau soit visible par-dessus
+        // le cercle plein du pin (et au-dessus des clusters s'il y en a).
+        style.addLayerAbove(layer, POINTS_LAYER_ID)
+    }
+}
+
+/**
+ * Animate radius 6→32 et opacity 0.6→0 sur la layer pulse. `repeats = 1` →
+ * 2 itérations totales (~2 s avec `durationMs = 1000`). Au terme, retire la
+ * layer + source via `removePulseLayer` pour ne pas polluer le style.
+ */
+internal fun animatePulse(
+    style: Style,
+    durationMs: Long = 1000L,
+    repeats: Int = 1,
+    onEnd: () -> Unit = {},
+): ValueAnimator {
+    val animator = ValueAnimator.ofFloat(0f, 1f).apply {
+        duration = durationMs
+        repeatCount = repeats
+        addUpdateListener { ev ->
+            val t = ev.animatedFraction
+            val radius = 6f + 26f * t
+            val opacity = 0.6f * (1f - t)
+            val layer = style.getLayer(PULSE_LAYER_ID) as? CircleLayer ?: return@addUpdateListener
+            layer.setProperties(
+                PropertyFactory.circleRadius(radius),
+                PropertyFactory.circleOpacity(opacity),
+                PropertyFactory.circleStrokeOpacity(opacity),
+            )
+        }
+        addListener(object : AnimatorListenerAdapter() {
+            override fun onAnimationEnd(animation: Animator) {
+                removePulseLayer(style)
+                onEnd()
+            }
+        })
+    }
+    animator.start()
+    return animator
+}
+
+internal fun removePulseLayer(style: Style) {
+    style.getLayer(PULSE_LAYER_ID)?.let { style.removeLayer(it) }
+    style.getSourceAs<GeoJsonSource>(PULSE_SOURCE_ID)?.let { style.removeSource(it) }
 }

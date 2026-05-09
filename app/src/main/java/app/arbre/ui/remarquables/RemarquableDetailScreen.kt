@@ -38,6 +38,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import app.arbre.ui.common.DeleteCaptureDialog
 import app.arbre.ui.common.PhotoGallery
 import app.arbre.ui.common.PhotoLightbox
+import app.arbre.ui.common.ShowOnMapButton
 import app.arbre.ui.detail.ArbreDetailContent
 import kotlinx.coroutines.launch
 
@@ -53,6 +54,7 @@ fun RemarquableDetailScreen(
     arbreId: Long,
     onBack: () -> Unit,
     onSpeciesClick: (Int) -> Unit = {},
+    onShowOnMap: (Long) -> Unit = {},
     onUnlockLost: () -> Unit = {},
 ) {
     val arbreRepo = rememberArbreRepository()
@@ -133,12 +135,19 @@ fun RemarquableDetailScreen(
                     onRemarquableClick = null,
                     remarquableInfo = info,
                 )
+                Spacer(Modifier.height(16.dp))
+                ShowOnMapButton(
+                    onClick = { onShowOnMap(arbreId) },
+                    modifier = Modifier.padding(horizontal = 16.dp),
+                )
+                Spacer(Modifier.height(24.dp))
             }
             PhotoLightbox(
                 photoFiles = photoFiles,
                 selectedIndex = lightboxIndex,
                 onDismiss = { lightboxIndex = null },
                 onDeleteAt = { idx -> pendingDeleteIndex = idx },
+                onJumpToMapAt = { _ -> onShowOnMap(arbreId) },
             )
 
             pendingDeleteIndex?.let { idx ->

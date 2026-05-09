@@ -21,7 +21,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.outlined.OpenInNew
-import androidx.compose.material.icons.outlined.Map
 import androidx.compose.material.icons.outlined.PictureAsPdf
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -70,6 +69,7 @@ import app.arbre.data.resolvedFile
 import app.arbre.ui.common.DeleteCaptureDialog
 import app.arbre.ui.common.PhotoGallery
 import app.arbre.ui.common.PhotoLightbox
+import app.arbre.ui.common.ShowOnMapButton
 import java.text.NumberFormat
 import java.util.Locale
 import kotlinx.coroutines.flow.map
@@ -82,6 +82,7 @@ fun SpeciesDetailScreen(
     speciesIndex: Int,
     onBack: () -> Unit,
     onShowOnMap: () -> Unit = {},
+    onShowArbreOnMap: (Long) -> Unit = {},
     onRemarquableClick: (Long) -> Unit = {},
     onUnlockLost: () -> Unit = {},
     celebrate: Boolean = false,
@@ -191,6 +192,9 @@ fun SpeciesDetailScreen(
             selectedIndex = lightboxIndex,
             onDismiss = { lightboxIndex = null },
             onDeleteAt = { idx -> pendingDeleteIndex = idx },
+            onJumpToMapAt = { idx ->
+                captures.getOrNull(idx)?.arbreId?.let(onShowArbreOnMap)
+            },
         )
 
         pendingDeleteIndex?.let { idx ->
@@ -256,24 +260,6 @@ private fun SpeciesDetailTopBar(
             }
         },
     )
-}
-
-@Composable
-private fun ShowOnMapButton(onClick: () -> Unit) {
-    FilledTonalButton(
-        onClick = onClick,
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        Icon(
-            Icons.Outlined.Map,
-            contentDescription = null,
-            modifier = Modifier.size(20.dp),
-        )
-        Text(
-            "Voir sur la carte",
-            modifier = Modifier.padding(start = 8.dp),
-        )
-    }
 }
 
 /** Climax « 1re capture » : cascade fade+scale fond → silhouette → binomial

@@ -24,7 +24,9 @@ import kotlinx.coroutines.launch
 object Routes {
     const val WELCOME = "welcome"
     const val WELCOME_REPLAY = "welcome_replay"
-    const val MAP = "map"
+    // `pulseArbreId` en query param optionnel — depuis fiche-remarquable ou
+    // PhotoLightbox on saute à un arbre exact (fly-to + pulse + sheet).
+    const val MAP = "map?pulseArbreId={pulseArbreId}"
     const val ARBORETUM = "arboretum"
     const val PROFILE = "profile"
     const val BADGES = "badges"
@@ -42,6 +44,8 @@ object Routes {
         "species/$speciesIndex?celebrate=$celebrate"
     fun mapFiltered(speciesIndex: Int): String = "map_filtered/$speciesIndex"
     fun remarquableDetail(arbreId: Long): String = "remarquable_detail/$arbreId"
+    fun map(pulseArbreId: Long? = null): String =
+        if (pulseArbreId != null) "map?pulseArbreId=$pulseArbreId" else "map"
 }
 
 @Composable
@@ -53,8 +57,8 @@ fun ArbresNavHost() {
     // le splash overlay du MapScreen masque déjà l'écran.
     val onboardingDone by onboardingStore.onboardingDone.collectAsState(initial = null)
     val start = when (onboardingDone) {
-        null -> Routes.MAP
-        true -> Routes.MAP
+        null -> Routes.map()
+        true -> Routes.map()
         false -> Routes.WELCOME
     }
 
@@ -63,7 +67,7 @@ fun ArbresNavHost() {
             WelcomeScreen(
                 onContinue = {
                     coScope.launch { onboardingStore.markDone() }
-                    nav.navigate(Routes.MAP) {
+                    nav.navigate(Routes.map()) {
                         popUpTo(Routes.WELCOME) { inclusive = true }
                     }
                 },
@@ -76,7 +80,21 @@ fun ArbresNavHost() {
                 onClose = { nav.popBackStack() },
             )
         }
-        composable(Routes.MAP) {
+        composable(
+            Routes.MAP,
+            arguments = listOf(
+                navArgument("pulseArbreId") {
+                    // LongType ne supporte pas la nullabilité — on parse via
+                    // `toLongOrNull()` côté handler.
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                },
+            ),
+        ) { entry ->
+            val pulseArbreId = entry.arguments
+                ?.getString("pulseArbreId")
+                ?.toLongOrNull()
             MapScreen(
                 onArboretumClick = { nav.navigate(Routes.ARBORETUM) },
                 onRemarquablesClick = { nav.navigate(Routes.REMARQUABLES) },
@@ -86,6 +104,7 @@ fun ArbresNavHost() {
                 onFirstSpeciesCapture = { sk ->
                     nav.navigate(Routes.species(sk, celebrate = true))
                 },
+                pulseArbreId = pulseArbreId,
             )
         }
         composable(Routes.PROFILE) {
@@ -123,6 +142,11 @@ fun ArbresNavHost() {
                 arbreId = arbreId,
                 onBack = { nav.popBackStack() },
                 onSpeciesClick = { sk -> nav.navigate(Routes.species(sk)) },
+                onShowOnMap = { id ->
+                    nav.navigate(Routes.map(id)) {
+                        popUpTo(Routes.MAP) { inclusive = false }
+                    }
+                },
                 onUnlockLost = { nav.popBackStack(Routes.MAP, inclusive = false) },
             )
         }
@@ -142,6 +166,11 @@ fun ArbresNavHost() {
                 speciesIndex = sk,
                 onBack = { nav.popBackStack() },
                 onShowOnMap = { nav.navigate(Routes.mapFiltered(sk)) },
+                onShowArbreOnMap = { id ->
+                    nav.navigate(Routes.map(id)) {
+                        popUpTo(Routes.MAP) { inclusive = false }
+                    }
+                },
                 onRemarquableClick = { id -> nav.navigate(Routes.remarquableDetail(id)) },
                 onUnlockLost = { nav.popBackStack(Routes.MAP, inclusive = false) },
                 celebrate = celebrate,

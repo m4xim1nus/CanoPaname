@@ -11,6 +11,7 @@ Cycle *Photos et progressivité* en cours. Items consolidés au tag.
 - Sheet détail : bouton « Recapturer » dès qu'une espèce ou un remarquable est débloqué (modèle Room déjà N captures par arbre, pas de nouveau schéma).
 - Galerie photos : long-press sur une vignette ou icône poubelle dans la lightbox plein-écran ouvrent un dialog de confirmation. Si c'est la dernière capture de l'espèce / du remarquable, le dialog prévient du re-verrouillage et la suppression renvoie sur la Map.
 - Badges : 3 badges progressifs multi-paliers `Marcheur` (1/10/25/50/100/250 captures), `Botaniste` (1/10/25/50/100/200 espèces), `Chasseur` (1/5/10/25/50 remarquables). Card pleine largeur avec barre + jalons et score absolu (« 37 / 50 »). Catalogue passe de 13 à 8 badges (5 binaires + 3 progressifs, 22 paliers au total).
+- Saut vers un arbre exact sur la carte depuis ses points de contact : bouton « Voir sur la carte » plein écran sur la fiche-remarquable, icône Map en haut à gauche de la `PhotoLightbox` (universelle, fiche-espèce comme fiche-remarquable). La nav passe par `Routes.map(arbreId)` (query param `pulseArbreId`), qui déclenche un fly-to ~600 ms à zoom 20 (très fort zoom — un seul pin à l'écran, aucun doute sur l'individu ciblé) et un pulse blanc 2 s sur la position. Pas d'ouverture du sheet : on tape l'arbre soi-même si on veut la fiche.
 
 ### Modifié
 
