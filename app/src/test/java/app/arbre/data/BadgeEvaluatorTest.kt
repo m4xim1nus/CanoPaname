@@ -1,7 +1,6 @@
 package app.arbre.data
 
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -61,8 +60,6 @@ class BadgeEvaluatorTest {
     }
 
     @Test fun `parseArrKey raw Paris with parc prefix`() {
-        // Format réellement stocké : « ..., PARIS XE ARRDT » après un préfixe
-        // long (parc/square/voie).
         assertEquals(
             ArrKey.Paris(19),
             parseArrKey("PARC DES BUTTES CHAUMONT / 7 RUE BOTZARIS, PARIS 19E ARRDT"),
@@ -93,14 +90,17 @@ class BadgeEvaluatorTest {
 
     // ---------- evaluate : aucun, premier ----------
 
-    @Test fun `evaluate with no captures returns 13 locked badges`() {
+    @Test fun `evaluate with no captures returns 8 badges all locked`() {
         val states = BadgeEvaluator.evaluate(emptyList(), emptyMap(), emptySpeciesInfo())
-        assertEquals(13, states.size)
-        assertTrue(states.all { !it.unlocked })
+        assertEquals(8, states.size)
         assertEquals(BadgeCatalog.ALL.map { it.id }, states.map { it.def.id })
+        assertTrue(states.all { !it.unlocked })
+        // 3 Progressive + 5 Binary
+        assertEquals(3, states.filterIsInstance<BadgeState.Progressive>().size)
+        assertEquals(5, states.filterIsInstance<BadgeState.Binary>().size)
     }
 
-    @Test fun `evaluate unlocks first capture after one capture`() {
+    @Test fun `evaluate unlocks marcheur tier 1 after first capture`() {
         val ts = parisTs("2025-04-01T10:00:00Z")
         val arbre = arbre(id = 1L)
         val states = BadgeEvaluator.evaluate(
@@ -108,23 +108,59 @@ class BadgeEvaluatorTest {
             arbresById = mapOf(1L to arbre),
             speciesInfo = emptySpeciesInfo(),
         )
-        assertEquals(ts, unlockedAt(states, BadgeCatalog.FIRST_CAPTURE.id))
-        assertNull(unlockedAt(states, BadgeCatalog.PROMENADE.id))
+        val marcheur = progressive(states, BadgeCatalog.MARCHEUR.id)
+        assertEquals(1, marcheur.currentCount)
+        assertEquals(1, marcheur.unlockedTierCount)
+        assertEquals(ts, tierUnlockedAt(marcheur, threshold = 1))
+        assertNull(tierUnlockedAt(marcheur, threshold = 10))
+        assertEquals(10, marcheur.nextTier?.threshold)
     }
 
-    @Test fun `evaluate unlocks promenade at tenth capture and freezes timestamp`() {
+    @Test fun `evaluate unlocks marcheur tier 10 at tenth capture and freezes tier 1 timestamp`() {
         val captures = (0 until 12).map { i ->
             capture(arbreId = i.toLong(), ts = parisTs("2025-05-0${(i % 9) + 1}T10:00:00Z") + i)
         }
         val arbres = captures.associate { it.arbreId to arbre(id = it.arbreId) }
         val states = BadgeEvaluator.evaluate(captures, arbres, emptySpeciesInfo())
-        // Tri chronologique → 10ème capture (index 9) déclenche promenade.
-        val tenthTs = captures.sortedBy { it.timestamp }[9].timestamp
-        assertEquals(tenthTs, unlockedAt(states, BadgeCatalog.PROMENADE.id))
-        assertNull(unlockedAt(states, BadgeCatalog.MARCHEUR.id))
+        val marcheur = progressive(states, BadgeCatalog.MARCHEUR.id)
+
+        val sorted = captures.sortedBy { it.timestamp }
+        assertEquals(sorted[0].timestamp, tierUnlockedAt(marcheur, threshold = 1))
+        assertEquals(sorted[9].timestamp, tierUnlockedAt(marcheur, threshold = 10))
+        assertNull(tierUnlockedAt(marcheur, threshold = 25))
+        assertEquals(12, marcheur.currentCount)
+        assertEquals(2, marcheur.unlockedTierCount)
     }
 
-    // ---------- demesure ----------
+    @Test fun `evaluate exposes intermediate marcheur progress between tiers`() {
+        // 37 captures → tiers 1, 10, 25 atteints, 50 verrouillé. nextTier = 50.
+        val captures = (1..37).map { i -> capture(arbreId = i.toLong(), ts = i.toLong()) }
+        val arbres = captures.associate { it.arbreId to arbre(id = it.arbreId) }
+        val states = BadgeEvaluator.evaluate(captures, arbres, emptySpeciesInfo())
+        val marcheur = progressive(states, BadgeCatalog.MARCHEUR.id)
+
+        assertEquals(37, marcheur.currentCount)
+        assertEquals(3, marcheur.unlockedTierCount)
+        assertNotNull(tierUnlockedAt(marcheur, threshold = 25))
+        assertNull(tierUnlockedAt(marcheur, threshold = 50))
+        assertEquals(50, marcheur.nextTier?.threshold)
+    }
+
+    @Test fun `evaluate freezes tier unlockedAt on the threshold-crossing capture`() {
+        // 10 captures (déclenche tier 10 à ts=10), puis 5 de plus à ts > 100.
+        // Le tier 10 doit garder ts=10 (figé), pas se déplacer sur des captures ultérieures.
+        val first10 = (1..10).map { i -> capture(arbreId = i.toLong(), ts = i.toLong()) }
+        val later = (11..15).map { i -> capture(arbreId = i.toLong(), ts = (i * 100L)) }
+        val arbres = (first10 + later).associate { it.arbreId to arbre(id = it.arbreId) }
+        val states = BadgeEvaluator.evaluate(first10 + later, arbres, emptySpeciesInfo())
+        val marcheur = progressive(states, BadgeCatalog.MARCHEUR.id)
+
+        assertEquals(10L, tierUnlockedAt(marcheur, threshold = 10))
+        assertEquals(1L, tierUnlockedAt(marcheur, threshold = 1))
+        assertEquals(15, marcheur.currentCount)
+    }
+
+    // ---------- demesure (binaires) ----------
 
     @Test fun `evaluate unlocks geant when hauteur exceeds 30m`() {
         val ts = parisTs("2025-06-01T08:00:00Z")
@@ -133,8 +169,8 @@ class BadgeEvaluatorTest {
             arbresById = mapOf(7L to arbre(id = 7L, hauteurM = 35)),
             speciesInfo = emptySpeciesInfo(),
         )
-        assertEquals(ts, unlockedAt(states, BadgeCatalog.GEANT.id))
-        assertNull(unlockedAt(states, BadgeCatalog.VIEUX_SAGE.id))
+        assertEquals(ts, binaryUnlockedAt(states, BadgeCatalog.GEANT.id))
+        assertNull(binaryUnlockedAt(states, BadgeCatalog.VIEUX_SAGE.id))
     }
 
     @Test fun `evaluate does not unlock geant at exactly 30m`() {
@@ -143,7 +179,7 @@ class BadgeEvaluatorTest {
             arbresById = mapOf(7L to arbre(id = 7L, hauteurM = 30)),
             speciesInfo = emptySpeciesInfo(),
         )
-        assertNull(unlockedAt(states, BadgeCatalog.GEANT.id))
+        assertNull(binaryUnlockedAt(states, BadgeCatalog.GEANT.id))
     }
 
     @Test fun `evaluate unlocks vieux sage when circ exceeds 400cm`() {
@@ -153,10 +189,10 @@ class BadgeEvaluatorTest {
             arbresById = mapOf(8L to arbre(id = 8L, circonferenceCm = 450)),
             speciesInfo = emptySpeciesInfo(),
         )
-        assertEquals(ts, unlockedAt(states, BadgeCatalog.VIEUX_SAGE.id))
+        assertEquals(ts, binaryUnlockedAt(states, BadgeCatalog.VIEUX_SAGE.id))
     }
 
-    // ---------- espèce rare ----------
+    // ---------- espèce rare (binaire) ----------
 
     @Test fun `evaluate unlocks espece rare when species count below 100`() {
         val ts = parisTs("2025-04-01T10:00:00Z")
@@ -166,7 +202,7 @@ class BadgeEvaluatorTest {
             arbresById = mapOf(1L to arbre(id = 1L)),
             speciesInfo = info,
         )
-        assertEquals(ts, unlockedAt(states, BadgeCatalog.ESPECE_RARE.id))
+        assertEquals(ts, binaryUnlockedAt(states, BadgeCatalog.ESPECE_RARE.id))
     }
 
     @Test fun `evaluate does not unlock espece rare for common species`() {
@@ -176,20 +212,37 @@ class BadgeEvaluatorTest {
             arbresById = mapOf(1L to arbre(id = 1L)),
             speciesInfo = info,
         )
-        assertNull(unlockedAt(states, BadgeCatalog.ESPECE_RARE.id))
+        assertNull(binaryUnlockedAt(states, BadgeCatalog.ESPECE_RARE.id))
     }
 
-    @Test fun `evaluate ignores remarquable captures for species accumulators`() {
-        // 50 captures remarquables ne débloque pas botaniste_amateur.
+    @Test fun `evaluate ignores remarquable captures for botaniste`() {
+        // 50 captures remarquables ne débloque pas le tier 50 du Botaniste.
         val captures = (0 until 50).map { i ->
             capture(arbreId = i.toLong(), speciesIndex = i, remarquable = true, ts = i.toLong())
         }
         val arbres = captures.associate { it.arbreId to arbre(id = it.arbreId, remarquable = true) }
         val states = BadgeEvaluator.evaluate(captures, arbres, emptySpeciesInfo())
-        assertNull(unlockedAt(states, BadgeCatalog.BOTANISTE_AMATEUR.id))
+        val botaniste = progressive(states, BadgeCatalog.BOTANISTE.id)
+        assertEquals(0, botaniste.currentCount)
+        assertEquals(0, botaniste.unlockedTierCount)
     }
 
-    // ---------- géographie ----------
+    @Test fun `evaluate unlocks botaniste tiers progressively`() {
+        // 12 espèces distinctes → tiers 1 et 10 atteints, 25 verrouillé.
+        val captures = (0 until 12).map { i ->
+            capture(arbreId = i.toLong(), speciesIndex = i, ts = i.toLong())
+        }
+        val arbres = captures.associate { it.arbreId to arbre(id = it.arbreId) }
+        val states = BadgeEvaluator.evaluate(captures, arbres, emptySpeciesInfo())
+        val botaniste = progressive(states, BadgeCatalog.BOTANISTE.id)
+
+        assertEquals(12, botaniste.currentCount)
+        assertEquals(2, botaniste.unlockedTierCount)
+        assertNotNull(tierUnlockedAt(botaniste, threshold = 10))
+        assertNull(tierUnlockedAt(botaniste, threshold = 25))
+    }
+
+    // ---------- géographie (binaires) ----------
 
     @Test fun `evaluate unlocks tourneur de Paris with 10 distinct arrondissements`() {
         val captures = (1..10).map { arrNum ->
@@ -199,8 +252,8 @@ class BadgeEvaluatorTest {
             arrNum.toLong() to arbre(id = arrNum.toLong(), adresse = "RUE TEST, ${arrNum}e")
         }
         val states = BadgeEvaluator.evaluate(captures, arbres, emptySpeciesInfo())
-        assertNotNull(unlockedAt(states, BadgeCatalog.TOURNEUR_DE_PARIS.id))
-        assertNull(unlockedAt(states, BadgeCatalog.TOUR_COMPLET.id))
+        assertNotNull(binaryUnlockedAt(states, BadgeCatalog.TOURNEUR_DE_PARIS.id))
+        assertNull(binaryUnlockedAt(states, BadgeCatalog.TOUR_COMPLET.id))
     }
 
     @Test fun `evaluate unlocks tour complet with 20 distinct arrondissements`() {
@@ -209,29 +262,31 @@ class BadgeEvaluatorTest {
             arrNum.toLong() to arbre(id = arrNum.toLong(), adresse = "RUE TEST, ${arrNum}e")
         }
         val states = BadgeEvaluator.evaluate(captures, arbres, emptySpeciesInfo())
-        assertNotNull(unlockedAt(states, BadgeCatalog.TOUR_COMPLET.id))
+        assertNotNull(binaryUnlockedAt(states, BadgeCatalog.TOUR_COMPLET.id))
     }
 
     @Test fun `evaluate ignores out-of-Paris addresses for arrondissement count`() {
-        // 10 captures, toutes hors-Paris (adresse sans suffixe arr). Promenade
-        // se débloque (totalCount), pas Tourneur (0 arr distincts).
+        // 10 captures hors-Paris : marcheur tier 10 se débloque, pas Tourneur.
         val captures = (1..10).map { capture(arbreId = it.toLong(), ts = it.toLong()) }
         val arbres = (1..10).associate { it.toLong() to arbre(id = it.toLong(), adresse = "Bois de Vincennes") }
         val states = BadgeEvaluator.evaluate(captures, arbres, emptySpeciesInfo())
-        assertNotNull(unlockedAt(states, BadgeCatalog.PROMENADE.id))
-        assertNull(unlockedAt(states, BadgeCatalog.TOURNEUR_DE_PARIS.id))
+        val marcheur = progressive(states, BadgeCatalog.MARCHEUR.id)
+        assertNotNull(tierUnlockedAt(marcheur, threshold = 10))
+        assertNull(binaryUnlockedAt(states, BadgeCatalog.TOURNEUR_DE_PARIS.id))
     }
 
-    // ---------- remarquables ----------
+    // ---------- chasseur (progressif) ----------
 
-    @Test fun `evaluate unlocks chasseur remarquables with 10 distinct remarquables`() {
+    @Test fun `evaluate unlocks chasseur tier 10 with 10 distinct remarquables`() {
         val captures = (0 until 10).map { i ->
             capture(arbreId = i.toLong(), remarquable = true, ts = i.toLong())
         }
         val arbres = captures.associate { it.arbreId to arbre(id = it.arbreId, remarquable = true) }
         val states = BadgeEvaluator.evaluate(captures, arbres, emptySpeciesInfo())
-        assertEquals(9L, unlockedAt(states, BadgeCatalog.CHASSEUR_REMARQUABLES.id))
-        assertNull(unlockedAt(states, BadgeCatalog.LEGENDE.id))
+        val chasseur = progressive(states, BadgeCatalog.CHASSEUR.id)
+        assertEquals(10, chasseur.currentCount)
+        assertEquals(9L, tierUnlockedAt(chasseur, threshold = 10))
+        assertNull(tierUnlockedAt(chasseur, threshold = 25))
     }
 
     @Test fun `evaluate dedupes remarquables on arbreId`() {
@@ -241,26 +296,25 @@ class BadgeEvaluatorTest {
         }
         val arbres = mapOf(42L to arbre(id = 42L, remarquable = true))
         val states = BadgeEvaluator.evaluate(captures, arbres, emptySpeciesInfo())
-        assertNull(unlockedAt(states, BadgeCatalog.CHASSEUR_REMARQUABLES.id))
-    }
-
-    // ---------- unlockedAt figé ----------
-
-    @Test fun `unlockedAt does not move when more captures arrive after threshold`() {
-        // 10 captures (déclenche promenade au ts=10), puis 5 de plus à ts > 100.
-        val first10 = (1..10).map { i -> capture(arbreId = i.toLong(), ts = i.toLong()) }
-        val later = (11..15).map { i -> capture(arbreId = i.toLong(), ts = (i * 100L)) }
-        val arbres = (first10 + later).associate { it.arbreId to arbre(id = it.arbreId) }
-        val states = BadgeEvaluator.evaluate(first10 + later, arbres, emptySpeciesInfo())
-        assertEquals(10L, unlockedAt(states, BadgeCatalog.PROMENADE.id))
+        val chasseur = progressive(states, BadgeCatalog.CHASSEUR.id)
+        // Tier 1 atteint (1 remarquable distinct), tier 5 non.
+        assertEquals(1, chasseur.currentCount)
+        assertNotNull(tierUnlockedAt(chasseur, threshold = 1))
+        assertNull(tierUnlockedAt(chasseur, threshold = 5))
     }
 
     // ---------- helpers ----------
 
     private fun parisTs(iso: String): Long = Instant.parse(iso).toEpochMilli()
 
-    private fun unlockedAt(states: List<BadgeState>, id: String): Long? =
-        states.first { it.def.id == id }.unlockedAt
+    private fun progressive(states: List<BadgeState>, id: String): BadgeState.Progressive =
+        states.first { it.def.id == id } as BadgeState.Progressive
+
+    private fun tierUnlockedAt(progressive: BadgeState.Progressive, threshold: Int): Long? =
+        progressive.tiers.first { it.threshold == threshold }.unlockedAt
+
+    private fun binaryUnlockedAt(states: List<BadgeState>, id: String): Long? =
+        (states.first { it.def.id == id } as BadgeState.Binary).unlockedAt
 
     private fun capture(
         arbreId: Long,

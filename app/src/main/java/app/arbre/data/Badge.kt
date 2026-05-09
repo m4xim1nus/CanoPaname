@@ -1,17 +1,27 @@
 package app.arbre.data
 
 /**
- * Définition statique d'un badge. Pas de table Room — le déblocage est
- * calculé à partir des captures par `BadgeEvaluator`. Ajouter un badge :
- * entrée dans `BadgeCatalog` + critère dans `BadgeEvaluator` + icône dans
- * `ui/badges/BadgeIcons.kt`.
+ * Définition statique d'un badge. Pas de table Room — le déblocage est calculé
+ * à partir des captures par `BadgeEvaluator`. Un badge est soit binaire
+ * (`tiers == null`), soit progressif (cumul de paliers ; chaque palier a son
+ * propre `unlockedAt` figé). Ajouter un badge : entrée dans `BadgeCatalog` +
+ * critère dans `BadgeEvaluator` + icône dans `ui/badges/BadgeIcons.kt`.
  */
 data class BadgeDef(
     val id: String,
     val label: String,
     val description: String,
     val category: BadgeCategory,
-)
+    val tiers: List<TierDef>? = null,
+    /** Unité comptée par les paliers (« captures », « espèces »…), affichée
+     *  dans la pill de score. `null` pour les badges binaires. */
+    val unitLabel: String? = null,
+) {
+    val isProgressive: Boolean get() = tiers != null
+}
+
+/** Définition statique d'un palier d'un badge progressif. */
+data class TierDef(val threshold: Int, val label: String)
 
 enum class BadgeCategory(val label: String) {
     DECOUVERTE("Découverte"),
@@ -21,51 +31,74 @@ enum class BadgeCategory(val label: String) {
     DEMESURE("Démesure"),
 }
 
-data class BadgeState(
-    val def: BadgeDef,
-    val unlockedAt: Long?,
-) {
-    val unlocked: Boolean get() = unlockedAt != null
+sealed class BadgeState {
+    abstract val def: BadgeDef
+
+    val unlocked: Boolean
+        get() = when (this) {
+            is Binary -> unlockedAt != null
+            is Progressive -> tiers.any { it.unlockedAt != null }
+        }
+
+    data class Binary(
+        override val def: BadgeDef,
+        val unlockedAt: Long?,
+    ) : BadgeState()
+
+    data class Progressive(
+        override val def: BadgeDef,
+        val currentCount: Int,
+        val tiers: List<BadgeTier>,
+    ) : BadgeState() {
+        val unlockedTierCount: Int get() = tiers.count { it.unlockedAt != null }
+        val nextTier: BadgeTier? get() = tiers.firstOrNull { it.unlockedAt == null }
+        val lastUnlockedTier: BadgeTier? get() = tiers.lastOrNull { it.unlockedAt != null }
+        val lastUnlockedAt: Long? get() = tiers.mapNotNull { it.unlockedAt }.maxOrNull()
+        val isFullyUnlocked: Boolean get() = nextTier == null
+    }
 }
 
+/** État runtime d'un palier (déf + ts de déblocage figé, ou null si verrouillé). */
+data class BadgeTier(
+    val threshold: Int,
+    val label: String,
+    val unlockedAt: Long?,
+)
+
 object BadgeCatalog {
-    val FIRST_CAPTURE = BadgeDef(
-        id = "first_capture",
-        label = "Première capture",
-        description = "Tu as croisé ton premier arbre.",
-        category = BadgeCategory.DECOUVERTE,
-    )
-    val PROMENADE = BadgeDef(
-        id = "promenade",
-        label = "Promenade",
-        description = "10 captures.",
-        category = BadgeCategory.DECOUVERTE,
-    )
+
     val MARCHEUR = BadgeDef(
         id = "marcheur",
         label = "Marcheur",
-        description = "50 captures.",
+        description = "Captures cumulées dans Paris.",
         category = BadgeCategory.DECOUVERTE,
-    )
-    val CENTURION = BadgeDef(
-        id = "centurion",
-        label = "Centurion",
-        description = "100 captures.",
-        category = BadgeCategory.DECOUVERTE,
+        unitLabel = "captures",
+        tiers = listOf(
+            TierDef(1, "Première capture"),
+            TierDef(10, "Promenade"),
+            TierDef(25, "Flâneur"),
+            TierDef(50, "Marcheur"),
+            TierDef(100, "Centurion"),
+            TierDef(250, "Endurance"),
+        ),
     )
 
-    val BOTANISTE_AMATEUR = BadgeDef(
-        id = "botaniste_amateur",
-        label = "Botaniste amateur",
-        description = "50 espèces différentes.",
+    val BOTANISTE = BadgeDef(
+        id = "botaniste",
+        label = "Botaniste",
+        description = "Espèces différentes croisées.",
         category = BadgeCategory.BOTANIQUE,
+        unitLabel = "espèces",
+        tiers = listOf(
+            TierDef(1, "Curieux"),
+            TierDef(10, "Apprenti"),
+            TierDef(25, "Pousse"),
+            TierDef(50, "Amateur"),
+            TierDef(100, "Passionné"),
+            TierDef(200, "Confirmé"),
+        ),
     )
-    val BOTANISTE_CONFIRME = BadgeDef(
-        id = "botaniste_confirme",
-        label = "Botaniste confirmé",
-        description = "200 espèces différentes.",
-        category = BadgeCategory.BOTANIQUE,
-    )
+
     val ESPECE_RARE = BadgeDef(
         id = "espece_rare",
         label = "Espèce rare",
@@ -86,17 +119,19 @@ object BadgeCatalog {
         category = BadgeCategory.GEOGRAPHIE,
     )
 
-    val CHASSEUR_REMARQUABLES = BadgeDef(
-        id = "chasseur_remarquables",
+    val CHASSEUR = BadgeDef(
+        id = "chasseur",
         label = "Chasseur de remarquables",
-        description = "10 arbres remarquables.",
+        description = "Arbres remarquables capturés.",
         category = BadgeCategory.REMARQUABLES,
-    )
-    val LEGENDE = BadgeDef(
-        id = "legende",
-        label = "Légende",
-        description = "50 arbres remarquables.",
-        category = BadgeCategory.REMARQUABLES,
+        unitLabel = "remarquables",
+        tiers = listOf(
+            TierDef(1, "Premier remarquable"),
+            TierDef(5, "Connaisseur"),
+            TierDef(10, "Chasseur"),
+            TierDef(25, "Expert"),
+            TierDef(50, "Légende"),
+        ),
     )
 
     val GEANT = BadgeDef(
@@ -113,18 +148,17 @@ object BadgeCatalog {
     )
 
     val ALL: List<BadgeDef> = listOf(
-        FIRST_CAPTURE,
-        PROMENADE,
         MARCHEUR,
-        CENTURION,
-        BOTANISTE_AMATEUR,
-        BOTANISTE_CONFIRME,
+        BOTANISTE,
         ESPECE_RARE,
         TOURNEUR_DE_PARIS,
         TOUR_COMPLET,
-        CHASSEUR_REMARQUABLES,
-        LEGENDE,
+        CHASSEUR,
         GEANT,
         VIEUX_SAGE,
     )
+
+    /** Total des paliers (somme tiers progressifs + 1 par badge binaire) — base
+     *  du compteur global « X / Y débloqués » dans `BadgesScreen`. */
+    val totalTierCount: Int = ALL.sumOf { it.tiers?.size ?: 1 }
 }

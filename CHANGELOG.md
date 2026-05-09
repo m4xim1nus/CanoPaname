@@ -10,6 +10,16 @@ Cycle *Photos et progressivité* en cours. Items consolidés au tag.
 
 - Sheet détail : bouton « Recapturer » dès qu'une espèce ou un remarquable est débloqué (modèle Room déjà N captures par arbre, pas de nouveau schéma).
 - Galerie photos : long-press sur une vignette ou icône poubelle dans la lightbox plein-écran ouvrent un dialog de confirmation. Si c'est la dernière capture de l'espèce / du remarquable, le dialog prévient du re-verrouillage et la suppression renvoie sur la Map.
+- Badges : 3 badges progressifs multi-paliers `Marcheur` (1/10/25/50/100/250 captures), `Botaniste` (1/10/25/50/100/200 espèces), `Chasseur` (1/5/10/25/50 remarquables). Card pleine largeur avec barre + jalons et score absolu (« 37 / 50 »). Catalogue passe de 13 à 8 badges (5 binaires + 3 progressifs, 22 paliers au total).
+
+### Modifié
+
+- Profil : « Derniers badges » liste maintenant les 3 derniers événements de déblocage (chaque palier de progressif compte indépendamment).
+- Compteur global de l'écran Badges passe de « X / 13 » à « X / 22 » paliers — progression plus continue qu'un saut binaire.
+
+### Retiré
+
+- 8 badges binaires absorbés par les nouveaux progressifs : `FIRST_CAPTURE`, `PROMENADE`, `MARCHEUR`, `CENTURION` (→ `Marcheur`) ; `BOTANISTE_AMATEUR`, `BOTANISTE_CONFIRME` (→ `Botaniste`) ; `CHASSEUR_REMARQUABLES`, `LEGENDE` (→ `Chasseur`). Pas de migration Room (les badges sont calculés depuis les captures).
 
 ## [1.0.1] — 2026-05-09
 

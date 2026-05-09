@@ -23,10 +23,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.Download
-import androidx.compose.material.icons.outlined.EmojiEvents
 import androidx.compose.material.icons.outlined.HelpOutline
 import androidx.compose.material.icons.outlined.Info
-import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.Upload
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -58,6 +56,7 @@ import app.arbre.backup.ExportResult
 import app.arbre.backup.ImportError
 import app.arbre.backup.ImportResult
 import app.arbre.backup.defaultExportFilename
+import app.arbre.data.BadgeDef
 import app.arbre.data.BadgeState
 import app.arbre.data.rememberArbreRepository
 import app.arbre.data.rememberBackupExporter
@@ -67,6 +66,7 @@ import app.arbre.data.rememberCaptureRepository
 import app.arbre.data.rememberDatasetStats
 import app.arbre.data.rememberSpeciesIndex
 import app.arbre.R
+import app.arbre.ui.badges.icon
 import app.arbre.ui.common.EmptyState
 import androidx.compose.foundation.Image
 import androidx.compose.ui.res.painterResource
@@ -166,11 +166,30 @@ fun ProfileScreen(
         )
     }
 
-    val recentBadges = remember(allBadges) {
-        allBadges
-            .filter { it.unlocked && it.unlockedAt != null }
-            .sortedByDescending { it.unlockedAt }
-            .take(3)
+    val recentUnlocks = remember(allBadges) {
+        allBadges.flatMap { state ->
+            when (state) {
+                is BadgeState.Binary -> if (state.unlockedAt != null) {
+                    listOf(
+                        BadgeUnlock(
+                            def = state.def,
+                            displayLabel = state.def.label,
+                            unlockedAt = state.unlockedAt,
+                        )
+                    )
+                } else emptyList()
+                is BadgeState.Progressive -> state.tiers
+                    .mapNotNull { tier ->
+                        tier.unlockedAt?.let { ts ->
+                            BadgeUnlock(
+                                def = state.def,
+                                displayLabel = "${state.def.label} · ${tier.label}",
+                                unlockedAt = ts,
+                            )
+                        }
+                    }
+            }
+        }.sortedByDescending { it.unlockedAt }.take(3)
     }
 
     LaunchedEffect(backupBusy) {
@@ -235,9 +254,9 @@ fun ProfileScreen(
                     style = MaterialTheme.typography.titleLarge,
                 )
             }
-            if (recentBadges.isNotEmpty()) {
+            if (recentUnlocks.isNotEmpty()) {
                 item {
-                    BadgeGrid(badges = recentBadges)
+                    BadgeGrid(unlocks = recentUnlocks)
                 }
             }
             item {
@@ -471,18 +490,27 @@ private fun StatLine(label: String, value: String) {
     }
 }
 
+private data class BadgeUnlock(
+    val def: BadgeDef,
+    val displayLabel: String,
+    val unlockedAt: Long,
+)
+
 @Composable
-private fun BadgeGrid(badges: List<BadgeState>) {
+private fun BadgeGrid(unlocks: List<BadgeUnlock>) {
     LazyVerticalGrid(
         columns = GridCells.Fixed(3),
         modifier = Modifier
             .fillMaxWidth()
-            .heightForBadges(badges.size),
+            .heightForBadges(unlocks.size),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        items(badges, key = { it.def.id }) { state ->
-            BadgeCell(state = state)
+        items(
+            items = unlocks,
+            key = { "${it.def.id}-${it.unlockedAt}" },
+        ) { unlock ->
+            BadgeCell(unlock = unlock)
         }
     }
 }
@@ -501,15 +529,11 @@ private fun Modifier.heightForBadges(count: Int): Modifier {
 }
 
 @Composable
-private fun BadgeCell(state: BadgeState) {
+private fun BadgeCell(unlock: BadgeUnlock) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
-            containerColor = if (state.unlocked) {
-                MaterialTheme.colorScheme.tertiaryContainer
-            } else {
-                MaterialTheme.colorScheme.surfaceVariant
-            },
+            containerColor = MaterialTheme.colorScheme.tertiaryContainer,
         ),
     ) {
         Column(
@@ -523,38 +547,26 @@ private fun BadgeCell(state: BadgeState) {
                 modifier = Modifier
                     .size(48.dp)
                     .clip(CircleShape)
-                    .background(
-                        if (state.unlocked) {
-                            MaterialTheme.colorScheme.tertiary
-                        } else {
-                            MaterialTheme.colorScheme.outline
-                        }
-                    ),
+                    .background(MaterialTheme.colorScheme.tertiary),
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(
-                    imageVector = if (state.unlocked) Icons.Outlined.EmojiEvents else Icons.Outlined.Lock,
+                    imageVector = unlock.def.icon(),
                     contentDescription = null,
-                    tint = if (state.unlocked) {
-                        MaterialTheme.colorScheme.onTertiary
-                    } else {
-                        MaterialTheme.colorScheme.surface
-                    },
+                    tint = MaterialTheme.colorScheme.onTertiary,
                 )
             }
             Text(
-                if (state.unlocked) state.def.label else "???",
+                unlock.displayLabel,
                 style = MaterialTheme.typography.labelMedium,
                 textAlign = TextAlign.Center,
             )
-            if (state.unlocked && state.unlockedAt != null) {
-                Text(
-                    formatDate(state.unlockedAt),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = TextAlign.Center,
-                )
-            }
+            Text(
+                formatDate(unlock.unlockedAt),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+            )
         }
     }
 }

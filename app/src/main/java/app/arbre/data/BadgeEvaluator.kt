@@ -2,8 +2,9 @@ package app.arbre.data
 
 /**
  * Évalue l'état des badges. Balayage chronologique unique : pour chaque
- * badge, le `unlockedAt` est figé sur la capture qui a fait basculer le
- * critère. Coût O(n × b), trivial à l'échelle perso.
+ * critère (binaire ou palier de progressif), le `unlockedAt` est figé sur la
+ * capture qui a fait basculer la condition. Coût O(n × tiers), trivial à
+ * l'échelle perso.
  */
 object BadgeEvaluator {
 
@@ -13,7 +14,8 @@ object BadgeEvaluator {
         speciesInfo: SpeciesInfoRepository,
     ): List<BadgeState> {
         val sorted = captures.sortedBy { it.timestamp }
-        val unlocks = mutableMapOf<String, Long>()
+        val tierUnlocks = mutableMapOf<Pair<String, Int>, Long>()
+        val binaryUnlocks = mutableMapOf<String, Long>()
 
         val seenSpecies = mutableSetOf<Int>()
         val seenRemarquables = mutableSetOf<Long>()
@@ -25,22 +27,20 @@ object BadgeEvaluator {
             val ts = capture.timestamp
             val arbre = arbresById[capture.arbreId]
 
-            unlockOnce(unlocks, BadgeCatalog.FIRST_CAPTURE.id, totalCount >= 1, ts)
-            unlockOnce(unlocks, BadgeCatalog.PROMENADE.id, totalCount >= 10, ts)
-            unlockOnce(unlocks, BadgeCatalog.MARCHEUR.id, totalCount >= 50, ts)
-            unlockOnce(unlocks, BadgeCatalog.CENTURION.id, totalCount >= 100, ts)
+            // Marcheur — captures totales (toutes captures, remarquables incluses).
+            unlockProgressive(tierUnlocks, BadgeCatalog.MARCHEUR, totalCount, ts)
 
-            // Cohérence Arboretum : les remarquables ne comptent pas comme
-            // espèce — ils ont leur catégorie dédiée.
+            // Botaniste — espèces distinctes (les remarquables ont leur propre
+            // dimension Chasseur, pas de double comptage côté Arboretum).
             if (!capture.remarquable) {
                 seenSpecies.add(capture.speciesIndex)
             }
-            unlockOnce(unlocks, BadgeCatalog.BOTANISTE_AMATEUR.id, seenSpecies.size >= 50, ts)
-            unlockOnce(unlocks, BadgeCatalog.BOTANISTE_CONFIRME.id, seenSpecies.size >= 200, ts)
+            unlockProgressive(tierUnlocks, BadgeCatalog.BOTANISTE, seenSpecies.size, ts)
+
             if (!capture.remarquable) {
                 val count = speciesInfo.get(capture.speciesIndex)?.stats?.count
                 if (count != null && count < 100) {
-                    unlockOnce(unlocks, BadgeCatalog.ESPECE_RARE.id, true, ts)
+                    unlockBinaryOnce(binaryUnlocks, BadgeCatalog.ESPECE_RARE.id, true, ts)
                 }
             }
 
@@ -48,27 +48,43 @@ object BadgeEvaluator {
             if (arr != null) {
                 seenArrondissements.add(arr)
             }
-            unlockOnce(unlocks, BadgeCatalog.TOURNEUR_DE_PARIS.id, seenArrondissements.size >= 10, ts)
-            unlockOnce(unlocks, BadgeCatalog.TOUR_COMPLET.id, seenArrondissements.size >= 20, ts)
+            unlockBinaryOnce(binaryUnlocks, BadgeCatalog.TOURNEUR_DE_PARIS.id, seenArrondissements.size >= 10, ts)
+            unlockBinaryOnce(binaryUnlocks, BadgeCatalog.TOUR_COMPLET.id, seenArrondissements.size >= 20, ts)
 
             if (capture.remarquable) {
                 seenRemarquables.add(capture.arbreId)
             }
-            unlockOnce(unlocks, BadgeCatalog.CHASSEUR_REMARQUABLES.id, seenRemarquables.size >= 10, ts)
-            unlockOnce(unlocks, BadgeCatalog.LEGENDE.id, seenRemarquables.size >= 50, ts)
+            unlockProgressive(tierUnlocks, BadgeCatalog.CHASSEUR, seenRemarquables.size, ts)
 
             val hauteur = arbre?.hauteurM
             if (hauteur != null && hauteur > 30) {
-                unlockOnce(unlocks, BadgeCatalog.GEANT.id, true, ts)
+                unlockBinaryOnce(binaryUnlocks, BadgeCatalog.GEANT.id, true, ts)
             }
             val circ = arbre?.circonferenceCm
             if (circ != null && circ > 400) {
-                unlockOnce(unlocks, BadgeCatalog.VIEUX_SAGE.id, true, ts)
+                unlockBinaryOnce(binaryUnlocks, BadgeCatalog.VIEUX_SAGE.id, true, ts)
             }
         }
 
         return BadgeCatalog.ALL.map { def ->
-            BadgeState(def = def, unlockedAt = unlocks[def.id])
+            if (def.isProgressive) {
+                val currentCount = when (def.id) {
+                    BadgeCatalog.MARCHEUR.id -> totalCount
+                    BadgeCatalog.BOTANISTE.id -> seenSpecies.size
+                    BadgeCatalog.CHASSEUR.id -> seenRemarquables.size
+                    else -> error("Compteur non câblé pour le badge progressif ${def.id}")
+                }
+                val tiers = def.tiers!!.map { td ->
+                    BadgeTier(
+                        threshold = td.threshold,
+                        label = td.label,
+                        unlockedAt = tierUnlocks[def.id to td.threshold],
+                    )
+                }
+                BadgeState.Progressive(def = def, currentCount = currentCount, tiers = tiers)
+            } else {
+                BadgeState.Binary(def = def, unlockedAt = binaryUnlocks[def.id])
+            }
         }
     }
 
@@ -76,7 +92,22 @@ object BadgeEvaluator {
     fun parseArrondissement(adresse: String): Int? =
         (parseArrKey(adresse) as? ArrKey.Paris)?.num
 
-    private fun unlockOnce(
+    private fun unlockProgressive(
+        target: MutableMap<Pair<String, Int>, Long>,
+        def: BadgeDef,
+        currentValue: Int,
+        timestamp: Long,
+    ) {
+        val tiers = def.tiers ?: return
+        for (td in tiers) {
+            val key = def.id to td.threshold
+            if (currentValue >= td.threshold && key !in target) {
+                target[key] = timestamp
+            }
+        }
+    }
+
+    private fun unlockBinaryOnce(
         target: MutableMap<String, Long>,
         id: String,
         condition: Boolean,
