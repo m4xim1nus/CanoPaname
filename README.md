@@ -24,8 +24,8 @@ App Android pour partir à la chasse aux arbres remarquables de Paris, collectio
 ## Installation (Android 8.0+)
 
 - **Via Obtainium** (recommandé) : ajouter ce repo `https://github.com/m4xim1nus/CanoPaname` dans Obtainium, source « GitHub ». Mises à jour automatiques aux nouveaux tags.
-- **APK direct** : Releases → v1.0.0 → `canopaname-v1.0.0-release.apk`.
-- **Vérifier la signature** : `apksigner verify --print-certs canopaname-v1.0.0-release.apk` — fingerprint SHA-256 publié dans la note de chaque Release.
+- **APK direct** : [dernière release](https://github.com/m4xim1nus/CanoPaname/releases/latest) → `canopaname-vX.Y.Z-release.apk`.
+- **Vérifier la signature** : `apksigner verify --print-certs canopaname-vX.Y.Z-release.apk` — fingerprint SHA-256 publié dans la note de chaque Release.
 
 ## Permissions
 
