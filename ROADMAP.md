@@ -4,7 +4,34 @@ App perso, pas de calendrier engageant. Single-player, stockage local strict —
 
 ## Cycle en cours
 
-*Cycle en attente de promotion. Le prochain cycle sera arbitré et détaillé en début de session dédiée — voir « Prochains cycles » ci-dessous et `BACKLOG.md` pour les items candidats.*
+### Catalogue
+
+Nettoyage et unification du catalogue d'espèces. **Objectif : un nom français unique pour chaque entrée du catalogue**, plus de doublons « Marronnier » / « Marronnier » ni d'« Aesculus hippocastanum » nu. Travail de fond amont côté `tools/build_dataset.py` pour survivre aux refresh OpenData sans intervention manuelle. Pas de gameplay adjacent dans ce cycle — on livre la fondation propre avant d'empiler.
+
+Le doc d'analyse `docs/analyse-especes.md` (2026-05-08, complété par un balayage frais 2026-05-10) a posé les chiffres ; les décisions ci-dessous sont **figées** pour le cycle.
+
+**Périmètre tranché**
+
+- **Drop dur des `Non spécifié`** (811 arbres réels, 4 formes : `sp.`, `n. sp.`, vide, `americana` aberrant). Aucune valeur de jeu.
+- **Tag `unknownSpecies` pour `sp.` / `n. sp.` / espece vide normalisée**. Libellé construit (« Tilleul (espèce indéterminée) »), entrée distincte par genre, **non comptée dans le compteur catalogue principal** mais visible et capturable. Une ligne dédiée « + N captures à espèce indéterminée » côté Profil leur rend justice. Pas de rattachement à l'espèce dominante du genre — refusé : c'est inventer de la donnée.
+- **Coquilles latines** via table `SPECIES_FIXUPS` côté script (`Olea europea` → `europaea`, etc.), appliquée avant indexation `sk` pour préserver les indices.
+- **Extraction du nom vernaculaire FR** : Wikidata `P1843` prioritaire (gratuit, `qid` déjà stocké en cache) → regex sur summary Wikipedia FR en fallback → construction `{nc} ({Initiale_genre}. {epithète})` en ultime, override manuel `VERNACULAR_OVERRIDES` toujours gagnant. Désambiguation auto des collisions ; **assert d'unicité au build** (raise si non-unique).
+- **Format asset** : `species-index.json` gagne 3 champs : `nv` (nom vernaculaire unique), `n` (numéro Pokédex stable, identifiées seulement), `u: true` (flag `unknownSpecies`, présent uniquement quand vrai). `dataset-stats.json` gagne `totalEspecesIdentifiees` (~800).
+- **Sanity checks au build** : raise si une espèce avec count > 100 perd sa page WP entre 2 builds, si un `sk` existant disparaît, si un genre `Non spécifié` réapparaît avec count > 50, si un `nv` final est non-unique. Warn pour fallback construit sur espèce > 1000 captures (candidat override).
+- **UI Arboretum** : titre des cards = `nv`, sous-titre = binôme latin italique, numéro `#N` Pokédex stable. Cards `unknownSpecies` visuellement distinctes, **toujours en fin de catalogue, sans `#`**. Compteur principal `X / ~800`.
+- **Auto-débloquage des fiches `sp.`** : la fiche `Tilia (espèce indéterminée)` se débloque dès qu'une capture quelconque touche le genre `Tilia` — directement (capture d'un `Tilia sp.`) ou indirectement (n'importe quel `Tilia tomentosa`, `T. cordata`, etc.). La galerie photos reste alimentée par les seules captures explicites de `sp.`.
+
+**Sprints**
+
+1. **Pipeline amont** (`tools/build_dataset.py` seul) : drops, `SPECIES_FIXUPS`, normalisation `sp.`, tag `u`. Régénération assets.
+2. **Extraction nom vernaculaire** (script seul) : SPARQL étendu `P1843`, regex, fallback construit, désambiguation auto, assert unicité, écriture `nv` partout.
+3. **Sanity checks & hardening** (script seul) : raises et warns au build, refactor mineur isolant la phase espèces, doc `tools/README.md`.
+4. **UI Compose** : `SpeciesIndex.kt`, Arboretum (`#N`, sections, sp. en fin), fiches espèce / arbre / Profil, splash tips. Auto-débloquage genre-based pour les fiches `sp.`.
+5. **Tests, smoke device, clôture** : `SpeciesIndexTest`, run `./gradlew test lint`, balade GrapheneOS, entrée `CHANGELOG [1.1.0]`, rotation cycle, tag `v1.1.0`.
+
+**Format de release** : `v1.1.0`. Increment additif (3 champs assets optionnels), pas de casse Room ni de backup. Minor bump SemVer justifié.
+
+**Hors scope explicite, repoussé au BACKLOG** : refonte Variantes (décalée au cycle suivant intact), carte filtrée par nom commun, badges « Inspecteur » / « Mosaïque de chênes », mini-quiz d'identification, tranches de fréquence Arboretum. Le tag `unknownSpecies` posé par ce cycle rend ces items triviaux à intégrer plus tard.
 
 ## Prochains cycles
 
@@ -12,23 +39,7 @@ App perso, pas de calendrier engageant. Single-player, stockage local strict —
 
 Refonte Arboretum « états/variants ». La colonne `season` (devenue inerte par Vérité) se réincarne en `variants` (bitmask ou table associée). États possibles : *en fleur*, *tout nu / hivernal*, *avec fruits*, *bébé* (faible circonférence), *géant* (forte circonférence). Détection auto quand le dataset le permet (circonférence), déclaration utilisateur sinon (chip à la capture).
 
-Inspiration : Dave the Diver / Pokédex enrichi. Re-capture du même arbre dans un état nouveau = upgrade visible de l'élément Arboretum, sans inflation artificielle. Migration `MIGRATION_4_5`, backup `schemaVersion = 3`. Badges variantes émergent naturellement.
-
-**Nettoyage catalogue espèces** (analyse à date dans `docs/analyse-especes.md`, datée du 2026-05-08). Les décisions ci-dessous sont **à figer en début de cycle** ; le doc liste les chiffres et les options. Traitement amont durable côté `tools/build_dataset.py` pour survivre aux refresh OpenData sans intervention manuelle :
-
-- Sort des entrées `Non spécifié` (677 arbres, 3 entrées) : drop dur côté script ou affichage gris non-cliquable ?
-- Sort des entrées `sp.` / `n. sp.` (8 793 arbres, 4,1 % du dataset) : tag `unknownSpecies` + regroupement sous le `nc` parent dans Arboretum, ou espèce à part entière ?
-- Table `SPECIES_FIXUPS` pour les coquilles OpenData (`Olea europea` → `europaea`, à enrichir au fil de l'eau).
-- Extraction du nom vernaculaire FR : Wikidata `P1843` (propre) vs regex sur le summary Wikipedia (~85 %) vs les deux ?
-- Compteur Arboretum à deux niveaux (`X / 221 noms communs` + `Y / 907 espèces`) ?
-- Carte filtrée par nom commun (set de `sk` fusionnés en expression `match` MapLibre).
-- Sanity checks au build dataset (espèce > 100 perd sa page WP entre 2 builds, `sk` existant disparaît, nouveau genre `Non spécifié` avec count > 50).
-- Tranches de fréquence Arboretum (sticky headers `+10 000` / `2 000-10 000` / `1 000-2 000` / `100-1 000` / `< 100` sur l'onglet LISTE) — décalé du cycle Photos parce qu'il est plus cohérent de figer les tranches **après** le nettoyage du catalogue d'espèces (drop des `Non spécifié`, sort des `sp.`, regroupements `nc`).
-
-Pistes gameplay associées (à arbitrer en début de cycle, refusables) :
-- Mini-quiz d'identification entre espèces partageant le même `nc` (ex. `Quercus robur` vs `Q. petraea`) — réutilise les summaries Wikipedia déjà bakés.
-- Badges « Inspecteur » (capturer N arbres `sp.`) et « Mosaïque de chênes » (10 espèces sous le même `nc`).
-- Affichage du nom vernaculaire FR sur la fiche-espèce.
+Inspiration : Dave the Diver / Pokédex enrichi. Re-capture du même arbre dans un état nouveau = upgrade visible de l'élément Arboretum, sans inflation artificielle. Migration `MIGRATION_4_5`, backup `schemaVersion = 3`. Badges variantes émergent naturellement. Items détaillés dans `BACKLOG.md`.
 
 ### Endgame
 

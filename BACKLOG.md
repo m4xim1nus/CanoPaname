@@ -13,6 +13,23 @@ Triage en lot au début de chaque cycle. Process complet dans `CLAUDE.md` (*Work
 
 ---
 
+## Cycle Catalogue (en cours)
+
+Détail complet dans `ROADMAP.md` *Cycle en cours*. Items absorbés (l'index reste lisible pour la rotation finale) :
+
+- [→Catalogue] Drop dur des entrées `Non spécifié` (811 arbres, 4 formes — `sp.`, `n. sp.`, vide, `americana`) côté `tools/build_dataset.py` (claude:analyse, 2026-05-08 ; chiffres affinés 2026-05-10)
+- [→Catalogue] Tag `unknownSpecies` (champ `u`) pour entrées `sp.` / `n. sp.` / espece vide normalisée, libellé construit « {nc} (espèce indéterminée) », non comptées dans `totalEspecesIdentifiees` (claude:analyse, 2026-05-08 ; arbitré 2026-05-10)
+- [→Catalogue] Normalisation des 4 813 lignes avec `espece` vide (1 594 `Ulmus;`, 1 594 `Prunus;`, ~1 600 autres) en forme canonique `sp.` (claude:analyse, 2026-05-10)
+- [→Catalogue] Table `SPECIES_FIXUPS` côté script pour coquilles OpenData (`Olea europea` → `europaea`, 33 oliviers ; à enrichir au fil de l'eau), appliquée avant indexation `sk` (claude:analyse, 2026-05-08)
+- [→Catalogue] Extraction du nom vernaculaire FR : Wikidata `P1843` prioritaire (`qid` déjà stocké), regex summary WP en fallback, construction `{nc} ({Initiale}. {epithète})` en ultime, override manuel `VERNACULAR_OVERRIDES` (claude:analyse, 2026-05-08 ; arbitré 2026-05-10)
+- [→Catalogue] Désambiguation automatique des collisions `nv` + assert d'unicité au build (raise si non-unique) (claude:analyse, 2026-05-10)
+- [→Catalogue] Champ `nv` (nom vernaculaire unique) + `n` (numéro Pokédex stable) + `u` (flag) ajoutés dans `species-index.json`. `totalEspecesIdentifiees` ajouté dans `dataset-stats.json` (claude:analyse, 2026-05-10)
+- [→Catalogue] Affichage du `nv` partout en titre, binôme latin en sous-titre italique (Arboretum, fiche-espèce, fiche-arbre) (claude:analyse, 2026-05-08)
+- [→Catalogue] Numérotation Pokédex `#N` stable sur les espèces identifiées seulement ; `unknownSpecies` toujours en fin de catalogue, sans `#`, section visuellement distincte (user:moi, 2026-05-10)
+- [→Catalogue] Auto-débloquage des fiches `sp.` : capture d'un `Tilia X` quelconque débloque la fiche `Tilia (espèce indéterminée)`, sans photo dédiée requise. Galerie photos reste alimentée par les seules captures explicites de `sp.` (user:moi, 2026-05-10)
+- [→Catalogue] Sanity checks au build (raise) : espèce > 100 perd sa page WP entre 2 builds, `sk` existant disparaît, genre `Non spécifié` réapparaît count > 50, `nv` final non-unique. Warn pour fallback construit sur espèce > 1000 captures (claude:analyse, 2026-05-08)
+- [→Catalogue] Compteur Arboretum principal `X / ~800` (espèces identifiées seules), ligne « + N captures à espèce indéterminée » côté Profil. **Pas** de double compteur 221/907 (arbitré 2026-05-10 contre la piste « X / 221 nc » du doc d'analyse)
+
 ## Cycle Variantes
 
 - [→Variantes] Refonte Arboretum « états » : la colonne `season` devient `variants` (en fleur, tout nu, fruits, bébé, géant) (user:moi, 2026-05-07)
@@ -20,15 +37,9 @@ Triage en lot au début de chaque cycle. Process complet dans `CLAUDE.md` (*Work
 - [→Variantes] Re-capture du même arbre dans un état nouveau = upgrade visible élément Arboretum (user:moi + audit V2#4, 2026-05-07)
 - [→Variantes] `MIGRATION_4_5` + backup `schemaVersion = 3` (user:moi, 2026-05-07)
 - [→Variantes] Badges variantes émergent du nouveau modèle (user:moi, 2026-05-07)
-- [→Variantes] Sort des entrées `Non spécifié` (677 arbres, 3 entrées) : drop dur côté `tools/build_dataset.py` ou affichage gris non-cliquable ? (claude:analyse, 2026-05-08)
-- [→Variantes] Sort des entrées `sp.` / `n. sp.` (8 793 arbres, 4,1 % du dataset) : tag `unknownSpecies` + regroupement Arboretum sous le `nc` parent ? (claude:analyse, 2026-05-08)
-- [→Variantes] Table `SPECIES_FIXUPS` côté `tools/build_dataset.py` pour coquilles OpenData (`Olea europea` → `europaea`, etc.) (claude:analyse, 2026-05-08)
-- [→Variantes] Extraction nom vernaculaire FR (Wikidata `P1843` propre vs regex summary ~85 % vs les deux) (claude:analyse, 2026-05-08)
-- [→Variantes] Compteur Arboretum à deux niveaux (`X / 221 noms communs` + `Y / 907 espèces`) (claude:analyse, 2026-05-08)
-- [→Variantes] Carte filtrée par nom commun (set de `sk` fusionnés en expression `match`) (claude:analyse, 2026-05-08)
-- [→Variantes] Sanity checks au build dataset (espèce > 100 perd sa page WP, `sk` existant disparaît, nouveau genre `Non spécifié` count > 50) (claude:analyse, 2026-05-08)
-- [→Variantes] Affichage du nom vernaculaire FR sur la fiche-espèce (claude:analyse, 2026-05-08)
 - [→Variantes] Tranches de fréquence Arboretum (+10k, 2k-10k, 1k-2k, 100-1k, <100) avec sticky headers, onglet LISTE — décalé du cycle Photos parce que plus cohérent **après** le nettoyage catalogue d'espèces (user:moi, 2026-05-07 ; décalé 2026-05-09)
+- [→Variantes] Carte filtrée par nom commun (set de `sk` fusionnés en expression `match`) — déplacée depuis Catalogue, le tag `unknownSpecies` posé par Catalogue rendra le picker propre (claude:analyse, 2026-05-08 ; déplacée 2026-05-10)
+- [→Variantes] Badges « Inspecteur » (capturer N arbres `sp.`) et « Mosaïque de chênes » (10 espèces sous le même `nc`) — déplacés depuis Catalogue, dépendent du tag `unknownSpecies` et de l'agrégation par `nc` (claude:analyse, 2026-05-08 ; déplacés 2026-05-10)
 
 ## Cycle Endgame
 
@@ -49,8 +60,7 @@ Triage en lot au début de chaque cycle. Process complet dans `CLAUDE.md` (*Work
 - [creuser] Phénologie réelle (dates floraison/feuillage par espèce) — décision structurante v2 (audit V2#1)
 - [creuser] Étendre screenshots README de 3 à 6 (audit#17 : à faire après Photos pour avoir les nouveaux écrans)
 - [creuser] Script `tools/scout_other_cities.py` qui interroge OpenData de villes du Grand Paris et produit un md de faisabilité (user:moi, 2026-05-07)
-- [creuser] Mini-quiz d'identification entre espèces partageant le même `nc` (Quercus robur vs petraea, Tilia cordata vs platyphyllos) (claude:analyse, 2026-05-08)
-- [creuser] Badges « Inspecteur » (capturer N arbres `sp.`) et « Mosaïque de chênes » (10 espèces sous le même `nc`) (claude:analyse, 2026-05-08)
+- [creuser] Mini-quiz d'identification entre espèces partageant le même `nc` (Quercus robur vs petraea, Tilia cordata vs platyphyllos) (claude:analyse, 2026-05-08 ; refusé du cycle Catalogue 2026-05-10 — scope dédié, UX du quiz + génération de paires + scoring trop coûteux à empiler)
 
 ## Refusé
 

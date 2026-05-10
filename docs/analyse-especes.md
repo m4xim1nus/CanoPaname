@@ -177,6 +177,30 @@ Pour décision avant intégration BACKLOG / ROADMAP :
 - [ ] **Badges « Inspecteur » / « Mosaïque de chênes »** : intéressants ou bruit ?
 - [ ] **Sanity checks au build** (point 4.5) : tous, certains, aucun ?
 
+## 6. Décisions actées (2026-05-10) — cycle Catalogue
+
+Ouverture du cycle dédié *Catalogue* (cf. `ROADMAP.md` *Cycle en cours*). Choix arbitrés en début de session, alignés avec un balayage frais du CSV qui a élargi le diagnostic ci-dessus :
+
+- **Élargissement du périmètre `Non spécifié`** : 811 arbres (pas 677), réparti sur 4 formes (`sp.`, `n. sp.`, espece vide, `americana` aberrant).
+- **Anomalie majeure non listée à l'analyse initiale** : 4 813 lignes avec `espece` vide (1 594 `Ulmus;`, 1 594 `Prunus;`, ~1 600 autres). Ces lignes étaient silencieusement droppées par le filtre `to_str_or_none` du script — désormais normalisées en `sp.` du genre concerné, taggées `unknownSpecies`.
+
+| Question | Décision |
+|---|---|
+| 55 espèces de chêne distinctes ? | **Oui, gardées.** L'objectif est même renforcé : un nom français unique pour **chaque** entrée du catalogue (pas de regroupement par `nc`). |
+| Stratégie d'extraction du nom vernaculaire | **Wikidata `P1843` prioritaire** (`qid` déjà stocké → quasi-gratuit) → **regex sur summary WP** en fallback → **construction `{nc} ({Initiale_genre}. {epithète})`** en ultime → **override manuel `VERNACULAR_OVERRIDES`** toujours gagnant. Désambiguation auto des collisions, assert d'unicité au build (raise sinon). |
+| Comportement `sp.` / `n. sp.` / espece vide | **Tag `unknownSpecies` (champ `u: true`)**, libellé construit (« Tilleul (espèce indéterminée) »), entrée distincte par genre dans le catalogue. **Non comptés dans le compteur principal**. **Toujours en fin de catalogue, sans `#`**. **Auto-débloquage** : la fiche `Tilia (espèce indéterminée)` se débloque dès qu'une capture quelconque touche le genre `Tilia`. |
+| Entrées `Non spécifié` | **Drop dur côté script** (étendre le filtre d'entrée, exclure `genre.strip() == "Non spécifié"` avant indexation `sk`). |
+| Compteur Arboretum à deux niveaux 221 / 907 | **Refusé.** Pas de regroupement par nom commun. **Compteur principal `X / ~800`** (espèces identifiées seules ; ~903 entrées totales dans le catalogue dont ~104 unknown), ligne séparée « + N captures à espèce indéterminée » côté Profil. |
+| Carte filtrée par nom commun | **Repoussée au cycle Variantes** (BACKLOG). Le tag `unknownSpecies` posé par Catalogue rendra le picker propre. |
+| Mini-quiz d'identification | **Repoussé au BACKLOG `[creuser]`**. Scope dédié — UX, génération de paires, scoring trop coûteux à empiler. |
+| Badges « Inspecteur » / « Mosaïque de chênes » | **Repoussés au cycle Variantes** (BACKLOG). Dépendent du tag `unknownSpecies` et de l'agrégation par `nc` posés par Catalogue. |
+| Sanity checks au build | **Tous adoptés.** Raise pour : espèce > 100 perd sa page WP entre 2 builds, `sk` existant disparaît, genre `Non spécifié` réapparaît count > 50, `nv` final non-unique. Warn pour fallback construit sur espèce > 1000 captures. |
+| Rattachement des `sp.` à l'espèce dominante du genre (idée évoquée 2026-05-10) | **Refusé.** Inventer de la donnée. Casse compteur, casse fiche-espèce (photos d'une espèce sous une autre), casse badges. Ne marche que pour les genres ultra-dominants (Aesculus, Platanus), casse pour les genres divers (Quercus 55, Acer 47). |
+| Coquilles latines | **Table `SPECIES_FIXUPS`** appliquée avant indexation `sk` (préserve les indices déjà stockés en captures Room). Démarre avec `(Olea, europea) → (Olea, europaea)`, enrichie au fil des découvertes par les sanity checks. |
+| Format de release | **`v1.1.0`** — increment additif, 3 nouveaux champs assets optionnels (`nv`, `n`, `u`), pas de casse Room ni backup. |
+
+Plan détaillé d'exécution (5 sprints) : `ROADMAP.md` *Cycle en cours — Catalogue*. Items individuels : `BACKLOG.md` *Cycle Catalogue (en cours)*.
+
 ## Annexe — sources de données
 
 - `app/src/main/assets/species-index.json` (907 entrées `{i, g, e, nc?}`)
