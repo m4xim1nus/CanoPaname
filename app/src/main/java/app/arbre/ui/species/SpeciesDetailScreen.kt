@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
@@ -54,11 +55,14 @@ import app.arbre.ui.theme.arbresMotion
 import app.arbre.data.Arbre
 import app.arbre.data.ArbreRepository
 import app.arbre.data.ArrCount
+import app.arbre.data.Capture
 import app.arbre.data.SpeciesEntry
 import app.arbre.data.SpeciesIndex
-import app.arbre.data.catalogueRank
 import app.arbre.data.SpeciesInfo
+import app.arbre.data.SpeciesInfoRepository
 import app.arbre.data.SpeciesStats
+import app.arbre.data.catalogueRank
+import app.arbre.ui.common.CatalogueCell
 import app.arbre.data.label
 import app.arbre.data.parseArrKey
 import app.arbre.data.rememberArbreRepository
@@ -72,6 +76,7 @@ import app.arbre.ui.common.PhotoLightbox
 import app.arbre.ui.common.ShowOnMapButton
 import java.text.NumberFormat
 import java.util.Locale
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import androidx.compose.runtime.rememberCoroutineScope
@@ -81,8 +86,14 @@ import androidx.compose.runtime.rememberCoroutineScope
 fun SpeciesDetailScreen(
     speciesIndex: Int,
     onBack: () -> Unit,
-    onShowOnMap: () -> Unit = {},
+    /**
+     * `Set<Int>` à filtrer sur la carte. Sprint 4bis (cycle Catalogue) :
+     * fiche `(G, sp.)` envoie `{sk_sp.} ∪ {sks_du_genre_capturés}` ; fiches
+     * normales envoient `setOf(sk)` singleton.
+     */
+    onShowOnMap: (Set<Int>) -> Unit = {},
     onShowArbreOnMap: (Long) -> Unit = {},
+    onSpeciesClick: (Int) -> Unit = {},
     onRemarquableClick: (Long) -> Unit = {},
     onUnlockLost: () -> Unit = {},
     celebrate: Boolean = false,
@@ -121,12 +132,65 @@ fun SpeciesDetailScreen(
     // dévoilée + cliquable et silhouette « ??? + arrondissement ».
     val capturedRemarquables by captureRepo.capturedRemarquableIds()
         .collectAsState(initial = emptySet())
+    val capturedSpecies by captureRepo.capturedSpeciesIndices()
+        .collectAsState(initial = emptySet())
 
     var lightboxIndex by remember(speciesIndex) { mutableStateOf<Int?>(null) }
     var pendingDeleteIndex by remember(speciesIndex) { mutableStateOf<Int?>(null) }
     val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
     val photoFiles = captures.map { it.resolvedFile(ctx) }
+
+    // Sprint 4bis (cycle Catalogue) : sur la fiche `(G, sp.)`, on construit
+    // un mini-catalogue des espèces du genre + le set sk pour le filtre carte.
+    // `genreEntries` : toutes les espèces identifiées du genre (sans le `sp.`
+    // courant, qui est déjà la fiche), triées par `pokedexNumber` croissant
+    // si présent, sinon par count Paris décroissant.
+    // `genrePhotos` : 1re capture par sk frère, pour le slot photo des cards.
+    // `genreFilterSet` : set sk passé à `onShowOnMap` (sp. + sks identifiés
+    // capturés du genre).
+    val genreEntries: List<SpeciesEntry> = remember(entry, speciesIndexRepo) {
+        if (!entry.unknownSpecies) emptyList()
+        else speciesIndexRepo.entriesOfGenre(entry.genre)
+            .filter { it.index != entry.index && !it.unknownSpecies }
+            .sortedWith(
+                compareBy<SpeciesEntry> { it.pokedexNumber == null }
+                    .thenBy { it.pokedexNumber ?: Int.MAX_VALUE }
+                    .thenByDescending { speciesInfoRepo.get(it.index)?.stats?.count ?: 0 }
+                    .thenBy { it.genre.lowercase() }
+                    .thenBy { it.espece.lowercase() }
+            )
+    }
+    val allCapturesForGenre by remember(entry, genreEntries) {
+        if (!entry.unknownSpecies || genreEntries.isEmpty()) {
+            flowOf(emptyList<Capture>())
+        } else {
+            val sks = genreEntries.map { it.index }.toSet()
+            captureRepo.toutesLesCaptures()
+                .map { all -> all.filter { !it.remarquable && it.speciesIndex in sks } }
+        }
+    }.collectAsState(initial = emptyList())
+    val genrePhotos: Map<Int, java.io.File> = remember(allCapturesForGenre, ctx) {
+        allCapturesForGenre
+            .groupBy { it.speciesIndex }
+            .mapValues { (_, caps) ->
+                caps.maxByOrNull { it.timestamp }!!.resolvedFile(ctx)
+            }
+    }
+    // Set sk pour `onShowOnMap` : sp. lui-même + chaque sk identifié du
+    // genre **capturé** (pas tous les sks du genre — focus « ce que j'ai
+    // résolu » + « sp. à résoudre », cf. BACKLOG cycle Catalogue).
+    val genreFilterSet: Set<Int> = remember(entry, capturedSpecies, speciesIndexRepo) {
+        if (!entry.unknownSpecies) setOf(entry.index)
+        else {
+            val capturedSiblings = capturedSpecies.filter { sk ->
+                speciesIndexRepo.get(sk)?.let { e ->
+                    e.genre == entry.genre && !e.unknownSpecies
+                } == true
+            }.toSet()
+            setOf(entry.index) + capturedSiblings
+        }
+    }
 
     // Cycle Catalogue : `displayNomCommun` consomme le `nv` quand l'asset le
     // porte, sinon retombe sur `nomCommun` (ex. via `arbreSample`).
@@ -175,6 +239,25 @@ fun SpeciesDetailScreen(
                 }
             }
 
+            if (entry.unknownSpecies && genreEntries.isNotEmpty()) {
+                item {
+                    GenreMiniCatalogueHeader(
+                        genreEntries = genreEntries,
+                        capturedSpecies = capturedSpecies,
+                    )
+                }
+                items(genreEntries.chunked(3)) { row ->
+                    GenreMiniCatalogueRow(
+                        row = row,
+                        speciesIndexRepo = speciesIndexRepo,
+                        speciesInfoRepo = speciesInfoRepo,
+                        capturedSpecies = capturedSpecies,
+                        photoBySk = genrePhotos,
+                        onSpeciesClick = onSpeciesClick,
+                    )
+                }
+            }
+
             item { WikipediaBlock(info) }
 
             info?.pdfUrl?.let { pdfUrl ->
@@ -195,7 +278,12 @@ fun SpeciesDetailScreen(
                 }
             }
 
-            item { ShowOnMapButton(onShowOnMap) }
+            item {
+                // Sprint 4bis : sur la fiche `(G, sp.)`, le bouton filtre la
+                // carte sur le set genre (sp. + identifiées capturées) plutôt
+                // que sur le sk seul.
+                ShowOnMapButton(onClick = { onShowOnMap(genreFilterSet) })
+            }
         }
         PhotoLightbox(
             photoFiles = photoFiles,
@@ -657,3 +745,71 @@ private fun formatRatio(r: Double): String = "×${FR_RATIO.format(r)}"
 // quels (Android `Uri.parse` les encode au besoin).
 private fun wikipediaUrlPath(title: String): String =
     title.replace(' ', '_')
+
+/**
+ * En-tête de la section mini-catalogue genre : « Espèces du genre {Genre}
+ * — X / N capturées ». Donne immédiatement la progression locale (« j'ai
+ * 3/55 chênes ») sans noyer l'utilisateur dans la grille.
+ */
+@Composable
+private fun GenreMiniCatalogueHeader(
+    genreEntries: List<SpeciesEntry>,
+    capturedSpecies: Set<Int>,
+) {
+    val genre = genreEntries.firstOrNull()?.genre ?: return
+    val total = genreEntries.size
+    val capturedHere = genreEntries.count { it.index in capturedSpecies }
+    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Text(
+            "Espèces du genre $genre",
+            style = MaterialTheme.typography.titleMedium,
+        )
+        Text(
+            "$capturedHere / $total capturée${if (capturedHere > 1) "s" else ""}",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+/**
+ * Une ligne de 3 cards du mini-catalogue genre. La grille n'est pas un
+ * `LazyVerticalGrid` (pas imbricable dans le LazyColumn parent) — on chunk
+ * la liste côté call-site et on rend chaque batch en `Row` à largeurs égales,
+ * paddé avec des `Spacer` si la dernière ligne a moins de 3 items.
+ */
+@Composable
+private fun GenreMiniCatalogueRow(
+    row: List<SpeciesEntry>,
+    speciesIndexRepo: SpeciesIndex,
+    speciesInfoRepo: SpeciesInfoRepository,
+    capturedSpecies: Set<Int>,
+    photoBySk: Map<Int, java.io.File>,
+    onSpeciesClick: (Int) -> Unit,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        row.forEach { entry ->
+            val discovered = speciesIndexRepo.isDiscovered(entry.index, capturedSpecies)
+            val count = speciesInfoRepo.get(entry.index)?.stats?.count
+            val label = entry.pokedexNumber?.let { "#%03d".format(it) } ?: "—"
+            CatalogueCell(
+                displayLabel = label,
+                entry = entry,
+                photoFile = photoBySk[entry.index],
+                discovered = discovered,
+                onClick = if (discovered) {
+                    { onSpeciesClick(entry.index) }
+                } else null,
+                count = count,
+                modifier = Modifier.weight(1f),
+            )
+        }
+        // Padding visuel pour les lignes incomplètes (1 ou 2 cards).
+        repeat(3 - row.size) {
+            Spacer(modifier = Modifier.weight(1f))
+        }
+    }
+}

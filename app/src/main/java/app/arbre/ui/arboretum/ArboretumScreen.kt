@@ -1,13 +1,10 @@
 package app.arbre.ui.arboretum
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -41,12 +38,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontStyle
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.arbre.data.Capture
 import app.arbre.data.SpeciesEntry
@@ -60,6 +54,7 @@ import app.arbre.data.rememberSpeciesIndex
 import app.arbre.data.rememberSpeciesInfoRepository
 import app.arbre.data.resolvedFile
 import app.arbre.R
+import app.arbre.ui.common.CatalogueCell
 import app.arbre.ui.common.EmptyState
 import app.arbre.ui.common.PhotoThumbnail
 import androidx.compose.foundation.Image
@@ -286,95 +281,6 @@ private fun CatalogueView(
                     onClick = if (discovered) {
                         { onSpeciesClick(entry.index) }
                     } else null,
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun CatalogueCell(
-    displayLabel: String,
-    entry: SpeciesEntry,
-    photoFile: File?,
-    discovered: Boolean,
-    onClick: (() -> Unit)?,
-) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .let { if (onClick != null) it.clickable(onClick = onClick) else it },
-        colors = CardDefaults.cardColors(
-            containerColor = if (discovered) {
-                MaterialTheme.colorScheme.surfaceVariant
-            } else {
-                MaterialTheme.colorScheme.surface
-            },
-        ),
-    ) {
-        Column(
-            modifier = Modifier.padding(8.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
-        ) {
-            Text(
-                displayLabel,
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .aspectRatio(1f)
-                    .clip(RoundedCornerShape(8.dp)),
-                contentAlignment = Alignment.Center,
-            ) {
-                if (photoFile != null) {
-                    PhotoThumbnail(
-                        photoFile = photoFile,
-                        sampleSize = 4,
-                        modifier = Modifier.fillMaxSize(),
-                    )
-                } else {
-                    // Slot photo silhouette : couvre les non-découverts ET les
-                    // `unknownSpecies` débloqués genre-based (titre `nv` montré
-                    // mais photo seulement si capture explicite `sp.`).
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(MaterialTheme.colorScheme.surfaceContainerHighest),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Text(
-                            "?",
-                            style = MaterialTheme.typography.displayMedium,
-                            color = MaterialTheme.colorScheme.outline,
-                        )
-                    }
-                }
-            }
-            Text(
-                if (discovered) entry.displayNomCommun else "???",
-                style = MaterialTheme.typography.bodySmall,
-                color = if (discovered) {
-                    MaterialTheme.colorScheme.onSurface
-                } else {
-                    MaterialTheme.colorScheme.onSurfaceVariant
-                },
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-                textAlign = TextAlign.Start,
-            )
-            // Sous-titre binôme italique : seulement si `nv` a apporté une
-            // valeur (sinon le titre EST déjà le binôme, redondance évitée).
-            if (discovered && entry.nv != null) {
-                Text(
-                    entry.displayName,
-                    style = MaterialTheme.typography.labelSmall.copy(
-                        fontStyle = FontStyle.Italic,
-                    ),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
                 )
             }
         }

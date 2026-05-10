@@ -75,6 +75,16 @@ class SpeciesIndex(entries: List<SpeciesEntry>) {
     fun genreOf(index: Int): String? = byIndex[index]?.genre
 
     /**
+     * Toutes les entrées d'un genre donné, ordonnées par `index` croissant.
+     * Cycle Catalogue (sprint 4bis) : alimente le mini-catalogue affiché sur
+     * la fiche `(G, sp.)` (« j'ai 3/55 chênes »).
+     */
+    fun entriesOfGenre(genre: String): List<SpeciesEntry> {
+        val sks = sksByGenre[genre] ?: return emptyList()
+        return sks.mapNotNull { byIndex[it] }.sortedBy { it.index }
+    }
+
+    /**
      * Auto-débloquage genre-based des fiches `(G, sp.)` : un sk `unknownSpecies`
      * est considéré découvert dès qu'un sk frère du même genre est capturé.
      * Les sks identifiés (non `unknownSpecies`) sont découverts au sens strict

@@ -198,11 +198,16 @@ internal fun setArbresGeoJson(style: Style, json: String) {
  */
 internal fun filterGeoJsonBySpecies(
     json: String,
-    sk: Int,
+    sks: Set<Int>,
     capturedRemarquables: Set<Long>,
 ): String {
+    if (sks.isEmpty()) return EMPTY_GEOJSON
     val featureSeparator = ",{\"type\":\"Feature\""
-    val skSuffix = "\"sk\":$sk}}"
+    // Pré-calcule les suffixes `"sk":N}}` pour chaque sk du set. Sprint 4bis
+    // (cycle Catalogue) : la fiche `(G, sp.)` passe un set genre = `{sk_sp.}
+    // ∪ {sks_du_genre_capturés}` ; les fiches-espèces normales passent toujours
+    // un singleton.
+    val skSuffixes = sks.map { "\"sk\":$it}}" }
     val featuresMarker = "\"features\":["
     val idMarker = "\"id\":"
     val remarquableMarker = "\"remarquable\":"
@@ -223,7 +228,10 @@ internal fun filterGeoJsonBySpecies(
         // le build script (Python 3.7+ préserve l'ordre d'insertion, et le
         // dump JSON l'utilise). Si on change l'ordre côté Python, casser ce
         // contrat ici se traduit par une carte filtrée vide — ne pas rater.
-        if (json.regionMatches(end - skSuffix.length, skSuffix, 0, skSuffix.length)) {
+        val matches = skSuffixes.any { suffix ->
+            json.regionMatches(end - suffix.length, suffix, 0, suffix.length)
+        }
+        if (matches) {
             // Skip les remarquables non encore capturés. Mêmes markers que
             // `enrichGeoJsonWithDiscovery` ci-dessous : `id` puis `remarquable`
             // dans l'ordre d'insertion stable.

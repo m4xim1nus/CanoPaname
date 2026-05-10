@@ -36,13 +36,17 @@ object Routes {
     // optionnels qu'après `?`.
     const val SPECIES = "species/{speciesIndex}?celebrate={celebrate}"
     // Destination distincte de MAP : MapViewModel propre + caméra Paris z11
-    // + entrée séparée du backstack.
-    const val MAP_FILTERED = "map_filtered/{speciesIndex}"
+    // + entrée séparée du backstack. `speciesIndices` = set CSV de sks
+    // (1 sk = filtre fiche-espèce normale ; N sks = filtre genre depuis la
+    // fiche `(G, sp.)`, sprint 4bis du cycle Catalogue).
+    const val MAP_FILTERED = "map_filtered/{speciesIndices}"
     const val ABOUT = "about"
 
     fun species(speciesIndex: Int, celebrate: Boolean = false): String =
         "species/$speciesIndex?celebrate=$celebrate"
-    fun mapFiltered(speciesIndex: Int): String = "map_filtered/$speciesIndex"
+    fun mapFiltered(speciesIndex: Int): String = mapFiltered(setOf(speciesIndex))
+    fun mapFiltered(speciesIndices: Set<Int>): String =
+        "map_filtered/${speciesIndices.sorted().joinToString(",")}"
     fun remarquableDetail(arbreId: Long): String = "remarquable_detail/$arbreId"
     fun map(pulseArbreId: Long? = null): String =
         if (pulseArbreId != null) "map?pulseArbreId=$pulseArbreId" else "map"
@@ -165,12 +169,13 @@ fun ArbresNavHost() {
             SpeciesDetailScreen(
                 speciesIndex = sk,
                 onBack = { nav.popBackStack() },
-                onShowOnMap = { nav.navigate(Routes.mapFiltered(sk)) },
+                onShowOnMap = { sks -> nav.navigate(Routes.mapFiltered(sks)) },
                 onShowArbreOnMap = { id ->
                     nav.navigate(Routes.map(id)) {
                         popUpTo(Routes.MAP) { inclusive = false }
                     }
                 },
+                onSpeciesClick = { other -> nav.navigate(Routes.species(other)) },
                 onRemarquableClick = { id -> nav.navigate(Routes.remarquableDetail(id)) },
                 onUnlockLost = { nav.popBackStack(Routes.MAP, inclusive = false) },
                 celebrate = celebrate,
@@ -178,11 +183,21 @@ fun ArbresNavHost() {
         }
         composable(
             Routes.MAP_FILTERED,
-            arguments = listOf(navArgument("speciesIndex") { type = NavType.IntType }),
+            arguments = listOf(navArgument("speciesIndices") { type = NavType.StringType }),
         ) { entry ->
-            val sk = entry.arguments?.getInt("speciesIndex") ?: return@composable
+            // Parsing CSV → Set<Int>. Un sk seul (fiche-espèce) ou plusieurs
+            // (fiche `(G, sp.)`). Les sks invalides sont ignorés silencieusement
+            // (toIntOrNull) ; un set vide retombe sur le mode non-filtré côté
+            // MapScreen.
+            val sks = entry.arguments
+                ?.getString("speciesIndices")
+                ?.split(',')
+                ?.mapNotNull { it.trim().toIntOrNull() }
+                ?.toSet()
+                ?: emptySet()
+            if (sks.isEmpty()) return@composable
             MapScreen(
-                filterSpecies = sk,
+                filterSpecies = sks,
                 onArboretumClick = { nav.navigate(Routes.ARBORETUM) },
                 onSpeciesClick = { other -> nav.navigate(Routes.species(other)) },
                 onRemarquableDetail = { id -> nav.navigate(Routes.remarquableDetail(id)) },

@@ -132,7 +132,13 @@ fun MapScreen(
     onRemarquableDetail: (Long) -> Unit = {},
     onFirstSpeciesCapture: (Int) -> Unit = {},
     onBack: (() -> Unit)? = null,
-    filterSpecies: Int? = null,
+    /**
+     * Set de sks à filtrer. `emptySet()` = mode normal (toute la carte).
+     * Singleton = filtre fiche-espèce classique. Plusieurs sks = filtre genre
+     * depuis la fiche `(G, sp.)` (sprint 4bis du cycle Catalogue) : `{sk_sp.}
+     * ∪ {sks_du_genre_capturés}`.
+     */
+    filterSpecies: Set<Int> = emptySet(),
     pulseArbreId: Long? = null,
 ) {
     val ctx = LocalContext.current
@@ -149,8 +155,28 @@ fun MapScreen(
         }
     )
 
-    val filteredEntry = filterSpecies?.let { speciesIndex.get(it) }
-    val filteredCount = filterSpecies?.let { speciesInfoRepo.get(it)?.stats?.count }
+    val isFiltered = filterSpecies.isNotEmpty()
+    // Entry "représentative" du filtre. Singleton → l'entry directement.
+    // Multi-sk (filtre genre) → l'entry `unknownSpecies` du genre (= le sk
+    // `(G, sp.)` qui a déclenché la nav, présent dans le set par construction).
+    // Fallback : 1re entry trouvée. La FilterBanner l'utilise pour le titre
+    // (`displayNomCommun`) et le sous-titre (binôme italique conditionnel).
+    val filteredEntry = if (isFiltered) {
+        filterSpecies.firstNotNullOfOrNull { sk ->
+            speciesIndex.get(sk)?.takeIf { it.unknownSpecies }
+        } ?: filterSpecies.firstNotNullOfOrNull { sk -> speciesIndex.get(sk) }
+    } else null
+    // Count agrégé sur tous les sks du filtre (sommes simples, ordre de
+    // grandeur cohérent — pas de doublons puisque chaque sk = 1 espèce
+    // distincte). Nul si SpeciesInfo n'a pas encore résolu les stats.
+    val filteredCount = if (isFiltered) {
+        filterSpecies.sumOf { speciesInfoRepo.get(it)?.stats?.count ?: 0 }
+            .takeIf { it > 0 }
+    } else null
+    // Pour le 2e label de la FilterBanner (mode genre uniquement) : « 3
+    // espèces capturées + sp. » — donne du grain quand l'utilisateur visualise
+    // un filtre de plusieurs espèces du même genre.
+    val isGenreFilter = filterSpecies.size > 1
 
     val capturedSpecies by captureRepo.capturedSpeciesIndices()
         .collectAsState(initial = emptySet())
@@ -200,7 +226,7 @@ fun MapScreen(
     // direct l'enrichi ; ici on skip le re-enrich si les sets sont identiques
     // à `lastEnrichmentKey`. Skip total en mode filtré (déjà enrichi cold).
     LaunchedEffect(styleRef, filterSpecies) {
-        if (filterSpecies != null) return@LaunchedEffect
+        if (isFiltered) return@LaunchedEffect
         val style = styleRef ?: return@LaunchedEffect
         combine(
             captureRepo.capturedSpeciesIndices(),
@@ -356,7 +382,7 @@ fun MapScreen(
             map.uiSettings.isRotateGesturesEnabled = false
             map.uiSettings.isCompassEnabled = false
             scope.launch {
-                map.cameraPosition = if (filterSpecies != null) {
+                map.cameraPosition = if (isFiltered) {
                     parisCamera(PARIS_OVERVIEW_ZOOM)
                 } else {
                     viewModel.lastCamera ?: computeInitialCamera(ctx)
@@ -373,10 +399,14 @@ fun MapScreen(
                     }
                     scope.launch {
                         try {
-                            if (filterSpecies != null) {
+                            if (isFiltered) {
                                 // Mode filtré : single-pass. GeoJSON filtré <
                                 // 1 Mo (~38 k features pour Platanus max), le
                                 // freeze d'`addArbresLayers` reste imperceptible.
+                                // En mode genre (set de N sks), le total reste
+                                // largement < 1 Mo car limité aux espèces
+                                // capturées du genre + le sp. — soit un sous-
+                                // ensemble strict de la fiche-espèce dominante.
                                 val rawJson = app.arbresGeoJsonAsync.await()
                                 val tJson = android.os.SystemClock.elapsedRealtime()
                                 android.util.Log.i(
@@ -406,7 +436,7 @@ fun MapScreen(
                                     val tFilter = android.os.SystemClock.elapsedRealtime()
                                     android.util.Log.i(
                                         "MapScreen",
-                                        "GeoJSON filtré sk=$filterSpecies (process+${tFilter - tProcess}ms, ${filtered.length / 1024}ko)",
+                                        "GeoJSON filtré sks=$filterSpecies (process+${tFilter - tProcess}ms, ${filtered.length / 1024}ko)",
                                     )
                                 }
                                 addArbresLayers(style, json)
@@ -540,9 +570,21 @@ fun MapScreen(
             speciesIndex = speciesIndex,
         )
         if (filteredEntry != null && onBack != null) {
+            // Sprint 4bis : sous-titre additionnel en mode genre (set > 1
+            // sks) pour donner du grain — combien d'espèces du genre sont
+            // capturées sur le total identifié.
+            val genreSubtitle = if (isGenreFilter) {
+                val genreEntries = speciesIndex.entriesOfGenre(filteredEntry.genre)
+                val totalGenre = genreEntries.count { !it.unknownSpecies }
+                val capturedInSet = filterSpecies.count { sk ->
+                    speciesIndex.get(sk)?.unknownSpecies == false
+                }
+                if (totalGenre > 0) "$capturedInSet / $totalGenre espèces du genre" else null
+            } else null
             FilterBanner(
                 entry = filteredEntry,
                 count = filteredCount,
+                genreSubtitle = genreSubtitle,
                 onBack = onBack,
                 modifier = Modifier
                     .align(Alignment.TopStart)

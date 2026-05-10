@@ -72,6 +72,11 @@ internal fun FilterBanner(
     count: Int?,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
+    /**
+     * Sous-titre additionnel pour le mode genre (sprint 4bis cycle Catalogue) :
+     * « 3 / 12 espèces du genre ». `null` en mode normal singleton.
+     */
+    genreSubtitle: String? = null,
 ) {
     Surface(
         modifier = modifier.widthIn(max = 320.dp),
@@ -115,6 +120,13 @@ internal fun FilterBanner(
                 if (count != null) {
                     Text(
                         "$count arbre${if (count > 1) "s" else ""} dans Paris",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                if (genreSubtitle != null) {
+                    Text(
+                        genreSubtitle,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
