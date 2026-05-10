@@ -128,16 +128,26 @@ fun SpeciesDetailScreen(
     val scope = rememberCoroutineScope()
     val photoFiles = captures.map { it.resolvedFile(ctx) }
 
-    val title = arbreSample?.nomCommun ?: entry.displayName
+    // Cycle Catalogue : `displayNomCommun` consomme le `nv` quand l'asset le
+    // porte, sinon retombe sur `nomCommun` (ex. via `arbreSample`).
+    val title = entry.displayNomCommun
+    // `catalogueRank` retourne `null` pour les `unknownSpecies` — pas de `#`
+    // côté topbar (cohérent avec la section dédiée Arboretum sans numéro).
     val rank = remember(speciesIndex, speciesIndexRepo, speciesInfoRepo) {
         catalogueRank(speciesIndex, speciesIndexRepo, speciesInfoRepo)
+    }
+    val catalogueTotal = remember(speciesIndexRepo) {
+        // Total identifié pour parallélisme avec ArboretumScreen ; fallback
+        // total si l'asset legacy ne porte pas le flag `u`.
+        val identifiedCount = speciesIndexRepo.entries().count { !it.unknownSpecies }
+        if (identifiedCount > 0) identifiedCount else speciesIndexRepo.total
     }
     Scaffold(
         topBar = {
             SpeciesDetailTopBar(
                 title = title,
                 catalogueRank = rank,
-                catalogueTotal = speciesIndexRepo.total,
+                catalogueTotal = catalogueTotal,
                 onBack = onBack,
             )
         },
@@ -207,7 +217,7 @@ fun SpeciesDetailScreen(
             DeleteCaptureDialog(
                 isLastOfEntity = captures.size == 1,
                 entityKindLabel = "cette espèce",
-                entityName = arbreSample?.nomCommun ?: entry.displayName,
+                entityName = entry.displayNomCommun,
                 onConfirm = {
                     val wasLast = captures.size == 1
                     pendingDeleteIndex = null
@@ -342,14 +352,18 @@ private fun IdentityBlock(entry: SpeciesEntry, sample: Arbre?) {
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             Text(
-                sample?.nomCommun ?: entry.displayName,
+                entry.displayNomCommun,
                 style = MaterialTheme.typography.titleLarge,
             )
-            Text(
-                entry.displayName,
-                style = MaterialTheme.typography.bodyMedium.copy(fontStyle = FontStyle.Italic),
-                color = MaterialTheme.colorScheme.onPrimaryContainer,
-            )
+            // Sous-titre binôme italique : seulement quand le titre vient de
+            // `nv` ou `nomCommun` (sinon le titre EST le binôme, redondance).
+            if (entry.nv != null || entry.nomCommun != null || sample?.nomCommun != null) {
+                Text(
+                    entry.displayName,
+                    style = MaterialTheme.typography.bodyMedium.copy(fontStyle = FontStyle.Italic),
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                )
+            }
         }
     }
 }

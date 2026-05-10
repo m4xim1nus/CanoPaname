@@ -44,6 +44,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -95,10 +96,22 @@ internal fun FilterBanner(
                     .fillMaxWidth(),
             ) {
                 Text(
-                    entry.displayName,
+                    entry.displayNomCommun,
                     style = MaterialTheme.typography.titleMedium,
                     maxLines = 1,
                 )
+                // Sous-titre binôme italique uniquement si `nv`/`nc` ont
+                // apporté un nom différent du binôme (cycle Catalogue).
+                if (entry.nv != null || entry.nomCommun != null) {
+                    Text(
+                        entry.displayName,
+                        style = MaterialTheme.typography.bodySmall.copy(
+                            fontStyle = FontStyle.Italic,
+                        ),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                    )
+                }
                 if (count != null) {
                     Text(
                         "$count arbre${if (count > 1) "s" else ""} dans Paris",

@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.lazy.items
@@ -94,6 +95,13 @@ fun ArboretumScreen(
         }
         .sortedByDescending { it.captures.first().timestamp }
 
+    // Cycle Catalogue : sépare les sks identifiés (compteur principal) des
+    // sks `unknownSpecies` (« + N espèces indéterminées »). `capturedSks`
+    // alimente l'auto-débloquage genre-based des cards Catalogue.
+    val capturedSks: Set<Int> = speciesGroups.map { it.entry.index }.toSet()
+    val nbIdentifiees = speciesGroups.count { !it.entry.unknownSpecies }
+    val nbIndeterminees = speciesGroups.count { it.entry.unknownSpecies }
+
     var viewMode by rememberSaveable { mutableStateOf(ArboretumViewMode.LISTE) }
 
     Scaffold(
@@ -114,8 +122,9 @@ fun ArboretumScreen(
                 .padding(padding),
         ) {
             HeaderCard(
-                speciesGroups.size,
-                stats.totalEspeces,
+                nbIdentifiees = nbIdentifiees,
+                totalEspecesIdentifiees = stats.totalEspecesIdentifiees,
+                nbIndeterminees = nbIndeterminees,
                 modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 16.dp),
             )
             ViewModeSelector(
@@ -128,7 +137,7 @@ fun ArboretumScreen(
             when (viewMode) {
                 ArboretumViewMode.LISTE -> ListeView(
                     speciesGroups = speciesGroups,
-                    totalEspeces = stats.totalEspeces,
+                    totalEspecesIdentifiees = stats.totalEspecesIdentifiees,
                     arbreRepo = arbreRepo,
                     onSpeciesClick = onSpeciesClick,
                 )
@@ -136,6 +145,7 @@ fun ArboretumScreen(
                     speciesIndex = speciesIndex,
                     speciesInfoRepo = speciesInfoRepo,
                     speciesGroups = speciesGroups,
+                    capturedSks = capturedSks,
                     onSpeciesClick = onSpeciesClick,
                 )
             }
@@ -168,7 +178,7 @@ private fun ViewModeSelector(
 @Composable
 private fun ListeView(
     speciesGroups: List<SpeciesGroup>,
-    totalEspeces: Int,
+    totalEspecesIdentifiees: Int,
     arbreRepo: app.arbre.data.ArbreRepository,
     onSpeciesClick: (Int) -> Unit,
 ) {
@@ -178,8 +188,12 @@ private fun ListeView(
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         if (speciesGroups.isNotEmpty()) {
+            // Compteur entête : on garde la fraction sur le total identifié
+            // (cohérent avec le HeaderCard du dessus). Les `unknownSpecies`
+            // capturés réellement apparaissent quand même dans la liste — la
+            // vue Liste = « ce que j'ai capturé », contrairement au Catalogue.
             item {
-                SectionHeader("Espèces (${speciesGroups.size}/$totalEspeces)")
+                SectionHeader("Espèces (${speciesGroups.size}/$totalEspecesIdentifiees)")
             }
             items(speciesGroups, key = { it.entry.index }) { group ->
                 SpeciesCard(
@@ -195,28 +209,39 @@ private fun ListeView(
 }
 
 /**
- * Vue annuaire : grille 3 colonnes ordonnée par count Paris décroissant.
- * #001 = espèce la plus présente dans le dataset (~Platane), les derniers
- * numéros sont les espèces uniques. Les espèces capturées révèlent photo +
- * nom, les autres restent en silhouette « ??? » avec leur numéro pour
- * suggérer l'avancement sans spoiler l'identité.
+ * Vue annuaire : grille 3 colonnes.
+ *
+ * Section principale : espèces identifiées, ordonnées par numéro Pokédex
+ * stable (`pokedexNumber`) quand l'asset le porte (post-régénération sprint
+ * 5), fallback count Paris décroissant pour l'asset legacy. Les cards
+ * capturées révèlent photo + `nv`, les autres restent en silhouette « ??? »
+ * avec leur numéro pour suggérer l'avancement sans spoiler.
+ *
+ * Section « Espèces indéterminées » (cycle Catalogue) : entrées `(G, sp.)`
+ * (`unknownSpecies == true`) en queue, sans `#`. Auto-débloquage genre-based
+ * via `SpeciesIndex.isDiscovered` : capturer un `Tilia X` quelconque révèle
+ * `Tilia (espèce indéterminée)` (titre `nv` affiché, slot photo en silhouette
+ * tant qu'il n'y a pas de capture explicite `sp.`).
  */
 @Composable
 private fun CatalogueView(
     speciesIndex: SpeciesIndex,
     speciesInfoRepo: SpeciesInfoRepository,
     speciesGroups: List<SpeciesGroup>,
+    capturedSks: Set<Int>,
     onSpeciesClick: (Int) -> Unit,
 ) {
     val ctx = LocalContext.current
     val firstPhotoBySk: Map<Int, File> = remember(speciesGroups, ctx) {
         speciesGroups.associate { it.entry.index to it.captures.first().resolvedFile(ctx) }
     }
-    // Tri indépendant des captures : count Paris décroissant (sans info → 0,
-    // alpha en queue). Source unique avec `SpeciesDetailScreen` pour que le
-    // `#NNN` soit cohérent entre Catalogue et fiche.
+    // Tri unique (Pokédex stable si présent, sinon count Paris). Source
+    // partagée avec `SpeciesDetailScreen` pour la cohérence du `#NNN`.
     val ordered = remember(speciesIndex, speciesInfoRepo) {
         catalogueOrder(speciesIndex, speciesInfoRepo)
+    }
+    val (identified, unknowns) = remember(ordered) {
+        ordered.partition { !it.unknownSpecies }
     }
 
     LazyVerticalGrid(
@@ -226,30 +251,55 @@ private fun CatalogueView(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        itemsIndexed(ordered, key = { _, e -> e.index }) { position, entry ->
+        itemsIndexed(identified, key = { _, e -> e.index }) { position, entry ->
             val photoFile = firstPhotoBySk[entry.index]
+            val discovered = speciesIndex.isDiscovered(entry.index, capturedSks)
             CatalogueCell(
-                // Rang 1-based dans l'ordre count décroissant — distinct du
-                // `speciesIndex` Room (ordre d'ingestion CSV).
-                displayNumber = position + 1,
+                // `pokedexNumber` (cycle Catalogue) si présent, sinon rang
+                // 1-based dans l'ordre count Paris (asset legacy).
+                displayLabel = "#%03d".format(entry.pokedexNumber ?: (position + 1)),
                 entry = entry,
                 photoFile = photoFile,
-                onClick = if (photoFile != null) {
+                discovered = discovered,
+                onClick = if (discovered) {
                     { onSpeciesClick(entry.index) }
                 } else null,
             )
+        }
+        if (unknowns.isNotEmpty()) {
+            item(span = { GridItemSpan(maxLineSpan) }) {
+                Text(
+                    "Espèces indéterminées",
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.padding(top = 16.dp, bottom = 4.dp),
+                )
+            }
+            itemsIndexed(unknowns, key = { _, e -> e.index }) { _, entry ->
+                val photoFile = firstPhotoBySk[entry.index]
+                val discovered = speciesIndex.isDiscovered(entry.index, capturedSks)
+                CatalogueCell(
+                    // Pas de `#` pour les `unknownSpecies` — section parallèle.
+                    displayLabel = "—",
+                    entry = entry,
+                    photoFile = photoFile,
+                    discovered = discovered,
+                    onClick = if (discovered) {
+                        { onSpeciesClick(entry.index) }
+                    } else null,
+                )
+            }
         }
     }
 }
 
 @Composable
 private fun CatalogueCell(
-    displayNumber: Int,
+    displayLabel: String,
     entry: SpeciesEntry,
     photoFile: File?,
+    discovered: Boolean,
     onClick: (() -> Unit)?,
 ) {
-    val discovered = photoFile != null
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -267,7 +317,7 @@ private fun CatalogueCell(
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             Text(
-                "#%03d".format(displayNumber),
+                displayLabel,
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -285,6 +335,9 @@ private fun CatalogueCell(
                         modifier = Modifier.fillMaxSize(),
                     )
                 } else {
+                    // Slot photo silhouette : couvre les non-découverts ET les
+                    // `unknownSpecies` débloqués genre-based (titre `nv` montré
+                    // mais photo seulement si capture explicite `sp.`).
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
@@ -311,6 +364,19 @@ private fun CatalogueCell(
                 overflow = TextOverflow.Ellipsis,
                 textAlign = TextAlign.Start,
             )
+            // Sous-titre binôme italique : seulement si `nv` a apporté une
+            // valeur (sinon le titre EST déjà le binôme, redondance évitée).
+            if (discovered && entry.nv != null) {
+                Text(
+                    entry.displayName,
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        fontStyle = FontStyle.Italic,
+                    ),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
         }
     }
 }
@@ -322,8 +388,9 @@ private data class SpeciesGroup(
 
 @Composable
 private fun HeaderCard(
-    nbEspeces: Int,
-    totalEspeces: Int,
+    nbIdentifiees: Int,
+    totalEspecesIdentifiees: Int,
+    nbIndeterminees: Int,
     modifier: Modifier = Modifier,
 ) {
     Card(
@@ -334,9 +401,18 @@ private fun HeaderCard(
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(
-                "$nbEspeces / $totalEspeces espèces découvertes",
+                "$nbIdentifiees / $totalEspecesIdentifiees espèces découvertes",
                 style = MaterialTheme.typography.titleLarge,
             )
+            if (nbIndeterminees > 0) {
+                val plural = if (nbIndeterminees > 1) "s" else ""
+                Text(
+                    "+ $nbIndeterminees espèce$plural indéterminée$plural",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                    modifier = Modifier.padding(top = 4.dp),
+                )
+            }
         }
     }
 }
@@ -384,9 +460,9 @@ private fun SpeciesCard(
                     group.entry.displayNomCommun,
                     style = MaterialTheme.typography.titleMedium,
                 )
-                // Discrimine les espèces partageant un nom commun
-                // (Acer platanoides / pseudoplatanus = « Érable »).
-                if (group.entry.nomCommun != null) {
+                // Sous-titre binôme italique : présent dès que `nv` ou `nc`
+                // apportent un nom différent du binôme (cycle Catalogue).
+                if (group.entry.nv != null || group.entry.nomCommun != null) {
                     Text(
                         group.entry.displayName,
                         style = MaterialTheme.typography.bodySmall.copy(

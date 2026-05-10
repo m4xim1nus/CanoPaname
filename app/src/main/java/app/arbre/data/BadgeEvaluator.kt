@@ -5,6 +5,13 @@ package app.arbre.data
  * critère (binaire ou palier de progressif), le `unlockedAt` est figé sur la
  * capture qui a fait basculer la condition. Coût O(n × tiers), trivial à
  * l'échelle perso.
+ *
+ * Note cycle Catalogue : `seenSpecies` (Botaniste, etc.) ne distingue pas les
+ * espèces `unknownSpecies` (`u: true` dans species-index.json). Une capture
+ * `Tilia sp.` compte comme une espèce distincte au sens des badges, par
+ * rétrocompatibilité de la progression utilisateur. Seul l'affichage UI
+ * (Arboretum, Profil) sépare le compteur principal des « espèces
+ * indéterminées » via la sémantique du flag `u`.
  */
 object BadgeEvaluator {
 

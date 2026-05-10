@@ -701,9 +701,15 @@ fun MapScreen(
                 onDismissRequest = { viewModel.closeDetail() },
                 sheetState = sheetState,
             ) {
+                // Cycle Catalogue : préfère le `nv` de l'entrée species-index
+                // (« Chêne pédonculé ») au binôme nu (« Quercus robur »). Sur
+                // asset legacy, fallback transparent vers `arbre.nomAffichage`.
+                val displayName = sk?.let { speciesIndex.get(it)?.displayNomCommun }
+                    ?: openedArbre.nomAffichage
                 ArbreDetailContent(
                     arbre = openedArbre,
                     isDiscovered = isDiscovered,
+                    displayName = displayName,
                     photoFiles = photoFiles,
                     onPhotoClick = { idx -> lightboxIndex = idx },
                     onPhotoLongClick = { idx -> pendingDeleteIndex = idx },

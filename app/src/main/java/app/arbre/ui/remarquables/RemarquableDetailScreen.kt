@@ -125,9 +125,14 @@ fun RemarquableDetailScreen(
                     )
                     Spacer(Modifier.height(8.dp))
                 }
+                // Cycle Catalogue : titre = `nv` quand présent, fallback
+                // `nomAffichage` historique sur asset legacy.
+                val displayName = sk?.let { speciesIndex.get(it)?.displayNomCommun }
+                    ?: current.nomAffichage
                 ArbreDetailContent(
                     arbre = current,
                     isDiscovered = true,
+                    displayName = displayName,
                     // photoFiles laissé vide : la PhotoGallery est déjà rendue
                     // juste au-dessus dans cet écran plein-écran.
                     onSpeciesClick = if (sk != null && sk in capturedSpecies) {

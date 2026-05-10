@@ -154,7 +154,12 @@ fun ProfileScreen(
     val captureCount by captureRepo.captureCount().collectAsState(initial = 0)
     val allBadges by badgeRepo.badges().collectAsState(initial = emptyList())
 
-    val nbSpecies = capturedSpecies.size
+    // Cycle Catalogue : split en sks identifiés (compteur principal) vs sks
+    // `unknownSpecies` (« + N espèces indéterminées » — compte parallèle, pas
+    // un total). Sur asset legacy `unknownSks` est vide → tout retombe sur
+    // `nbIdentifiees == capturedSpecies.size` (comportement historique).
+    val nbIndeterminees = capturedSpecies.count { it in speciesIndex.unknownSks }
+    val nbIdentifiees = capturedSpecies.size - nbIndeterminees
     val nbRemarquables = capturedRemarquables.size
 
     var arbresDecouverts by remember { mutableStateOf<Int?>(null) }
@@ -240,8 +245,9 @@ fun ProfileScreen(
             item {
                 StatsCard(
                     firstCaptureTs = firstCaptureTs,
-                    nbSpecies = nbSpecies,
-                    totalEspeces = datasetStats.totalEspeces,
+                    nbIdentifiees = nbIdentifiees,
+                    totalEspecesIdentifiees = datasetStats.totalEspecesIdentifiees,
+                    nbIndeterminees = nbIndeterminees,
                     nbRemarquables = nbRemarquables,
                     nbCaptures = captureCount,
                     arbresDecouverts = arbresDecouverts,
@@ -417,8 +423,9 @@ private fun BackupActionCard(
 @Composable
 private fun StatsCard(
     firstCaptureTs: Long?,
-    nbSpecies: Int,
-    totalEspeces: Int,
+    nbIdentifiees: Int,
+    totalEspecesIdentifiees: Int,
+    nbIndeterminees: Int,
     nbRemarquables: Int,
     nbCaptures: Int,
     arbresDecouverts: Int?,
@@ -451,8 +458,15 @@ private fun StatsCard(
             )
             StatLine(
                 label = "Espèces du Catalogue",
-                value = formatProgress(nbSpecies, totalEspeces),
+                value = formatProgress(nbIdentifiees, totalEspecesIdentifiees),
             )
+            if (nbIndeterminees > 0) {
+                val plural = if (nbIndeterminees > 1) "s" else ""
+                StatLine(
+                    label = "Espèces indéterminées",
+                    value = "+ $nbIndeterminees espèce$plural",
+                )
+            }
             StatLine(
                 label = "Arbres déverrouillés",
                 value = arbresDecouverts?.let { formatProgress(it, totalArbres) } ?: "…",

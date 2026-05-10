@@ -44,6 +44,13 @@ import java.io.File
 fun ArbreDetailContent(
     arbre: Arbre,
     isDiscovered: Boolean,
+    /**
+     * Nom à afficher en titre. Le caller pré-calcule via le `displayNomCommun`
+     * de l'entrée `SpeciesIndex` (cycle Catalogue : préfère `nv`). Default =
+     * `arbre.nomAffichage` qui est le fallback `nomCommun ?: binôme` historique
+     * — sûr pour les arbres absents du species-index.
+     */
+    displayName: String = arbre.nomAffichage,
     photoFiles: List<File> = emptyList(),
     onPhotoClick: (Int) -> Unit = {},
     onPhotoLongClick: ((Int) -> Unit)? = null,
@@ -65,6 +72,7 @@ fun ArbreDetailContent(
         if (isDiscovered) {
             DiscoveredContent(
                 arbre = arbre,
+                displayName = displayName,
                 photoFiles = photoFiles,
                 onPhotoClick = onPhotoClick,
                 onPhotoLongClick = onPhotoLongClick,
@@ -85,6 +93,7 @@ fun ArbreDetailContent(
 @Composable
 private fun DiscoveredContent(
     arbre: Arbre,
+    displayName: String,
     photoFiles: List<File>,
     onPhotoClick: (Int) -> Unit,
     onPhotoLongClick: ((Int) -> Unit)?,
@@ -97,7 +106,7 @@ private fun DiscoveredContent(
     captureAvailability: CaptureAvailability?,
 ) {
     Text(
-        arbre.nomAffichage,
+        displayName,
         style = MaterialTheme.typography.headlineSmall,
     )
 
