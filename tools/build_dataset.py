@@ -123,6 +123,73 @@ def is_unknown_species(genre: str, espece: str) -> bool:
     )
 
 
+# Overrides manuels du nom vernaculaire FR. Toujours gagnant dans la cascade.
+# Démarre vide ; Sprint 3 ajoutera les candidats remontés par les sanity checks
+# (notamment les espèces > 1000 captures qui finissent en fallback construit).
+VERNACULAR_OVERRIDES: dict[tuple[str, str], str] = {}
+
+
+def first_p1843(vernacular_names: list[str]) -> str | None:
+    """Sélectionne la 1re forme alphabétique parmi les P1843 d'une espèce.
+
+    Wikidata stocke souvent plusieurs noms vernaculaires (ex. Quercus robur :
+    « Chêne pédonculé », « Chêne rouvre »). On prend la 1re alphabétique pour
+    avoir un choix déterministe, reproductible entre runs.
+    """
+    if not vernacular_names:
+        return None
+    cleaned = [n.strip() for n in vernacular_names if n and n.strip()]
+    if not cleaned:
+        return None
+    return sorted(cleaned)[0]
+
+
+def construct_vernacular(
+    genre: str,
+    espece: str,
+    nc: str | None,
+    is_unknown: bool,
+) -> str:
+    """Fallback ultime quand Wikidata + Wikipedia n'ont rien.
+
+    - Unknown (sp./n.sp./Non spécifié) → suffixe « (espèce indéterminée) ».
+    - Identifiées avec nc → « {nc} ({I}. {epithète}) » (« Chêne (Q. robur) »).
+    - Identifiées sans nc → binôme latin nu (« Pistacia palaestina »).
+    """
+    espece_clean = espece.lstrip("×").lstrip("xX").strip() or espece
+    if is_unknown:
+        if nc and nc.strip().lower() != "non spécifié":
+            return f"{nc.strip()} (espèce indéterminée)"
+        if genre.strip() and genre.strip() != "Non spécifié":
+            return f"{genre.strip()} (espèce indéterminée)"
+        return "Espèce indéterminée"
+    if nc:
+        initial = (genre[:1] or "?").upper()
+        return f"{nc.strip()} ({initial}. {espece_clean})"
+    return f"{genre.strip()} {espece_clean}".strip()
+
+
+def disambiguate_vernaculars(entries: list[dict]) -> int:
+    """Suffixe les `nv` collidents par leur binôme latin. Mute `entries` en
+    place. Retourne le nb d'entrées modifiées (= somme des tailles des groupes
+    avec collision).
+
+    Les paires `(genre, espece)` étant uniques par construction de
+    `species_index`, le suffixe garantit l'unicité finale.
+    """
+    by_nv: dict[str, list[dict]] = defaultdict(list)
+    for e in entries:
+        by_nv[e["nv"]].append(e)
+    changed = 0
+    for nv, group in by_nv.items():
+        if len(group) <= 1:
+            continue
+        for e in group:
+            e["nv"] = f"{nv} ({e['g']} {e['e']})"
+            changed += 1
+    return changed
+
+
 def download(url: str, dest: Path) -> None:
     if dest.exists() and dest.stat().st_size > 1_000_000:
         print(f"[skip] {dest.name} déjà présent ({dest.stat().st_size // 1_000_000} Mo)")
@@ -227,9 +294,10 @@ def _candidates_for(genre: str, espece: str) -> list[str]:
 def _sparql_query(values: list[str]) -> str:
     """Bâtit la requête SPARQL pour un batch de noms binomial.
 
-    On résout par P225 (taxon name) et on récupère le titre Wikipedia FR
-    s'il existe, sinon EN en fallback (juste pour distinguer « pas trouvé du
-    tout » de « trouvé mais pas de page FR »).
+    On résout par P225 (taxon name) et on récupère :
+    - le titre Wikipedia FR s'il existe, sinon EN en fallback ;
+    - les noms vernaculaires FR via P1843 (peut être multiple par taxon →
+      plusieurs lignes retournées, agrégées côté Python).
     """
     # Le tag `@en` n'est pas requis par P225 (les taxon names sont mono-string)
     # — on passe des littéraux non typés. Échapper backslash et guillemet pour
@@ -239,7 +307,7 @@ def _sparql_query(values: list[str]) -> str:
         for v in values
     )
     return f"""
-SELECT ?taxon ?taxonName ?frTitle ?enTitle WHERE {{
+SELECT ?taxon ?taxonName ?frTitle ?enTitle ?vernacularName WHERE {{
   VALUES ?taxonName {{ {encoded} }}
   ?taxon wdt:P225 ?taxonName .
   OPTIONAL {{
@@ -251,6 +319,10 @@ SELECT ?taxon ?taxonName ?frTitle ?enTitle WHERE {{
     ?enArticle schema:about ?taxon ;
                schema:isPartOf <https://en.wikipedia.org/> ;
                schema:name ?enTitle .
+  }}
+  OPTIONAL {{
+    ?taxon wdt:P1843 ?vernacularName .
+    FILTER(LANG(?vernacularName) = "fr")
   }}
 }}
 """
@@ -274,15 +346,19 @@ def _sparql_post(query: str) -> dict:
 def resolve_via_wikidata(
     pairs: list[tuple[int, str, str]],
 ) -> dict[tuple[str, str], dict]:
-    """Résout (genre, espece) -> {qid, frTitle?, enTitle?} via SPARQL batched.
+    """Résout (genre, espece) -> {qid, frTitle?, enTitle?, vernacularNames}
+    via SPARQL batched.
 
     `pairs` : liste `(sk, genre, espece)`. La résolution est par binomial seul
     (sk n'est utilisé que pour les logs). Si une variante du candidat liste
     matche dans Wikidata (ex: `Platanus × hispanica` matchera là où
-    `Platanus x hispanica` rate), on garde le 1er hit.
+    `Platanus x hispanica` rate), on garde le 1er QID rencontré et on agrège
+    les `vernacularName` (P1843 @fr) pour ce QID sur toutes les lignes
+    SPARQL retournées (P1843 peut être multiple par taxon).
 
     Retour : dict indexé par `(genre, espece)` original. Espèces non résolues
-    absentes du dict.
+    absentes du dict. `vernacularNames` toujours présent (liste, possiblement
+    vide).
     """
     # Indexer chaque variante vers son (genre, espece) d'origine.
     variant_to_origin: dict[str, tuple[str, str]] = {}
@@ -309,16 +385,22 @@ def resolve_via_wikidata(
             origin = variant_to_origin.get(taxon_name)
             if origin is None:
                 continue
-            if origin in resolved:
-                # Plusieurs taxons partagent ce nom canonique : on garde le 1er.
-                continue
             qid_uri = binding.get("taxon", {}).get("value", "")
             qid = qid_uri.rsplit("/", 1)[-1] if qid_uri else None
-            resolved[origin] = {
-                "qid": qid,
-                "frTitle": binding.get("frTitle", {}).get("value"),
-                "enTitle": binding.get("enTitle", {}).get("value"),
-            }
+            vern = binding.get("vernacularName", {}).get("value")
+            existing = resolved.get(origin)
+            if existing is None:
+                resolved[origin] = {
+                    "qid": qid,
+                    "frTitle": binding.get("frTitle", {}).get("value"),
+                    "enTitle": binding.get("enTitle", {}).get("value"),
+                    "vernacularNames": [vern] if vern else [],
+                }
+            else:
+                # Plusieurs lignes pour le même taxon (P1843 multiple) : on
+                # garde le 1er qid/frTitle/enTitle et on agrège les vernacular.
+                if vern and vern not in existing["vernacularNames"]:
+                    existing["vernacularNames"].append(vern)
         print(f"[wd ] batch {i}-{i + len(batch)}: cumulé {len(resolved)} résolutions")
     print(f"[wd ] {len(resolved)}/{len(pairs)} espèces résolues via Wikidata")
     return resolved
@@ -365,11 +447,16 @@ def fetch_species_info(
 ) -> dict | None:
     """Pipeline final pour une espèce :
     1. Lit le cache disque (hit, miss, ou absent).
-    2. Sinon utilise la résolution Wikidata pré-calculée pour obtenir le titre FR.
-    3. Si titre FR connu → fetch summary REST → cache hit.
-    4. Si pas de titre FR mais QID → cache `{qid, noFr: true}` (le lien
-       Wikipedia FR sera absent côté UI mais on garde le QID pour info).
+    2. Sinon utilise la résolution Wikidata pré-calculée pour obtenir le titre
+       FR + les noms vernaculaires P1843.
+    3. Si titre FR connu → fetch summary REST → cache hit avec `vernacularNames`.
+    4. Si pas de titre FR mais QID → cache `{qid, vernacularNames}` (lien
+       Wikipedia FR absent côté UI, mais qid + P1843 toujours utiles cascade nv).
     5. Si rien → cache `{miss: true}`.
+
+    Contrat cache : un hit avec qid porte toujours `vernacularNames: list[str]`
+    (possiblement vide). Les caches pré-Sprint-2 sans cette clé doivent être
+    backfillés via `backfill_vernacular_by_qid()`.
     """
     cache_path = WIKIDATA_CACHE_DIR / f"{sk}.json"
     if cache_path.exists():
@@ -388,12 +475,15 @@ def fetch_species_info(
 
     qid = resolution.get("qid")
     fr_title = resolution.get("frTitle")
+    vernacular_names = list(resolution.get("vernacularNames") or [])
     if not fr_title:
         # QID connu, mais pas de page Wikipedia FR : on cache sans summary.
-        result = {"qid": qid} if qid else {"miss": True}
+        result: dict = {"qid": qid} if qid else {"miss": True}
+        if qid:
+            result["vernacularNames"] = vernacular_names
         cache_path.parent.mkdir(parents=True, exist_ok=True)
         with cache_path.open("w", encoding="utf-8") as f:
-            json.dump(result, f)
+            json.dump(result, f, ensure_ascii=False)
         return result if qid else None
 
     time.sleep(WIKI_REST_THROTTLE_S)
@@ -405,10 +495,14 @@ def fetch_species_info(
     if data is None:
         # 404 sur un titre que SPARQL nous a dit exister : très rare.
         result = {"qid": qid} if qid else {"miss": True}
+        if qid:
+            result["vernacularNames"] = vernacular_names
     else:
         summary = (data.get("extract") or "").strip()
         if not summary or data.get("type") == "disambiguation":
             result = {"qid": qid} if qid else {"miss": True}
+            if qid:
+                result["vernacularNames"] = vernacular_names
         else:
             result = {
                 "wp": data.get("titles", {}).get("canonical")
@@ -416,11 +510,202 @@ def fetch_species_info(
                       or fr_title.replace(" ", "_"),
                 "qid": qid,
                 "summary": summary,
+                "vernacularNames": vernacular_names,
             }
     cache_path.parent.mkdir(parents=True, exist_ok=True)
     with cache_path.open("w", encoding="utf-8") as f:
         json.dump(result, f, ensure_ascii=False)
     return result if "summary" in result or "qid" in result else None
+
+
+def compute_vernacular_and_pokedex(
+    species_index: dict[tuple[str, str], int],
+    nom_commun_by_sk: dict[int, dict[str, int]],
+    count_by_sk: dict[int, int],
+) -> tuple[list[dict], dict[str, int]]:
+    """Lit les caches Wikidata pour chaque espèce, applique la cascade nv,
+    désambigue les collisions, assigne les `n` Pokédex. Écrit le fichier
+    `species-index.json` final.
+
+    Cascade (par priorité décroissante) :
+    1. `VERNACULAR_OVERRIDES[(g, e)]` (override manuel curaté)
+    2. Wikidata P1843 @fr (1re alphabétique)
+    3. Wikipedia frTitle (article title, déjà cached as `wp` underscores)
+    4. Construit : `{nc} ({I}. {epithète})` ou `{genre} {epithète}` ou
+       suffixe « (espèce indéterminée) » pour les `u: true`.
+
+    `n` Pokédex assigné aux espèces avec `count_by_sk[sk] > 0` et non `u`,
+    par `sk` croissant — stable d'un build à l'autre tant que `sk` est stable.
+
+    Retour : (entries écrites, dict de compteurs cascade).
+    """
+    def best_nom_commun(sk: int) -> str | None:
+        counts = nom_commun_by_sk.get(sk)
+        if not counts:
+            return None
+        return max(counts.items(), key=lambda kv: kv[1])[0]
+
+    # 1. Backfill incrémental des caches pré-Sprint-2 sans `vernacularNames`.
+    qids_to_backfill: list[str] = []
+    cache_state: dict[int, dict] = {}
+    for (genre, espece), sk in species_index.items():
+        cache_path = WIKIDATA_CACHE_DIR / f"{sk}.json"
+        if not cache_path.exists():
+            cache_state[sk] = {}
+            continue
+        try:
+            with cache_path.open("r", encoding="utf-8") as f:
+                cached = json.load(f)
+        except (json.JSONDecodeError, OSError):
+            cache_state[sk] = {}
+            continue
+        cache_state[sk] = cached
+        if cached.get("miss"):
+            continue
+        if "vernacularNames" not in cached and cached.get("qid"):
+            qids_to_backfill.append(cached["qid"])
+
+    if qids_to_backfill:
+        # Dédup conservant l'ordre.
+        seen: set[str] = set()
+        uniq = [q for q in qids_to_backfill if not (q in seen or seen.add(q))]
+        backfilled = backfill_vernacular_by_qid(uniq)
+        # Réinjecter dans cache_state + persister sur disque.
+        for sk, cached in cache_state.items():
+            qid = cached.get("qid")
+            if not qid or "vernacularNames" in cached:
+                continue
+            cached["vernacularNames"] = backfilled.get(qid, [])
+            cache_path = WIKIDATA_CACHE_DIR / f"{sk}.json"
+            with cache_path.open("w", encoding="utf-8") as f:
+                json.dump(cached, f, ensure_ascii=False)
+
+    # 2. Cascade nv pour chaque espèce.
+    counters = {
+        "nv_via_overrides": 0,
+        "nv_via_p1843": 0,
+        "nv_via_frtitle": 0,
+        "nv_via_construit": 0,
+        "nv_disambiguations": 0,
+        "pokedex_count": 0,
+    }
+    entries: list[dict] = []
+    for (genre, espece), sk in species_index.items():
+        nc = best_nom_commun(sk)
+        is_unk = is_unknown_species(genre, espece)
+        cached = cache_state.get(sk, {})
+        nv: str | None = None
+
+        override = VERNACULAR_OVERRIDES.get((genre, espece))
+        if override:
+            nv = override
+            counters["nv_via_overrides"] += 1
+        else:
+            p1843 = first_p1843(cached.get("vernacularNames") or [])
+            if p1843:
+                nv = p1843
+                counters["nv_via_p1843"] += 1
+            else:
+                wp = cached.get("wp")
+                if wp:
+                    # Le `wp` est `Underscored_Title` ; on délimite proprement.
+                    nv = wp.replace("_", " ").strip() or None
+                    if nv:
+                        counters["nv_via_frtitle"] += 1
+                if not nv:
+                    nv = construct_vernacular(genre, espece, nc, is_unk)
+                    counters["nv_via_construit"] += 1
+
+        entry: dict = {"i": sk, "g": genre, "e": espece}
+        if nc:
+            entry["nc"] = nc
+        if is_unk:
+            entry["u"] = True
+        entry["nv"] = nv
+        entries.append(entry)
+
+    # 3. Désambiguation des collisions sur nv.
+    counters["nv_disambiguations"] = disambiguate_vernaculars(entries)
+    # Garde-fou : la désambiguation suffixe par `(g, e)` qui est unique par
+    # construction de species_index. Si l'unicité n'est PAS atteinte ici,
+    # c'est un bug pipeline — mieux vaut crash que livrer un JSON ambigu.
+    nvs = [e["nv"] for e in entries]
+    if len(set(nvs)) != len(nvs):
+        from collections import Counter
+        dup = [k for k, c in Counter(nvs).items() if c > 1]
+        raise AssertionError(
+            f"nv non-unique après désambiguation : {dup[:5]}... "
+            f"({len(dup)} collisions résiduelles)"
+        )
+
+    # 4. Numérotation Pokédex par sk croissant, identifiées + count > 0.
+    entries.sort(key=lambda e: e["i"])
+    next_pokedex = 1
+    for e in entries:
+        if e.get("u"):
+            continue
+        if count_by_sk.get(e["i"], 0) <= 0:
+            continue
+        e["n"] = next_pokedex
+        next_pokedex += 1
+    counters["pokedex_count"] = next_pokedex - 1
+
+    # 5. Écriture finale species-index.json.
+    with OUT_SPECIES_INDEX.open("w", encoding="utf-8") as f:
+        json.dump(entries, f, ensure_ascii=False, separators=(",", ":"))
+
+    return entries, counters
+
+
+def _sparql_query_p1843_by_qid(qids: list[str]) -> str:
+    """SPARQL query par QID pour récupérer P1843 @fr seulement.
+
+    Utilisée par le backfill des caches pré-Sprint-2 qui ont déjà résolu le
+    qid + summary mais ne portent pas le champ `vernacularNames`. Beaucoup
+    plus léger que la query principale (un seul triple à matcher).
+    """
+    encoded = " ".join(f"wd:{q}" for q in qids)
+    return f"""
+SELECT ?taxon ?vernacularName WHERE {{
+  VALUES ?taxon {{ {encoded} }}
+  ?taxon wdt:P1843 ?vernacularName .
+  FILTER(LANG(?vernacularName) = "fr")
+}}
+"""
+
+
+def backfill_vernacular_by_qid(qids: list[str]) -> dict[str, list[str]]:
+    """Récupère P1843 @fr pour une liste de qids déjà connus, en batchs.
+
+    Préserve l'ordre alphabétique d'arrivée — l'agrégation se fait via
+    set-comme-list pour éviter les doublons. QIDs sans P1843 absents du dict.
+    """
+    if not qids:
+        return {}
+    by_qid: dict[str, list[str]] = {q: [] for q in qids}
+    print(f"[bfl] backfill P1843 pour {len(qids)} qids")
+    for i in range(0, len(qids), WIKIDATA_BATCH_SIZE):
+        batch = qids[i : i + WIKIDATA_BATCH_SIZE]
+        try:
+            payload = _sparql_post(_sparql_query_p1843_by_qid(batch))
+        except Exception as e:
+            print(f"[bfl] batch {i}-{i + len(batch)} a échoué : {e}")
+            continue
+        for binding in payload.get("results", {}).get("bindings", []):
+            qid_uri = binding.get("taxon", {}).get("value", "")
+            qid = qid_uri.rsplit("/", 1)[-1] if qid_uri else None
+            vern = binding.get("vernacularName", {}).get("value")
+            if not qid or not vern:
+                continue
+            existing = by_qid.get(qid)
+            if existing is None:
+                continue
+            if vern not in existing:
+                existing.append(vern)
+    hits = sum(1 for v in by_qid.values() if v)
+    print(f"[bfl] {hits}/{len(qids)} qids ont au moins un P1843 @fr")
+    # Filtrer les qids sans aucun nom (rien à backfill côté cache).
+    return {q: v for q, v in by_qid.items() if v}
 
 
 def _build_species_entry(
@@ -1754,33 +2039,17 @@ def build(csv_path: Path, db_path: Path, geojson_path: Path) -> None:
     cur.execute("VACUUM")
     con.close()
 
-    # species-index.json : trié par index pour un diff lisible. Pour chaque
-    # entrée on injecte `nc` (nom commun) = la mode statistique des
-    # `libellefrancais` rencontrés ; clé absente si aucun arbre de l'espèce
-    # n'a de nom commun renseigné. Côté Kotlin, `SpeciesIndex` lit le champ
-    # via `optStringOrNull` — tolérant à l'absence.
-    def best_nom_commun(sk: int) -> str | None:
-        counts = nom_commun_by_sk.get(sk)
-        if not counts:
-            return None
-        return max(counts.items(), key=lambda kv: kv[1])[0]
-
-    species_entries = []
-    for (g, e), i in species_index.items():
-        entry: dict[str, object] = {"i": i, "g": g, "e": e}
-        nc = best_nom_commun(i)
-        if nc:
-            entry["nc"] = nc
-        if is_unknown_species(g, e):
-            entry["u"] = True
-        species_entries.append(entry)
-    species_entries.sort(key=lambda e: e["i"])
-    with OUT_SPECIES_INDEX.open("w", encoding="utf-8") as f:
-        json.dump(species_entries, f, ensure_ascii=False, separators=(",", ":"))
-
+    # dataset-stats.json : `totalEspecesIdentifiees` exclut les zombies (count
+    # = 0 post-fixup) et les `u: true`. ROADMAP « X / ~800 » du compteur
+    # Arboretum principal.
+    identified_count = sum(
+        1 for (g, e), sk in species_index.items()
+        if count_by_sk.get(sk, 0) > 0 and not is_unknown_species(g, e)
+    )
     stats = {
         "totalArbres": inserted,
         "totalEspeces": len(species_index),
+        "totalEspecesIdentifiees": identified_count,
         "totalRemarquables": remarquables,
     }
     with OUT_DATASET_STATS.open("w", encoding="utf-8") as f:
@@ -1797,6 +2066,23 @@ def build(csv_path: Path, db_path: Path, geojson_path: Path) -> None:
     write_species_info(species_index, count_by_sk, heights_by_sk, circs_by_sk,
                        arr_by_sk, arr_total, total_arbres=inserted,
                        essences_pdf=essences_pdf)
+
+    # species-index.json écrit ICI (post write_species_info) : la cascade nv
+    # consomme les caches Wikidata fraîchement peuplés (`vernacularNames`,
+    # `wp`). Migration incrémentale des caches pré-Sprint-2 incluse.
+    _, vernacular_counters = compute_vernacular_and_pokedex(
+        species_index=species_index,
+        nom_commun_by_sk=nom_commun_by_sk,
+        count_by_sk=count_by_sk,
+    )
+    print(
+        f"[vrn ] {vernacular_counters['nv_via_overrides']} overrides, "
+        f"{vernacular_counters['nv_via_p1843']} via P1843, "
+        f"{vernacular_counters['nv_via_frtitle']} via frTitle, "
+        f"{vernacular_counters['nv_via_construit']} construits "
+        f"({vernacular_counters['nv_disambiguations']} désambiguations) "
+        f"→ {vernacular_counters['pokedex_count']} #N Pokédex"
+    )
 
     remarquables_records = fetch_remarquables()
     write_remarquables_info(remarquables_records, ids_in_csv=seen_ids)
