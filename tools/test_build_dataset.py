@@ -287,7 +287,7 @@ class ComputeVernacularAndPokedexTest(unittest.TestCase):
             {("Override", "test"): "Override Manual"},
             clear=False,
         ):
-            entries, counters = build_dataset.compute_vernacular_and_pokedex(
+            entries, counters, _construit = build_dataset.compute_vernacular_and_pokedex(
                 species_index=species_index,
                 nom_commun_by_sk=nom_commun_by_sk,
                 count_by_sk=count_by_sk,
@@ -330,7 +330,7 @@ class ComputeVernacularAndPokedexTest(unittest.TestCase):
         }
         count_by_sk = {0: 1500, 1: 50, 2: 0, 3: 200}
 
-        entries, counters = build_dataset.compute_vernacular_and_pokedex(
+        entries, counters, _construit = build_dataset.compute_vernacular_and_pokedex(
             species_index=species_index,
             nom_commun_by_sk=nom_commun_by_sk,
             count_by_sk=count_by_sk,
@@ -368,7 +368,7 @@ class ComputeVernacularAndPokedexTest(unittest.TestCase):
             },
             clear=False,
         ):
-            entries, counters = build_dataset.compute_vernacular_and_pokedex(
+            entries, counters, _construit = build_dataset.compute_vernacular_and_pokedex(
                 species_index=species_index,
                 nom_commun_by_sk=nom_commun_by_sk,
                 count_by_sk=count_by_sk,
@@ -407,6 +407,257 @@ class ComputeVernacularAndPokedexTest(unittest.TestCase):
         self.assertEqual(e["nv"], "Chêne pédonculé")
         self.assertEqual(e["n"], 1)
         self.assertNotIn("u", e)
+
+
+class VerifySpeciesInvariantsTest(unittest.TestCase):
+    """Tests offline des 5 sanity checks (cf. ROADMAP cycle Catalogue ligne 20).
+
+    Pas de tempfile pour les fixtures de base — on construit `entries` à la
+    main. Un répertoire temporaire est utilisé uniquement pour les tests qui
+    doivent inspecter `.wikidata-cache/` (check #2 perte WP).
+    """
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.cache_dir = Path(self.tmp.name)
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def _entry(self, sk: int, g: str, e: str, nv: str, **extra) -> dict:
+        out = {"i": sk, "g": g, "e": e, "nv": nv}
+        out.update(extra)
+        return out
+
+    def _write_cache(self, sk: int, content: dict) -> None:
+        (self.cache_dir / f"{sk}.json").write_text(
+            json.dumps(content), encoding="utf-8"
+        )
+
+    def test_empty_pre_state_no_raise(self):
+        # Premier build : aucun fichier persisté, baseline vide. Aucune
+        # vérification ne peut tomber, mais on s'assure que la fonction passe
+        # sans raise et sans warn.
+        entries = [self._entry(0, "Quercus", "robur", "Chêne pédonculé")]
+        try:
+            build_dataset.verify_species_invariants(
+                pre_sk_set=frozenset(),
+                pre_wp_present_by_sk={},
+                entries=entries,
+                count_by_sk={0: 1500},
+                non_specifie_count=0,
+                construit_high_count=[],
+                cache_dir=self.cache_dir,
+            )
+        except AssertionError as exc:
+            self.fail(f"raise inattendu sur état vide : {exc}")
+
+    def test_sk_disappeared_raises(self):
+        entries = [self._entry(0, "Quercus", "robur", "Chêne pédonculé")]
+        with self.assertRaisesRegex(AssertionError, "sk disparus"):
+            build_dataset.verify_species_invariants(
+                pre_sk_set=frozenset({0, 1, 2}),
+                pre_wp_present_by_sk={},
+                entries=entries,
+                count_by_sk={0: 1500},
+                non_specifie_count=0,
+                construit_high_count=[],
+                cache_dir=self.cache_dir,
+            )
+
+    def test_wp_loss_high_count_raises(self):
+        # sk=0 avait wp pré-build, count > 100, et le cache courant est miss.
+        self._write_cache(0, {"miss": True})
+        entries = [self._entry(0, "Quercus", "robur", "Chêne pédonculé")]
+        with self.assertRaisesRegex(AssertionError, "Wikipedia FR perdue"):
+            build_dataset.verify_species_invariants(
+                pre_sk_set=frozenset({0}),
+                pre_wp_present_by_sk={0: True},
+                entries=entries,
+                count_by_sk={0: 1500},
+                non_specifie_count=0,
+                construit_high_count=[],
+                cache_dir=self.cache_dir,
+            )
+
+    def test_wp_loss_low_count_silent(self):
+        # Même scénario que ci-dessus mais count = 50 → sous le seuil, pas de raise.
+        self._write_cache(0, {"miss": True})
+        entries = [self._entry(0, "Genre", "raresp", "Genre raresp")]
+        try:
+            build_dataset.verify_species_invariants(
+                pre_sk_set=frozenset({0}),
+                pre_wp_present_by_sk={0: True},
+                entries=entries,
+                count_by_sk={0: 50},
+                non_specifie_count=0,
+                construit_high_count=[],
+                cache_dir=self.cache_dir,
+            )
+        except AssertionError as exc:
+            self.fail(f"raise inattendu sur count = 50 : {exc}")
+
+    def test_wp_present_after_no_raise(self):
+        # WP présente au pré-build ET au post-build (cache valide avec wp) → OK.
+        self._write_cache(0, {"qid": "Q1", "wp": "Quercus_robur"})
+        entries = [self._entry(0, "Quercus", "robur", "Chêne pédonculé")]
+        try:
+            build_dataset.verify_species_invariants(
+                pre_sk_set=frozenset({0}),
+                pre_wp_present_by_sk={0: True},
+                entries=entries,
+                count_by_sk={0: 5000},
+                non_specifie_count=0,
+                construit_high_count=[],
+                cache_dir=self.cache_dir,
+            )
+        except AssertionError as exc:
+            self.fail(f"raise inattendu sur wp présent : {exc}")
+
+    def test_non_specifie_threshold_raises(self):
+        entries = [self._entry(0, "Quercus", "robur", "Chêne pédonculé")]
+        with self.assertRaisesRegex(AssertionError, "Non spécifié"):
+            build_dataset.verify_species_invariants(
+                pre_sk_set=frozenset({0}),
+                pre_wp_present_by_sk={},
+                entries=entries,
+                count_by_sk={0: 100},
+                non_specifie_count=51,
+                construit_high_count=[],
+                cache_dir=self.cache_dir,
+            )
+
+    def test_non_specifie_under_threshold_silent(self):
+        entries = [self._entry(0, "Quercus", "robur", "Chêne pédonculé")]
+        try:
+            build_dataset.verify_species_invariants(
+                pre_sk_set=frozenset({0}),
+                pre_wp_present_by_sk={},
+                entries=entries,
+                count_by_sk={0: 100},
+                non_specifie_count=50,
+                construit_high_count=[],
+                cache_dir=self.cache_dir,
+            )
+        except AssertionError as exc:
+            self.fail(f"raise inattendu à seuil = 50 : {exc}")
+
+    def test_nv_non_unique_raises(self):
+        entries = [
+            self._entry(0, "Quercus", "robur", "Chêne"),
+            self._entry(1, "Quercus", "petraea", "Chêne"),
+        ]
+        with self.assertRaisesRegex(AssertionError, "nv non-unique"):
+            build_dataset.verify_species_invariants(
+                pre_sk_set=frozenset({0, 1}),
+                pre_wp_present_by_sk={},
+                entries=entries,
+                count_by_sk={0: 100, 1: 100},
+                non_specifie_count=0,
+                construit_high_count=[],
+                cache_dir=self.cache_dir,
+            )
+
+    def test_construit_high_count_warns(self):
+        import io
+        from contextlib import redirect_stderr
+
+        entries = [
+            self._entry(0, "Quercus", "rubra", "Quercus rubra"),
+            self._entry(1, "Acer", "negundo", "Acer negundo"),
+        ]
+        construit = [("Quercus", "rubra", 4500), ("Acer", "negundo", 2300)]
+        buf = io.StringIO()
+        with redirect_stderr(buf):
+            build_dataset.verify_species_invariants(
+                pre_sk_set=frozenset({0, 1}),
+                pre_wp_present_by_sk={},
+                entries=entries,
+                count_by_sk={0: 4500, 1: 2300},
+                non_specifie_count=0,
+                construit_high_count=construit,
+                cache_dir=self.cache_dir,
+            )
+        out = buf.getvalue()
+        self.assertIn("[warn]", out)
+        self.assertIn("Quercus rubra", out)
+        self.assertIn("Acer negundo", out)
+        self.assertIn("4500", out)
+
+    def test_all_invariants_pass(self):
+        # Cas nominal : tous les sk préservés, aucune WP perdue, Non spécifié
+        # sous seuil, nv uniques, pas de candidats construits → silencieux.
+        self._write_cache(0, {"qid": "Q1", "wp": "Quercus_robur"})
+        entries = [
+            self._entry(0, "Quercus", "robur", "Chêne pédonculé"),
+            self._entry(1, "Tilia", "cordata", "Tilleul à petites feuilles"),
+        ]
+        import io
+        from contextlib import redirect_stderr
+        buf = io.StringIO()
+        with redirect_stderr(buf):
+            build_dataset.verify_species_invariants(
+                pre_sk_set=frozenset({0, 1}),
+                pre_wp_present_by_sk={0: True, 1: False},
+                entries=entries,
+                count_by_sk={0: 5000, 1: 4000},
+                non_specifie_count=10,
+                construit_high_count=[],
+                cache_dir=self.cache_dir,
+            )
+        self.assertEqual(buf.getvalue(), "")
+
+
+class LoadPreBuildStateTest(unittest.TestCase):
+    """Tests offline du snapshot pré-build (lecture des assets persistés)."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.tmp_path = Path(self.tmp.name)
+        self.species_index_path = self.tmp_path / "species-index.json"
+        self.species_info_path = self.tmp_path / "species-info.json"
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def test_both_files_absent_returns_empty(self):
+        sk_set, wp_by_sk = build_dataset.load_pre_build_state(
+            self.species_index_path, self.species_info_path,
+        )
+        self.assertEqual(sk_set, frozenset())
+        self.assertEqual(wp_by_sk, {})
+
+    def test_reads_sk_and_wp_marker(self):
+        self.species_index_path.write_text(
+            json.dumps([
+                {"i": 0, "g": "Quercus", "e": "robur", "nv": "Chêne"},
+                {"i": 1, "g": "Tilia", "e": "cordata", "nv": "Tilleul"},
+                {"i": 2, "g": "Genre", "e": "raresp", "nv": "Genre raresp"},
+            ]), encoding="utf-8",
+        )
+        # `wp` natif présent ssi page WP résolue. La sémantique « clé absente
+        # = pas de WP » est verrouillée ici — un futur refactor qui écrirait
+        # `"wp": null` casserait silencieusement le check #1.
+        self.species_info_path.write_text(
+            json.dumps([
+                {"i": 0, "wp": "Quercus_robur", "qid": "Q1"},
+                {"i": 1, "wp": "Tilia_cordata", "qid": "Q2"},
+                {"i": 2, "qid": None},
+            ]), encoding="utf-8",
+        )
+        sk_set, wp_by_sk = build_dataset.load_pre_build_state(
+            self.species_index_path, self.species_info_path,
+        )
+        self.assertEqual(sk_set, frozenset({0, 1, 2}))
+        self.assertEqual(wp_by_sk, {0: True, 1: True, 2: False})
+
+    def test_corrupt_index_returns_empty_sk_set(self):
+        self.species_index_path.write_text("not valid json{", encoding="utf-8")
+        sk_set, wp_by_sk = build_dataset.load_pre_build_state(
+            self.species_index_path, self.species_info_path,
+        )
+        self.assertEqual(sk_set, frozenset())
+        self.assertEqual(wp_by_sk, {})
 
 
 if __name__ == "__main__":

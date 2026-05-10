@@ -522,7 +522,7 @@ def compute_vernacular_and_pokedex(
     species_index: dict[tuple[str, str], int],
     nom_commun_by_sk: dict[int, dict[str, int]],
     count_by_sk: dict[int, int],
-) -> tuple[list[dict], dict[str, int]]:
+) -> tuple[list[dict], dict[str, int], list[tuple[str, str, int]]]:
     """Lit les caches Wikidata pour chaque espèce, applique la cascade nv,
     désambigue les collisions, assigne les `n` Pokédex. Écrit le fichier
     `species-index.json` final.
@@ -537,7 +537,10 @@ def compute_vernacular_and_pokedex(
     `n` Pokédex assigné aux espèces avec `count_by_sk[sk] > 0` et non `u`,
     par `sk` croissant — stable d'un build à l'autre tant que `sk` est stable.
 
-    Retour : (entries écrites, dict de compteurs cascade).
+    Retour : (entries écrites, dict de compteurs cascade, candidats construits
+    sur espèce > 1000 captures). Cette fonction ne raise plus sur la non-unicité
+    des `nv` ; la vérification est portée par `verify_species_invariants` qui
+    regroupe tous les invariants post-build au même endroit.
     """
     def best_nom_commun(sk: int) -> str | None:
         counts = nom_commun_by_sk.get(sk)
@@ -590,6 +593,7 @@ def compute_vernacular_and_pokedex(
         "pokedex_count": 0,
     }
     entries: list[dict] = []
+    construit_high_count: list[tuple[str, str, int]] = []
     for (genre, espece), sk in species_index.items():
         nc = best_nom_commun(sk)
         is_unk = is_unknown_species(genre, espece)
@@ -615,6 +619,9 @@ def compute_vernacular_and_pokedex(
                 if not nv:
                     nv = construct_vernacular(genre, espece, nc, is_unk)
                     counters["nv_via_construit"] += 1
+                    sk_count = count_by_sk.get(sk, 0)
+                    if sk_count > 1000 and not is_unk:
+                        construit_high_count.append((genre, espece, sk_count))
 
         entry: dict = {"i": sk, "g": genre, "e": espece}
         if nc:
@@ -624,19 +631,9 @@ def compute_vernacular_and_pokedex(
         entry["nv"] = nv
         entries.append(entry)
 
-    # 3. Désambiguation des collisions sur nv.
+    # 3. Désambiguation des collisions sur nv. La vérification d'unicité finale
+    # est portée par `verify_species_invariants` (cf. invariant #4).
     counters["nv_disambiguations"] = disambiguate_vernaculars(entries)
-    # Garde-fou : la désambiguation suffixe par `(g, e)` qui est unique par
-    # construction de species_index. Si l'unicité n'est PAS atteinte ici,
-    # c'est un bug pipeline — mieux vaut crash que livrer un JSON ambigu.
-    nvs = [e["nv"] for e in entries]
-    if len(set(nvs)) != len(nvs):
-        from collections import Counter
-        dup = [k for k, c in Counter(nvs).items() if c > 1]
-        raise AssertionError(
-            f"nv non-unique après désambiguation : {dup[:5]}... "
-            f"({len(dup)} collisions résiduelles)"
-        )
 
     # 4. Numérotation Pokédex par sk croissant, identifiées + count > 0.
     entries.sort(key=lambda e: e["i"])
@@ -654,7 +651,8 @@ def compute_vernacular_and_pokedex(
     with OUT_SPECIES_INDEX.open("w", encoding="utf-8") as f:
         json.dump(entries, f, ensure_ascii=False, separators=(",", ":"))
 
-    return entries, counters
+    construit_high_count.sort(key=lambda gec: -gec[2])
+    return entries, counters, construit_high_count
 
 
 def _sparql_query_p1843_by_qid(qids: list[str]) -> str:
@@ -1840,6 +1838,162 @@ def load_existing_species_index(path: Path) -> dict[tuple[str, str], int]:
         raise SpeciesIndexCorrupt(f"{path.name} illisible : {exc}") from exc
 
 
+def load_pre_build_state(
+    species_index_path: Path,
+    species_info_path: Path,
+) -> tuple[frozenset[int], dict[int, bool]]:
+    """Snapshot pré-build de l'état persisté : sk déjà connus + présence WP par sk.
+
+    Retour : `(sk_set, wp_present_by_sk)`. Les deux fichiers absents (premier
+    build, ou clone fraîchement initialisé) → état vide, sans raise. Doit être
+    appelé AVANT `write_species_info()` (qui écrase `species-info.json`) et
+    AVANT `compute_vernacular_and_pokedex()` (qui écrase `species-index.json`).
+
+    Sémantique du marqueur WP : `wp_present_by_sk[sk] == True` ssi l'entrée
+    `species-info.json` portait la clé `"wp"`. La cascade actuelle omet la clé
+    quand la page Wikipedia FR n'est pas résolue ; un futur refactor qui
+    écrirait `"wp": null` casserait silencieusement le check #1 — un test
+    offline est ajouté pour verrouiller cette sémantique.
+    """
+    sk_set: frozenset[int]
+    if species_index_path.exists():
+        try:
+            with species_index_path.open("r", encoding="utf-8") as f:
+                idx_entries = json.load(f)
+            sk_set = frozenset(e["i"] for e in idx_entries)
+        except (json.JSONDecodeError, KeyError, TypeError):
+            sk_set = frozenset()
+    else:
+        sk_set = frozenset()
+
+    wp_present_by_sk: dict[int, bool] = {}
+    if species_info_path.exists():
+        try:
+            with species_info_path.open("r", encoding="utf-8") as f:
+                info_entries = json.load(f)
+            for e in info_entries:
+                sk = e.get("i")
+                if isinstance(sk, int):
+                    wp_present_by_sk[sk] = "wp" in e
+        except (json.JSONDecodeError, KeyError, TypeError):
+            pass
+
+    return sk_set, wp_present_by_sk
+
+
+def verify_species_invariants(
+    pre_sk_set: frozenset[int],
+    pre_wp_present_by_sk: dict[int, bool],
+    entries: list[dict],
+    count_by_sk: dict[int, int],
+    non_specifie_count: int,
+    construit_high_count: list[tuple[str, str, int]],
+    cache_dir: Path = WIKIDATA_CACHE_DIR,
+) -> None:
+    """Vérifie 5 invariants post-build (cf. ROADMAP cycle Catalogue ligne 20).
+
+    Raise sur les régressions structurelles, warn (stderr) sur les signaux
+    éditoriaux. À appeler APRÈS `compute_vernacular_and_pokedex()`. Note : si
+    un raise tombe ici, le `species-index.json` dégradé est déjà persisté sur
+    disque ; `git diff` révèle le delta et le prochain run est idempotent.
+    Acceptable trade-off pour un sprint de hardening — déplacer l'écriture
+    finale après les checks demanderait un refactor invasif.
+
+    Invariants :
+    1. **raise** si un `sk` connu pré-build a disparu du nouvel index.
+    2. **raise** si une espèce avec count > 100 a perdu sa page WP entre 2
+       builds (cache `.wikidata-cache/{sk}.json` actuellement `miss=True` ou
+       sans `wp` non vide, alors que `pre_wp_present_by_sk[sk] == True`).
+    3. **raise** si > 50 rows OpenData portent `genre == "Non spécifié"` strict
+       (signe que le drop dur amorcé sprint 1 régresse — le 2026-05 baseline
+       est ~811 mais ils étaient pré-existants ; au-delà du seuil c'est un
+       drift dataset à investiguer).
+    4. **raise** si les `nv` finaux ne sont pas uniques (déplacé depuis
+       `compute_vernacular_and_pokedex` sprint 2 — regroupement cohérent et
+       débloque le test des collisions résiduelles).
+    5. **warn** liste explicite des espèces tombées sur la branche `construit`
+       avec count > 1000 (candidats `VERNACULAR_OVERRIDES` à arbitrer).
+    """
+    # 1. sk disparu.
+    new_sk_set = frozenset(e["i"] for e in entries)
+    disappeared = pre_sk_set - new_sk_set
+    if disappeared:
+        sample = sorted(disappeared)[:10]
+        raise AssertionError(
+            f"sk disparus entre 2 builds : {sample}{'...' if len(disappeared) > 10 else ''} "
+            f"({len(disappeared)} au total). Casse les captures Room existantes — "
+            f"restaurer species-index.json depuis git, ou supprimer la DB asset "
+            f"explicitement pour repartir de zéro."
+        )
+
+    # 2. WP perdue sur espèce > 100 captures.
+    sk_to_entry = {e["i"]: e for e in entries}
+    wp_loss_high_count: list[tuple[int, str, str, int]] = []
+    for sk, was_present in pre_wp_present_by_sk.items():
+        if not was_present:
+            continue
+        sk_count = count_by_sk.get(sk, 0)
+        if sk_count <= 100:
+            continue
+        cache_path = cache_dir / f"{sk}.json"
+        wp_now: str | None = None
+        if cache_path.exists():
+            try:
+                with cache_path.open("r", encoding="utf-8") as f:
+                    cached = json.load(f)
+                if not cached.get("miss"):
+                    wp_now = cached.get("wp") or None
+            except (json.JSONDecodeError, OSError):
+                wp_now = None
+        if not wp_now:
+            entry = sk_to_entry.get(sk, {})
+            wp_loss_high_count.append((
+                sk,
+                entry.get("g", "?"),
+                entry.get("e", "?"),
+                sk_count,
+            ))
+    if wp_loss_high_count:
+        sample = wp_loss_high_count[:5]
+        raise AssertionError(
+            f"page Wikipedia FR perdue pour {len(wp_loss_high_count)} espèce(s) "
+            f"avec count > 100 : {sample}. Investiguer le cache "
+            f"`.wikidata-cache/` (rename article ? page supprimée ?) ; ne pas "
+            f"livrer cet asset, ces espèces ne s'afficheraient plus en fiche."
+        )
+
+    # 3. Non spécifié seuil.
+    if non_specifie_count > 50:
+        raise AssertionError(
+            f"{non_specifie_count} rows OpenData avec genre='Non spécifié' "
+            f"(seuil = 50). Le drop dur sprint 1 régresse ou OpenData a changé "
+            f"de format — investiguer avant de livrer."
+        )
+
+    # 4. Unicité nv finale.
+    nvs = [e["nv"] for e in entries]
+    if len(set(nvs)) != len(nvs):
+        from collections import Counter as _C
+        dup = [k for k, c in _C(nvs).items() if c > 1]
+        raise AssertionError(
+            f"nv non-unique après désambiguation : {dup[:5]}"
+            f"{'...' if len(dup) > 5 else ''} ({len(dup)} collisions résiduelles). "
+            f"Bug dans `disambiguate_vernaculars` ou collision binôme latin."
+        )
+
+    # 5. Warn fallback construit > 1000 captures.
+    if construit_high_count:
+        print(
+            f"[warn] {len(construit_high_count)} espèce(s) > 1000 captures "
+            f"sans nv Wikidata/Wikipedia (candidats VERNACULAR_OVERRIDES) :",
+            file=sys.stderr,
+        )
+        for genre, espece, c in construit_high_count[:20]:
+            print(f"       - {genre} {espece} ({c} captures)", file=sys.stderr)
+        if len(construit_high_count) > 20:
+            print(f"       ... +{len(construit_high_count) - 20}", file=sys.stderr)
+
+
 def build(csv_path: Path, db_path: Path, geojson_path: Path) -> None:
     # Garde-fou : regénérer la DB sans species-index réindexerait à zéro et
     # casserait les captures Room déjà stockées chez l'utilisateur (qui
@@ -1873,6 +2027,13 @@ def build(csv_path: Path, db_path: Path, geojson_path: Path) -> None:
         )
         sys.exit(1)
 
+    # Snapshot pré-build : doit être lu AVANT que `write_species_info` et
+    # `compute_vernacular_and_pokedex` ne réécrasent les fichiers d'assets.
+    # Comparé en fin de pipeline par `verify_species_invariants`.
+    pre_sk_set, pre_wp_present_by_sk = load_pre_build_state(
+        OUT_SPECIES_INDEX, OUT_SPECIES_INFO,
+    )
+
     if db_path.exists():
         db_path.unlink()
     db_path.parent.mkdir(parents=True, exist_ok=True)
@@ -1898,7 +2059,8 @@ def build(csv_path: Path, db_path: Path, geojson_path: Path) -> None:
 
     inserted = 0
     skipped = 0
-    skipped_no_genre = 0
+    skipped_genre_empty = 0
+    non_specifie_count = 0
     normalized_empty_espece = 0
     normalized_n_sp = 0
     fixups_applied = 0
@@ -1945,8 +2107,11 @@ def build(csv_path: Path, db_path: Path, geojson_path: Path) -> None:
                 lat, lon = geo
 
                 genre = to_str_or_none(row.get("genre", ""))
-                if genre is None or genre == "Non spécifié":
-                    skipped_no_genre += 1
+                if genre is None:
+                    skipped_genre_empty += 1
+                    continue
+                if genre == "Non spécifié":
+                    non_specifie_count += 1
                     continue
 
                 # Espece vide / "n. sp." → forme canonique "sp." (taggée
@@ -2070,7 +2235,7 @@ def build(csv_path: Path, db_path: Path, geojson_path: Path) -> None:
     # species-index.json écrit ICI (post write_species_info) : la cascade nv
     # consomme les caches Wikidata fraîchement peuplés (`vernacularNames`,
     # `wp`). Migration incrémentale des caches pré-Sprint-2 incluse.
-    _, vernacular_counters = compute_vernacular_and_pokedex(
+    entries, vernacular_counters, construit_high_count = compute_vernacular_and_pokedex(
         species_index=species_index,
         nom_commun_by_sk=nom_commun_by_sk,
         count_by_sk=count_by_sk,
@@ -2082,6 +2247,17 @@ def build(csv_path: Path, db_path: Path, geojson_path: Path) -> None:
         f"{vernacular_counters['nv_via_construit']} construits "
         f"({vernacular_counters['nv_disambiguations']} désambiguations) "
         f"→ {vernacular_counters['pokedex_count']} #N Pokédex"
+    )
+
+    # Sanity checks : invariants post-build (sk préservés, WP non perdue,
+    # `Non spécifié` sous seuil, nv unique). Warns sur les candidats overrides.
+    verify_species_invariants(
+        pre_sk_set=pre_sk_set,
+        pre_wp_present_by_sk=pre_wp_present_by_sk,
+        entries=entries,
+        count_by_sk=count_by_sk,
+        non_specifie_count=non_specifie_count,
+        construit_high_count=construit_high_count,
     )
 
     remarquables_records = fetch_remarquables()
@@ -2103,7 +2279,8 @@ def build(csv_path: Path, db_path: Path, geojson_path: Path) -> None:
     gj_mb = geojson_path.stat().st_size // 1_000_000
     print(
         f"[done] {inserted} arbres "
-        f"({skipped_no_genre} sans genre / Non spécifié filtrés, "
+        f"({skipped_genre_empty} genre vide, "
+        f"{non_specifie_count} 'Non spécifié' filtrés, "
         f"{normalized_empty_espece} espèces vides → sp., "
         f"{normalized_n_sp} 'n. sp.' → sp., "
         f"{fixups_applied} fixups appliqués, "
