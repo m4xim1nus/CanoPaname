@@ -95,6 +95,33 @@ WIKI_REST_RETRIES_429 = 4  # backoff 4, 8, 16, 32 s
 # Format CSV : « PARIS 5E ARRDT », « PARIS 16E ARRDT », ...
 ARR_PARIS_PATTERN = re.compile(r"^PARIS\s+(\d+)E\s+ARRDT$", re.IGNORECASE)
 
+# Coquilles latines récurrentes du CSV OpenData. Appliqué AVANT le lookup
+# `species_index` : la row est rebindée vers l'entrée canonique, son `sk`
+# préservé. Si la canonique n'existait pas encore c'est elle qui hérite du
+# nouveau sk. La clé typo reste dans `species-index.json` comme zombie (sk
+# conservé pour les captures Room existantes) mais sans count à partir d'ici.
+SPECIES_FIXUPS: dict[tuple[str, str], tuple[str, str]] = {
+    ("Olea", "europea"): ("Olea", "europaea"),
+}
+
+# Formes d'épithète signalant une espèce non identifiée (genre connu, espèce
+# imprécise ou non renseignée). Normalisées en `sp.` à l'ingestion ; les
+# entrées `species-index.json` qui matchent portent le flag `u: true`.
+UNKNOWN_ESPECE_FORMS = frozenset({"sp.", "n. sp."})
+
+
+def apply_species_fixups(genre: str, espece: str) -> tuple[str, str]:
+    """Remap les coquilles `(genre, espece)` vers leur forme canonique."""
+    return SPECIES_FIXUPS.get((genre, espece), (genre, espece))
+
+
+def is_unknown_species(genre: str, espece: str) -> bool:
+    """True si l'entrée doit porter `u: true` dans `species-index.json`."""
+    return (
+        espece.strip().lower() in UNKNOWN_ESPECE_FORMS
+        or genre.strip() == "Non spécifié"
+    )
+
 
 def download(url: str, dest: Path) -> None:
     if dest.exists() and dest.stat().st_size > 1_000_000:
@@ -1586,7 +1613,10 @@ def build(csv_path: Path, db_path: Path, geojson_path: Path) -> None:
 
     inserted = 0
     skipped = 0
-    skipped_no_species = 0
+    skipped_no_genre = 0
+    normalized_empty_espece = 0
+    normalized_n_sp = 0
+    fixups_applied = 0
     remarquables = 0
     seen_ids: set[int] = set()
 
@@ -1630,10 +1660,31 @@ def build(csv_path: Path, db_path: Path, geojson_path: Path) -> None:
                 lat, lon = geo
 
                 genre = to_str_or_none(row.get("genre", ""))
-                espece = to_str_or_none(row.get("espece", ""))
-                if genre is None or espece is None:
-                    skipped_no_species += 1
+                if genre is None or genre == "Non spécifié":
+                    skipped_no_genre += 1
                     continue
+
+                # Espece vide / "n. sp." → forme canonique "sp." (taggée
+                # unknownSpecies à l'écriture). Récupère ~4813 rows que
+                # to_str_or_none filtrait silencieusement avant + collapse les
+                # "n. sp." vers le bucket "sp." du même genre.
+                espece_raw = to_str_or_none(row.get("espece", ""))
+                if espece_raw is None:
+                    espece = "sp."
+                    normalized_empty_espece += 1
+                elif espece_raw.lower() == "n. sp.":
+                    espece = "sp."
+                    normalized_n_sp += 1
+                else:
+                    espece = espece_raw
+
+                # SPECIES_FIXUPS appliqué AVANT lookup species_index : la
+                # coquille est rebindée vers la canonique, dont le `sk` est
+                # réutilisé (ou attribué neuf si elle n'existait pas encore).
+                fixed = apply_species_fixups(genre, espece)
+                if fixed != (genre, espece):
+                    fixups_applied += 1
+                genre, espece = fixed
 
                 seen_ids.add(id_)
 
@@ -1720,6 +1771,8 @@ def build(csv_path: Path, db_path: Path, geojson_path: Path) -> None:
         nc = best_nom_commun(i)
         if nc:
             entry["nc"] = nc
+        if is_unknown_species(g, e):
+            entry["u"] = True
         species_entries.append(entry)
     species_entries.sort(key=lambda e: e["i"])
     with OUT_SPECIES_INDEX.open("w", encoding="utf-8") as f:
@@ -1763,7 +1816,11 @@ def build(csv_path: Path, db_path: Path, geojson_path: Path) -> None:
     db_mb = db_path.stat().st_size // 1_000_000
     gj_mb = geojson_path.stat().st_size // 1_000_000
     print(
-        f"[done] {inserted} arbres ({skipped_no_species} sans espèce filtrés, "
+        f"[done] {inserted} arbres "
+        f"({skipped_no_genre} sans genre / Non spécifié filtrés, "
+        f"{normalized_empty_espece} espèces vides → sp., "
+        f"{normalized_n_sp} 'n. sp.' → sp., "
+        f"{fixups_applied} fixups appliqués, "
         f"{skipped} autres ignorés)"
     )
     print(f"       → {db_path.name} ({db_mb} Mo)")
