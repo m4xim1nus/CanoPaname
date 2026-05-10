@@ -29,6 +29,8 @@ Détail complet dans `ROADMAP.md` *Cycle en cours*. Items absorbés (l'index res
 - [→Catalogue] Auto-débloquage des fiches `sp.` : capture d'un `Tilia X` quelconque débloque la fiche `Tilia (espèce indéterminée)`, sans photo dédiée requise. Galerie photos reste alimentée par les seules captures explicites de `sp.` (user:moi, 2026-05-10)
 - [→Catalogue] Sanity checks au build (raise) : espèce > 100 perd sa page WP entre 2 builds, `sk` existant disparaît, genre `Non spécifié` réapparaît count > 50, `nv` final non-unique. Warn pour fallback construit sur espèce > 1000 captures (claude:analyse, 2026-05-08)
 - [→Catalogue] Compteur Arboretum principal `X / ~800` (espèces identifiées seules), ligne « + N captures à espèce indéterminée » côté Profil. **Pas** de double compteur 221/907 (arbitré 2026-05-10 contre la piste « X / 221 nc » du doc d'analyse)
+- [→Catalogue] Fiche `(G, sp.)` enrichie : sous la galerie photos `sp.`, mini-catalogue filtré sur le genre — mêmes cards que l'Arboretum complet (`nv`, `#N`, count, photo 1re capture pour les capturées, silhouette « ??? » + binôme latin grisé pour les non-capturées). Lien vers la fiche-espèce sur tap. Donne au joueur une vue immédiate « j'ai 3/55 chênes » sans quitter la fiche genre (user:moi, 2026-05-10)
+- [→Catalogue] Carte filtrée depuis la fiche `(G, sp.)` : extension de `MAP_FILTERED` à un set de `sk` (tous les `sk` du genre déjà capturés + le `sk` de l'entrée `(G, sp.)` elle-même). Affiche les pins gris des `(G, sp.)` non identifiés sur le terrain + les pins verts des espèces du genre déjà capturées (ex. ★ `Tilia cordata`, `T. tomentosa`, `T. platyphyllos` en plus de tous les `Tilia sp.`). Pas les pins gris des autres espèces du genre non encore capturées — focus volontaire sur « ce que j'ai à résoudre » + « mes trophées du genre » (user:moi, 2026-05-10)
 
 ## Cycle Variantes
 
@@ -61,6 +63,7 @@ Détail complet dans `ROADMAP.md` *Cycle en cours*. Items absorbés (l'index res
 - [creuser] Étendre screenshots README de 3 à 6 (audit#17 : à faire après Photos pour avoir les nouveaux écrans)
 - [creuser] Script `tools/scout_other_cities.py` qui interroge OpenData de villes du Grand Paris et produit un md de faisabilité (user:moi, 2026-05-07)
 - [creuser] Mini-quiz d'identification entre espèces partageant le même `nc` (Quercus robur vs petraea, Tilia cordata vs platyphyllos) (claude:analyse, 2026-05-08 ; refusé du cycle Catalogue 2026-05-10 — scope dédié, UX du quiz + génération de paires + scoring trop coûteux à empiler)
+- [creuser] Onglet « fiches genre » parallèle aux fiches espèce. 200 genres au total, 91 ont déjà une `(G, sp.)` côté OpenData, 109 mono/bi-spécifiques à synthétiser via un `genres.json` parallèle (vs entrées zombies dans `species-index.json`). Fiche genre = liste des espèces capturées du genre + count Paris + badge progressif « Mosaïque de Quercus » (déjà au cycle Variantes). Risques : duplication info/photos avec fiche espèce, cas tordus (hybrides ×, cultivars exotiques sans parent générique grand public). Couche pédagogique entre `nc` ambigu et `nv` précis. Reconsiderer après cycle Variantes (user:moi, 2026-05-10)
 
 ## Refusé
 
