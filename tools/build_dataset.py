@@ -1220,8 +1220,16 @@ def compute_vernacular_and_pokedex(
         if e["nv"] != nv_pre_disamb.get(e["i"]):
             trace_by_sk.setdefault(e["i"], {})["disambiguated"] = True
 
-    # 4. Numérotation Pokédex par sk croissant, identifiées + count > 0.
-    entries.sort(key=lambda e: e["i"])
+    # 4. Numérotation Pokédex par **count décroissant** (espèces identifiées
+    # avec count > 0). Tie-breaker `i` croissant pour la stabilité
+    # inter-builds : à count égal, l'ordre du CSV OpenData départage. Bug fix
+    # post-S9 — l'ancienne version triait par `i` seul, donnant des #N sans
+    # corrélation avec la fréquence (Marronnier #001 / 20 030 alors que
+    # Platane #008 / 38 149). Le `i` (speciesIndex) reste figé par ailleurs,
+    # donc les captures existantes ne bougent pas. `n` est purement un
+    # libellé d'affichage, recalculé à chaque build : changer son ordre
+    # n'est pas une migration.
+    entries.sort(key=lambda e: (-count_by_sk.get(e["i"], 0), e["i"]))
     next_pokedex = 1
     for e in entries:
         if e.get("u"):
