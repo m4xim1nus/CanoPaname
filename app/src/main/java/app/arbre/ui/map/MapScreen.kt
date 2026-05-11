@@ -727,10 +727,15 @@ fun MapScreen(
                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
             }
             val sk = speciesIndex.indexOf(openedArbre)
+            // S10 fix : aligner avec la coloration des pins, qui utilise
+            // `effectivelyCapturedSpecies` (auto-débloquage genre-based).
+            // Sans `isDiscovered`, un pin (G, sp.) débloqué indirectement
+            // (capture d'une identifiée du genre) est vert sur la carte mais
+            // le sheet affiche UnknownContent — incohérent.
             val isDiscovered = if (openedArbre.remarquable) {
                 openedArbre.id in capturedRemarquables
             } else {
-                sk != null && sk in capturedSpecies
+                sk != null && speciesIndex.isDiscovered(sk, capturedSpecies)
             }
             val capturesArbre by captureRepo.capturesPourArbre(openedArbre.id)
                 .collectAsState(initial = emptyList())
@@ -773,7 +778,7 @@ fun MapScreen(
                     onPhotoLongClick = { idx -> pendingDeleteIndex = idx },
                     onCapturer = { capturer(openedArbre) },
                     captureAvailability = availability,
-                    onSpeciesClick = if (sk != null && sk in capturedSpecies) {
+                    onSpeciesClick = if (sk != null && speciesIndex.isDiscovered(sk, capturedSpecies)) {
                         {
                             viewModel.closeDetail()
                             onSpeciesClick(sk)

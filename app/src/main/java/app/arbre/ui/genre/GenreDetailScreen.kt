@@ -121,8 +121,15 @@ fun GenreDetailScreen(
     // S9 Lot B : verrou genre. La fiche n'est accessible qu'à partir de la 1re
     // capture du genre (sp. ou identifiée). Cohérent avec la silhouette « ??? »
     // posée côté Arboretum sur les chapter headers non découverts.
+    //
+    // S10 fix : pop vers MAP via `onUnlockLost`, pas juste 1 cran via `onBack`.
+    // Sert deux cas : (1) deep link cassé vers un genre jamais capturé (rare),
+    // (2) suppression de la dernière capture du genre depuis la galerie sp.
+    // ci-dessous. Sans cette unification, le dialog appelait son propre
+    // `onUnlockLost()` après la suspend `deleteCapture` et la garde réactive
+    // appelait `onBack()` pendant la recompo — double pop → écran blanc terminal.
     if (!speciesIndexRepo.genreHasAnyCapture(genre, capturedSpecies)) {
-        androidx.compose.runtime.LaunchedEffect(genre) { onBack() }
+        androidx.compose.runtime.LaunchedEffect(genre) { onUnlockLost() }
         return
     }
     val identifiedEntries: List<SpeciesEntry> = remember(allEntriesOfGenre, speciesInfoRepo) {
@@ -283,13 +290,13 @@ fun GenreDetailScreen(
                 entityKindLabel = "ce genre (espèce indéterminée)",
                 entityName = titleText,
                 onConfirm = {
-                    val wasLast = capturesSp.size == 1
                     pendingDeleteIndex = null
                     lightboxIndex = null
-                    scope.launch {
-                        captureRepo.deleteCapture(capture, file)
-                        if (wasLast) onUnlockLost()
-                    }
+                    scope.launch { captureRepo.deleteCapture(capture, file) }
+                    // S10 fix : pas d'appel direct à `onUnlockLost`. La garde
+                    // réactive `genreHasAnyCapture` au-dessus se charge de
+                    // pop vers MAP si c'était la dernière capture du genre.
+                    // Évite la double pop avec la recompo concurrente.
                 },
                 onDismiss = { pendingDeleteIndex = null },
             )
