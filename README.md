@@ -2,9 +2,9 @@
 
 > Pokédex botanique des arbres de Paris. App Android, single-player, 100 % local.
 
-App Android pour partir à la chasse aux arbres remarquables de Paris, collectionner les espèces, et redécouvrir la ville par sa canopée. Inspirée de Pokémon GO et Space Invaders, mais avec de **vrais** arbres : ceux du dataset [OpenData Paris « les-arbres »](https://opendata.paris.fr/explore/dataset/les-arbres/) (213 042 arbres géolocalisés, dont 169 « remarquables »).
+App Android pour partir à la chasse aux arbres remarquables de Paris, collectionner les espèces, et redécouvrir la ville par sa canopée. Inspirée de Pokémon GO et Space Invaders, mais avec de **vrais** arbres : ceux du dataset [OpenData Paris « les-arbres »](https://opendata.paris.fr/explore/dataset/les-arbres/) (217 042 arbres géolocalisés, dont 183 « remarquables »).
 
-> **Statut** : v1.0 (phases 0 → 10.5 livrées). Usage personnel + family & friends. Repo public pour transparence et Obtainium ; pas de PR externe acceptée à ce stade.
+> **Statut** : v1.1 (cycle *Catalogue* livré). Usage personnel + family & friends. Repo public pour transparence et Obtainium ; pas de PR externe acceptée à ce stade.
 
 <p align="center">
   <img src="docs/screenshots/01-onboarding.png" width="240" alt="Écran d'accueil"/>
@@ -14,7 +14,7 @@ App Android pour partir à la chasse aux arbres remarquables de Paris, collectio
 
 ## Ce que c'est
 
-213 042 arbres parisiens géolocalisés sur une carte plein écran, 907 espèces à découvrir (dont 528 avec fiches enrichies), 169 arbres remarquables à dénicher. Capture par proximité (< 30 m) avec une photo prise depuis l'app. La carte se colore au fil de tes découvertes. Pokédex à 907 espèces avec fiches Wikipedia FR, badges, export ZIP. Pensé family & friends, pas de classement, pas de social.
+217 042 arbres parisiens géolocalisés sur une carte plein écran, 782 espèces identifiées, 203 genres, 183 arbres remarquables à dénicher. Capture par proximité (< 30 m) avec une photo prise depuis l'app. La carte se colore au fil de tes découvertes. Catalogue à 2 niveaux *Catalogue* / *Historique*, fiches genre, badges, export ZIP. Pensé family & friends, pas de classement, pas de social.
 
 ## Pourquoi
 

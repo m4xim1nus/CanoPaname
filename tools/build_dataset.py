@@ -155,12 +155,28 @@ SPECIES_FIXUPS: dict[tuple[str, str], tuple[str, str]] = {
     # Synonymes désuets (renommages taxonomiques) :
     ("Ulmus", "campestre"): ("Ulmus", "minor"),
     ("Platanus", "acerifolia"): ("Platanus", "x hispanica"),
+    # S10 : résidu post-cycle Catalogue, 9 zombies binôme-nu avec count > 0 (audit 2026-05-11).
+    # Synonymes / renommages taxonomiques documentés :
+    ("Sorbus", "padus"): ("Prunus", "padus"),
+    ("Rhus", "verniciflua"): ("Toxicodendron", "vernicifluum"),
+    ("Eriolobus", "trilobata"): ("Malus", "trilobata"),
+    ("Populus", "canadensis"): ("Populus", "x canadensis"),
+    ("Sequoiadendron", "sempervirens"): ("Sequoia", "sempervirens"),
+    # Faux genre OpenData (vraie espèce d'un autre genre) :
+    ("Robinia", "ornus"): ("Fraxinus", "ornus"),
+    ("Robinia", "pseudocamellia"): ("Stewartia", "pseudocamellia"),
+    # Cultivars rebindés sur l'espèce principale :
+    ("Fagus", "purpurea"): ("Fagus", "sylvatica"),
+    ("Malus", "communis"): ("Malus", "domestica"),
 }
 
 # Formes d'épithète signalant une espèce non identifiée (genre connu, espèce
 # imprécise ou non renseignée). Normalisées en `sp.` à l'ingestion ; les
 # entrées `species-index.json` qui matchent portent le flag `u: true`.
-UNKNOWN_ESPECE_FORMS = frozenset({"sp.", "n. sp."})
+# S10 : ajout des marqueurs OpenData « Fleur n. sp. » / « Fruit n. sp. »
+# (cultivars Prunus génériques décoratifs/fruitiers) — basculés en sp.
+# conformément à la décision « on ignore les cultivars ».
+UNKNOWN_ESPECE_FORMS = frozenset({"sp.", "n. sp.", "fleur n. sp.", "fruit n. sp."})
 
 
 def apply_species_fixups(genre: str, espece: str) -> tuple[str, str]:

@@ -2,6 +2,41 @@
 
 Format basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions [SemVer](https://semver.org/lang/fr/).
 
+## [1.1.0] — 2026-05-11
+
+Refonte du catalogue d'espèces sous le codename *Catalogue*. Dix sprints : nettoyage data amont (drops `Non spécifié`, normalisation `sp.`, fixups latins), cascade de noms vernaculaires français (Wikidata P1843 → Wikipedia frTitle filtré → redirects API → overrides éditoriaux → construction), fiches genre dédiées, Arboretum à 2 niveaux *Catalogue* / *Historique*, badge progressif *Mosaïque de chênes*. Refresh OpenData absorbé en passant (217 042 arbres, 183 remarquables). Fil rouge en clôture : 11 fixups de typos / synonymes désuets supplémentaires côté `SPECIES_FIXUPS` + marqueurs Prunus cultivars basculés en `sp.`.
+
+### Ajouté
+
+- Catalogue : 930 entrées dont 782 espèces identifiées et 132 entrées genre `(G, sp.)`, noms français uniques garantis par assert d'unicité au build, numérotation Pokédex `#N` stable sur les identifiées.
+- Fiches genre dédiées (`GenreDetailScreen`, route `Routes.GENRE`), 203 genres couverts (200 avec espèces identifiées + 3 only-unknown : Genista, Vitex, Ziziphus). Asset `genre-info.json` avec section *« À Paris »* (count cumulé, hauteur / circonférence médianes, proportion du dataset, top arrondissements sur-représentés). Pipeline `compute_genre_info` côté `tools/build_dataset.py` + cache `tools/.wikipedia-cache/` ~200 articles Wikipedia FR.
+- Arboretum : 2 niveaux de `SegmentedButton`. Niveau 1 *Catalogue* / *Historique* (= ex-Découverte). Niveau 2 sous *Catalogue* : *Par fréquence* (count Paris décroissant) / *Par genre* (groupé alphabétique). Headers de chapitre cliquables → fiche genre. HeaderCard affiche `N / 203 genres découverts`. Compteur principal `X / 782` (espèces identifiées seules).
+- Auto-débloquage des fiches `(G, sp.)` : capture d'un `Tilia X` quelconque débloque la fiche `Tilia (espèce indéterminée)`. La galerie photos reste alimentée par les seules captures explicites de `sp.`.
+- Carte filtrée par genre (fiche `(G, sp.)` → bouton « Voir sur la carte ») : extension de `MAP_FILTERED` à un set de `sk`. Affiche les pins gris des `sp.` à résoudre + les pins verts des espèces du genre déjà capturées.
+- Badge progressif *Mosaïque de chênes* (3 / 5 / 10, paliers Bosquet / Chênaie / Forêt, exclut `Quercus sp.`). Catalogue passe à 9 badges (5 binaires + 4 progressifs, 25 paliers).
+- Overrides éditoriaux `VERNACULAR_OVERRIDES` (Marronnier commun, Sophora du Japon, Merisier, Thuya géant, etc.) : ~30 noms français curés à la main pour les espèces les plus capturables.
+- Rapport HTML self-contained `docs/dataset/index.html` pour validation visuelle du catalogue (sources `nv`, contrôles cas limites, catalogue des 202 genres triables).
+- Sanity checks au build (raises) : espèce > 100 perdant sa page WP entre deux builds, `sk` existant disparaissant, entrée `Non spécifié` recevant des arbres (count > 0), `nv` non-unique ou redondant `{g} {e} ({g} {e})`. Warn pour fallback construit sur espèce > 1000 captures.
+
+### Modifié
+
+- Dataset OpenData refreshé : **217 042** arbres (vs 213 042), **183** remarquables (vs 169).
+- `species-index.json` : nouveaux champs `nv` (nom vernaculaire unique), `n` (numéro Pokédex stable), `u: true` (flag `unknownSpecies`). Rétrocompat asset legacy maintenue côté `SpeciesIndex` (lecture tolérante).
+- `dataset-stats.json` : nouveau champ `totalEspecesIdentifiees`.
+- Arboretum : titre des cards = `nv`, sous-titre = binôme latin italique (si différent). Cards `unknownSpecies` visuellement distinctes, toujours en fin de catalogue, sans `#`.
+- `BadgeEvaluator` : signature évoluée pour recevoir `SpeciesIndex`. Botaniste exclut désormais les `sp.` (intentionnel — les espèces indéterminées ne comptent pas comme nouvelle espèce identifiée).
+- `SPECIES_FIXUPS` étendu : `Olea europea` → `europaea`, Styphnolobium japonicum, Eriobotrya japonica, Ligustrum vulgare, Ulmus parvifolia, Ulmus minor, Platanus x hispanica (S8) ; puis 9 ajouts en clôture (S10) — Sorbus padus → Prunus padus, Rhus verniciflua → Toxicodendron vernicifluum, Eriolobus trilobata → Malus trilobata, Populus canadensis → x canadensis, Sequoiadendron sempervirens → Sequoia sempervirens, Robinia ornus → Fraxinus ornus, Robinia pseudocamellia → Stewartia pseudocamellia (nouvelle entrée sk=929), Fagus purpurea → Fagus sylvatica, Malus communis → Malus domestica. 16 typos / synonymes désuets corrigés au build (~12 arbres OpenData rebindés).
+- `UNKNOWN_ESPECE_FORMS` : ajout des marqueurs OpenData `Fleur n. sp.` et `Fruit n. sp.` (cultivars Prunus génériques décoratifs / fruitiers) — 48 arbres basculés vers l'entrée `Prunus sp.` au lieu de polluer le catalogue identifié.
+- Cascade `nv` : filtre `frTitle != binôme` (récupère ~50 % des articles WP titrés scientifiquement) + étape Wikipedia redirects API (cache permanent `tools/.wikipedia-aliases-cache/`, ~80 % des cas restants type « Marronnier d'Inde », « Pin noir »).
+
+### Retiré
+
+- 811 arbres `Non spécifié` (4 formes : `sp.`, `n. sp.`, espece vide, `americana` aberrant) — drop dur côté pipeline. Plus de bruit sans valeur de jeu dans le catalogue.
+
+### Corrigé
+
+- Hotfix tri *Par fréquence* du catalogue : count décroissant (et non croissant).
+
 ## [1.0.2] — 2026-05-10
 
 Profondeur et lisibilité après v1.0.1, sans casse de schéma. Six sprints atomiques sous le codename *Photos et progressivité* : re-capture + suppression de captures, refonte `PhotoLightbox` (bornes zoom/pan, swipe entre photos), refonte badges en multi-paliers visibles (catalogue 13 → 8, 22 paliers cumulés), saut vers l'arbre exact sur la carte (fly-to + pulse), galerie photos cliquable dans le sheet de détail arbre.
