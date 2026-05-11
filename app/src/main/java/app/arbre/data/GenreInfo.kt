@@ -31,6 +31,16 @@ data class GenreStats(
     val topSpecies: List<TopSpecies>,
     /** Top 3 arrondissements Paris pour ce genre, ordre count décroissant. */
     val topArr: List<ArrCount>,
+    // S9 Lot D : alignement avec `SpeciesStats`. Tous nullables / vides →
+    // rétrocompat asset legacy garantie (un asset pré-S9 charge sans crash).
+    /** Proportion du dataset Paris (ex. 0.0123 pour 1,23 %). */
+    val proportion: Double? = null,
+    /** Hauteur médiane des arbres du genre (m). `null` si pas de mesures. */
+    val medianHeightM: Int? = null,
+    /** Circonférence médiane des arbres du genre (cm). `null` si pas de mesures. */
+    val medianCircCm: Int? = null,
+    /** Top 3 arrondissements sur-représentés (ratio + count) ; `ratio` rempli. */
+    val topArrOver: List<ArrCount> = emptyList(),
 )
 
 data class TopSpecies(
@@ -74,6 +84,12 @@ class GenreInfoRepository(private val byGenre: Map<String, GenreInfo>) {
                 speciesIdentified = statsObj.getInt("speciesIdentified"),
                 topSpecies = parseTopSpecies(statsObj.optJSONArray("topSpecies")),
                 topArr = parseArrList(statsObj.optJSONArray("topArr")),
+                // S9 Lot D : champs optionnels — asset legacy (pré-S9) renvoie
+                // `null` / vide partout, fiche genre fonctionne sans ces stats.
+                proportion = statsObj.optDoubleOrNull("proportion"),
+                medianHeightM = statsObj.optIntOrNull("medianHm"),
+                medianCircCm = statsObj.optIntOrNull("medianCircCm"),
+                topArrOver = parseArrList(statsObj.optJSONArray("topArrOver")),
             )
             return GenreInfo(
                 genre = o.getString("g"),
@@ -103,7 +119,7 @@ class GenreInfoRepository(private val byGenre: Map<String, GenreInfo>) {
                 ArrCount(
                     arr = o.getString("arr"),
                     count = o.getInt("count"),
-                    ratio = null,
+                    ratio = if (o.has("ratio") && !o.isNull("ratio")) o.getDouble("ratio") else null,
                 )
             }
         }
@@ -112,3 +128,9 @@ class GenreInfoRepository(private val byGenre: Map<String, GenreInfo>) {
 
 private fun JSONObject.optStringOrNull(key: String): String? =
     if (has(key) && !isNull(key)) optString(key).takeIf { it.isNotEmpty() } else null
+
+private fun JSONObject.optIntOrNull(key: String): Int? =
+    if (has(key) && !isNull(key)) optInt(key) else null
+
+private fun JSONObject.optDoubleOrNull(key: String): Double? =
+    if (has(key) && !isNull(key)) optDouble(key) else null

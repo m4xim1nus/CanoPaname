@@ -35,6 +35,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.unit.dp
+import app.arbre.data.ArrCount
 import app.arbre.data.Capture
 import app.arbre.data.SpeciesEntry
 import app.arbre.data.SpeciesIndex
@@ -95,6 +96,35 @@ fun GenreDetailScreen(
         androidx.compose.runtime.LaunchedEffect(genre) { onBack() }
         return
     }
+    // `initial = null` distingue « flow pas encore émis » de « set vraiment
+    // vide ». Sans ça, la 1re recomposition voit `emptySet()` et déclenche un
+    // faux-négatif du verrou ci-dessous → la fiche se ferme avant que le 1er
+    // emit n'arrive (~10–50 ms via Room/SharedFlow). Une fois le 1er emit reçu,
+    // le set est non-null pour toute la durée de vie du composable.
+    val capturedSpeciesNullable by captureRepo.capturedSpeciesIndices()
+        .collectAsState(initial = null)
+    val capturedSpecies = capturedSpeciesNullable ?: run {
+        // 1er render avant l'emit du Flow : on attend silencieusement.
+        // Scaffold minimal pour ne pas flasher le fond blanc derrière la nav.
+        Scaffold(
+            topBar = {
+                GenreDetailTopBar(title = genre, latinSubtitle = null, onBack = onBack)
+            },
+        ) { padding ->
+            androidx.compose.foundation.layout.Box(
+                modifier = Modifier.fillMaxSize().padding(padding),
+            )
+        }
+        return
+    }
+
+    // S9 Lot B : verrou genre. La fiche n'est accessible qu'à partir de la 1re
+    // capture du genre (sp. ou identifiée). Cohérent avec la silhouette « ??? »
+    // posée côté Arboretum sur les chapter headers non découverts.
+    if (!speciesIndexRepo.genreHasAnyCapture(genre, capturedSpecies)) {
+        androidx.compose.runtime.LaunchedEffect(genre) { onBack() }
+        return
+    }
     val identifiedEntries: List<SpeciesEntry> = remember(allEntriesOfGenre, speciesInfoRepo) {
         allEntriesOfGenre
             .filter { !it.unknownSpecies }
@@ -108,9 +138,6 @@ fun GenreDetailScreen(
     val spEntry: SpeciesEntry? = remember(allEntriesOfGenre) {
         allEntriesOfGenre.firstOrNull { it.unknownSpecies }
     }
-
-    val capturedSpecies by captureRepo.capturedSpeciesIndices()
-        .collectAsState(initial = emptySet())
 
     // Captures `(G, sp.)` du genre — alimentent la galerie photos sp.
     val capturesSp by remember(spEntry) {
@@ -174,6 +201,23 @@ fun GenreDetailScreen(
         ) {
             item { IdentityBlock(genre, info, identifiedEntries.size) }
 
+            // S9 ajustement post-smoke : « À propos » + « À Paris » contextualisent
+            // le genre — on les place avant le mini-catalogue qui, lui, est plus
+            // long et plus opérationnel (navigation espèces).
+            if (info?.summary != null) {
+                item {
+                    WikipediaBlock(
+                        summary = info.summary,
+                        wikipediaTitle = info.wikipediaTitle,
+                        emptyMessage = "Pas d'info encyclopédique disponible pour ce genre.",
+                    )
+                }
+            }
+
+            info?.stats?.let { stats ->
+                item { StatsBlock(stats = stats) }
+            }
+
             if (identifiedEntries.isNotEmpty()) {
                 item {
                     GenreCatalogueHeader(
@@ -207,20 +251,6 @@ fun GenreDetailScreen(
                         onPhotoLongClick = { idx -> pendingDeleteIndex = idx },
                     )
                 }
-            }
-
-            if (info?.summary != null) {
-                item {
-                    WikipediaBlock(
-                        summary = info.summary,
-                        wikipediaTitle = info.wikipediaTitle,
-                        emptyMessage = "Pas d'info encyclopédique disponible pour ce genre.",
-                    )
-                }
-            }
-
-            info?.stats?.let { stats ->
-                item { StatsBlock(stats = stats, onSpeciesClick = onSpeciesClick) }
             }
 
             item {
@@ -394,64 +424,87 @@ private fun GenreCatalogueRow(
 }
 
 @Composable
-private fun StatsBlock(
-    stats: app.arbre.data.GenreStats,
-    onSpeciesClick: (Int) -> Unit,
-) {
+private fun StatsBlock(stats: app.arbre.data.GenreStats) {
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(
             modifier = Modifier.padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Text("À Paris", style = MaterialTheme.typography.titleMedium)
-            if (stats.topSpecies.isNotEmpty()) {
-                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    Text(
-                        "Espèces les plus fréquentes",
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    stats.topSpecies.forEach { top ->
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable { onSpeciesClick(top.sk) }
-                                .padding(vertical = 4.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Text(
-                                "${top.nv} (${formatCount(top.count)})",
-                                style = MaterialTheme.typography.bodyMedium,
-                                modifier = Modifier.weight(1f),
-                            )
-                            Icon(
-                                Icons.AutoMirrored.Outlined.KeyboardArrowRight,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
+            // S9 Lot D : résumé global (count + proportion) sur le modèle de la
+            // fiche espèce. `proportion` nullable → asset legacy retombe sur le
+            // simple count, intentionnellement sans % entre parenthèses.
+            Text(
+                buildString {
+                    append(formatCount(stats.count))
+                    append(" arbres")
+                    stats.proportion?.let {
+                        append(" (")
+                        append(formatPercent(it))
+                        append(" du dataset)")
                     }
-                }
+                },
+                style = MaterialTheme.typography.bodyLarge,
+            )
+            val measures = listOfNotNull(
+                stats.medianHeightM?.let { "Hauteur médiane : $it m" },
+                stats.medianCircCm?.let { "Circonférence médiane : $it cm" },
+            )
+            measures.forEach {
+                Text(it, style = MaterialTheme.typography.bodyMedium)
             }
             if (stats.topArr.isNotEmpty()) {
-                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    Text(
-                        "Plus nombreux dans",
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    stats.topArr.forEach { item ->
-                        Text(
-                            "${item.arr} (${formatCount(item.count)})",
-                            style = MaterialTheme.typography.bodyMedium,
-                        )
-                    }
-                }
+                ArrSection(
+                    title = "Plus nombreux dans",
+                    items = stats.topArr,
+                    formatLine = { "${it.arr} (${formatCount(it.count)})" },
+                )
+            }
+            if (stats.topArrOver.isNotEmpty()) {
+                ArrSection(
+                    title = "Sur-représentés",
+                    items = stats.topArrOver,
+                    formatLine = { item ->
+                        val ratio = item.ratio?.let { formatRatio(it) } ?: ""
+                        if (ratio.isEmpty()) item.arr else "${item.arr} ($ratio)"
+                    },
+                )
             }
         }
     }
 }
 
-private val FR_NUMBER: NumberFormat = NumberFormat.getInstance(Locale.FRENCH)
+@Composable
+private fun ArrSection(
+    title: String,
+    items: List<ArrCount>,
+    formatLine: (ArrCount) -> String,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Text(
+            title,
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        items.forEach { item ->
+            Text(formatLine(item), style = MaterialTheme.typography.bodyMedium)
+        }
+    }
+}
+
+private val FR_LOCALE: Locale = Locale.FRENCH
+private val FR_NUMBER: NumberFormat = NumberFormat.getInstance(FR_LOCALE)
+private val FR_PERCENT: NumberFormat = NumberFormat.getPercentInstance(FR_LOCALE).apply {
+    minimumFractionDigits = 1
+    maximumFractionDigits = 1
+}
+private val FR_RATIO: NumberFormat = NumberFormat.getInstance(FR_LOCALE).apply {
+    minimumFractionDigits = 1
+    maximumFractionDigits = 1
+}
 
 private fun formatCount(n: Int): String = FR_NUMBER.format(n)
+
+private fun formatPercent(p: Double): String = FR_PERCENT.format(p)
+
+private fun formatRatio(r: Double): String = "×${FR_RATIO.format(r)}"

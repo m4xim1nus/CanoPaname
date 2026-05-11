@@ -16,6 +16,7 @@
     <!-- Arboretum / Remarquables : segmented control -->
     <string name="segment_liste">Liste</string>
     <string name="segment_catalogue">Catalogue</string>
-    <string name="segment_decouverte">Découverte</string>
-    <string name="segment_frequence">Fréquence</string>
+    <string name="segment_historique">Historique</string>
+    <string name="segment_par_frequence">Par fréquence</string>
+    <string name="segment_par_genre">Par genre</string>
 </resources>

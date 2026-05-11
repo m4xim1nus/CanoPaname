@@ -295,4 +295,77 @@ class SpeciesIndexTest {
         ))
         assertTrue(idx.allGenres().isEmpty())
     }
+
+    // ---------- genreHasAnyCapture : verrou fiche genre (S9 Lot B) ----------
+
+    @Test fun `genreHasAnyCapture true on identified capture`() {
+        val idx = SpeciesIndex(listOf(
+            entry(0, "Quercus", "robur"),
+            entry(1, "Quercus", "petraea"),
+            entry(98, "Quercus", "sp.", unknownSpecies = true),
+        ))
+        assertTrue(idx.genreHasAnyCapture("Quercus", setOf(0)))
+    }
+
+    @Test fun `genreHasAnyCapture true on sp capture only`() {
+        val idx = SpeciesIndex(listOf(
+            entry(0, "Quercus", "robur"),
+            entry(98, "Quercus", "sp.", unknownSpecies = true),
+        ))
+        assertTrue(idx.genreHasAnyCapture("Quercus", setOf(98)))
+    }
+
+    @Test fun `genreHasAnyCapture false when nothing captured for genre`() {
+        val idx = SpeciesIndex(listOf(
+            entry(0, "Quercus", "robur"),
+            entry(1, "Tilia", "cordata"),
+        ))
+        assertFalse(idx.genreHasAnyCapture("Quercus", setOf(1)))
+        assertFalse(idx.genreHasAnyCapture("Quercus", emptySet()))
+        assertFalse(idx.genreHasAnyCapture("Unknown", setOf(0)))
+    }
+
+    // ---------- effectivelyCapturedSpecies : auto-débloquage carte (S9 Lot C) ----------
+
+    @Test fun `effectivelyCapturedSpecies adds sp sk when sibling identified captured`() {
+        val idx = SpeciesIndex(listOf(
+            entry(0, "Tilia", "cordata"),
+            entry(1, "Tilia", "platyphyllos"),
+            entry(99, "Tilia", "sp.", unknownSpecies = true),
+            entry(2, "Quercus", "robur"),
+            entry(98, "Quercus", "sp.", unknownSpecies = true),
+        ))
+        // Capture d'un Tilia cordata seul → ajoute Tilia sp. (sk=99) au set.
+        assertEquals(setOf(0, 99), idx.effectivelyCapturedSpecies(setOf(0)))
+        // Capture transversale Tilia + Quercus → ajoute les deux sp.
+        assertEquals(setOf(0, 2, 98, 99), idx.effectivelyCapturedSpecies(setOf(0, 2)))
+    }
+
+    @Test fun `effectivelyCapturedSpecies idempotent when sp already captured`() {
+        val idx = SpeciesIndex(listOf(
+            entry(0, "Tilia", "cordata"),
+            entry(99, "Tilia", "sp.", unknownSpecies = true),
+        ))
+        // Capture du sp. seul → reste sp. + lui-même (pas de frère à ajouter).
+        assertEquals(setOf(99), idx.effectivelyCapturedSpecies(setOf(99)))
+        // Capture des deux → set inchangé (sp. déjà dedans).
+        assertEquals(setOf(0, 99), idx.effectivelyCapturedSpecies(setOf(0, 99)))
+    }
+
+    @Test fun `effectivelyCapturedSpecies returns empty on empty input`() {
+        val idx = SpeciesIndex(listOf(
+            entry(0, "Tilia", "cordata"),
+            entry(99, "Tilia", "sp.", unknownSpecies = true),
+        ))
+        assertEquals(emptySet<Int>(), idx.effectivelyCapturedSpecies(emptySet()))
+    }
+
+    @Test fun `effectivelyCapturedSpecies skips genre with no sp entry`() {
+        // Genre Acer sans entrée sp. → rien à ajouter.
+        val idx = SpeciesIndex(listOf(
+            entry(0, "Acer", "platanoides"),
+            entry(1, "Acer", "negundo"),
+        ))
+        assertEquals(setOf(0), idx.effectivelyCapturedSpecies(setOf(0)))
+    }
 }

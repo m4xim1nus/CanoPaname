@@ -217,6 +217,23 @@ VERNACULAR_OVERRIDES: dict[tuple[str, str], str] = {
     ("Gleditsia", "triacanthos f. Inermis"): "Févier sans épines",
     ("x Cupressocyparis", "leylandii"): "Cyprès de Leyland",
     ("Magnolia", "x soulangeana"): "Magnolia de Soulange",
+    # --- S9 Lot E : overrides éditoriaux post-smoke ----------------------------
+    # Préférence usage francophone courant (FR-FR) sur la forme stricte de WP.
+    # « Marronnier d'Inde » → « Marronnier commun » (Aesculus hippocastanum) :
+    # WP titre l'article « Marronnier d'Inde » mais le sens commun parisien
+    # le désigne juste « marronnier » ; « commun » lève l'ambiguïté avec les
+    # autres Aesculus (carnea, indica, glabra, pavia).
+    ("Aesculus", "hippocastanum"): "Marronnier commun",
+    # « Pagode japonaise » → « Sophora du Japon » (Styphnolobium japonicum) :
+    # le nom historique du genre Sophora, encore dominant en horticulture.
+    # Pas de collision « Sophora du Japon » dans le reste de l'index.
+    ("Styphnolobium", "japonicum"): "Sophora du Japon",
+    # « Cerisier doux » → « Merisier » (Prunus avium) : nom usuel pour l'espèce
+    # sauvage ; « cerisier doux » sonne traduction.
+    ("Prunus", "avium"): "Merisier",
+    # « Red cedar » → « Thuya géant » (Thuja plicata) : retour à un nom
+    # francophone, « red cedar » étant un anglicisme.
+    ("Thuja", "plicata"): "Thuya géant",
 }
 
 
@@ -1476,16 +1493,24 @@ def compute_genre_info(
     entries: list[dict],
     count_by_sk: dict[int, int],
     arr_by_sk: dict[int, dict[str, int]],
+    heights_by_sk: dict[int, list[int]],
+    circs_by_sk: dict[int, list[int]],
+    arr_total: dict[str, int],
+    total_arbres: int,
 ) -> list[dict]:
-    """Construit le payload `genre-info.json` (S8) : 1 entrée par genre,
-    sauf « Non spécifié » qui reste exclu.
+    """Construit le payload `genre-info.json` (S8 + S9 Lot D) : 1 entrée par
+    genre, sauf « Non spécifié » qui reste exclu.
 
     Pour chaque genre :
     - `g` : nom latin, `fr` : `GENRE_FR[g]` ou absent (rapport HTML pointe).
     - `wp` / `summary` : article Wikipedia FR du genre (titre `fr` d'abord,
       fallback latin), absent si miss.
     - `stats` : count cumulé Paris, nb d'espèces identifiées, top 3 espèces
-      du genre (`sk`, `nv`, `count`), top 3 arrondissements Paris.
+      du genre (`sk`, `nv`, `count`), top 3 arrondissements Paris (counts
+      absolus + sur-représentation), médianes hauteur / circonférence,
+      proportion du dataset Paris. Format aligné `_build_species_entry` :
+      mêmes clés `medianHm`, `medianCircCm`, `topArrAbs`, `topArrOver`,
+      `proportion`. Tous nullables côté Kotlin → rétrocompat asset legacy.
 
     Les entrées attendent un asset déjà résolu (cf. `compute_vernacular_and_pokedex`).
     """
@@ -1498,6 +1523,8 @@ def compute_genre_info(
         entries_by_genre[e["g"]].append(e)
 
     arr_count_by_genre: dict[str, dict[str, int]] = defaultdict(lambda: defaultdict(int))
+    heights_by_genre: dict[str, list[int]] = defaultdict(list)
+    circs_by_genre: dict[str, list[int]] = defaultdict(list)
     for e in entries:
         if e["g"] == "Non spécifié":
             continue
@@ -1505,6 +1532,8 @@ def compute_genre_info(
         for arr, c in arr_by_sk.get(sk, {}).items():
             if is_paris_arr(arr):
                 arr_count_by_genre[e["g"]][arr] += c
+        heights_by_genre[e["g"]].extend(heights_by_sk.get(sk, []))
+        circs_by_genre[e["g"]].extend(circs_by_sk.get(sk, []))
 
     print(
         f"[wpg] Wikipedia genre summaries pour {len(entries_by_genre)} genres "
@@ -1541,19 +1570,49 @@ def compute_genre_info(
             for arr, c in sorted(arr_counts.items(), key=lambda kv: -kv[1])[:3]
         ]
 
+        # S9 Lot D : top 3 arrondissements **sur-représentés** (ratio par
+        # rapport à la proportion dataset). Même formule que `_build_species_entry`.
+        over: list[tuple[str, float, int]] = []
+        for arr, c in arr_counts.items():
+            if c < 5:
+                continue
+            if arr_total.get(arr, 0) <= 0 or total_count <= 0 or total_arbres <= 0:
+                continue
+            ratio = (c * total_arbres) / (total_count * arr_total[arr])
+            over.append((arr, ratio, c))
+        over.sort(key=lambda x: -x[1])
+        top_arr_over_payload = [
+            {"arr": a, "ratio": round(r, 2), "count": c}
+            for a, r, c in over[:3]
+        ]
+
         gf = genre_fr(genre)
         slug = _genre_slug(genre)
         cache_path = WIKIPEDIA_GENRE_CACHE_DIR / f"{slug}.json"
         wp_payload = _fetch_wikipedia_genre_payload(genre, gf, cache_path)
 
+        stats_payload: dict = {
+            "count": total_count,
+            "speciesIdentified": identified_count,
+            "topSpecies": top_species_payload,
+            "topArr": top_arr_payload,
+            "proportion": round(total_count / total_arbres, 4) if total_arbres else 0.0,
+        }
+        # S9 Lot D : médianes et top arr over n'apparaissent que si les données
+        # sources existent — rétrocompat asset legacy via `optXxxOrNull` côté
+        # Kotlin (champs nullables).
+        heights = heights_by_genre.get(genre, [])
+        circs = circs_by_genre.get(genre, [])
+        if heights:
+            stats_payload["medianHm"] = int(round(statistics.median(heights)))
+        if circs:
+            stats_payload["medianCircCm"] = int(round(statistics.median(circs)))
+        if top_arr_over_payload:
+            stats_payload["topArrOver"] = top_arr_over_payload
+
         entry: dict = {
             "g": genre,
-            "stats": {
-                "count": total_count,
-                "speciesIdentified": identified_count,
-                "topSpecies": top_species_payload,
-                "topArr": top_arr_payload,
-            },
+            "stats": stats_payload,
         }
         if gf:
             entry["fr"] = gf
@@ -3059,11 +3118,20 @@ def build(csv_path: Path, db_path: Path, geojson_path: Path) -> None:
         f"→ {vernacular_counters['pokedex_count']} #N Pokédex"
     )
 
-    # S8 : 1 article Wikipedia FR par genre, agrégats stats Paris (count, top
-    # 3 espèces, top 3 arr). Lit `entries` post-cascade nv pour récupérer les
-    # libellés `nv` finaux dans `topSpecies`. À placer AVANT verify pour
-    # nourrir l'invariant #7 (unicité des `fr`).
-    genre_info = compute_genre_info(entries, count_by_sk, arr_by_sk)
+    # S8 : 1 article Wikipedia FR par genre, agrégats stats Paris. S9 Lot D :
+    # médianes hauteur/circonférence, proportion dataset, top arr sur-
+    # représentés (aligné `_build_species_entry`). Lit `entries` post-cascade
+    # nv pour récupérer les libellés `nv` finaux dans `topSpecies`. À placer
+    # AVANT verify pour nourrir l'invariant #7 (unicité des `fr`).
+    genre_info = compute_genre_info(
+        entries,
+        count_by_sk,
+        arr_by_sk,
+        heights_by_sk=heights_by_sk,
+        circs_by_sk=circs_by_sk,
+        arr_total=arr_total,
+        total_arbres=inserted,
+    )
     write_genre_info(genre_info)
 
     # Sanity checks : invariants post-build (sk préservés, WP non perdue,

@@ -133,6 +133,35 @@ class SpeciesIndex(entries: List<SpeciesEntry>) {
     }
 
     /**
+     * `true` ssi au moins un sk du genre (identifié OU `unknownSpecies`) est
+     * dans `capturedSks`. Sert au verrouillage des fiches genre (S9 Lot B) :
+     * une fiche genre n'est accessible que si l'utilisateur a touché le genre,
+     * directement (capture sp.) ou indirectement (capture identifiée).
+     */
+    fun genreHasAnyCapture(genre: String, capturedSks: Set<Int>): Boolean {
+        val sks = sksByGenre[genre] ?: return false
+        return sks.any { it in capturedSks }
+    }
+
+    /**
+     * Étend `captured` avec les sks `unknownSpecies` dont le genre contient au
+     * moins une capture (sp. ou identifiée). Sert à la coloration de la carte
+     * (S9 Lot C) : si l'utilisateur a capturé `Tilia cordata`, tous les pins
+     * `Tilia sp.` doivent passer au vert — alignement avec l'auto-débloquage
+     * genre-based déjà en place dans `isDiscovered`.
+     */
+    fun effectivelyCapturedSpecies(captured: Set<Int>): Set<Int> {
+        if (captured.isEmpty()) return captured
+        val capturedGenres = captured.mapNotNull { byIndex[it]?.genre }.toSet()
+        val implicitSpSks = capturedGenres.asSequence()
+            .flatMap { g -> sksByGenre[g]?.asSequence() ?: emptySequence() }
+            .filter { byIndex[it]?.unknownSpecies == true }
+            .toSet()
+        if (implicitSpSks.isEmpty()) return captured
+        return captured + implicitSpSks
+    }
+
+    /**
      * Auto-débloquage genre-based des fiches `(G, sp.)` : un sk `unknownSpecies`
      * est considéré découvert dès qu'un sk frère du même genre est capturé.
      * Les sks identifiés (non `unknownSpecies`) sont découverts au sens strict

@@ -213,7 +213,14 @@ fun MapScreen(
             captureRepo.capturedRemarquableIds(),
         ) { species, remarquables -> species to remarquables }
             .collect { (species, remarquables) ->
-                applyDiscoveryColor(style, species, remarquables)
+                // S9 Lot C : capturer une espèce identifiée d'un genre déverrouille
+                // les pins (G, sp.) du même genre (verts). Cohérent avec
+                // l'auto-débloquage genre-based déjà appliqué côté Arboretum.
+                applyDiscoveryColor(
+                    style,
+                    speciesIndex.effectivelyCapturedSpecies(species),
+                    remarquables,
+                )
             }
     }
 
@@ -240,8 +247,12 @@ fun MapScreen(
                 }
                 val tStart = android.os.SystemClock.elapsedRealtime()
                 val rawJson = app.arbresGeoJsonAsync.await()
+                // Wrap S9 Lot C : ajoute les sp. genre-débloqués au set passé
+                // à l'enrichment, pour que les clusters propagent l'état de
+                // découverte sur les (G, sp.).
+                val effectiveSpecies = speciesIndex.effectivelyCapturedSpecies(species)
                 val enriched = withContext(Dispatchers.Default) {
-                    enrichGeoJsonWithDiscovery(rawJson, species, remarquables)
+                    enrichGeoJsonWithDiscovery(rawJson, effectiveSpecies, remarquables)
                 }
                 val tEnrich = android.os.SystemClock.elapsedRealtime()
                 android.util.Log.i(
@@ -422,6 +433,11 @@ fun MapScreen(
                                         captureRepo.capturedRemarquableIds(),
                                     ) { s, r -> s to r }.first()
                                 } ?: (emptySet<Int>() to emptySet<Long>())
+                                // Wrap S9 Lot C : étend le set de captures aux sp.
+                                // genre-débloqués pour la coloration (les pins (G, sp.)
+                                // de la fiche genre apparaissent verts).
+                                val effectiveSpecies =
+                                    speciesIndex.effectivelyCapturedSpecies(initialCaptures.first)
                                 val json = withContext(Dispatchers.Default) {
                                     enrichGeoJsonWithDiscovery(
                                         filterGeoJsonBySpecies(
@@ -429,7 +445,7 @@ fun MapScreen(
                                             filterSpecies,
                                             initialCaptures.second,
                                         ),
-                                        initialCaptures.first,
+                                        effectiveSpecies,
                                         initialCaptures.second,
                                     )
                                 }.also { filtered ->
