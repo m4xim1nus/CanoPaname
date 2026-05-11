@@ -1,5 +1,6 @@
 package app.arbre.ui
 
+import android.net.Uri
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -13,6 +14,7 @@ import app.arbre.data.rememberOnboardingStore
 import app.arbre.ui.about.AboutScreen
 import app.arbre.ui.arboretum.ArboretumScreen
 import app.arbre.ui.badges.BadgesScreen
+import app.arbre.ui.genre.GenreDetailScreen
 import app.arbre.ui.map.MapScreen
 import app.arbre.ui.onboarding.WelcomeScreen
 import app.arbre.ui.profile.ProfileScreen
@@ -40,6 +42,9 @@ object Routes {
     // (1 sk = filtre fiche-espèce normale ; N sks = filtre genre depuis la
     // fiche `(G, sp.)`, sprint 4bis du cycle Catalogue).
     const val MAP_FILTERED = "map_filtered/{speciesIndices}"
+    // Sprint 8 : fiche genre dédiée. `genre` est URL-encodé (peut contenir
+    // espace pour les hybrides type « x Cupressocyparis »).
+    const val GENRE = "genre/{genre}"
     const val ABOUT = "about"
 
     fun species(speciesIndex: Int, celebrate: Boolean = false): String =
@@ -50,6 +55,7 @@ object Routes {
     fun remarquableDetail(arbreId: Long): String = "remarquable_detail/$arbreId"
     fun map(pulseArbreId: Long? = null): String =
         if (pulseArbreId != null) "map?pulseArbreId=$pulseArbreId" else "map"
+    fun genre(genre: String): String = "genre/${Uri.encode(genre)}"
 }
 
 @Composable
@@ -129,6 +135,7 @@ fun ArbresNavHost() {
             ArboretumScreen(
                 onBack = { nav.popBackStack() },
                 onSpeciesClick = { sk -> nav.navigate(Routes.species(sk)) },
+                onGenreClick = { genre -> nav.navigate(Routes.genre(genre)) },
             )
         }
         composable(Routes.REMARQUABLES) {
@@ -178,6 +185,11 @@ fun ArbresNavHost() {
                 onSpeciesClick = { other -> nav.navigate(Routes.species(other)) },
                 onRemarquableClick = { id -> nav.navigate(Routes.remarquableDetail(id)) },
                 onUnlockLost = { nav.popBackStack(Routes.MAP, inclusive = false) },
+                onRedirectToGenre = { genre ->
+                    nav.navigate(Routes.genre(genre)) {
+                        popUpTo(Routes.SPECIES) { inclusive = true }
+                    }
+                },
                 celebrate = celebrate,
             )
         }
@@ -202,6 +214,26 @@ fun ArbresNavHost() {
                 onSpeciesClick = { other -> nav.navigate(Routes.species(other)) },
                 onRemarquableDetail = { id -> nav.navigate(Routes.remarquableDetail(id)) },
                 onBack = { nav.popBackStack() },
+            )
+        }
+        composable(
+            Routes.GENRE,
+            arguments = listOf(navArgument("genre") { type = NavType.StringType }),
+        ) { entry ->
+            val raw = entry.arguments?.getString("genre")
+            val genre = raw?.let { Uri.decode(it) }?.takeIf { it.isNotBlank() }
+            if (genre == null) return@composable
+            GenreDetailScreen(
+                genre = genre,
+                onBack = { nav.popBackStack() },
+                onSpeciesClick = { sk -> nav.navigate(Routes.species(sk)) },
+                onShowOnMap = { sks -> nav.navigate(Routes.mapFiltered(sks)) },
+                onShowArbreOnMap = { id ->
+                    nav.navigate(Routes.map(id)) {
+                        popUpTo(Routes.MAP) { inclusive = false }
+                    }
+                },
+                onUnlockLost = { nav.popBackStack(Routes.MAP, inclusive = false) },
             )
         }
     }

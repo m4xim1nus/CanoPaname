@@ -106,6 +106,24 @@ object BadgeCatalog {
         category = BadgeCategory.BOTANIQUE,
     )
 
+    /**
+     * Mosaïque de chênes (S8) : capturer N espèces différentes du genre
+     * Quercus. Les `Quercus sp.` ne comptent pas (cohérent avec la sémantique
+     * S8 — un sp. n'est pas une espèce identifiée).
+     */
+    val MOSAIQUE_QUERCUS = BadgeDef(
+        id = "mosaique_quercus",
+        label = "Mosaïque de chênes",
+        description = "Espèces différentes du genre Quercus capturées.",
+        category = BadgeCategory.BOTANIQUE,
+        unitLabel = "chênes",
+        tiers = listOf(
+            TierDef(3, "Bosquet"),
+            TierDef(5, "Chênaie"),
+            TierDef(10, "Forêt"),
+        ),
+    )
+
     val TOURNEUR_DE_PARIS = BadgeDef(
         id = "tourneur_de_paris",
         label = "Tourneur de Paris",
@@ -151,6 +169,7 @@ object BadgeCatalog {
         MARCHEUR,
         BOTANISTE,
         ESPECE_RARE,
+        MOSAIQUE_QUERCUS,
         TOURNEUR_DE_PARIS,
         TOUR_COMPLET,
         CHASSEUR,

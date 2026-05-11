@@ -18,6 +18,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -67,6 +68,7 @@ import java.util.Date
 fun ArboretumScreen(
     onBack: () -> Unit,
     onSpeciesClick: (Int) -> Unit = {},
+    onGenreClick: (String) -> Unit = {},
 ) {
     val captureRepo = rememberCaptureRepository()
     val speciesIndex = rememberSpeciesIndex()
@@ -125,24 +127,31 @@ fun ArboretumScreen(
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 12.dp),
             )
+            // S8 : les captures `(G, sp.)` n'apparaissent dans aucun mode du
+            // Catalogue. Elles restent visibles via le compteur HeaderCard
+            // (« + N espèces indéterminées ») et accessibles via la fiche genre
+            // correspondante (qui héberge la galerie photos sp.). Filtrer ici,
+            // pas dans `speciesGroups` direct, pour préserver `nbIndeterminees`.
+            val speciesGroupsIdentifiees = speciesGroups.filter { !it.entry.unknownSpecies }
             when (viewMode) {
                 ArboretumViewMode.DECOUVERTE -> DecouverteView(
-                    speciesGroups = speciesGroups,
+                    speciesGroups = speciesGroupsIdentifiees,
                     totalEspecesIdentifiees = stats.totalEspecesIdentifiees,
                     arbreRepo = arbreRepo,
                     onSpeciesClick = onSpeciesClick,
                 )
                 ArboretumViewMode.FREQUENCE -> FrequenceView(
                     speciesIndex = speciesIndex,
-                    speciesGroups = speciesGroups,
+                    speciesGroups = speciesGroupsIdentifiees,
                     capturedSks = capturedSks,
                     onSpeciesClick = onSpeciesClick,
                 )
                 ArboretumViewMode.CATALOGUE -> CatalogueView(
                     speciesIndex = speciesIndex,
-                    speciesGroups = speciesGroups,
+                    speciesGroups = speciesGroupsIdentifiees,
                     capturedSks = capturedSks,
                     onSpeciesClick = onSpeciesClick,
+                    onGenreClick = onGenreClick,
                 )
             }
         }
@@ -271,9 +280,9 @@ private fun FrequenceView(
  * **rang front recalculé** (1..~802) dans l'ordre d'affichage genre→count-déc
  * — distinct du `pokedexNumber` backend stable.
  *
- * Les `unknownSpecies` apparaissent en queue de leur chapitre, sans `#`. Le
- * tap sur header de chapitre est désactivé au S7 ; le S8 ajoutera l'ouverture
- * de `GenreDetailScreen`.
+ * S8 : plus de cards `(G, sp.)` rendues — l'entrée `(G, sp.)` est entièrement
+ * absorbée par la fiche genre. Le tap sur header de chapitre ouvre cette
+ * fiche, qui héberge la galerie photos sp. + les infos Wikipedia du genre.
  */
 @Composable
 private fun CatalogueView(
@@ -281,6 +290,7 @@ private fun CatalogueView(
     speciesGroups: List<SpeciesGroup>,
     capturedSks: Set<Int>,
     onSpeciesClick: (Int) -> Unit,
+    onGenreClick: (String) -> Unit,
 ) {
     val ctx = LocalContext.current
     val firstPhotoBySk: Map<Int, File> = remember(speciesGroups, ctx) {
@@ -292,8 +302,7 @@ private fun CatalogueView(
     val chapters = remember(speciesIndex, capturedSks) {
         var displayN = 1
         speciesIndex.genres().map { genre ->
-            val all = speciesIndex.entriesOfGenre(genre)
-            val identifiedSorted = all
+            val identifiedSorted = speciesIndex.entriesOfGenre(genre)
                 .filter { !it.unknownSpecies }
                 .sortedWith(
                     compareBy<SpeciesEntry> { it.pokedexNumber == null }
@@ -305,11 +314,9 @@ private fun CatalogueView(
                 displayN += 1
                 entry to n
             }
-            val sps = all.filter { it.unknownSpecies }
             GenreChapter(
                 genre = genre,
                 identifiedWithDisplayN = identifiedWithN,
-                sps = sps,
                 captured = speciesIndex.capturedCountInGenre(genre, capturedSks),
                 total = speciesIndex.genreCount(genre),
             )
@@ -328,7 +335,7 @@ private fun CatalogueView(
                 span = { GridItemSpan(maxLineSpan) },
                 key = "chapter-${chapter.genre}",
             ) {
-                GenreChapterHeader(chapter)
+                GenreChapterHeader(chapter, onClick = { onGenreClick(chapter.genre) })
             }
             gridItems(
                 chapter.identifiedWithDisplayN,
@@ -346,19 +353,6 @@ private fun CatalogueView(
                     } else null,
                 )
             }
-            gridItems(chapter.sps, key = { it.index }) { entry ->
-                val discovered = speciesIndex.isDiscovered(entry.index, capturedSks)
-                val photoFile = if (entry.index in capturedSks) firstPhotoBySk[entry.index] else null
-                CatalogueCell(
-                    displayLabel = "—",
-                    entry = entry,
-                    photoFile = photoFile,
-                    discovered = discovered,
-                    onClick = if (discovered) {
-                        { onSpeciesClick(entry.index) }
-                    } else null,
-                )
-            }
         }
     }
 }
@@ -366,16 +360,16 @@ private fun CatalogueView(
 private data class GenreChapter(
     val genre: String,
     val identifiedWithDisplayN: List<Pair<SpeciesEntry, Int>>,
-    val sps: List<SpeciesEntry>,
     val captured: Int,
     val total: Int,
 )
 
 @Composable
-private fun GenreChapterHeader(chapter: GenreChapter) {
+private fun GenreChapterHeader(chapter: GenreChapter, onClick: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .clickable(onClick = onClick)
             .padding(top = 16.dp, bottom = 4.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
@@ -388,6 +382,11 @@ private fun GenreChapterHeader(chapter: GenreChapter) {
             "${chapter.captured} / ${chapter.total}",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Icon(
+            Icons.AutoMirrored.Outlined.KeyboardArrowRight,
+            contentDescription = "Ouvrir la fiche du genre ${chapter.genre}",
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
 }

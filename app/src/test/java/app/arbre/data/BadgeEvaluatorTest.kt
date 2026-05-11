@@ -90,20 +90,20 @@ class BadgeEvaluatorTest {
 
     // ---------- evaluate : aucun, premier ----------
 
-    @Test fun `evaluate with no captures returns 8 badges all locked`() {
-        val states = BadgeEvaluator.evaluate(emptyList(), emptyMap(), emptySpeciesInfo())
-        assertEquals(8, states.size)
+    @Test fun `evaluate with no captures returns 9 badges all locked`() {
+        val states = eval(emptyList(), emptyMap(), emptySpeciesInfo())
+        assertEquals(9, states.size)
         assertEquals(BadgeCatalog.ALL.map { it.id }, states.map { it.def.id })
         assertTrue(states.all { !it.unlocked })
-        // 3 Progressive + 5 Binary
-        assertEquals(3, states.filterIsInstance<BadgeState.Progressive>().size)
+        // 4 Progressive (Marcheur, Botaniste, Mosaïque, Chasseur) + 5 Binary
+        assertEquals(4, states.filterIsInstance<BadgeState.Progressive>().size)
         assertEquals(5, states.filterIsInstance<BadgeState.Binary>().size)
     }
 
     @Test fun `evaluate unlocks marcheur tier 1 after first capture`() {
         val ts = parisTs("2025-04-01T10:00:00Z")
         val arbre = arbre(id = 1L)
-        val states = BadgeEvaluator.evaluate(
+        val states = eval(
             captures = listOf(capture(arbreId = 1L, ts = ts)),
             arbresById = mapOf(1L to arbre),
             speciesInfo = emptySpeciesInfo(),
@@ -121,7 +121,7 @@ class BadgeEvaluatorTest {
             capture(arbreId = i.toLong(), ts = parisTs("2025-05-0${(i % 9) + 1}T10:00:00Z") + i)
         }
         val arbres = captures.associate { it.arbreId to arbre(id = it.arbreId) }
-        val states = BadgeEvaluator.evaluate(captures, arbres, emptySpeciesInfo())
+        val states = eval(captures, arbres, emptySpeciesInfo())
         val marcheur = progressive(states, BadgeCatalog.MARCHEUR.id)
 
         val sorted = captures.sortedBy { it.timestamp }
@@ -136,7 +136,7 @@ class BadgeEvaluatorTest {
         // 37 captures → tiers 1, 10, 25 atteints, 50 verrouillé. nextTier = 50.
         val captures = (1..37).map { i -> capture(arbreId = i.toLong(), ts = i.toLong()) }
         val arbres = captures.associate { it.arbreId to arbre(id = it.arbreId) }
-        val states = BadgeEvaluator.evaluate(captures, arbres, emptySpeciesInfo())
+        val states = eval(captures, arbres, emptySpeciesInfo())
         val marcheur = progressive(states, BadgeCatalog.MARCHEUR.id)
 
         assertEquals(37, marcheur.currentCount)
@@ -152,7 +152,7 @@ class BadgeEvaluatorTest {
         val first10 = (1..10).map { i -> capture(arbreId = i.toLong(), ts = i.toLong()) }
         val later = (11..15).map { i -> capture(arbreId = i.toLong(), ts = (i * 100L)) }
         val arbres = (first10 + later).associate { it.arbreId to arbre(id = it.arbreId) }
-        val states = BadgeEvaluator.evaluate(first10 + later, arbres, emptySpeciesInfo())
+        val states = eval(first10 + later, arbres, emptySpeciesInfo())
         val marcheur = progressive(states, BadgeCatalog.MARCHEUR.id)
 
         assertEquals(10L, tierUnlockedAt(marcheur, threshold = 10))
@@ -164,7 +164,7 @@ class BadgeEvaluatorTest {
 
     @Test fun `evaluate unlocks geant when hauteur exceeds 30m`() {
         val ts = parisTs("2025-06-01T08:00:00Z")
-        val states = BadgeEvaluator.evaluate(
+        val states = eval(
             captures = listOf(capture(arbreId = 7L, ts = ts)),
             arbresById = mapOf(7L to arbre(id = 7L, hauteurM = 35)),
             speciesInfo = emptySpeciesInfo(),
@@ -174,7 +174,7 @@ class BadgeEvaluatorTest {
     }
 
     @Test fun `evaluate does not unlock geant at exactly 30m`() {
-        val states = BadgeEvaluator.evaluate(
+        val states = eval(
             captures = listOf(capture(arbreId = 7L, ts = 1L)),
             arbresById = mapOf(7L to arbre(id = 7L, hauteurM = 30)),
             speciesInfo = emptySpeciesInfo(),
@@ -184,7 +184,7 @@ class BadgeEvaluatorTest {
 
     @Test fun `evaluate unlocks vieux sage when circ exceeds 400cm`() {
         val ts = parisTs("2025-06-01T08:00:00Z")
-        val states = BadgeEvaluator.evaluate(
+        val states = eval(
             captures = listOf(capture(arbreId = 8L, ts = ts)),
             arbresById = mapOf(8L to arbre(id = 8L, circonferenceCm = 450)),
             speciesInfo = emptySpeciesInfo(),
@@ -197,7 +197,7 @@ class BadgeEvaluatorTest {
     @Test fun `evaluate unlocks espece rare when species count below 100`() {
         val ts = parisTs("2025-04-01T10:00:00Z")
         val info = speciesInfo(speciesIndex = 42, count = 50)
-        val states = BadgeEvaluator.evaluate(
+        val states = eval(
             captures = listOf(capture(arbreId = 1L, speciesIndex = 42, ts = ts)),
             arbresById = mapOf(1L to arbre(id = 1L)),
             speciesInfo = info,
@@ -207,7 +207,7 @@ class BadgeEvaluatorTest {
 
     @Test fun `evaluate does not unlock espece rare for common species`() {
         val info = speciesInfo(speciesIndex = 42, count = 50_000)
-        val states = BadgeEvaluator.evaluate(
+        val states = eval(
             captures = listOf(capture(arbreId = 1L, speciesIndex = 42, ts = 1L)),
             arbresById = mapOf(1L to arbre(id = 1L)),
             speciesInfo = info,
@@ -221,7 +221,7 @@ class BadgeEvaluatorTest {
             capture(arbreId = i.toLong(), speciesIndex = i, remarquable = true, ts = i.toLong())
         }
         val arbres = captures.associate { it.arbreId to arbre(id = it.arbreId, remarquable = true) }
-        val states = BadgeEvaluator.evaluate(captures, arbres, emptySpeciesInfo())
+        val states = eval(captures, arbres, emptySpeciesInfo())
         val botaniste = progressive(states, BadgeCatalog.BOTANISTE.id)
         assertEquals(0, botaniste.currentCount)
         assertEquals(0, botaniste.unlockedTierCount)
@@ -233,7 +233,7 @@ class BadgeEvaluatorTest {
             capture(arbreId = i.toLong(), speciesIndex = i, ts = i.toLong())
         }
         val arbres = captures.associate { it.arbreId to arbre(id = it.arbreId) }
-        val states = BadgeEvaluator.evaluate(captures, arbres, emptySpeciesInfo())
+        val states = eval(captures, arbres, emptySpeciesInfo())
         val botaniste = progressive(states, BadgeCatalog.BOTANISTE.id)
 
         assertEquals(12, botaniste.currentCount)
@@ -251,7 +251,7 @@ class BadgeEvaluatorTest {
         val arbres = (1..10).associate { arrNum ->
             arrNum.toLong() to arbre(id = arrNum.toLong(), adresse = "RUE TEST, ${arrNum}e")
         }
-        val states = BadgeEvaluator.evaluate(captures, arbres, emptySpeciesInfo())
+        val states = eval(captures, arbres, emptySpeciesInfo())
         assertNotNull(binaryUnlockedAt(states, BadgeCatalog.TOURNEUR_DE_PARIS.id))
         assertNull(binaryUnlockedAt(states, BadgeCatalog.TOUR_COMPLET.id))
     }
@@ -261,7 +261,7 @@ class BadgeEvaluatorTest {
         val arbres = (1..20).associate { arrNum ->
             arrNum.toLong() to arbre(id = arrNum.toLong(), adresse = "RUE TEST, ${arrNum}e")
         }
-        val states = BadgeEvaluator.evaluate(captures, arbres, emptySpeciesInfo())
+        val states = eval(captures, arbres, emptySpeciesInfo())
         assertNotNull(binaryUnlockedAt(states, BadgeCatalog.TOUR_COMPLET.id))
     }
 
@@ -269,7 +269,7 @@ class BadgeEvaluatorTest {
         // 10 captures hors-Paris : marcheur tier 10 se débloque, pas Tourneur.
         val captures = (1..10).map { capture(arbreId = it.toLong(), ts = it.toLong()) }
         val arbres = (1..10).associate { it.toLong() to arbre(id = it.toLong(), adresse = "Bois de Vincennes") }
-        val states = BadgeEvaluator.evaluate(captures, arbres, emptySpeciesInfo())
+        val states = eval(captures, arbres, emptySpeciesInfo())
         val marcheur = progressive(states, BadgeCatalog.MARCHEUR.id)
         assertNotNull(tierUnlockedAt(marcheur, threshold = 10))
         assertNull(binaryUnlockedAt(states, BadgeCatalog.TOURNEUR_DE_PARIS.id))
@@ -282,7 +282,7 @@ class BadgeEvaluatorTest {
             capture(arbreId = i.toLong(), remarquable = true, ts = i.toLong())
         }
         val arbres = captures.associate { it.arbreId to arbre(id = it.arbreId, remarquable = true) }
-        val states = BadgeEvaluator.evaluate(captures, arbres, emptySpeciesInfo())
+        val states = eval(captures, arbres, emptySpeciesInfo())
         val chasseur = progressive(states, BadgeCatalog.CHASSEUR.id)
         assertEquals(10, chasseur.currentCount)
         assertEquals(9L, tierUnlockedAt(chasseur, threshold = 10))
@@ -295,12 +295,108 @@ class BadgeEvaluatorTest {
             capture(arbreId = 42L, remarquable = true, ts = i.toLong())
         }
         val arbres = mapOf(42L to arbre(id = 42L, remarquable = true))
-        val states = BadgeEvaluator.evaluate(captures, arbres, emptySpeciesInfo())
+        val states = eval(captures, arbres, emptySpeciesInfo())
         val chasseur = progressive(states, BadgeCatalog.CHASSEUR.id)
         // Tier 1 atteint (1 remarquable distinct), tier 5 non.
         assertEquals(1, chasseur.currentCount)
         assertNotNull(tierUnlockedAt(chasseur, threshold = 1))
         assertNull(tierUnlockedAt(chasseur, threshold = 5))
+    }
+
+    // ---------- sémantique sp. (S8) ----------
+
+    @Test fun `evaluate excludes unknownSpecies captures from botaniste`() {
+        // sk=99 est unknownSpecies (Tilia sp.). 5 captures de ce sk seul.
+        val index = SpeciesIndex(listOf(
+            SpeciesEntry(index = 99, genre = "Tilia", espece = "sp.", unknownSpecies = true),
+        ))
+        val captures = (0 until 5).map { i ->
+            capture(arbreId = i.toLong(), speciesIndex = 99, ts = i.toLong())
+        }
+        val arbres = captures.associate { it.arbreId to arbre(id = it.arbreId, genre = "Tilia", espece = "sp.") }
+        val states = eval(captures, arbres, speciesIndex = index)
+        val botaniste = progressive(states, BadgeCatalog.BOTANISTE.id)
+        // Aucune progression (toutes les captures sont sp.).
+        assertEquals(0, botaniste.currentCount)
+        assertEquals(0, botaniste.unlockedTierCount)
+    }
+
+    @Test fun `evaluate counts identified species but not sp for botaniste`() {
+        // Mix : 3 sks identifiés + 1 sp. → 3 distincts au compteur.
+        val index = SpeciesIndex(listOf(
+            SpeciesEntry(index = 0, genre = "Tilia", espece = "cordata"),
+            SpeciesEntry(index = 1, genre = "Tilia", espece = "platyphyllos"),
+            SpeciesEntry(index = 2, genre = "Tilia", espece = "tomentosa"),
+            SpeciesEntry(index = 99, genre = "Tilia", espece = "sp.", unknownSpecies = true),
+        ))
+        val captures = listOf(
+            capture(arbreId = 1L, speciesIndex = 0, ts = 1L),
+            capture(arbreId = 2L, speciesIndex = 1, ts = 2L),
+            capture(arbreId = 3L, speciesIndex = 2, ts = 3L),
+            capture(arbreId = 4L, speciesIndex = 99, ts = 4L),
+        )
+        val arbres = captures.associate { it.arbreId to arbre(id = it.arbreId, genre = "Tilia") }
+        val states = eval(captures, arbres, speciesIndex = index)
+        val botaniste = progressive(states, BadgeCatalog.BOTANISTE.id)
+        assertEquals(3, botaniste.currentCount)
+    }
+
+    // ---------- mosaique de chênes (progressif, S8) ----------
+
+    @Test fun `evaluate unlocks mosaique tier 3 with 3 distinct quercus species`() {
+        val index = SpeciesIndex(listOf(
+            SpeciesEntry(index = 10, genre = "Quercus", espece = "robur"),
+            SpeciesEntry(index = 11, genre = "Quercus", espece = "petraea"),
+            SpeciesEntry(index = 12, genre = "Quercus", espece = "ilex"),
+        ))
+        val captures = listOf(
+            capture(arbreId = 1L, speciesIndex = 10, ts = 1L),
+            capture(arbreId = 2L, speciesIndex = 11, ts = 2L),
+            capture(arbreId = 3L, speciesIndex = 12, ts = 3L),
+        )
+        val arbres = captures.associate { it.arbreId to arbre(id = it.arbreId, genre = "Quercus") }
+        val states = eval(captures, arbres, speciesIndex = index)
+        val mosaique = progressive(states, BadgeCatalog.MOSAIQUE_QUERCUS.id)
+        assertEquals(3, mosaique.currentCount)
+        assertEquals(3L, tierUnlockedAt(mosaique, threshold = 3))
+        assertNull(tierUnlockedAt(mosaique, threshold = 5))
+        assertNull(tierUnlockedAt(mosaique, threshold = 10))
+    }
+
+    @Test fun `evaluate ignores non-quercus captures for mosaique`() {
+        val captures = (0 until 5).map { i ->
+            capture(arbreId = i.toLong(), speciesIndex = i, ts = i.toLong())
+        }
+        // Tous Tilia, pas Quercus.
+        val arbres = captures.associate { it.arbreId to arbre(id = it.arbreId, genre = "Tilia") }
+        val states = eval(captures, arbres)
+        val mosaique = progressive(states, BadgeCatalog.MOSAIQUE_QUERCUS.id)
+        assertEquals(0, mosaique.currentCount)
+        assertEquals(0, mosaique.unlockedTierCount)
+    }
+
+    @Test fun `evaluate dedupes mosaique on speciesIndex`() {
+        // 5 captures du même Quercus robur → 1 sk distinct.
+        val captures = (0 until 5).map { i ->
+            capture(arbreId = i.toLong(), speciesIndex = 10, ts = i.toLong())
+        }
+        val arbres = captures.associate { it.arbreId to arbre(id = it.arbreId, genre = "Quercus") }
+        val states = eval(captures, arbres)
+        val mosaique = progressive(states, BadgeCatalog.MOSAIQUE_QUERCUS.id)
+        assertEquals(1, mosaique.currentCount)
+        assertNull(tierUnlockedAt(mosaique, threshold = 3))
+    }
+
+    @Test fun `evaluate excludes quercus sp from mosaique`() {
+        // Quercus sp. (sk=99) capturé → ne compte pas dans Mosaïque même si genre = Quercus.
+        val index = SpeciesIndex(listOf(
+            SpeciesEntry(index = 99, genre = "Quercus", espece = "sp.", unknownSpecies = true),
+        ))
+        val captures = listOf(capture(arbreId = 1L, speciesIndex = 99, ts = 1L))
+        val arbres = mapOf(1L to arbre(id = 1L, genre = "Quercus", espece = "sp."))
+        val states = eval(captures, arbres, speciesIndex = index)
+        val mosaique = progressive(states, BadgeCatalog.MOSAIQUE_QUERCUS.id)
+        assertEquals(0, mosaique.currentCount)
     }
 
     // ---------- helpers ----------
@@ -340,12 +436,14 @@ class BadgeEvaluatorTest {
         circonferenceCm: Int? = null,
         remarquable: Boolean = false,
         adresse: String? = "RUE TEST, 5e",
+        genre: String = "Platanus",
+        espece: String = "x acerifolia",
     ): Arbre = Arbre(
         id = id,
-        genre = "Platanus",
-        espece = "x acerifolia",
+        genre = genre,
+        espece = espece,
         varieteCultivar = null,
-        nomCommun = "Platane",
+        nomCommun = null,
         hauteurM = hauteurM,
         circonferenceCm = circonferenceCm,
         remarquable = remarquable,
@@ -356,6 +454,22 @@ class BadgeEvaluatorTest {
 
     private fun emptySpeciesInfo(): SpeciesInfoRepository =
         SpeciesInfoRepository(emptyMap())
+
+    /** SpeciesIndex minimal pour les tests : 0 unknownSks par défaut. Les
+     *  tests qui exercent la sémantique sp. construisent leur propre index
+     *  avec quelques `unknownSpecies = true`. */
+    private fun emptySpeciesIndex(): SpeciesIndex = SpeciesIndex(emptyList())
+
+    /** Wrapper de `BadgeEvaluator.evaluate` qui défaut `speciesIndex` au repo
+     *  vide. Évite de réécrire 16 call-sites historiques quand seul le
+     *  contrat de signature change (S8). */
+    private fun eval(
+        captures: List<Capture>,
+        arbresById: Map<Long, Arbre>,
+        speciesInfo: SpeciesInfoRepository = emptySpeciesInfo(),
+        speciesIndex: SpeciesIndex = emptySpeciesIndex(),
+    ): List<BadgeState> =
+        BadgeEvaluator.evaluate(captures, arbresById, speciesInfo, speciesIndex)
 
     private fun speciesInfo(speciesIndex: Int, count: Int): SpeciesInfoRepository {
         val info = SpeciesInfo(

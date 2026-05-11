@@ -10,6 +10,7 @@ import app.arbre.data.ArbreRepository
 import app.arbre.data.BadgeRepository
 import app.arbre.data.CaptureRepository
 import app.arbre.data.DatasetStats
+import app.arbre.data.GenreInfoRepository
 import app.arbre.data.OnboardingStore
 import app.arbre.data.RemarquableInfoRepository
 import app.arbre.data.SeasonStore
@@ -44,12 +45,13 @@ class ArbresApp : Application() {
     val remarquableInfoRepository: RemarquableInfoRepository by lazy {
         RemarquableInfoRepository.load(this)
     }
+    val genreInfoRepository: GenreInfoRepository by lazy { GenreInfoRepository.load(this) }
     val splashTipsRepository: SplashTipsRepository by lazy {
         SplashTipsRepository.load(this)
     }
 
     val badgeRepository: BadgeRepository by lazy {
-        BadgeRepository(captureRepository, arbreRepository, speciesInfoRepository)
+        BadgeRepository(captureRepository, arbreRepository, speciesInfoRepository, speciesIndex)
     }
 
     val seasonStore: SeasonStore = SeasonStore()

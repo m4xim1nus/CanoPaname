@@ -100,6 +100,20 @@ class SpeciesIndex(entries: List<SpeciesEntry>) {
     fun genres(): List<String> = genresWithIdentified
 
     /**
+     * Liste alphabétique de **tous les genres** présents dans l'index, sauf le
+     * cas dégénéré « Non spécifié ». Inclut les genres only-unknown (`Genista`,
+     * `Vitex`, `Ziziphus`) — contrairement à `genres()` qui ne renvoie que ceux
+     * avec ≥ 1 espèce identifiée. Pilote le routage des fiches genre (S8).
+     */
+    private val genresAllUseful: List<String> = sksByGenre.keys
+        .asSequence()
+        .filter { it != "Non spécifié" }
+        .sortedBy { it.lowercase() }
+        .toList()
+
+    fun allGenres(): List<String> = genresAllUseful
+
+    /**
      * Nombre d'espèces **identifiées** du genre (exclut `unknownSpecies`).
      * Sert au compteur `X / Y` du header de chapitre en mode Catalogue.
      */

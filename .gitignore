@@ -48,6 +48,7 @@ les-arbres*.csv
 tools/.wikidata-cache/
 tools/.wikipedia-cache/
 tools/.wikipedia-aliases-cache/
+tools/.wikipedia-genre-cache/
 tools/.essences-cache/
 tools/.remarquables-cache/
 tools/_trace/

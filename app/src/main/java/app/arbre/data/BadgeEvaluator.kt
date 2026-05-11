@@ -6,12 +6,11 @@ package app.arbre.data
  * capture qui a fait basculer la condition. Coût O(n × tiers), trivial à
  * l'échelle perso.
  *
- * Note cycle Catalogue : `seenSpecies` (Botaniste, etc.) ne distingue pas les
- * espèces `unknownSpecies` (`u: true` dans species-index.json). Une capture
- * `Tilia sp.` compte comme une espèce distincte au sens des badges, par
- * rétrocompatibilité de la progression utilisateur. Seul l'affichage UI
- * (Arboretum, Profil) sépare le compteur principal des « espèces
- * indéterminées » via la sémantique du flag `u`.
+ * Sprint 8 : sémantique `unknownSpecies` clarifiée. Une capture `(G, sp.)`
+ * **n'incrémente plus** les compteurs « espèce » des badges (Botaniste,
+ * Mosaïque). Cohérent avec la fiche genre dédiée — un `(G, sp.)` n'est pas
+ * une espèce identifiée. Les badges count-based (Marcheur, Chasseur) ne sont
+ * pas affectés. Le filtre repose sur `speciesIndex.unknownSks`.
  */
 object BadgeEvaluator {
 
@@ -19,6 +18,7 @@ object BadgeEvaluator {
         captures: List<Capture>,
         arbresById: Map<Long, Arbre>,
         speciesInfo: SpeciesInfoRepository,
+        speciesIndex: SpeciesIndex,
     ): List<BadgeState> {
         val sorted = captures.sortedBy { it.timestamp }
         val tierUnlocks = mutableMapOf<Pair<String, Int>, Long>()
@@ -27,7 +27,9 @@ object BadgeEvaluator {
         val seenSpecies = mutableSetOf<Int>()
         val seenRemarquables = mutableSetOf<Long>()
         val seenArrondissements = mutableSetOf<Int>()
+        val seenQuercusSks = mutableSetOf<Int>()
         var totalCount = 0
+        val unknownSks = speciesIndex.unknownSks
 
         for (capture in sorted) {
             totalCount++
@@ -37,12 +39,30 @@ object BadgeEvaluator {
             // Marcheur — captures totales (toutes captures, remarquables incluses).
             unlockProgressive(tierUnlocks, BadgeCatalog.MARCHEUR, totalCount, ts)
 
-            // Botaniste — espèces distinctes (les remarquables ont leur propre
-            // dimension Chasseur, pas de double comptage côté Arboretum).
-            if (!capture.remarquable) {
+            // Botaniste — espèces identifiées distinctes. Les remarquables ont
+            // leur propre dimension Chasseur ; les `(G, sp.)` n'augmentent pas
+            // ce compteur (S8, sémantique clarifiée).
+            if (!capture.remarquable && capture.speciesIndex !in unknownSks) {
                 seenSpecies.add(capture.speciesIndex)
             }
             unlockProgressive(tierUnlocks, BadgeCatalog.BOTANISTE, seenSpecies.size, ts)
+
+            // Mosaïque de chênes — espèces du genre Quercus identifiées
+            // distinctes (S8). Lookup `arbre?.genre` (déjà chargé pour les
+            // autres badges) ; l'exclusion sp. est garantie ci-dessus, mais
+            // double-check sur unknownSks pour les captures orphelines.
+            if (!capture.remarquable
+                && arbre?.genre == "Quercus"
+                && capture.speciesIndex !in unknownSks
+            ) {
+                seenQuercusSks.add(capture.speciesIndex)
+            }
+            unlockProgressive(
+                tierUnlocks,
+                BadgeCatalog.MOSAIQUE_QUERCUS,
+                seenQuercusSks.size,
+                ts,
+            )
 
             if (!capture.remarquable) {
                 val count = speciesInfo.get(capture.speciesIndex)?.stats?.count
@@ -79,6 +99,7 @@ object BadgeEvaluator {
                     BadgeCatalog.MARCHEUR.id -> totalCount
                     BadgeCatalog.BOTANISTE.id -> seenSpecies.size
                     BadgeCatalog.CHASSEUR.id -> seenRemarquables.size
+                    BadgeCatalog.MOSAIQUE_QUERCUS.id -> seenQuercusSks.size
                     else -> error("Compteur non câblé pour le badge progressif ${def.id}")
                 }
                 val tiers = def.tiers!!.map { td ->

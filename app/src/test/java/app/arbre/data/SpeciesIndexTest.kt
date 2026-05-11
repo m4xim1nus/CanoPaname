@@ -261,4 +261,38 @@ class SpeciesIndexTest {
         assertNotNull(idx.get(0))
         assertNull(idx.get(42))
     }
+
+    // ---------- allGenres : routage des fiches genre (S8) ----------
+
+    @Test fun `allGenres includes only-unknown genres but excludes Non specifie`() {
+        val idx = SpeciesIndex(listOf(
+            entry(0, "Quercus", "robur"),
+            entry(1, "Acer", "platanoides"),
+            // Genista est only-unknown → INCLUS dans allGenres (S8) mais
+            // exclu de genres() (qui ne renvoie que les genres avec ≥ 1
+            // espèce identifiée).
+            entry(98, "Genista", "sp.", unknownSpecies = true),
+            // Non spécifié est un cas dégénéré → toujours exclu d'allGenres.
+            entry(99, "Non spécifié", "sp.", unknownSpecies = true),
+        ))
+        assertEquals(listOf("Acer", "Genista", "Quercus"), idx.allGenres())
+        assertEquals(listOf("Acer", "Quercus"), idx.genres())
+    }
+
+    @Test fun `allGenres returns alphabetical case-insensitive order`() {
+        val idx = SpeciesIndex(listOf(
+            entry(0, "tilia", "cordata"),
+            entry(1, "Acer", "negundo"),
+            entry(2, "Quercus", "robur"),
+        ))
+        // Tri case-insensitive : « Acer », « Quercus », « tilia ».
+        assertEquals(listOf("Acer", "Quercus", "tilia"), idx.allGenres())
+    }
+
+    @Test fun `allGenres is empty when only Non specifie present`() {
+        val idx = SpeciesIndex(listOf(
+            entry(99, "Non spécifié", "sp.", unknownSpecies = true),
+        ))
+        assertTrue(idx.allGenres().isEmpty())
+    }
 }

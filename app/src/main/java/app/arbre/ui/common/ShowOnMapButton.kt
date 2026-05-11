@@ -17,10 +17,12 @@ fun ShowOnMapButton(
     onClick: () -> Unit,
     label: String = "Voir sur la carte",
     modifier: Modifier = Modifier,
+    enabled: Boolean = true,
 ) {
     FilledTonalButton(
         onClick = onClick,
         modifier = modifier.fillMaxWidth(),
+        enabled = enabled,
     ) {
         Icon(
             Icons.Outlined.Map,

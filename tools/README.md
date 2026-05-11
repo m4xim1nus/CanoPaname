@@ -22,6 +22,7 @@ python3 build_dataset.py
 | `dataset-stats.json` | Totaux affichés en Arboretum (`totalArbres`, `totalEspeces`, `totalEspecesIdentifiees`, `totalRemarquables`). |
 | `species-info.json` | Stats Paris + résumé Wikipedia FR + lien fiche PDF Ville de Paris par espèce. |
 | `remarquables-info.json` | Qualification + résumé + cultivar pour chaque arbre remarquable. |
+| `genre-info.json` | Résumé Wikipedia FR du genre + stats agrégées (count, top 3 espèces, top 3 arr) pour les 202 genres (sprint 8). |
 | `splash-tips.json` | Banque ~240 tips rotatifs du `ColdStartSplash` (fusion statique + dataset). |
 
 Le CSV brut OpenData (`les-arbres.csv`, ~80 Mo) est mis en cache dans `tools/`
@@ -89,6 +90,8 @@ Tous lazy permanents, gitignore. Pour invalider, supprimer le dossier :
 | Cache | Contenu | Invalider |
 |---|---|---|
 | `.wikidata-cache/{sk}.json` | `qid`, `wp`, `summary`, `vernacularNames` | `rm -rf tools/.wikidata-cache` |
+| `.wikipedia-aliases-cache/{sk}.json` | redirects vers l'article binôme (cascade nv) | `rm -rf tools/.wikipedia-aliases-cache` |
+| `.wikipedia-genre-cache/{slug}.json` | summary Wikipedia FR du genre (sprint 8) | `rm -rf tools/.wikipedia-genre-cache` |
 | `.remarquables-cache/` | API V2 paginated remarquables | `rm -rf tools/.remarquables-cache` |
 | `.essences-cache/` | API V2 paginated fiches essences PDF | `rm -rf tools/.essences-cache` |
 

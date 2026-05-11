@@ -52,6 +52,7 @@ OUT_SPECIES_INDEX = ASSETS_DIR / "species-index.json"
 OUT_DATASET_STATS = ASSETS_DIR / "dataset-stats.json"
 OUT_SPECIES_INFO = ASSETS_DIR / "species-info.json"
 OUT_REMARQUABLES_INFO = ASSETS_DIR / "remarquables-info.json"
+OUT_GENRE_INFO = ASSETS_DIR / "genre-info.json"
 OUT_SPLASH_TIPS = ASSETS_DIR / "splash-tips.json"
 STATIC_SPLASH_TIPS = ROOT / "tools" / "splash-tips-static.json"
 
@@ -102,6 +103,13 @@ WIKI_ALIASES_THROTTLE_S = 0.3
 WIKI_ALIASES_TIMEOUT_S = 10
 WIKI_ALIASES_RETRIES_429 = 4
 
+# Sprint 8 : 1 article Wikipedia FR par genre (~200 fetch one-shot, throttle
+# identique au pipeline espèces). Cache permanent ; les misses sont cachés.
+WIKIPEDIA_GENRE_CACHE_DIR = ROOT / "tools" / ".wikipedia-genre-cache"
+WIKI_GENRE_THROTTLE_S = WIKI_REST_THROTTLE_S
+WIKI_GENRE_TIMEOUT_S = WIKI_REST_TIMEOUT_S
+WIKI_GENRE_RETRIES_429 = WIKI_REST_RETRIES_429
+
 # Format CSV : « PARIS 5E ARRDT », « PARIS 16E ARRDT », ...
 ARR_PARIS_PATTERN = re.compile(r"^PARIS\s+(\d+)E\s+ARRDT$", re.IGNORECASE)
 
@@ -137,6 +145,16 @@ OUT_VERNACULAR_TRACE = TRACE_DIR / "vernacular-source.json"
 # conservé pour les captures Room existantes) mais sans count à partir d'ici.
 SPECIES_FIXUPS: dict[tuple[str, str], tuple[str, str]] = {
     ("Olea", "europea"): ("Olea", "europaea"),
+    # S8 : typos OpenData irréductibles côté Wikipedia (audit 2026-05-11).
+    # Genre neutre forcé en féminin/masculin :
+    ("Styphnolobium", "japonica"): ("Styphnolobium", "japonicum"),
+    ("Eriobotrya", "japonicum"): ("Eriobotrya", "japonica"),
+    ("Ligustrum", "vulgaris"): ("Ligustrum", "vulgare"),
+    # Typos lettre :
+    ("Ulmus", "parviflora"): ("Ulmus", "parvifolia"),
+    # Synonymes désuets (renommages taxonomiques) :
+    ("Ulmus", "campestre"): ("Ulmus", "minor"),
+    ("Platanus", "acerifolia"): ("Platanus", "x hispanica"),
 }
 
 # Formes d'épithète signalant une espèce non identifiée (genre connu, espèce
@@ -207,6 +225,7 @@ VERNACULAR_OVERRIDES: dict[tuple[str, str], str] = {
 # « (espèce indéterminée) » qui alourdissait l'UI) et (b) au rapport HTML pour
 # pointer les genres encore non mappés. Absent → fallback genre latin nu.
 GENRE_FR: dict[str, str] = {
+    "Abelia": "Abélia",
     "Abies": "Sapin",
     "Acacia": "Acacia",
     "Acer": "Érable",
@@ -215,30 +234,46 @@ GENRE_FR: dict[str, str] = {
     "Albizia": "Albizia",
     "Alangium": "Alangium",
     "Alnus": "Aulne",
+    "Aralia": "Aralie",
     "Araucaria": "Araucaria",
     "Amelanchier": "Amélanchier",
+    "Arbutus": "Arbousier",
     "Aria": "Alisier",
+    "Aronia": "Aronie",
+    "Asimina": "Asiminier",
     "Betula": "Bouleau",
+    "Brahea": "Palmier bleu",
+    "Buddleja": "Arbre aux papillons",
     "Broussonetia": "Mûrier à papier",
     "Buxus": "Buis",
+    "Callistemon": "Rince-bouteille",
+    "Calocedrus": "Cèdre à encens",
     "Carpinus": "Charme",
     "Carya": "Caryer",
     "Castanea": "Châtaignier",
+    "Castanopsis": "Châtaignier doré",
     "Catalpa": "Catalpa",
     "Cedrus": "Cèdre",
     "Celtis": "Micocoulier",
     "Cephalotaxus": "Céphalotaxe",
+    "Ceratonia": "Caroubier",
     "Cercidiphyllum": "Arbre au caramel",
     "Cercis": "Gainier",
     "Chaenomeles": "Cognassier du Japon",
     "Chamaecyparis": "Faux-cyprès",
+    "Chamaerops": "Palmier nain",
+    "Chionanthus": "Arbre à neige",
+    "Cinnamomum": "Cannelier",
     "Cladrastis": "Virgilier",
     "Clerodendrum": "Clérodendron",
+    "Cordyline": "Cordyline",
     "Cornus": "Cornouiller",
     "Corylus": "Noisetier",
+    "Cotinus": "Arbre à perruque",
     "Cotoneaster": "Cotonéaster",
     "Crataegus": "Aubépine",
     "Cryptomeria": "Cryptoméria",
+    "Cunninghamia": "Sapin de Chine",
     "Cupressus": "Cyprès",
     "Cydonia": "Cognassier",
     "Davidia": "Arbre aux mouchoirs",
@@ -249,18 +284,26 @@ GENRE_FR: dict[str, str] = {
     "Euonymus": "Fusain",
     "Eriobotrya": "Néflier du Japon",
     "Eucalyptus": "Eucalyptus",
+    "Eucommia": "Arbre à gomme",
+    "Exochorda": "Buisson de perles",
     "Fagus": "Hêtre",
     "Ficus": "Figuier",
+    "Firmiana": "Parasol chinois",
     "Fontanesia": "Fontanesia",
+    "Frangula": "Bourdaine",
     "Fraxinus": "Frêne",
     "Genista": "Genêt",
     "Ginkgo": "Ginkgo",
     "Gleditsia": "Févier",
     "Gymnocladus": "Chicot",
     "Halesia": "Halésier",
+    "Hamamelis": "Hamamélis",
+    "Hesperocyparis": "Cyprès américain",
     "Hibiscus": "Hibiscus",
+    "Hippophae": "Argousier",
     "Hovenia": "Raisinier de Chine",
     "Ilex": "Houx",
+    "Jubaea": "Cocotier du Chili",
     "Juglans": "Noyer",
     "Juniperus": "Genévrier",
     "Koelreuteria": "Savonnier",
@@ -272,6 +315,7 @@ GENRE_FR: dict[str, str] = {
     "Liquidambar": "Copalme",
     "Liriodendron": "Tulipier",
     "Lonicera": "Chèvrefeuille",
+    "Luma": "Myrte du Chili",
     "Maclura": "Oranger des Osages",
     "Magnolia": "Magnolia",
     "Malus": "Pommier",
@@ -284,9 +328,11 @@ GENRE_FR: dict[str, str] = {
     "Olea": "Olivier",
     "Osmanthus": "Osmanthe",
     "Ostrya": "Charme-houblon",
+    "Paliurus": "Épine du Christ",
     "Parrotia": "Parrotie",
     "Paulownia": "Paulownia",
     "Phellodendron": "Phellodendron",
+    "Philadelphus": "Seringat",
     "Phillyrea": "Filaire",
     "Phoenix": "Palmier-dattier",
     "Photinia": "Photinia",
@@ -299,34 +345,49 @@ GENRE_FR: dict[str, str] = {
     "Poncirus": "Citronnier épineux",
     "Populus": "Peuplier",
     "Prunus": "Prunier",
+    "Pseudocydonia": "Cognassier de Chine",
     "Pseudotsuga": "Douglas",
+    "Ptelea": "Orme de Samarie",
     "Pterocarya": "Ptérocaryer",
+    "Punica": "Grenadier",
     "Pyrus": "Poirier",
     "Quercus": "Chêne",
+    "Rhamnus": "Nerprun",
+    "Rhododendron": "Rhododendron",
     "Rhus": "Sumac",
     "Robinia": "Robinier",
     "Salix": "Saule",
     "Sambucus": "Sureau",
+    "Sapindus": "Savonnier des Indes",
+    "Sassafras": "Sassafras",
     "Sequoia": "Séquoia",
     "Sequoiadendron": "Séquoia géant",
     "Sophora": "Sophora",
     "Sorbus": "Sorbier",
-    "Styphnolobium": "Sophora",
+    "Staphylea": "Staphylier",
+    "Styphnolobium": "Sophora du Japon",
+    "Styrax": "Aliboufier",
     "Syringa": "Lilas",
     "Tamarix": "Tamaris",
     "Taxodium": "Cyprès chauve",
     "Taxus": "If",
     "Tetradium": "Évodia",
     "Thuja": "Thuya",
+    "Thujopsis": "Hiba",
     "Tilia": "Tilleul",
     "Toona": "Acajou de Chine",
     "Torreya": "Torreya",
+    "Toxicodendron": "Sumac vénéneux",
     "Trachycarpus": "Palmier de Chine",
     "Tsuga": "Pruche",
     "Ulmus": "Orme",
+    "Umbellularia": "Laurier de Californie",
     "Viburnum": "Viorne",
     "Vitex": "Gattilier",
+    "Washingtonia": "Palmier de Washington",
     "Wisteria": "Glycine",
+    "Wollemia": "Pin de Wollemi",
+    "x Cupressocyparis": "Cyprès de Leyland",
     "Zanthoxylum": "Poivrier du Sichuan",
     "Zelkova": "Zelkova",
     "Ziziphus": "Jujubier",
@@ -1341,6 +1402,179 @@ def write_species_info(
     print(f"[wp ] {wiki_hit}/{len(species_index)} espèces avec summary Wikipedia")
     print(f"[ess ] {pdf_hit}/{len(species_index)} espèces avec fiche PDF Ville de Paris")
     print(f"       → {OUT_SPECIES_INFO.name} ({info_kb} Ko)")
+
+
+def _genre_slug(genre: str) -> str:
+    """Slug filesystem-safe et stable entre runs pour le cache disque genre.
+
+    Ex : `Quercus` → `quercus`, `x Cupressocyparis` → `x-cupressocyparis`.
+    """
+    import unicodedata
+    s = unicodedata.normalize("NFKD", genre).encode("ascii", "ignore").decode("ascii")
+    return re.sub(r"[^a-z0-9]+", "-", s.lower()).strip("-") or "_"
+
+
+def _fetch_wikipedia_genre_payload(
+    genre_latin: str,
+    genre_fr_name: str | None,
+    cache_path: Path,
+) -> dict:
+    """Fetch summary REST pour un genre. Cache hits + misses sur disque.
+
+    Cascade des titres tentés : `genre_fr_name` (« Chêne ») d'abord si dispo,
+    puis `genre_latin` (« Quercus »). On accepte le premier qui rend un summary
+    non vide non-disambiguation. Renvoie `{"miss": True}` (mis en cache) si
+    aucun candidat ne donne rien. En cas d'erreur transient (429/5xx/timeout
+    épuisé), on n'écrit pas de cache et le prochain run réessaiera.
+    """
+    if cache_path.exists():
+        try:
+            with cache_path.open("r", encoding="utf-8") as f:
+                return json.load(f)
+        except (json.JSONDecodeError, OSError):
+            pass
+
+    candidates: list[str] = []
+    if genre_fr_name:
+        candidates.append(genre_fr_name)
+    if genre_latin and genre_latin not in candidates:
+        candidates.append(genre_latin)
+
+    result: dict = {"miss": True}
+    transient = False
+    for title in candidates:
+        time.sleep(WIKI_GENRE_THROTTLE_S)
+        try:
+            data = _wiki_fetch_summary_by_title(title)
+        except WikiTransient as e:
+            print(f"[wpg] transient sur '{title}' : {e}")
+            transient = True
+            continue
+        if data is None:
+            continue
+        summary = (data.get("extract") or "").strip()
+        if not summary or data.get("type") == "disambiguation":
+            continue
+        result = {
+            "wp": data.get("titles", {}).get("canonical")
+                  or data.get("title")
+                  or title.replace(" ", "_"),
+            "summary": summary,
+        }
+        break
+
+    if result.get("miss") and transient:
+        return {"miss": True, "_transient": True}
+
+    cache_path.parent.mkdir(parents=True, exist_ok=True)
+    with cache_path.open("w", encoding="utf-8") as f:
+        json.dump(result, f, ensure_ascii=False)
+    return result
+
+
+def compute_genre_info(
+    entries: list[dict],
+    count_by_sk: dict[int, int],
+    arr_by_sk: dict[int, dict[str, int]],
+) -> list[dict]:
+    """Construit le payload `genre-info.json` (S8) : 1 entrée par genre,
+    sauf « Non spécifié » qui reste exclu.
+
+    Pour chaque genre :
+    - `g` : nom latin, `fr` : `GENRE_FR[g]` ou absent (rapport HTML pointe).
+    - `wp` / `summary` : article Wikipedia FR du genre (titre `fr` d'abord,
+      fallback latin), absent si miss.
+    - `stats` : count cumulé Paris, nb d'espèces identifiées, top 3 espèces
+      du genre (`sk`, `nv`, `count`), top 3 arrondissements Paris.
+
+    Les entrées attendent un asset déjà résolu (cf. `compute_vernacular_and_pokedex`).
+    """
+    WIKIPEDIA_GENRE_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+
+    entries_by_genre: dict[str, list[dict]] = defaultdict(list)
+    for e in entries:
+        if e["g"] == "Non spécifié":
+            continue
+        entries_by_genre[e["g"]].append(e)
+
+    arr_count_by_genre: dict[str, dict[str, int]] = defaultdict(lambda: defaultdict(int))
+    for e in entries:
+        if e["g"] == "Non spécifié":
+            continue
+        sk = e["i"]
+        for arr, c in arr_by_sk.get(sk, {}).items():
+            if is_paris_arr(arr):
+                arr_count_by_genre[e["g"]][arr] += c
+
+    print(
+        f"[wpg] Wikipedia genre summaries pour {len(entries_by_genre)} genres "
+        f"(cache: {WIKIPEDIA_GENRE_CACHE_DIR.relative_to(ROOT)})"
+    )
+
+    genre_info: list[dict] = []
+    wp_hits = 0
+    for genre in sorted(entries_by_genre.keys(), key=lambda g: g.lower()):
+        genre_entries = entries_by_genre[genre]
+        identified = [e for e in genre_entries if not e.get("u")]
+
+        total_count = sum(count_by_sk.get(e["i"], 0) for e in genre_entries)
+        identified_count = sum(
+            1 for e in identified if count_by_sk.get(e["i"], 0) > 0
+        )
+
+        top_species = sorted(
+            (e for e in identified if count_by_sk.get(e["i"], 0) > 0),
+            key=lambda e: -count_by_sk.get(e["i"], 0),
+        )[:3]
+        top_species_payload = [
+            {
+                "sk": e["i"],
+                "nv": e["nv"],
+                "count": count_by_sk.get(e["i"], 0),
+            }
+            for e in top_species
+        ]
+
+        arr_counts = arr_count_by_genre.get(genre, {})
+        top_arr_payload = [
+            {"arr": arr, "count": c}
+            for arr, c in sorted(arr_counts.items(), key=lambda kv: -kv[1])[:3]
+        ]
+
+        gf = genre_fr(genre)
+        slug = _genre_slug(genre)
+        cache_path = WIKIPEDIA_GENRE_CACHE_DIR / f"{slug}.json"
+        wp_payload = _fetch_wikipedia_genre_payload(genre, gf, cache_path)
+
+        entry: dict = {
+            "g": genre,
+            "stats": {
+                "count": total_count,
+                "speciesIdentified": identified_count,
+                "topSpecies": top_species_payload,
+                "topArr": top_arr_payload,
+            },
+        }
+        if gf:
+            entry["fr"] = gf
+        if not wp_payload.get("miss"):
+            if wp_payload.get("wp"):
+                entry["wp"] = wp_payload["wp"]
+            if wp_payload.get("summary"):
+                entry["summary"] = wp_payload["summary"]
+                wp_hits += 1
+
+        genre_info.append(entry)
+
+    print(f"[wpg] {wp_hits}/{len(genre_info)} genres avec summary Wikipedia FR")
+    return genre_info
+
+
+def write_genre_info(genre_info: list[dict]) -> None:
+    with OUT_GENRE_INFO.open("w", encoding="utf-8") as f:
+        json.dump(genre_info, f, ensure_ascii=False, separators=(",", ":"))
+    kb = OUT_GENRE_INFO.stat().st_size // 1024
+    print(f"       → {OUT_GENRE_INFO.name} ({len(genre_info)} genres, {kb} Ko)")
 
 
 _HTML_TAG_RE = re.compile(r"<[^>]+>")
@@ -2405,8 +2639,9 @@ def verify_species_invariants(
     non_specifie_count: int,
     construit_high_count: list[tuple[str, str, int]],
     cache_dir: Path = WIKIDATA_CACHE_DIR,
+    genre_info: list[dict] | None = None,
 ) -> None:
-    """Vérifie 6 invariants post-build (cf. ROADMAP cycle Catalogue ligne 20).
+    """Vérifie 7 invariants post-build (cf. ROADMAP cycle Catalogue).
 
     Raise sur les régressions structurelles, warn (stderr) sur les signaux
     éditoriaux. À appeler APRÈS `compute_vernacular_and_pokedex()`. Note : si
@@ -2432,6 +2667,11 @@ def verify_species_invariants(
        tel quel. Pré-S6 : 15 cas (ex. « Aria edulis (Aria edulis) »).
     6. **warn** liste explicite des espèces tombées sur la branche `construit`
        avec count > 1000 (candidats `VERNACULAR_OVERRIDES` à arbitrer).
+    7. **raise** (S8) si deux genres ont le même nom FR dans `genre-info.json`.
+       Garde-fou contre une typo dans `GENRE_FR` (ex. `Sorbus` et `Aria` tous
+       deux mappés vers « Alisier »). Casserait le routing fiche genre côté UI.
+       Skipped si `genre_info` est `None` (rétrocompat tests qui n'invoquent
+       que la cascade nv).
     """
     # 1. sk disparu.
     new_sk_set = frozenset(e["i"] for e in entries)
@@ -2538,6 +2778,25 @@ def verify_species_invariants(
             print(f"       - {genre} {espece} ({c} captures)", file=sys.stderr)
         if len(construit_high_count) > 20:
             print(f"       ... +{len(construit_high_count) - 20}", file=sys.stderr)
+
+    # 7. Unicité des `fr` de genres (S8). Le rendu fiche genre repose sur le
+    # `fr` comme titre humain ; deux genres avec le même `fr` rendraient les
+    # fiches indistinguables. Genres sans `fr` sont autorisés (fallback latin).
+    if genre_info is not None:
+        fr_to_genres: dict[str, list[str]] = defaultdict(list)
+        for g in genre_info:
+            fr = g.get("fr")
+            if fr:
+                fr_to_genres[fr].append(g["g"])
+        collisions = {fr: gs for fr, gs in fr_to_genres.items() if len(gs) > 1}
+        if collisions:
+            sample = list(collisions.items())[:5]
+            raise AssertionError(
+                f"Noms FR de genres collidents dans genre-info.json : {sample}"
+                f"{'...' if len(collisions) > 5 else ''} ({len(collisions)} cas). "
+                f"Distinguer les libellés dans `GENRE_FR` "
+                f"(ex. `Sorbus`='Sorbier' vs `Aria`='Alisier')."
+            )
 
 
 def build(csv_path: Path, db_path: Path, geojson_path: Path) -> None:
@@ -2800,8 +3059,16 @@ def build(csv_path: Path, db_path: Path, geojson_path: Path) -> None:
         f"→ {vernacular_counters['pokedex_count']} #N Pokédex"
     )
 
+    # S8 : 1 article Wikipedia FR par genre, agrégats stats Paris (count, top
+    # 3 espèces, top 3 arr). Lit `entries` post-cascade nv pour récupérer les
+    # libellés `nv` finaux dans `topSpecies`. À placer AVANT verify pour
+    # nourrir l'invariant #7 (unicité des `fr`).
+    genre_info = compute_genre_info(entries, count_by_sk, arr_by_sk)
+    write_genre_info(genre_info)
+
     # Sanity checks : invariants post-build (sk préservés, WP non perdue,
-    # `Non spécifié` sous seuil, nv unique). Warns sur les candidats overrides.
+    # `Non spécifié` sous seuil, nv unique, fr de genres uniques). Warns sur
+    # les candidats overrides.
     verify_species_invariants(
         pre_sk_set=pre_sk_set,
         pre_wp_present_by_sk=pre_wp_present_by_sk,
@@ -2809,6 +3076,7 @@ def build(csv_path: Path, db_path: Path, geojson_path: Path) -> None:
         count_by_sk=count_by_sk,
         non_specifie_count=non_specifie_count,
         construit_high_count=construit_high_count,
+        genre_info=genre_info,
     )
 
     remarquables_records = fetch_remarquables()
@@ -2842,6 +3110,7 @@ def build(csv_path: Path, db_path: Path, geojson_path: Path) -> None:
     print(f"       → {OUT_SPECIES_INDEX.name} ({len(species_index)} espèces)")
     print(f"       → {OUT_DATASET_STATS.name} ({remarquables} remarquables)")
     print(f"       → {OUT_REMARQUABLES_INFO.name}")
+    print(f"       → {OUT_GENRE_INFO.name}")
     print(f"       → {OUT_SPLASH_TIPS.name}")
 
 
