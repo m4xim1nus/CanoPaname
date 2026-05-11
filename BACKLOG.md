@@ -53,15 +53,17 @@ Détail complet dans `CHANGELOG.md` `[1.1.0]` et `ROADMAP.md` *Cycles livrés po
 - [→Variantes] Carte filtrée par nom commun (set de `sk` fusionnés en expression `match`) — déplacée depuis Catalogue, le tag `unknownSpecies` posé par Catalogue rendra le picker propre (claude:analyse, 2026-05-08 ; déplacée 2026-05-10)
 - [→Variantes] Badge « Inspecteur » (capturer N arbres `sp.`) — dépend du tag `unknownSpecies` posé par Catalogue. Le badge « Mosaïque de chênes » est transféré au S7 du cycle Catalogue (claude:analyse, 2026-05-08 ; déplacé 2026-05-10 ; Mosaïque transférée à Catalogue 2026-05-11)
 
-## Cycle Endgame
+## Cycle Progression (en cours)
 
-- [→Endgame] Maîtrise par arrondissement : carte chromatique + badge « Maître du Xe » (audit V2#5, 2026-05-06)
-- [→Endgame] Quêtes hebdomadaires locales, opt-in, sans push (audit V2#3, 2026-05-06)
-- [→Endgame] Pré-affichage fiche remarquable enrichie même non capturé, bandeau « Pas encore découvert » (audit-B, 2026-05-06)
-- [→Endgame] Fallback Wikipedia 379 espèces : « Famille X. Y individus à Paris. » (audit-B, 2026-05-06)
+Détail complet dans `ROADMAP.md` (*Cycle en cours*). Item absorbé du BACKLOG (laissé en trace) :
+
+- [→Progression] Maîtrise par arrondissement : badge « Maître du Xe » (audit V2#5, 2026-05-06 ; rebasculé depuis Endgame 2026-05-12 — la composante « carte chromatique » est partie en Refusé, le seuil de granularité — 22 arr., dont 2 bois — est fixé)
 
 ## À creuser
 
+- [creuser] Quêtes hebdomadaires locales, opt-in, sans push (audit V2#3, 2026-05-06 ; déplacé depuis Endgame 2026-05-12 quand le cycle a été dissous)
+- [creuser] Pré-affichage fiche remarquable enrichie même non capturée, bandeau « Pas encore découvert » (audit-B, 2026-05-06 ; déplacé depuis Endgame 2026-05-12 — pas intégré au cycle Progression malgré l'affinité avec le mode chasse, par souci de scope)
+- [creuser] Texte de fallback minimal pour les fiches espèces sans page Wikipedia — pertinence à revérifier après que le cycle Catalogue 1.1.0 a élargi le périmètre couvert (le manque peut s'être réduit suffisamment pour rendre ce filet caduc) (audit-B, 2026-05-06 ; reformulé + déplacé depuis Endgame 2026-05-12)
 - [ ] Résidu post-cycle Catalogue : 11 entrées résiduelles avec `nv == binôme nu` et count ≤ 2 (post-fil-rouge S10), botaniquement douteuses — `Ehretia macrophylla`, `Sophora flavescens`, `Betula occidentalis`, `Crataegus japonicum`, `Crataegus baccata`, `Celtis cerasifera`, `Carpinus carpinifolia`, `Phellodendron japonicum`, `Zanthoxylum bungei`, `Alnus formosana`, `Brucea javanica`. Peut-être réelles mais rares à Paris, peut-être saisies erronées. Demandent une recherche botanique pour trancher keep / rebinder (claude:audit-S6, 2026-05-11 ; réduit de 29→11 au S10)
 - [creuser] WelcomeScreen pas lu, intro depuis la carte (user:F&F + user:moi 2026-05-07 : pas prio mais à reconsidérer post-Photos)
 - [creuser] Bouton partage PNG sur fiche espèce (audit-C, tension single-player vs F&F à trancher)
@@ -77,6 +79,7 @@ Détail complet dans `CHANGELOG.md` `[1.1.0]` et `ROADMAP.md` *Cycles livrés po
 
 ## Refusé
 
+- [refusé] Carte chromatique vert/jaune/gris par arrondissement (audit V2#5, 2026-05-06 ; user:moi 2026-05-12 lors du cadrage Progression : la barre « X / 22 arrondissements visités » dans le Profil + le badge « Maître du Xe » suffisent pour mettre sur la piste, l'overlay chromatique sur la carte serait redondant et chargerait inutilement la vue principale)
 - [refusé] Liste « Espèces manquantes » + bouton « Trouver le plus proche » sur fiche espèce non capturée (audit-A, 2026-05-06 ; user:moi 2026-05-09 : philosophie « découverte en marchant », la 81e espèce se trouve en tapant un pin gris à proximité, le côté quête est porté par les Remarquables ★)
 - [refusé] Table `photo` 1:N + backup `schemaVersion = 2` (BACKLOG cycle Photos d'origine ; user:moi 2026-05-09 : le modèle Room actuel 1 capture = 1 photo supporte déjà N photos par arbre/espèce via N captures, pas de migration nécessaire)
 - [refusé] Cold-start « 7-10 s freeze » signalé par audit (user:moi 2026-05-07 : audit faux, pas de problème de temps long bloquant au 1er lancement)

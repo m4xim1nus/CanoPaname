@@ -4,7 +4,25 @@ App perso, pas de calendrier engageant. Single-player, stockage local strict —
 
 ## Cycle en cours
 
-*(cycle suivant à arbitrer — voir BACKLOG `[→Variantes]` / `[→Endgame]` pour les pistes)*
+### Progression
+
+Refonte de l'expression de la progression dans l'app. Deux axes : (1) le FAB ★ devient un **mode chasse persistant** plutôt qu'un popup éphémère ; (2) **Profil et Badges** sont séparés conceptuellement — la progression chiffrée vit en **barres** sur le Profil, les badges ne sont plus que **binaires** et s'élargissent avec une famille **Maîtres** (genre, arrondissement, chêne). En corollaire, le cycle Endgame disparaît comme cycle nommé : sa pièce maîtresse (badge Maître du Xe) est absorbée ici, le reste retombe en `[creuser]` ou refusé (cf. `BACKLOG.md`).
+
+Cinq sprints :
+
+1. **S1 — Mode chasse Étoile**. Tap ★ ouvre un panneau bas persistant (distance live au remarquable non découvert le plus proche, libellé espèce/qualification, bouton ✕). Le FAB ★ devient un toggle. Distance recomposée via `combine(LocationProvider.currentLocation, huntTarget)` throttlé ~1 Hz. État volatil dans `MapViewModel.huntTarget` (pas de `SavedStateHandle`, exit auto à la sortie de l'écran). Anti-collision FAB GPS via creux à droite du panneau. Cas « tous découverts » : message dédié dans le panneau (plus de snackbar éphémère).
+
+2. **S2 — Suppression des badges progressifs**. Démantèlement de `BadgeState.Progressive`, `TierDef`, `ProgressiveBadgeCard`, `unlockProgressive`. Retrait du catalogue : `MARCHEUR`, `BOTANISTE`, `CHASSEUR`, `MOSAIQUE_QUERCUS` (l'identité Quercus revient en S3 en binaire). `BadgeEvaluator.evaluate` ne fait plus que des `unlockBinaryOnce`. Pas de migration Room (badges dérivés). Le compteur « X / 22 paliers » de `BadgesScreen` devient « X / N badges » en S5.
+
+3. **S3 — Famille « Maîtres » (nouveaux binaires)**. Trois familles, toutes générées dynamiquement à partir du catalogue d'espèces / de la DB :
+   - **Maître du chêne** (statique) : toutes les espèces du genre Quercus capturées.
+   - **Maître de genre X** (dynamique) : pour chaque genre avec ≥ N espèces (N fixé pendant le sprint en regardant la distribution réelle ; cible : Acer / Quercus / Prunus / Tilia / Platanus passent, genres triviaux à 1 espèce exclus).
+   - **Maître d'arrondissement X** (dynamique, 22 badges : 20 arr. + 2 bois). Nouvelle query Room `ArbreDao.especesParArrondissement` (DISTINCT `genre, espece` groupé sur `ArrKey`). Résultat cacheable au démarrage.
+   - `BadgeEvaluator` gagne deux helpers spécialisés (`unlockMaitreGenre`, `unlockMaitreArrondissement`) avec `unlockedAt` figé sur la capture déclenchante.
+
+4. **S4 — Bloc Progression visuel sur le Profil**. Refonte de `StatsCard` (tableau plat) en **hero card temps** (grand chiffre Fraunces « X jours depuis ta 1re capture ») + **6 barres** Material 3 : arbres déverrouillés (`X / 213 042`), espèces (`X / 907`), genres découverts (`X / 203`), genres complets (`X / N_majeurs`), remarquables (`X / 183`), arrondissements visités (`X / 22`). Composable `ProgressBar` réutilisable. Le bloc « Derniers badges » (3 derniers binaires) et la section Sauvegarde restent en dessous, inchangés. Décision pendant le sprint : sort des « espèces indéterminées » (retiré ou en sous-texte de la barre Espèces).
+
+5. **S5 — Refonte BadgesScreen pour la nouvelle population**. ~60-80 badges binaires à présenter (5 binaires conservés + 1 Maître chêne + N Maîtres de genre + 22 Maîtres d'arrondissement). Sections par `BadgeCategory` (`DECOUVERTE`, `BOTANIQUE` = Maîtres de genre, `GEOGRAPHIE` = Maîtres d'arrondissement, `REMARQUABLES`, `DEMESURE`). Grille 3 colonnes conservée, plus de `GridItemSpan(maxLineSpan)`. Carte Maître affiche un sous-titre dynamique « X / Y espèces dans le genre/arrondissement » pour donner du sens même non débloqué. En-tête « X / N débloqués » avec N = `BadgeCatalog.ALL.size` dynamique.
 
 ## Prochains cycles
 
@@ -13,14 +31,6 @@ App perso, pas de calendrier engageant. Single-player, stockage local strict —
 Refonte Arboretum « états/variants ». La colonne `season` (devenue inerte par Vérité) se réincarne en `variants` (bitmask ou table associée). États possibles : *en fleur*, *tout nu / hivernal*, *avec fruits*, *bébé* (faible circonférence), *géant* (forte circonférence). Détection auto quand le dataset le permet (circonférence), déclaration utilisateur sinon (chip à la capture).
 
 Inspiration : Dave the Diver / Pokédex enrichi. Re-capture du même arbre dans un état nouveau = upgrade visible de l'élément Arboretum, sans inflation artificielle. Migration `MIGRATION_4_5`, backup `schemaVersion = 3`. Badges variantes émergent naturellement. Items détaillés dans `BACKLOG.md`.
-
-### Endgame
-
-Cycle de rétention long terme à programmer après stabilisation Variantes :
-- Maîtrise par arrondissement (carte chromatique vert/jaune/gris, badge « Maître du Xe »).
-- Quêtes hebdomadaires locales, opt-in, sans notification push.
-- Pré-affichage de la fiche remarquable enrichie même non capturé, avec bandeau « Pas encore découvert ».
-- Fallback Wikipedia pour les 379 espèces sans fiche (« Famille X. Y individus à Paris. »).
 
 ## Cycles livrés post-1.0
 
