@@ -44,11 +44,13 @@ les-arbres*.csv
 /app/src/main/assets/databases/*.db
 /app/src/main/assets/arbres-paris.geojson
 
-# Caches du pipeline build_dataset (Wikidata SPARQL + Wikipedia REST)
+# Caches du pipeline build_dataset (Wikidata SPARQL + Wikipedia REST + redirects)
 tools/.wikidata-cache/
 tools/.wikipedia-cache/
+tools/.wikipedia-aliases-cache/
 tools/.essences-cache/
 tools/.remarquables-cache/
+tools/_trace/
 tools/__pycache__/
 *.pyc
 

@@ -92,8 +92,43 @@ WIKI_REST_THROTTLE_S = 0.3  # ~3 req/s sur restbase une fois qu'on a les vrais t
 WIKI_REST_TIMEOUT_S = 10
 WIKI_REST_RETRIES_429 = 4  # backoff 4, 8, 16, 32 s
 
+# Wikipédia FR Action API : pour récupérer les pages qui redirigent VERS un
+# article scientifique (ex. « Chêne pédonculé » redirige vers « Quercus robur »
+# si l'article principal est titré scientifiquement). Sprint 6 : permet de
+# récupérer un nom FR exploitable quand frTitle == binôme nu.
+WIKIPEDIA_API_URL = "https://fr.wikipedia.org/w/api.php"
+WIKI_ALIASES_CACHE_DIR = ROOT / "tools" / ".wikipedia-aliases-cache"
+WIKI_ALIASES_THROTTLE_S = 0.3
+WIKI_ALIASES_TIMEOUT_S = 10
+WIKI_ALIASES_RETRIES_429 = 4
+
 # Format CSV : « PARIS 5E ARRDT », « PARIS 16E ARRDT », ...
 ARR_PARIS_PATTERN = re.compile(r"^PARIS\s+(\d+)E\s+ARRDT$", re.IGNORECASE)
+
+# Détecte un binôme latin nu : « Genre espece », « Genre × espece »,
+# « Genre x espece » ou genre seul. Sert à filtrer les frTitle/redirects qui
+# ne sont en fait que des aliases taxonomiques sans valeur de nv FR.
+BINOMIAL_RE = re.compile(r"^[A-Z][a-z\-]+(?:\s+[×x])?\s+[a-z][a-z\-]+$")
+GENUS_ONLY_RE = re.compile(r"^[A-Z][a-z\-]+$")
+# Regex de redondance `{g} {e} ({g} {e})` (ex. « Aria edulis (Aria edulis) »).
+NV_REDUNDANT_RE = re.compile(r"^(\S+)\s+(\S+)\s+\(\1\s+\2\)$")
+
+# Extraction du nom français depuis l'incipit Wikipédia FR. Pattern type :
+# « Le marronnier commun, marronnier d'Inde… », « L'érable plane (Acer
+# platanoides)… », « Bouleau verruqueux (Betula pendula) est… ». On
+# capture le 1er groupe nominal jusqu'au 1er séparateur (virgule, parenthèse,
+# « est »/« ou »/« et »).
+SUMMARY_NV_RE = re.compile(
+    r"^(?:Le\s+|La\s+|L['’]|Les\s+|Un\s+|Une\s+)?"
+    r"([^,()\.«»;:—–/]+?)"
+    r"(?:\s*,|\s+\(|\s+est\b|\s+ou\b|\s+et\b|\s+sont\b)",
+    re.IGNORECASE,
+)
+
+# Sidecar de trace post-build : indique pour chaque sk d'où vient son nv. Utilisé
+# par `tools/build_report.py` pour générer le tableau de validation HTML.
+TRACE_DIR = ROOT / "tools" / "_trace"
+OUT_VERNACULAR_TRACE = TRACE_DIR / "vernacular-source.json"
 
 # Coquilles latines récurrentes du CSV OpenData. Appliqué AVANT le lookup
 # `species_index` : la row est rebindée vers l'entrée canonique, son `sk`
@@ -124,9 +159,187 @@ def is_unknown_species(genre: str, espece: str) -> bool:
 
 
 # Overrides manuels du nom vernaculaire FR. Toujours gagnant dans la cascade.
-# Démarre vide ; Sprint 3 ajoutera les candidats remontés par les sanity checks
-# (notamment les espèces > 1000 captures qui finissent en fallback construit).
-VERNACULAR_OVERRIDES: dict[tuple[str, str], str] = {}
+# Curé par revue Explore + validation user (cycle Catalogue, sprint 6 itération 2).
+# Sourcés Wikipédia FR (incipit cité dans le commentaire) ou consensus terrain
+# pour les cas sans page WP. Le rapport HTML (`tools/build_report.py`) expose
+# la source effective et met en évidence les nouveaux candidats.
+VERNACULAR_OVERRIDES: dict[tuple[str, str], str] = {
+    # --- Sourcés Wikipédia FR (agent Explore) ----------------------------------
+    # « Koelreuteria paniculata, le savonnier, est un arbre… »
+    ("Koelreuteria", "paniculata"): "Savonnier",
+    # « Quercus phellos, le Chêne à feuilles de Saule, est une espèce… »
+    ("Quercus", "phellos"): "Chêne à feuilles de saule",
+    # « Cephalotaxus harringtonia, appelé communément Pin à queue de vache… »
+    ("Cephalotaxus", "harringtonia"): "Pin à queue de vache",
+    ("Carya", "illinoinensis"): "Pacanier",
+    ("Cephalotaxus", "fortunei"): "Céphalotaxe de Fortune",
+    ("Acer", "tataricum"): "Érable de Tartarie",
+    ("Ligustrum", "sinense"): "Troène de Chine",
+    ("Betula", "ermanii"): "Bouleau d'Erman",
+    ("Betula", "albosinensis"): "Bouleau rouge chinois",
+    ("Catalpa", "ovata"): "Catalpa de Chine",
+    ("Magnolia", "denudata"): "Magnolia Yulan",
+    ("Betula", "davurica"): "Bouleau de Mongolie",
+    ("Torreya", "grandis"): "Muscadier de Chine",
+    ("Tamarix", "tetrandra"): "Tamaris à quatre étamines",
+    ("Torreya", "californica"): "Muscadier de Californie",
+    ("Liquidambar", "acalycina"): "Copalme de Chine",
+    ("Abies", "homolepis"): "Sapin de Nikko",
+    ("Quercus", "rysophylla"): "Chêne à feuilles craquelées",
+    ("Quercus", "marilandica"): "Chêne du Maryland",
+    ("Tamarix", "parviflora"): "Tamaris à petites fleurs",
+    ("Carpinus", "coreana"): "Charme de Corée",
+    ("Pinus", "monophylla"): "Pin à une feuille",
+    ("Quercus", "falcata"): "Chêne rouge falciforme",
+    ("Prunus", "mandshurica"): "Abricotier de Mandchourie",
+    ("Quercus", "trojana"): "Chêne de Troie",
+    # --- Évidents sans WP (consensus terrain) ----------------------------------
+    ("Tilia", "x europaea"): "Tilleul de Hollande",
+    ("Pinus", "nigra subsp. nigra"): "Pin noir d'Autriche",
+    ("Gleditsia", "triacanthos f. Inermis"): "Févier sans épines",
+    ("x Cupressocyparis", "leylandii"): "Cyprès de Leyland",
+    ("Magnolia", "x soulangeana"): "Magnolia de Soulange",
+}
+
+
+# Nom français au singulier des genres botaniques courants. Sert (a) au libellé
+# nv des zombies `(G, sp.)` (ex. `Quercus sp.` → "Chêne", sans suffixe parenthésé
+# « (espèce indéterminée) » qui alourdissait l'UI) et (b) au rapport HTML pour
+# pointer les genres encore non mappés. Absent → fallback genre latin nu.
+GENRE_FR: dict[str, str] = {
+    "Abies": "Sapin",
+    "Acacia": "Acacia",
+    "Acer": "Érable",
+    "Aesculus": "Marronnier",
+    "Ailanthus": "Ailante",
+    "Albizia": "Albizia",
+    "Alangium": "Alangium",
+    "Alnus": "Aulne",
+    "Araucaria": "Araucaria",
+    "Amelanchier": "Amélanchier",
+    "Aria": "Alisier",
+    "Betula": "Bouleau",
+    "Broussonetia": "Mûrier à papier",
+    "Buxus": "Buis",
+    "Carpinus": "Charme",
+    "Carya": "Caryer",
+    "Castanea": "Châtaignier",
+    "Catalpa": "Catalpa",
+    "Cedrus": "Cèdre",
+    "Celtis": "Micocoulier",
+    "Cephalotaxus": "Céphalotaxe",
+    "Cercidiphyllum": "Arbre au caramel",
+    "Cercis": "Gainier",
+    "Chaenomeles": "Cognassier du Japon",
+    "Chamaecyparis": "Faux-cyprès",
+    "Cladrastis": "Virgilier",
+    "Clerodendrum": "Clérodendron",
+    "Cornus": "Cornouiller",
+    "Corylus": "Noisetier",
+    "Cotoneaster": "Cotonéaster",
+    "Crataegus": "Aubépine",
+    "Cryptomeria": "Cryptoméria",
+    "Cupressus": "Cyprès",
+    "Cydonia": "Cognassier",
+    "Davidia": "Arbre aux mouchoirs",
+    "Diospyros": "Plaqueminier",
+    "Ehretia": "Ehretia",
+    "Elaeagnus": "Chalef",
+    "Eriolobus": "Eriolobus",
+    "Euonymus": "Fusain",
+    "Eriobotrya": "Néflier du Japon",
+    "Eucalyptus": "Eucalyptus",
+    "Fagus": "Hêtre",
+    "Ficus": "Figuier",
+    "Fontanesia": "Fontanesia",
+    "Fraxinus": "Frêne",
+    "Genista": "Genêt",
+    "Ginkgo": "Ginkgo",
+    "Gleditsia": "Févier",
+    "Gymnocladus": "Chicot",
+    "Halesia": "Halésier",
+    "Hibiscus": "Hibiscus",
+    "Hovenia": "Raisinier de Chine",
+    "Ilex": "Houx",
+    "Juglans": "Noyer",
+    "Juniperus": "Genévrier",
+    "Koelreuteria": "Savonnier",
+    "Laburnum": "Cytise",
+    "Lagerstroemia": "Lilas des Indes",
+    "Larix": "Mélèze",
+    "Laurus": "Laurier",
+    "Ligustrum": "Troène",
+    "Liquidambar": "Copalme",
+    "Liriodendron": "Tulipier",
+    "Lonicera": "Chèvrefeuille",
+    "Maclura": "Oranger des Osages",
+    "Magnolia": "Magnolia",
+    "Malus": "Pommier",
+    "Melia": "Mélia",
+    "Mespilus": "Néflier",
+    "Metasequoia": "Métaséquoia",
+    "Morus": "Mûrier",
+    "Nothofagus": "Faux-hêtre",
+    "Nyssa": "Nyssa",
+    "Olea": "Olivier",
+    "Osmanthus": "Osmanthe",
+    "Ostrya": "Charme-houblon",
+    "Parrotia": "Parrotie",
+    "Paulownia": "Paulownia",
+    "Phellodendron": "Phellodendron",
+    "Phillyrea": "Filaire",
+    "Phoenix": "Palmier-dattier",
+    "Photinia": "Photinia",
+    "Picea": "Épicéa",
+    "Pinus": "Pin",
+    "Pistacia": "Pistachier",
+    "Pittosporum": "Pittosporum",
+    "Platanus": "Platane",
+    "Platycladus": "Thuya d'Orient",
+    "Poncirus": "Citronnier épineux",
+    "Populus": "Peuplier",
+    "Prunus": "Prunier",
+    "Pseudotsuga": "Douglas",
+    "Pterocarya": "Ptérocaryer",
+    "Pyrus": "Poirier",
+    "Quercus": "Chêne",
+    "Rhus": "Sumac",
+    "Robinia": "Robinier",
+    "Salix": "Saule",
+    "Sambucus": "Sureau",
+    "Sequoia": "Séquoia",
+    "Sequoiadendron": "Séquoia géant",
+    "Sophora": "Sophora",
+    "Sorbus": "Sorbier",
+    "Styphnolobium": "Sophora",
+    "Syringa": "Lilas",
+    "Tamarix": "Tamaris",
+    "Taxodium": "Cyprès chauve",
+    "Taxus": "If",
+    "Tetradium": "Évodia",
+    "Thuja": "Thuya",
+    "Tilia": "Tilleul",
+    "Toona": "Acajou de Chine",
+    "Torreya": "Torreya",
+    "Trachycarpus": "Palmier de Chine",
+    "Tsuga": "Pruche",
+    "Ulmus": "Orme",
+    "Viburnum": "Viorne",
+    "Vitex": "Gattilier",
+    "Wisteria": "Glycine",
+    "Zanthoxylum": "Poivrier du Sichuan",
+    "Zelkova": "Zelkova",
+    "Ziziphus": "Jujubier",
+}
+
+
+def genre_fr(genre: str) -> str | None:
+    """Nom français singulier du genre, None si non mappé dans `GENRE_FR`.
+
+    Les genres non mappés retombent sur le binôme latin nu en sortie de cascade
+    nv ; le rapport HTML les expose comme candidats à compléter.
+    """
+    return GENRE_FR.get(genre.strip()) if genre else None
 
 
 def first_p1843(vernacular_names: list[str]) -> str | None:
@@ -152,17 +365,20 @@ def construct_vernacular(
 ) -> str:
     """Fallback ultime quand Wikidata + Wikipedia n'ont rien.
 
-    - Unknown (sp./n.sp./Non spécifié) → suffixe « (espèce indéterminée) ».
+    - Unknown (sp./n.sp.) → `GENRE_FR[genre]` ("Chêne") ou genre latin nu
+      ("Pistacia"). Plus de suffixe « (espèce indéterminée) » : la décision
+      Sprint 6 est de garder le libellé court, l'UI signale déjà via le tag
+      `u: true` que c'est un bucket d'individus non identifiés.
+    - Unknown sur zombie `(Non spécifié, *)` → "Espèce indéterminée".
     - Identifiées avec nc → « {nc} ({I}. {epithète}) » (« Chêne (Q. robur) »).
     - Identifiées sans nc → binôme latin nu (« Pistacia palaestina »).
     """
     espece_clean = espece.lstrip("×").lstrip("xX").strip() or espece
     if is_unknown:
-        if nc and nc.strip().lower() != "non spécifié":
-            return f"{nc.strip()} (espèce indéterminée)"
-        if genre.strip() and genre.strip() != "Non spécifié":
-            return f"{genre.strip()} (espèce indéterminée)"
-        return "Espèce indéterminée"
+        g = genre.strip()
+        if not g or g == "Non spécifié":
+            return "Espèce indéterminée"
+        return genre_fr(g) or g
     if nc:
         initial = (genre[:1] or "?").upper()
         return f"{nc.strip()} ({initial}. {espece_clean})"
@@ -170,12 +386,22 @@ def construct_vernacular(
 
 
 def disambiguate_vernaculars(entries: list[dict]) -> int:
-    """Suffixe les `nv` collidents par leur binôme latin. Mute `entries` en
-    place. Retourne le nb d'entrées modifiées (= somme des tailles des groupes
-    avec collision).
+    """Suffixe les `nv` collidents pour garantir l'unicité finale. Mute
+    `entries` en place. Retourne le nb d'entrées modifiées.
 
-    Les paires `(genre, espece)` étant uniques par construction de
-    `species_index`, le suffixe garantit l'unicité finale.
+    Politique S6 v2 :
+    - **1 identifié + N zombies de genres distincts** : l'identifié garde son
+      nv pur, chaque zombie est suffixé `(Genre)` (latin du genre, pas `sp.`).
+      Optimal pour la lecture : « Prunier » garde la limelight, « Prunier
+      (Prunus) » désigne le bucket sp..
+    - **Plusieurs zombies du même genre** (ex. `Malus sp.` + `Malus n. sp.`
+      historique pré-normalisation) : suffixe binôme complet `(Genre espece)`
+      pour assurer l'unicité au sein du même genre. L'identifié, s'il y en a
+      un, perd son nv pur dans ce cas.
+    - **Cas général** : zombies par `(Genre)`, identifiés par `(Genre espece)`.
+
+    Les paires `(genre, espece)` étant uniques par construction du species
+    index, ce suffixage garantit l'unicité finale.
     """
     by_nv: dict[str, list[dict]] = defaultdict(list)
     for e in entries:
@@ -184,8 +410,25 @@ def disambiguate_vernaculars(entries: list[dict]) -> int:
     for nv, group in by_nv.items():
         if len(group) <= 1:
             continue
+        non_zombies = [e for e in group if not e.get("u")]
+        zombies = [e for e in group if e.get("u")]
+        zombie_genres = [z["g"] for z in zombies]
+        zombies_dup_genre = len(zombie_genres) != len(set(zombie_genres))
+
+        if len(non_zombies) == 1 and not zombies_dup_genre:
+            for e in zombies:
+                e["nv"] = f"{nv} ({e['g']})"
+                changed += 1
+            continue
+
         for e in group:
-            e["nv"] = f"{nv} ({e['g']} {e['e']})"
+            if e.get("u"):
+                if zombies_dup_genre:
+                    e["nv"] = f"{nv} ({e['g']} {e['e']})"
+                else:
+                    e["nv"] = f"{nv} ({e['g']})"
+            else:
+                e["nv"] = f"{nv} ({e['g']} {e['e']})"
             changed += 1
     return changed
 
@@ -518,6 +761,179 @@ def fetch_species_info(
     return result if "summary" in result or "qid" in result else None
 
 
+def _is_binomial_like(title: str, genre: str, espece: str) -> bool:
+    """True si `title` ressemble à un binôme latin (à exclure des candidats nv).
+
+    Stratégie en couches :
+    1. Match exact (casefold) avec le binôme `(genre, espece)` courant — y
+       compris la variante sans préfixe hybride (`×|x`).
+    2. Genre seul capitalisé (`Quercus`).
+    3. Binôme latin générique `Genre espece` : ne le rejette QUE si le 1er mot
+       ressemble à un genre latin connu (== `genre` courant ou présent dans
+       `GENRE_FR`). Sans cette précaution on rejetterait à tort des noms FR à
+       deux mots non-accentués (« Bouleau blanc », « Sapin pectiné »…).
+    """
+    t = title.strip()
+    if not t:
+        return True
+    if t.casefold() == f"{genre} {espece}".casefold():
+        return True
+    espece_no_x = espece.lstrip("×").lstrip("xX").strip()
+    if espece_no_x and t.casefold() == f"{genre} {espece_no_x}".casefold():
+        return True
+    if GENUS_ONLY_RE.match(t):
+        return True
+    if BINOMIAL_RE.match(t):
+        first_word = t.split()[0]
+        if first_word == genre or first_word in GENRE_FR:
+            return True
+    return False
+
+
+def pick_vernacular_from_redirects(
+    redirects: list[str], genre: str, espece: str,
+) -> str | None:
+    """Sélectionne le meilleur nom français parmi les redirections Wikipedia.
+
+    Filtre les binômes latins, les pages d'homonymie, les fragments. Préfère
+    le candidat le plus court (les noms communs canoniques sont brefs et sans
+    qualificatif additionnel) à longueur égale, ordre alphabétique pour rester
+    déterministe entre runs.
+    """
+    candidates: list[str] = []
+    for r in redirects:
+        t = (r or "").strip()
+        if not t or len(t) <= 2:
+            continue
+        low = t.lower()
+        if "(homonymie)" in low or "(genre)" in low or "(plante)" in low:
+            continue
+        # Exclure préfixes namespace (Catégorie:, Discussion:, etc.).
+        if ":" in t:
+            continue
+        if _is_binomial_like(t, genre, espece):
+            continue
+        candidates.append(t)
+    if not candidates:
+        return None
+    candidates.sort(key=lambda s: (len(s), s))
+    return candidates[0]
+
+
+def _fetch_wikipedia_redirects(wp_title: str) -> list[str] | None:
+    """Liste les titres qui redirigent VERS `wp_title` sur Wikipédia FR.
+
+    Retourne `[]` si la page n'a pas de redirections entrantes (ou est missing),
+    `None` en cas d'échec transient (429/5xx/timeout) — le caller ne doit pas
+    cacher ce résultat dans ce cas.
+    """
+    params = urllib.parse.urlencode({
+        "action": "query",
+        "prop": "redirects",
+        "titles": wp_title,
+        "rdlimit": "max",
+        "rdnamespace": "0",
+        "format": "json",
+        "formatversion": "2",
+    })
+    url = f"{WIKIPEDIA_API_URL}?{params}"
+    req = urllib.request.Request(url, headers={"User-Agent": WIKI_USER_AGENT})
+    last_err: Exception | None = None
+    for attempt in range(WIKI_ALIASES_RETRIES_429):
+        try:
+            with urllib.request.urlopen(req, timeout=WIKI_ALIASES_TIMEOUT_S) as resp:
+                data = json.loads(resp.read())
+            pages = data.get("query", {}).get("pages") or []
+            if not pages:
+                return []
+            page = pages[0]
+            if page.get("missing"):
+                return []
+            redirects = page.get("redirects") or []
+            return [r.get("title", "").strip() for r in redirects if r.get("title")]
+        except urllib.error.HTTPError as e:
+            if e.code == 404:
+                return []
+            last_err = e
+            if e.code == 429 or 500 <= e.code < 600:
+                wait = 2 ** (attempt + 2)
+                print(f"[red] {e.code} sur '{wp_title}', backoff {wait}s")
+                time.sleep(wait)
+                continue
+            print(f"[red] http {e.code} sur '{wp_title}': abandon")
+            return None
+        except (urllib.error.URLError, TimeoutError) as e:
+            last_err = e
+            wait = 2 ** (attempt + 2)
+            print(f"[red] timeout sur '{wp_title}', backoff {wait}s")
+            time.sleep(wait)
+            continue
+    print(f"[red] épuisé sur '{wp_title}': {last_err}")
+    return None
+
+
+def extract_nv_from_summary(
+    summary: str | None, genre: str, espece: str,
+) -> str | None:
+    """Tire le nom français de l'incipit Wikipédia FR (déjà cached).
+
+    Pattern attendu : `[Article ]NomFr[, autre nom][ (Binomial)] est…`.
+    Capitalise la 1re lettre, normalise les espaces multiples. Rejette si :
+    - pas de match,
+    - le candidat matche `_is_binomial_like` (l'article s'ouvre directement
+      sur le binôme — cas typique des espèces sans nom commun établi),
+    - longueur > 50 caractères (probable faux positif sur une description).
+    """
+    if not summary:
+        return None
+    m = SUMMARY_NV_RE.match(summary.strip())
+    if not m:
+        return None
+    candidate = m.group(1).strip()
+    candidate = re.sub(r"\s+", " ", candidate)
+    if not candidate or len(candidate) > 50:
+        return None
+    candidate = candidate[0].upper() + candidate[1:]
+    if _is_binomial_like(candidate, genre, espece):
+        return None
+    return candidate
+
+
+def fetch_redirect_vernacular(
+    sk: int, genre: str, espece: str, wp_title: str,
+) -> tuple[str | None, list[str]]:
+    """Pipeline cache → API → sélection nv pour les redirections Wikipédia.
+
+    Retour `(nv, redirects)` : `nv` peut être `None` si aucun candidat valide
+    n'a été trouvé ; `redirects` est la liste brute (cachée) — utile au rapport
+    HTML pour expliquer pourquoi aucun nv n'a été retenu. Cache disque persistant
+    en `tools/.wikipedia-aliases-cache/{sk}.json`.
+    """
+    cache_path = WIKI_ALIASES_CACHE_DIR / f"{sk}.json"
+    if cache_path.exists():
+        try:
+            with cache_path.open("r", encoding="utf-8") as f:
+                cached = json.load(f)
+            return cached.get("nv"), list(cached.get("redirects") or [])
+        except (json.JSONDecodeError, OSError):
+            pass
+
+    time.sleep(WIKI_ALIASES_THROTTLE_S)
+    redirects = _fetch_wikipedia_redirects(wp_title)
+    if redirects is None:
+        # Échec transient : on ne cache pas, prochain run réessaiera.
+        return None, []
+
+    nv = pick_vernacular_from_redirects(redirects, genre, espece)
+    cache_path.parent.mkdir(parents=True, exist_ok=True)
+    with cache_path.open("w", encoding="utf-8") as f:
+        json.dump(
+            {"wp": wp_title, "nv": nv, "redirects": redirects},
+            f, ensure_ascii=False,
+        )
+    return nv, redirects
+
+
 def compute_vernacular_and_pokedex(
     species_index: dict[tuple[str, str], int],
     nom_commun_by_sk: dict[int, dict[str, int]],
@@ -525,22 +941,33 @@ def compute_vernacular_and_pokedex(
 ) -> tuple[list[dict], dict[str, int], list[tuple[str, str, int]]]:
     """Lit les caches Wikidata pour chaque espèce, applique la cascade nv,
     désambigue les collisions, assigne les `n` Pokédex. Écrit le fichier
-    `species-index.json` final.
+    `species-index.json` final + le sidecar de trace.
 
     Cascade (par priorité décroissante) :
-    1. `VERNACULAR_OVERRIDES[(g, e)]` (override manuel curaté)
-    2. Wikidata P1843 @fr (1re alphabétique)
-    3. Wikipedia frTitle (article title, déjà cached as `wp` underscores)
-    4. Construit : `{nc} ({I}. {epithète})` ou `{genre} {epithète}` ou
-       suffixe « (espèce indéterminée) » pour les `u: true`.
+    1. `VERNACULAR_OVERRIDES[(g, e)]` (override manuel curaté).
+    2. Wikidata P1843 @fr (1re alphabétique).
+    3. Wikipedia frTitle (article title cached comme `wp` underscores), filtré
+       pour exclure les frTitle == binôme latin nu (cas où Wikipédia titre
+       l'article scientifiquement faute de nom commun unique).
+    4. **Wikipedia redirects API** (S6 v1) : pour les espèces à `wp` rejeté
+       ci-dessus, on interroge `prop=redirects` et on prend le 1er redirect
+       valide non binôme. Cache disque `tools/.wikipedia-aliases-cache/`.
+    5. **Summary extraction** (S6 v2) : parse l'incipit du `summary` Wikipédia
+       FR déjà cached pour extraire le nom commun en clair (pattern type :
+       « Le marronnier commun, marronnier d'Inde… »). Aucun appel réseau
+       supplémentaire — ça mord directement dans la cache existante.
+    6. Construit (`construct_vernacular`) : pour les identifiées, désormais
+       sub-tracé : `nc_unique` (nv = nc nu si nc unique parmi sks),
+       `nc_disamb` (« {nc} ({I}. {epithète}) »), `binom` (binôme latin nu).
+       Pour les `u`, `genre_fr(genre)` ou genre latin nu.
 
     `n` Pokédex assigné aux espèces avec `count_by_sk[sk] > 0` et non `u`,
     par `sk` croissant — stable d'un build à l'autre tant que `sk` est stable.
 
-    Retour : (entries écrites, dict de compteurs cascade, candidats construits
-    sur espèce > 1000 captures). Cette fonction ne raise plus sur la non-unicité
-    des `nv` ; la vérification est portée par `verify_species_invariants` qui
-    regroupe tous les invariants post-build au même endroit.
+    Trace par sk persistée dans `tools/_trace/vernacular-source.json`,
+    consommée par `tools/build_report.py`. Retour : `(entries, counters,
+    candidats construits sur espèce > 1000 captures)`. La vérification
+    d'unicité des nv est portée par `verify_species_invariants` (invariant 4).
     """
     def best_nom_commun(sk: int) -> str | None:
         counts = nom_commun_by_sk.get(sk)
@@ -583,45 +1010,119 @@ def compute_vernacular_and_pokedex(
             with cache_path.open("w", encoding="utf-8") as f:
                 json.dump(cached, f, ensure_ascii=False)
 
-    # 2. Cascade nv pour chaque espèce.
+    # 2a. Pré-pass : index `nc -> liste de sks` pour décider si le nc est
+    # discriminant à la sub-source `construct_nc_unique`. Limité aux sks dont
+    # nc est non-vide.
+    nc_to_sks: dict[str, list[int]] = defaultdict(list)
+    for sk in species_index.values():
+        nc_pre = best_nom_commun(sk)
+        if nc_pre:
+            nc_to_sks[nc_pre.strip()].append(sk)
+
+    # 2b. Cascade nv pour chaque espèce.
     counters = {
         "nv_via_overrides": 0,
         "nv_via_p1843": 0,
         "nv_via_frtitle": 0,
-        "nv_via_construit": 0,
+        "nv_via_redirect": 0,
+        "nv_via_summary_extract": 0,
+        "nv_via_genre_fr": 0,
+        "nv_via_construit_nc_unique": 0,
+        "nv_via_construit_nc_disamb": 0,
+        "nv_via_construit_binom": 0,
         "nv_disambiguations": 0,
         "pokedex_count": 0,
     }
     entries: list[dict] = []
     construit_high_count: list[tuple[str, str, int]] = []
+    # `trace_by_sk[sk] = {source, frtitle_rejected?, redirects_count?,
+    # redirect_used?, summary_match?}` — sérialisé dans le sidecar trace.
+    trace_by_sk: dict[int, dict] = {}
+
     for (genre, espece), sk in species_index.items():
         nc = best_nom_commun(sk)
         is_unk = is_unknown_species(genre, espece)
         cached = cache_state.get(sk, {})
         nv: str | None = None
+        source: str = "construct_binom"
+        trace: dict = {}
 
         override = VERNACULAR_OVERRIDES.get((genre, espece))
         if override:
             nv = override
+            source = "override"
             counters["nv_via_overrides"] += 1
         else:
             p1843 = first_p1843(cached.get("vernacularNames") or [])
             if p1843:
                 nv = p1843
+                source = "p1843"
                 counters["nv_via_p1843"] += 1
             else:
                 wp = cached.get("wp")
+                frtitle: str | None = None
                 if wp:
                     # Le `wp` est `Underscored_Title` ; on délimite proprement.
-                    nv = wp.replace("_", " ").strip() or None
-                    if nv:
-                        counters["nv_via_frtitle"] += 1
-                if not nv:
-                    nv = construct_vernacular(genre, espece, nc, is_unk)
-                    counters["nv_via_construit"] += 1
-                    sk_count = count_by_sk.get(sk, 0)
-                    if sk_count > 1000 and not is_unk:
-                        construit_high_count.append((genre, espece, sk_count))
+                    frtitle = wp.replace("_", " ").strip() or None
+
+                # S6 : skip frTitle si == binôme nu, on tentera redirects + summary.
+                if frtitle and not _is_binomial_like(frtitle, genre, espece):
+                    nv = frtitle
+                    source = "frtitle"
+                    counters["nv_via_frtitle"] += 1
+                else:
+                    if frtitle:
+                        trace["frtitle_rejected"] = frtitle
+                    # S6 v1 : étape redirects Wikipédia FR.
+                    if wp:
+                        red_nv, red_list = fetch_redirect_vernacular(
+                            sk, genre, espece, wp,
+                        )
+                        trace["redirects_count"] = len(red_list)
+                        if red_nv:
+                            nv = red_nv
+                            source = "redirect"
+                            trace["redirect_used"] = red_nv
+                            counters["nv_via_redirect"] += 1
+                    # S6 v2 : étape summary_extraction sur l'incipit cached.
+                    if not nv:
+                        sum_nv = extract_nv_from_summary(
+                            cached.get("summary"), genre, espece,
+                        )
+                        if sum_nv:
+                            nv = sum_nv
+                            source = "summary_extract"
+                            trace["summary_match"] = sum_nv
+                            counters["nv_via_summary_extract"] += 1
+                    if not nv:
+                        # Branche construct : 4 sub-sources distinctes pour la
+                        # trace et les compteurs (action corrective différente
+                        # selon le cas — override pour binom, GENRE_FR pour
+                        # zombie sans mapping, etc.).
+                        nv = construct_vernacular(genre, espece, nc, is_unk)
+                        if is_unk:
+                            if genre_fr(genre):
+                                source = "genre_fr"
+                                counters["nv_via_genre_fr"] += 1
+                            else:
+                                source = "construct_binom"
+                                counters["nv_via_construit_binom"] += 1
+                        else:
+                            if nc and len(nc_to_sks.get(nc.strip(), [])) == 1:
+                                # nc unique parmi tous les sks → on l'utilise
+                                # nu, sans la parenthèse `(I. epithète)`.
+                                nv = nc.strip()
+                                source = "construct_nc_unique"
+                                counters["nv_via_construit_nc_unique"] += 1
+                            elif nc:
+                                source = "construct_nc_disamb"
+                                counters["nv_via_construit_nc_disamb"] += 1
+                            else:
+                                source = "construct_binom"
+                                counters["nv_via_construit_binom"] += 1
+                            sk_count = count_by_sk.get(sk, 0)
+                            if sk_count > 1000:
+                                construit_high_count.append((genre, espece, sk_count))
 
         entry: dict = {"i": sk, "g": genre, "e": espece}
         if nc:
@@ -630,10 +1131,16 @@ def compute_vernacular_and_pokedex(
             entry["u"] = True
         entry["nv"] = nv
         entries.append(entry)
+        trace["source"] = source
+        trace_by_sk[sk] = trace
 
     # 3. Désambiguation des collisions sur nv. La vérification d'unicité finale
     # est portée par `verify_species_invariants` (cf. invariant #4).
+    nv_pre_disamb = {e["i"]: e["nv"] for e in entries}
     counters["nv_disambiguations"] = disambiguate_vernaculars(entries)
+    for e in entries:
+        if e["nv"] != nv_pre_disamb.get(e["i"]):
+            trace_by_sk.setdefault(e["i"], {})["disambiguated"] = True
 
     # 4. Numérotation Pokédex par sk croissant, identifiées + count > 0.
     entries.sort(key=lambda e: e["i"])
@@ -650,6 +1157,15 @@ def compute_vernacular_and_pokedex(
     # 5. Écriture finale species-index.json.
     with OUT_SPECIES_INDEX.open("w", encoding="utf-8") as f:
         json.dump(entries, f, ensure_ascii=False, separators=(",", ":"))
+
+    # 6. Sidecar trace (gitignored). Contrat consommé par `tools/build_report.py`.
+    OUT_VERNACULAR_TRACE.parent.mkdir(parents=True, exist_ok=True)
+    trace_payload = [
+        {"sk": sk, **trace_by_sk.get(sk, {"source": "construct"})}
+        for sk in sorted(trace_by_sk.keys())
+    ]
+    with OUT_VERNACULAR_TRACE.open("w", encoding="utf-8") as f:
+        json.dump(trace_payload, f, ensure_ascii=False, separators=(",", ":"))
 
     construit_high_count.sort(key=lambda gec: -gec[2])
     return entries, counters, construit_high_count
@@ -1890,7 +2406,7 @@ def verify_species_invariants(
     construit_high_count: list[tuple[str, str, int]],
     cache_dir: Path = WIKIDATA_CACHE_DIR,
 ) -> None:
-    """Vérifie 5 invariants post-build (cf. ROADMAP cycle Catalogue ligne 20).
+    """Vérifie 6 invariants post-build (cf. ROADMAP cycle Catalogue ligne 20).
 
     Raise sur les régressions structurelles, warn (stderr) sur les signaux
     éditoriaux. À appeler APRÈS `compute_vernacular_and_pokedex()`. Note : si
@@ -1904,14 +2420,17 @@ def verify_species_invariants(
     2. **raise** si une espèce avec count > 100 a perdu sa page WP entre 2
        builds (cache `.wikidata-cache/{sk}.json` actuellement `miss=True` ou
        sans `wp` non vide, alors que `pre_wp_present_by_sk[sk] == True`).
-    3. **raise** si > 50 rows OpenData portent `genre == "Non spécifié"` strict
-       (signe que le drop dur amorcé sprint 1 régresse — le 2026-05 baseline
-       est ~811 mais ils étaient pré-existants ; au-delà du seuil c'est un
-       drift dataset à investiguer).
+    3. **raise** si une entrée `(Non spécifié, *)` reçoit des arbres (count > 0).
+       Les zombies count=0 sont acceptés (rétrocompat captures users). Le
+       compteur CSV brut `non_specifie_count` (~811) reflète le volume du
+       dataset OpenData avant filtrage et n'est pas un signal d'invariant.
     4. **raise** si les `nv` finaux ne sont pas uniques (déplacé depuis
        `compute_vernacular_and_pokedex` sprint 2 — regroupement cohérent et
        débloque le test des collisions résiduelles).
-    5. **warn** liste explicite des espèces tombées sur la branche `construit`
+    5. **raise** (S6) si un `nv` est redondant `{g} {e} ({g} {e})` — typique
+       d'une désambiguation appliquée à un binôme que la cascade renvoyait déjà
+       tel quel. Pré-S6 : 15 cas (ex. « Aria edulis (Aria edulis) »).
+    6. **warn** liste explicite des espèces tombées sur la branche `construit`
        avec count > 1000 (candidats `VERNACULAR_OVERRIDES` à arbitrer).
     """
     # 1. sk disparu.
@@ -1962,12 +2481,25 @@ def verify_species_invariants(
             f"livrer cet asset, ces espèces ne s'afficheraient plus en fiche."
         )
 
-    # 3. Non spécifié seuil.
-    if non_specifie_count > 50:
+    # 3. Le drop S1 tient : aucune entrée 'Non spécifié' ne reçoit des arbres
+    #    (count > 0). Les entrées zombies `(Non spécifié, *)` count=0 sont
+    #    volontairement préservées dans le species-index pour la rétrocompat
+    #    des captures users (sks stables entre runs). Le compteur CSV brut
+    #    `non_specifie_count` (~811) reflète juste le volume du dataset
+    #    OpenData avant filtrage et n'est pas un signal fiable.
+    non_specifie_active = [
+        e for e in entries
+        if e["g"] == "Non spécifié" and count_by_sk.get(e["i"], 0) > 0
+    ]
+    if non_specifie_active:
+        sample = [(e["i"], e["e"], count_by_sk.get(e["i"], 0))
+                  for e in non_specifie_active[:5]]
         raise AssertionError(
-            f"{non_specifie_count} rows OpenData avec genre='Non spécifié' "
-            f"(seuil = 50). Le drop dur sprint 1 régresse ou OpenData a changé "
-            f"de format — investiguer avant de livrer."
+            f"{len(non_specifie_active)} entrée(s) 'Non spécifié' active(s) "
+            f"(count > 0) dans le species-index : {sample}"
+            f"{'...' if len(non_specifie_active) > 5 else ''}. Le drop dur "
+            f"sprint 1 régresse — vérifier le filtre "
+            f"`if genre == \"Non spécifié\"` dans le pipeline d'ingestion."
         )
 
     # 4. Unicité nv finale.
@@ -1981,7 +2513,21 @@ def verify_species_invariants(
             f"Bug dans `disambiguate_vernaculars` ou collision binôme latin."
         )
 
-    # 5. Warn fallback construit > 1000 captures.
+    # 5. Redondance `{g} {e} ({g} {e})` (S6) : typique d'une désambiguation
+    # appliquée à un binôme que la cascade avait déjà choisi tel quel.
+    redundant: list[tuple[int, str]] = [
+        (e["i"], e["nv"]) for e in entries if NV_REDUNDANT_RE.match(e.get("nv") or "")
+    ]
+    if redundant:
+        sample = redundant[:5]
+        raise AssertionError(
+            f"vernaculaires redondants `{{g}} {{e}} ({{g}} {{e}})` : {sample}"
+            f"{'...' if len(redundant) > 5 else ''} ({len(redundant)} cas). "
+            f"Filtrer en amont la cascade (`_is_binomial_like`) ou ajouter un "
+            f"override dans `VERNACULAR_OVERRIDES`."
+        )
+
+    # 6. Warn fallback construit > 1000 captures.
     if construit_high_count:
         print(
             f"[warn] {len(construit_high_count)} espèce(s) > 1000 captures "
@@ -2242,10 +2788,15 @@ def build(csv_path: Path, db_path: Path, geojson_path: Path) -> None:
     )
     print(
         f"[vrn ] {vernacular_counters['nv_via_overrides']} overrides, "
-        f"{vernacular_counters['nv_via_p1843']} via P1843, "
-        f"{vernacular_counters['nv_via_frtitle']} via frTitle, "
-        f"{vernacular_counters['nv_via_construit']} construits "
-        f"({vernacular_counters['nv_disambiguations']} désambiguations) "
+        f"{vernacular_counters['nv_via_p1843']} P1843, "
+        f"{vernacular_counters['nv_via_frtitle']} frTitle, "
+        f"{vernacular_counters['nv_via_redirect']} redirects, "
+        f"{vernacular_counters['nv_via_summary_extract']} summary, "
+        f"{vernacular_counters['nv_via_genre_fr']} GENRE_FR, "
+        f"{vernacular_counters['nv_via_construit_nc_unique']} nc_unique, "
+        f"{vernacular_counters['nv_via_construit_nc_disamb']} nc_disamb, "
+        f"{vernacular_counters['nv_via_construit_binom']} binom "
+        f"({vernacular_counters['nv_disambiguations']} désamb) "
         f"→ {vernacular_counters['pokedex_count']} #N Pokédex"
     )
 

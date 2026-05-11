@@ -19,14 +19,18 @@ from unittest import mock
 
 import build_dataset
 from build_dataset import (
+    GENRE_FR,
     SPECIES_FIXUPS,
     UNKNOWN_ESPECE_FORMS,
     VERNACULAR_OVERRIDES,
     apply_species_fixups,
     construct_vernacular,
     disambiguate_vernaculars,
+    extract_nv_from_summary,
     first_p1843,
+    genre_fr,
     is_unknown_species,
+    pick_vernacular_from_redirects,
 )
 
 
@@ -143,16 +147,20 @@ class ConstructVernacularTest(unittest.TestCase):
             "Platane (P. hispanica)",
         )
 
-    def test_unknown_with_nc(self):
+    def test_unknown_genre_mapped_in_genre_fr(self):
+        # S6 : `Tilia sp.` retombe sur le nom français court du genre, sans
+        # suffixe « (espèce indéterminée) ». Le `nc` du CSV n'est pas consulté.
         self.assertEqual(
             construct_vernacular("Tilia", "sp.", nc="Tilleul", is_unknown=True),
-            "Tilleul (espèce indéterminée)",
+            "Tilleul",
         )
 
-    def test_unknown_without_nc_uses_genre(self):
+    def test_unknown_genre_not_mapped_falls_back_to_latin(self):
+        # S6 : genre absent de `GENRE_FR` → binôme genre latin nu (candidat à
+        # compléter dans la table, surfacé dans le rapport HTML).
         self.assertEqual(
-            construct_vernacular("Pistacia", "sp.", nc=None, is_unknown=True),
-            "Pistacia (espèce indéterminée)",
+            construct_vernacular("Genrefictif", "sp.", nc=None, is_unknown=True),
+            "Genrefictif",
         )
 
     def test_unknown_non_specifie_zombie(self):
@@ -228,20 +236,22 @@ class ComputeVernacularAndPokedexTest(unittest.TestCase):
         self.tmp_path = Path(self.tmp.name)
         self.cache_dir = self.tmp_path / ".wikidata-cache"
         self.cache_dir.mkdir()
+        self.aliases_cache_dir = self.tmp_path / ".wikipedia-aliases-cache"
         self.species_index_out = self.tmp_path / "species-index.json"
+        self.trace_out = self.tmp_path / "_trace" / "vernacular-source.json"
 
-        self.cache_patch = mock.patch.object(
-            build_dataset, "WIKIDATA_CACHE_DIR", self.cache_dir
-        )
-        self.out_patch = mock.patch.object(
-            build_dataset, "OUT_SPECIES_INDEX", self.species_index_out
-        )
-        self.cache_patch.start()
-        self.out_patch.start()
+        self.patches = [
+            mock.patch.object(build_dataset, "WIKIDATA_CACHE_DIR", self.cache_dir),
+            mock.patch.object(build_dataset, "WIKI_ALIASES_CACHE_DIR", self.aliases_cache_dir),
+            mock.patch.object(build_dataset, "OUT_SPECIES_INDEX", self.species_index_out),
+            mock.patch.object(build_dataset, "OUT_VERNACULAR_TRACE", self.trace_out),
+        ]
+        for p in self.patches:
+            p.start()
 
     def tearDown(self):
-        self.cache_patch.stop()
-        self.out_patch.stop()
+        for p in self.patches:
+            p.stop()
         self.tmp.cleanup()
 
     def _write_cache(self, sk: int, content: dict) -> None:
@@ -304,7 +314,10 @@ class ComputeVernacularAndPokedexTest(unittest.TestCase):
         self.assertEqual(counters["nv_via_overrides"], 1)
         self.assertEqual(counters["nv_via_p1843"], 1)
         self.assertEqual(counters["nv_via_frtitle"], 1)
-        self.assertEqual(counters["nv_via_construit"], 1)
+        # Pistacia : pas de nc, fallback construit binôme nu.
+        self.assertEqual(counters["nv_via_construit_binom"], 1)
+        self.assertEqual(counters["nv_via_construit_nc_unique"], 0)
+        self.assertEqual(counters["nv_via_construit_nc_disamb"], 0)
         self.assertEqual(counters["nv_disambiguations"], 0)
 
         # n attribué à toutes (toutes identifiées avec count > 0).
@@ -514,33 +527,44 @@ class VerifySpeciesInvariantsTest(unittest.TestCase):
         except AssertionError as exc:
             self.fail(f"raise inattendu sur wp présent : {exc}")
 
-    def test_non_specifie_threshold_raises(self):
-        entries = [self._entry(0, "Quercus", "robur", "Chêne pédonculé")]
-        with self.assertRaisesRegex(AssertionError, "Non spécifié"):
+    def test_non_specifie_active_raises(self):
+        # Régression du drop : une entrée 'Non spécifié' reçoit des arbres
+        # (count > 0). C'est ce qu'il faut détecter.
+        entries = [
+            self._entry(0, "Quercus", "robur", "Chêne pédonculé"),
+            self._entry(1, "Non spécifié", "sp.", "Espèce indéterminée"),
+        ]
+        with self.assertRaisesRegex(AssertionError, "Non spécifié.*active"):
             build_dataset.verify_species_invariants(
-                pre_sk_set=frozenset({0}),
+                pre_sk_set=frozenset({0, 1}),
                 pre_wp_present_by_sk={},
                 entries=entries,
-                count_by_sk={0: 100},
-                non_specifie_count=51,
+                count_by_sk={0: 100, 1: 42},  # le zombie reçoit 42 arbres → raise
+                non_specifie_count=811,
                 construit_high_count=[],
                 cache_dir=self.cache_dir,
             )
 
-    def test_non_specifie_under_threshold_silent(self):
-        entries = [self._entry(0, "Quercus", "robur", "Chêne pédonculé")]
+    def test_non_specifie_zombie_silent(self):
+        # Cas nominal : entrée 'Non spécifié' zombie (count = 0) préservée pour
+        # rétrocompat des captures users → pas de raise. Le compteur CSV brut
+        # (baseline ~811) n'est plus un signal et est ignoré.
+        entries = [
+            self._entry(0, "Quercus", "robur", "Chêne pédonculé"),
+            self._entry(1, "Non spécifié", "sp.", "Espèce indéterminée"),
+        ]
         try:
             build_dataset.verify_species_invariants(
-                pre_sk_set=frozenset({0}),
+                pre_sk_set=frozenset({0, 1}),
                 pre_wp_present_by_sk={},
                 entries=entries,
-                count_by_sk={0: 100},
-                non_specifie_count=50,
+                count_by_sk={0: 100, 1: 0},  # zombie sans arbre actif
+                non_specifie_count=811,
                 construit_high_count=[],
                 cache_dir=self.cache_dir,
             )
         except AssertionError as exc:
-            self.fail(f"raise inattendu à seuil = 50 : {exc}")
+            self.fail(f"raise inattendu sur zombie 'Non spécifié' : {exc}")
 
     def test_nv_non_unique_raises(self):
         entries = [
@@ -658,6 +682,543 @@ class LoadPreBuildStateTest(unittest.TestCase):
         )
         self.assertEqual(sk_set, frozenset())
         self.assertEqual(wp_by_sk, {})
+
+
+class GenreFrTest(unittest.TestCase):
+    """S6 : table des noms français de genres pour rendre les zombies lisibles."""
+
+    def test_known_genre_returns_french_name(self):
+        self.assertEqual(genre_fr("Quercus"), "Chêne")
+        self.assertEqual(genre_fr("Tilia"), "Tilleul")
+        self.assertEqual(genre_fr("Aesculus"), "Marronnier")
+
+    def test_unknown_genre_returns_none(self):
+        self.assertIsNone(genre_fr("Genrefictif"))
+
+    def test_strips_whitespace(self):
+        self.assertEqual(genre_fr("  Quercus  "), "Chêne")
+
+    def test_empty_returns_none(self):
+        self.assertIsNone(genre_fr(""))
+
+    def test_unknown_only_genres_are_mapped(self):
+        # Les 3 genres only-unknown listés au S8 doivent avoir un nom FR pour
+        # éviter d'afficher du latin sur leur seule fiche disponible.
+        self.assertIsNotNone(genre_fr("Genista"))
+        self.assertIsNotNone(genre_fr("Vitex"))
+        self.assertIsNotNone(genre_fr("Ziziphus"))
+
+    def test_table_has_top_paris_genres(self):
+        # Sentinel : si la table régresse, les espèces les plus visibles
+        # repassent en latin nu en UI.
+        for g in ("Platanus", "Aesculus", "Tilia", "Acer", "Quercus", "Fraxinus"):
+            self.assertIn(g, GENRE_FR, f"{g} doit rester dans GENRE_FR")
+
+
+class PickVernacularFromRedirectsTest(unittest.TestCase):
+    """S6 : sélection d'un nom français parmi les redirections Wikipédia FR."""
+
+    def test_picks_french_name_over_binomial(self):
+        # `Quercus robur` : Wikipédia FR titre l'article scientifiquement,
+        # plusieurs noms communs y redirigent → on prend le plus court (le
+        # binôme `Quercus pedunculata`, synonyme taxonomique, est exclu).
+        result = pick_vernacular_from_redirects(
+            ["Chêne pédonculé", "Chêne rouvre", "Quercus pedunculata"],
+            genre="Quercus",
+            espece="robur",
+        )
+        self.assertEqual(result, "Chêne rouvre")  # 12 chars < 15
+
+    def test_alphabetical_tiebreak_on_equal_length(self):
+        # À longueur égale, ordre alphabétique pour reproductibilité entre runs.
+        result = pick_vernacular_from_redirects(
+            ["Bouleau blanc", "Bouleau verge"],
+            genre="Betula", espece="pendula",
+        )
+        self.assertEqual(result, "Bouleau blanc")
+
+    def test_skips_binomial_redirect(self):
+        # Synonyme taxonomique pur : binôme latin → ignoré.
+        result = pick_vernacular_from_redirects(
+            ["Quercus pedunculata"], genre="Quercus", espece="robur",
+        )
+        self.assertIsNone(result)
+
+    def test_skips_genus_only(self):
+        # Un seul mot capitalisé latin = nom de genre, pas un nom commun.
+        result = pick_vernacular_from_redirects(
+            ["Quercus"], genre="Quercus", espece="robur",
+        )
+        self.assertIsNone(result)
+
+    def test_skips_disambiguation_pages(self):
+        result = pick_vernacular_from_redirects(
+            ["Chêne (homonymie)", "Chêne (genre)"],
+            genre="Quercus", espece="robur",
+        )
+        self.assertIsNone(result)
+
+    def test_skips_namespaced_pages(self):
+        # Préfixes `Catégorie:`, `Discussion:` etc. sont des pages techniques.
+        result = pick_vernacular_from_redirects(
+            ["Catégorie:Chêne", "Discussion:Quercus robur"],
+            genre="Quercus", espece="robur",
+        )
+        self.assertIsNone(result)
+
+    def test_empty_returns_none(self):
+        self.assertIsNone(pick_vernacular_from_redirects(
+            [], genre="Quercus", espece="robur",
+        ))
+
+    def test_handles_empty_strings_in_input(self):
+        result = pick_vernacular_from_redirects(
+            ["", "  ", "Chêne pédonculé"],
+            genre="Quercus", espece="robur",
+        )
+        self.assertEqual(result, "Chêne pédonculé")
+
+
+class ComputeVernacularFrTitleFilterAndRedirectTest(unittest.TestCase):
+    """S6 : la cascade rejette frTitle == binôme nu et tente les redirects."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.tmp_path = Path(self.tmp.name)
+        self.cache_dir = self.tmp_path / ".wikidata-cache"
+        self.cache_dir.mkdir()
+        self.aliases_cache_dir = self.tmp_path / ".wikipedia-aliases-cache"
+        self.species_index_out = self.tmp_path / "species-index.json"
+        self.trace_out = self.tmp_path / "_trace" / "vernacular-source.json"
+
+        self.patches = [
+            mock.patch.object(build_dataset, "WIKIDATA_CACHE_DIR", self.cache_dir),
+            mock.patch.object(build_dataset, "WIKI_ALIASES_CACHE_DIR", self.aliases_cache_dir),
+            mock.patch.object(build_dataset, "OUT_SPECIES_INDEX", self.species_index_out),
+            mock.patch.object(build_dataset, "OUT_VERNACULAR_TRACE", self.trace_out),
+        ]
+        for p in self.patches:
+            p.start()
+
+    def tearDown(self):
+        for p in self.patches:
+            p.stop()
+        self.tmp.cleanup()
+
+    def _write_cache(self, sk: int, content: dict) -> None:
+        (self.cache_dir / f"{sk}.json").write_text(
+            json.dumps(content), encoding="utf-8",
+        )
+
+    def test_frtitle_equal_to_binomial_falls_through_to_redirect(self):
+        # Cas réel pré-S6 : Wikipédia FR titre `Aria edulis` scientifiquement,
+        # le frTitle == binôme. La cascade doit rejeter et tenter les redirects.
+        species_index = {("Aria", "edulis"): 0}
+        self._write_cache(0, {
+            "qid": "Q123",
+            "wp": "Aria_edulis",
+            "summary": "...",
+            "vernacularNames": [],
+        })
+
+        with mock.patch.object(
+            build_dataset, "fetch_redirect_vernacular",
+            return_value=("Alisier blanc", ["Alisier blanc", "Sorbus aria"]),
+        ) as mock_fetch:
+            entries, counters, _construit = build_dataset.compute_vernacular_and_pokedex(
+                species_index=species_index,
+                nom_commun_by_sk={0: {"Alisier": 5}},
+                count_by_sk={0: 30},
+            )
+        mock_fetch.assert_called_once()
+        self.assertEqual(entries[0]["nv"], "Alisier blanc")
+        self.assertEqual(counters["nv_via_frtitle"], 0)
+        self.assertEqual(counters["nv_via_redirect"], 1)
+
+    def test_frtitle_not_equal_to_binomial_is_used(self):
+        # Cas où frTitle est un vrai nom français (cascade Sprint 2 inchangée).
+        species_index = {("Tilia", "cordata"): 0}
+        self._write_cache(0, {
+            "qid": "Q156726",
+            "wp": "Tilleul_à_petites_feuilles",
+            "summary": "...",
+            "vernacularNames": [],
+        })
+
+        entries, counters, _construit = build_dataset.compute_vernacular_and_pokedex(
+            species_index=species_index,
+            nom_commun_by_sk={0: {"Tilleul": 1}},
+            count_by_sk={0: 100},
+        )
+        self.assertEqual(entries[0]["nv"], "Tilleul à petites feuilles")
+        self.assertEqual(counters["nv_via_frtitle"], 1)
+        self.assertEqual(counters["nv_via_redirect"], 0)
+
+    def test_redirect_returns_none_falls_back_to_construct(self):
+        # frTitle rejeté + aucun redirect valide → tombe sur construct (binôme).
+        species_index = {("Aria", "edulis"): 0}
+        self._write_cache(0, {
+            "qid": "Q123",
+            "wp": "Aria_edulis",
+            "summary": "...",
+            "vernacularNames": [],
+        })
+
+        with mock.patch.object(
+            build_dataset, "fetch_redirect_vernacular",
+            return_value=(None, []),
+        ):
+            entries, counters, _construit = build_dataset.compute_vernacular_and_pokedex(
+                species_index=species_index,
+                nom_commun_by_sk={},
+                count_by_sk={0: 30},
+            )
+        self.assertEqual(entries[0]["nv"], "Aria edulis")
+        self.assertEqual(counters["nv_via_redirect"], 0)
+        # Aria edulis : pas de nc, fallback construit binôme nu.
+        self.assertEqual(counters["nv_via_construit_binom"], 1)
+
+    def test_unknown_species_traced_as_genre_fr(self):
+        # Zombie `(Tilia, sp.)` : pas de wp/p1843 → tombe sur construct, mais
+        # comme `genre_fr("Tilia")` existe, la trace dit `genre_fr` (et pas
+        # `construct`) — utile pour distinguer dans le rapport HTML.
+        species_index = {("Tilia", "sp."): 0}
+        self._write_cache(0, {"miss": True})
+
+        entries, counters, _construit = build_dataset.compute_vernacular_and_pokedex(
+            species_index=species_index,
+            nom_commun_by_sk={},
+            count_by_sk={0: 5},
+        )
+        self.assertEqual(entries[0]["nv"], "Tilleul")
+        self.assertTrue(entries[0].get("u"))
+        self.assertEqual(counters["nv_via_genre_fr"], 1)
+        self.assertEqual(counters["nv_via_construit_binom"], 0)
+
+    def test_writes_trace_sidecar(self):
+        species_index = {
+            ("Quercus", "robur"): 0,
+            ("Tilia", "sp."): 1,
+        }
+        self._write_cache(0, {
+            "qid": "Q1", "wp": "Chêne_pédonculé", "vernacularNames": ["Chêne pédonculé"],
+        })
+        self._write_cache(1, {"miss": True})
+        build_dataset.compute_vernacular_and_pokedex(
+            species_index=species_index,
+            nom_commun_by_sk={0: {"Chêne": 1}},
+            count_by_sk={0: 1500, 1: 5},
+        )
+        trace = json.loads(self.trace_out.read_text(encoding="utf-8"))
+        by_sk = {t["sk"]: t for t in trace}
+        self.assertEqual(by_sk[0]["source"], "p1843")
+        self.assertEqual(by_sk[1]["source"], "genre_fr")
+
+
+class VerifyRedundantNvRaisesTest(unittest.TestCase):
+    """S6 : invariant 5, raise sur `{g} {e} ({g} {e})` (typique post-désambiguation)."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.cache_dir = Path(self.tmp.name)
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def test_redundant_nv_raises(self):
+        entries = [
+            {"i": 0, "g": "Aria", "e": "edulis", "nv": "Aria edulis (Aria edulis)"},
+        ]
+        with self.assertRaisesRegex(AssertionError, "redondant"):
+            build_dataset.verify_species_invariants(
+                pre_sk_set=frozenset({0}),
+                pre_wp_present_by_sk={},
+                entries=entries,
+                count_by_sk={0: 30},
+                non_specifie_count=0,
+                construit_high_count=[],
+                cache_dir=self.cache_dir,
+            )
+
+    def test_normal_disambiguation_does_not_raise(self):
+        # Nom commun vrai + binôme suffix : pas une redondance.
+        entries = [
+            {"i": 0, "g": "Quercus", "e": "robur", "nv": "Chêne (Quercus robur)"},
+            {"i": 1, "g": "Quercus", "e": "petraea", "nv": "Chêne (Quercus petraea)"},
+        ]
+        try:
+            build_dataset.verify_species_invariants(
+                pre_sk_set=frozenset({0, 1}),
+                pre_wp_present_by_sk={},
+                entries=entries,
+                count_by_sk={0: 100, 1: 100},
+                non_specifie_count=0,
+                construit_high_count=[],
+                cache_dir=self.cache_dir,
+            )
+        except AssertionError as exc:
+            self.fail(f"raise inattendu sur disambiguation normale : {exc}")
+
+
+class ExtractNvFromSummaryTest(unittest.TestCase):
+    """S6 v2 : extraction du nom français à partir de l'incipit Wikipédia."""
+
+    def test_with_article_le(self):
+        s = "Le marronnier commun, marronnier d'Inde ou marronnier blanc (Aesculus hippocastanum L.) est un arbre à fleurs."
+        self.assertEqual(
+            extract_nv_from_summary(s, "Aesculus", "hippocastanum"),
+            "Marronnier commun",
+        )
+
+    def test_with_article_apostrophe(self):
+        s = "L'érable plane (Acer platanoides) est une espèce d'arbres caducifoliés."
+        self.assertEqual(
+            extract_nv_from_summary(s, "Acer", "platanoides"),
+            "Érable plane",
+        )
+
+    def test_without_article(self):
+        s = "Bouleau verruqueux (Betula pendula) est un arbre de la famille des Betulaceae."
+        self.assertEqual(
+            extract_nv_from_summary(s, "Betula", "pendula"),
+            "Bouleau verruqueux",
+        )
+
+    def test_starts_with_binomial_returns_none(self):
+        # Article qui démarre par le binôme : pas de nom français exploitable.
+        s = "Aria edulis est une espèce d'arbres de la famille des Rosaceae."
+        self.assertIsNone(
+            extract_nv_from_summary(s, "Aria", "edulis"),
+        )
+
+    def test_too_long_returns_none(self):
+        # Phrase qui ne contient pas de séparateur tôt → match énorme, rejet.
+        s = "Voici une longue introduction sans virgule ni parenthèse précoce dépassant largement les cinquante caractères tolérés en sortie"
+        self.assertIsNone(
+            extract_nv_from_summary(s, "Genre", "espece"),
+        )
+
+    def test_empty_returns_none(self):
+        self.assertIsNone(extract_nv_from_summary("", "Genre", "espece"))
+        self.assertIsNone(extract_nv_from_summary(None, "Genre", "espece"))
+
+    def test_collapses_whitespace(self):
+        s = "Le  chêne   pédonculé  ,  Quercus robur, est un arbre."
+        self.assertEqual(
+            extract_nv_from_summary(s, "Quercus", "robur"),
+            "Chêne pédonculé",
+        )
+
+
+class ComputeVernacularSummaryExtractionTest(unittest.TestCase):
+    """S6 v2 : la cascade prend `summary_extract` quand frTitle/redirects échouent."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.tmp_path = Path(self.tmp.name)
+        self.cache_dir = self.tmp_path / ".wikidata-cache"
+        self.cache_dir.mkdir()
+        self.aliases_cache_dir = self.tmp_path / ".wikipedia-aliases-cache"
+        self.species_index_out = self.tmp_path / "species-index.json"
+        self.trace_out = self.tmp_path / "_trace" / "vernacular-source.json"
+        self.patches = [
+            mock.patch.object(build_dataset, "WIKIDATA_CACHE_DIR", self.cache_dir),
+            mock.patch.object(build_dataset, "WIKI_ALIASES_CACHE_DIR", self.aliases_cache_dir),
+            mock.patch.object(build_dataset, "OUT_SPECIES_INDEX", self.species_index_out),
+            mock.patch.object(build_dataset, "OUT_VERNACULAR_TRACE", self.trace_out),
+        ]
+        for p in self.patches:
+            p.start()
+
+    def tearDown(self):
+        for p in self.patches:
+            p.stop()
+        self.tmp.cleanup()
+
+    def _write_cache(self, sk: int, content: dict) -> None:
+        (self.cache_dir / f"{sk}.json").write_text(
+            json.dumps(content), encoding="utf-8",
+        )
+
+    def test_cascade_uses_summary_extract_when_other_steps_fail(self):
+        species_index = {("Aria", "edulis"): 0}
+        # frTitle == binôme → rejeté ; pas de p1843 ; redirects mockés vides ;
+        # summary contient un nom français exploitable.
+        self._write_cache(0, {
+            "qid": "Q123",
+            "wp": "Aria_edulis",
+            "summary": "L'alisier blanc (Aria edulis) est un petit arbre de la famille des Rosaceae.",
+            "vernacularNames": [],
+        })
+        with mock.patch.object(
+            build_dataset, "fetch_redirect_vernacular",
+            return_value=(None, []),
+        ):
+            entries, counters, _construit = build_dataset.compute_vernacular_and_pokedex(
+                species_index=species_index,
+                nom_commun_by_sk={},
+                count_by_sk={0: 30},
+            )
+        self.assertEqual(entries[0]["nv"], "Alisier blanc")
+        self.assertEqual(counters["nv_via_summary_extract"], 1)
+        self.assertEqual(counters["nv_via_construit_binom"], 0)
+        # Trace doit refléter la source choisie.
+        trace = json.loads(self.trace_out.read_text(encoding="utf-8"))
+        self.assertEqual(trace[0]["source"], "summary_extract")
+        self.assertEqual(trace[0]["summary_match"], "Alisier blanc")
+
+    def test_summary_extract_skipped_when_redirect_already_succeeded(self):
+        species_index = {("Aria", "edulis"): 0}
+        self._write_cache(0, {
+            "qid": "Q123",
+            "wp": "Aria_edulis",
+            "summary": "L'autre nom (Aria edulis) est…",
+            "vernacularNames": [],
+        })
+        with mock.patch.object(
+            build_dataset, "fetch_redirect_vernacular",
+            return_value=("Alisier blanc", ["Alisier blanc"]),
+        ):
+            entries, counters, _construit = build_dataset.compute_vernacular_and_pokedex(
+                species_index=species_index,
+                nom_commun_by_sk={},
+                count_by_sk={0: 30},
+            )
+        self.assertEqual(entries[0]["nv"], "Alisier blanc")
+        self.assertEqual(counters["nv_via_redirect"], 1)
+        self.assertEqual(counters["nv_via_summary_extract"], 0)
+
+
+class ConstructNcUniqueTest(unittest.TestCase):
+    """S6 v2 : `construct` sub-source — nc unique → nv nu, nc partagé → parenthèse."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.tmp_path = Path(self.tmp.name)
+        self.cache_dir = self.tmp_path / ".wikidata-cache"
+        self.cache_dir.mkdir()
+        self.aliases_cache_dir = self.tmp_path / ".wikipedia-aliases-cache"
+        self.species_index_out = self.tmp_path / "species-index.json"
+        self.trace_out = self.tmp_path / "_trace" / "vernacular-source.json"
+        self.patches = [
+            mock.patch.object(build_dataset, "WIKIDATA_CACHE_DIR", self.cache_dir),
+            mock.patch.object(build_dataset, "WIKI_ALIASES_CACHE_DIR", self.aliases_cache_dir),
+            mock.patch.object(build_dataset, "OUT_SPECIES_INDEX", self.species_index_out),
+            mock.patch.object(build_dataset, "OUT_VERNACULAR_TRACE", self.trace_out),
+        ]
+        for p in self.patches:
+            p.start()
+
+    def tearDown(self):
+        for p in self.patches:
+            p.stop()
+        self.tmp.cleanup()
+
+    def _write_cache(self, sk: int, content: dict) -> None:
+        (self.cache_dir / f"{sk}.json").write_text(
+            json.dumps(content), encoding="utf-8",
+        )
+
+    def test_nc_unique_used_bare(self):
+        # « Orme de Samarie » présent sur 1 seul sk → nv = "Orme de Samarie"
+        # nu, sans la parenthèse `(P. trifoliata)`.
+        species_index = {("Ptelea", "trifoliata"): 0}
+        self._write_cache(0, {"miss": True})
+        entries, counters, _ = build_dataset.compute_vernacular_and_pokedex(
+            species_index=species_index,
+            nom_commun_by_sk={0: {"Orme de Samarie": 5}},
+            count_by_sk={0: 12},
+        )
+        self.assertEqual(entries[0]["nv"], "Orme de Samarie")
+        self.assertEqual(counters["nv_via_construit_nc_unique"], 1)
+        self.assertEqual(counters["nv_via_construit_nc_disamb"], 0)
+
+    def test_nc_shared_falls_back_to_parenthesis(self):
+        # 2 sks partagent « Érable » → la branche nc_disamb avec « Érable
+        # (A. campestre) » et « Érable (A. monspessulanum) ».
+        species_index = {
+            ("Acer", "campestre"): 0,
+            ("Acer", "monspessulanum"): 1,
+        }
+        self._write_cache(0, {"miss": True})
+        self._write_cache(1, {"miss": True})
+        entries, counters, _ = build_dataset.compute_vernacular_and_pokedex(
+            species_index=species_index,
+            nom_commun_by_sk={0: {"Érable": 5}, 1: {"Érable": 3}},
+            count_by_sk={0: 100, 1: 50},
+        )
+        nvs = sorted(e["nv"] for e in entries)
+        self.assertEqual(nvs, ["Érable (A. campestre)", "Érable (A. monspessulanum)"])
+        self.assertEqual(counters["nv_via_construit_nc_disamb"], 2)
+        self.assertEqual(counters["nv_via_construit_nc_unique"], 0)
+
+    def test_no_nc_falls_back_to_binom(self):
+        species_index = {("Pistacia", "palaestina"): 0}
+        self._write_cache(0, {"miss": True})
+        entries, counters, _ = build_dataset.compute_vernacular_and_pokedex(
+            species_index=species_index,
+            nom_commun_by_sk={},  # pas de nc
+            count_by_sk={0: 5},
+        )
+        self.assertEqual(entries[0]["nv"], "Pistacia palaestina")
+        self.assertEqual(counters["nv_via_construit_binom"], 1)
+
+
+class DisambiguateVernacularsZombieFormatTest(unittest.TestCase):
+    """S6 v2 : suffixe court `(Genre)` pour les zombies en collision."""
+
+    def test_one_identified_one_zombie_keeps_identified_pure(self):
+        entries = [
+            {"i": 0, "g": "Prunus", "e": "avium", "nv": "Prunier"},
+            {"i": 1, "g": "Prunus", "e": "sp.", "nv": "Prunier", "u": True},
+        ]
+        changed = disambiguate_vernaculars(entries)
+        self.assertEqual(changed, 1)
+        by_sk = {e["i"]: e for e in entries}
+        self.assertEqual(by_sk[0]["nv"], "Prunier")  # identifié garde
+        self.assertEqual(by_sk[1]["nv"], "Prunier (Prunus)")  # zombie suffixé court
+
+    def test_two_zombies_both_suffixed_short(self):
+        entries = [
+            {"i": 0, "g": "Sophora", "e": "sp.", "nv": "Sophora", "u": True},
+            {"i": 1, "g": "Styphnolobium", "e": "sp.", "nv": "Sophora", "u": True},
+        ]
+        changed = disambiguate_vernaculars(entries)
+        self.assertEqual(changed, 2)
+        nvs = sorted(e["nv"] for e in entries)
+        self.assertEqual(nvs, ["Sophora (Sophora)", "Sophora (Styphnolobium)"])
+
+    def test_two_identifieds_keep_long_suffix(self):
+        # Comportement historique inchangé : 2 identifiées suffixées par binôme.
+        entries = [
+            {"i": 0, "g": "Quercus", "e": "robur", "nv": "Chêne"},
+            {"i": 1, "g": "Quercus", "e": "petraea", "nv": "Chêne"},
+        ]
+        changed = disambiguate_vernaculars(entries)
+        self.assertEqual(changed, 2)
+        nvs = sorted(e["nv"] for e in entries)
+        self.assertEqual(nvs, ["Chêne (Quercus petraea)", "Chêne (Quercus robur)"])
+
+    def test_no_collision_no_change(self):
+        entries = [
+            {"i": 0, "g": "Quercus", "e": "robur", "nv": "Chêne pédonculé"},
+            {"i": 1, "g": "Tilia", "e": "sp.", "nv": "Tilleul", "u": True},
+        ]
+        changed = disambiguate_vernaculars(entries)
+        self.assertEqual(changed, 0)
+
+    def test_two_zombies_same_genre_use_binom_suffix(self):
+        # Cas réel : `(Malus, sp.)` + `(Malus, n. sp.)` historique tous deux
+        # zombies → le suffixe court `(Malus)` produirait une collision.
+        # On retombe sur le binôme complet pour assurer l'unicité.
+        entries = [
+            {"i": 0, "g": "Malus", "e": "sp.", "nv": "Pommier", "u": True},
+            {"i": 1, "g": "Malus", "e": "n. sp.", "nv": "Pommier", "u": True},
+        ]
+        changed = disambiguate_vernaculars(entries)
+        self.assertEqual(changed, 2)
+        nvs = sorted(e["nv"] for e in entries)
+        self.assertEqual(nvs, ["Pommier (Malus n. sp.)", "Pommier (Malus sp.)"])
 
 
 if __name__ == "__main__":
