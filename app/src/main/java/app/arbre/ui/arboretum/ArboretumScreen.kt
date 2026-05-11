@@ -13,7 +13,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.itemsIndexed
+import androidx.compose.foundation.lazy.grid.items as gridItems
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -45,13 +45,10 @@ import androidx.compose.ui.unit.dp
 import app.arbre.data.Capture
 import app.arbre.data.SpeciesEntry
 import app.arbre.data.SpeciesIndex
-import app.arbre.data.SpeciesInfoRepository
-import app.arbre.data.catalogueOrder
 import app.arbre.data.rememberArbreRepository
 import app.arbre.data.rememberCaptureRepository
 import app.arbre.data.rememberDatasetStats
 import app.arbre.data.rememberSpeciesIndex
-import app.arbre.data.rememberSpeciesInfoRepository
 import app.arbre.data.resolvedFile
 import app.arbre.R
 import app.arbre.ui.common.CatalogueCell
@@ -73,7 +70,6 @@ fun ArboretumScreen(
 ) {
     val captureRepo = rememberCaptureRepository()
     val speciesIndex = rememberSpeciesIndex()
-    val speciesInfoRepo = rememberSpeciesInfoRepository()
     val stats = rememberDatasetStats()
     val arbreRepo = rememberArbreRepository()
 
@@ -97,7 +93,7 @@ fun ArboretumScreen(
     val nbIdentifiees = speciesGroups.count { !it.entry.unknownSpecies }
     val nbIndeterminees = speciesGroups.count { it.entry.unknownSpecies }
 
-    var viewMode by rememberSaveable { mutableStateOf(ArboretumViewMode.LISTE) }
+    var viewMode by rememberSaveable { mutableStateOf(ArboretumViewMode.DECOUVERTE) }
 
     Scaffold(
         topBar = {
@@ -130,15 +126,20 @@ fun ArboretumScreen(
                     .padding(horizontal = 16.dp, vertical = 12.dp),
             )
             when (viewMode) {
-                ArboretumViewMode.LISTE -> ListeView(
+                ArboretumViewMode.DECOUVERTE -> DecouverteView(
                     speciesGroups = speciesGroups,
                     totalEspecesIdentifiees = stats.totalEspecesIdentifiees,
                     arbreRepo = arbreRepo,
                     onSpeciesClick = onSpeciesClick,
                 )
+                ArboretumViewMode.FREQUENCE -> FrequenceView(
+                    speciesIndex = speciesIndex,
+                    speciesGroups = speciesGroups,
+                    capturedSks = capturedSks,
+                    onSpeciesClick = onSpeciesClick,
+                )
                 ArboretumViewMode.CATALOGUE -> CatalogueView(
                     speciesIndex = speciesIndex,
-                    speciesInfoRepo = speciesInfoRepo,
                     speciesGroups = speciesGroups,
                     capturedSks = capturedSks,
                     onSpeciesClick = onSpeciesClick,
@@ -148,7 +149,7 @@ fun ArboretumScreen(
     }
 }
 
-private enum class ArboretumViewMode { LISTE, CATALOGUE }
+private enum class ArboretumViewMode { DECOUVERTE, FREQUENCE, CATALOGUE }
 
 @Composable
 private fun ViewModeSelector(
@@ -156,22 +157,26 @@ private fun ViewModeSelector(
     onSelect: (ArboretumViewMode) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val modes = ArboretumViewMode.entries
     SingleChoiceSegmentedButtonRow(modifier = modifier) {
-        SegmentedButton(
-            selected = current == ArboretumViewMode.LISTE,
-            onClick = { onSelect(ArboretumViewMode.LISTE) },
-            shape = SegmentedButtonDefaults.itemShape(0, 2),
-        ) { Text(stringResource(R.string.segment_liste)) }
-        SegmentedButton(
-            selected = current == ArboretumViewMode.CATALOGUE,
-            onClick = { onSelect(ArboretumViewMode.CATALOGUE) },
-            shape = SegmentedButtonDefaults.itemShape(1, 2),
-        ) { Text(stringResource(R.string.segment_catalogue)) }
+        modes.forEachIndexed { idx, mode ->
+            SegmentedButton(
+                selected = current == mode,
+                onClick = { onSelect(mode) },
+                shape = SegmentedButtonDefaults.itemShape(idx, modes.size),
+            ) {
+                Text(stringResource(when (mode) {
+                    ArboretumViewMode.DECOUVERTE -> R.string.segment_decouverte
+                    ArboretumViewMode.FREQUENCE -> R.string.segment_frequence
+                    ArboretumViewMode.CATALOGUE -> R.string.segment_catalogue
+                }))
+            }
+        }
     }
 }
 
 @Composable
-private fun ListeView(
+private fun DecouverteView(
     speciesGroups: List<SpeciesGroup>,
     totalEspecesIdentifiees: Int,
     arbreRepo: app.arbre.data.ArbreRepository,
@@ -186,7 +191,8 @@ private fun ListeView(
             // Compteur entête : on garde la fraction sur le total identifié
             // (cohérent avec le HeaderCard du dessus). Les `unknownSpecies`
             // capturés réellement apparaissent quand même dans la liste — la
-            // vue Liste = « ce que j'ai capturé », contrairement au Catalogue.
+            // vue Découverte = « ce que j'ai capturé », contrairement aux
+            // modes Fréquence et Catalogue qui sont exhaustifs.
             item {
                 SectionHeader("Espèces (${speciesGroups.size}/$totalEspecesIdentifiees)")
             }
@@ -204,24 +210,16 @@ private fun ListeView(
 }
 
 /**
- * Vue annuaire : grille 3 colonnes.
- *
- * Section principale : espèces identifiées, ordonnées par numéro Pokédex
- * stable (`pokedexNumber`) quand l'asset le porte (post-régénération sprint
- * 5), fallback count Paris décroissant pour l'asset legacy. Les cards
- * capturées révèlent photo + `nv`, les autres restent en silhouette « ??? »
- * avec leur numéro pour suggérer l'avancement sans spoiler.
- *
- * Section « Espèces indéterminées » (cycle Catalogue) : entrées `(G, sp.)`
- * (`unknownSpecies == true`) en queue, sans `#`. Auto-débloquage genre-based
- * via `SpeciesIndex.isDiscovered` : capturer un `Tilia X` quelconque révèle
- * `Tilia (espèce indéterminée)` (titre `nv` affiché, slot photo en silhouette
- * tant qu'il n'y a pas de capture explicite `sp.`).
+ * Vue Fréquence (cycle Catalogue, sprint 7) : annuaire exhaustif des espèces
+ * identifiées (~800 entrées), tri par `pokedexNumber` backend croissant (=
+ * count Paris décroissant figé au build). `#NNN` affiché = le `pokedexNumber`
+ * lui-même. Les non-capturées apparaissent en silhouette `???` via le rendu
+ * `discovered = false` de `CatalogueCell`. Les `unknownSpecies` ne sont pas
+ * listées ici — elles n'ont pas de rang de fréquence.
  */
 @Composable
-private fun CatalogueView(
+private fun FrequenceView(
     speciesIndex: SpeciesIndex,
-    speciesInfoRepo: SpeciesInfoRepository,
     speciesGroups: List<SpeciesGroup>,
     capturedSks: Set<Int>,
     onSpeciesClick: (Int) -> Unit,
@@ -230,13 +228,92 @@ private fun CatalogueView(
     val firstPhotoBySk: Map<Int, File> = remember(speciesGroups, ctx) {
         speciesGroups.associate { it.entry.index to it.captures.first().resolvedFile(ctx) }
     }
-    // Tri unique (Pokédex stable si présent, sinon count Paris). Source
-    // partagée avec `SpeciesDetailScreen` pour la cohérence du `#NNN`.
-    val ordered = remember(speciesIndex, speciesInfoRepo) {
-        catalogueOrder(speciesIndex, speciesInfoRepo)
+    // Tri stable par pokedexNumber croissant. Les rares entrées identifiées
+    // sans pokedexNumber (zombies count=0 ou asset legacy) tombent en queue.
+    val ordered = remember(speciesIndex) {
+        speciesIndex.entries()
+            .filter { !it.unknownSpecies }
+            .sortedWith(
+                compareBy<SpeciesEntry> { it.pokedexNumber == null }
+                    .thenBy { it.pokedexNumber ?: Int.MAX_VALUE }
+                    .thenBy { it.index }
+            )
     }
-    val (identified, unknowns) = remember(ordered) {
-        ordered.partition { !it.unknownSpecies }
+    LazyVerticalGrid(
+        columns = GridCells.Fixed(3),
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        gridItems(ordered, key = { it.index }) { entry ->
+            val discovered = entry.index in capturedSks
+            val photoFile = if (discovered) firstPhotoBySk[entry.index] else null
+            CatalogueCell(
+                displayLabel = entry.pokedexNumber?.let { "#%03d".format(it) } ?: "—",
+                entry = entry,
+                photoFile = photoFile,
+                discovered = discovered,
+                onClick = if (discovered) {
+                    { onSpeciesClick(entry.index) }
+                } else null,
+            )
+        }
+    }
+}
+
+/**
+ * Vue Catalogue (cycle Catalogue, sprint 7) : annuaire exhaustif groupé par
+ * genre. Chapitres en **ordre alphabétique** du genre, en-tête de chapitre
+ * `Genre  ·  X / Y` (X = espèces capturées du genre, Y = espèces identifiées
+ * du genre — `sp.` exclus du compteur). Intra-genre, tri par `pokedexNumber`
+ * croissant (= count Paris décroissant figé). Le `#NNN` affiché est un
+ * **rang front recalculé** (1..~802) dans l'ordre d'affichage genre→count-déc
+ * — distinct du `pokedexNumber` backend stable.
+ *
+ * Les `unknownSpecies` apparaissent en queue de leur chapitre, sans `#`. Le
+ * tap sur header de chapitre est désactivé au S7 ; le S8 ajoutera l'ouverture
+ * de `GenreDetailScreen`.
+ */
+@Composable
+private fun CatalogueView(
+    speciesIndex: SpeciesIndex,
+    speciesGroups: List<SpeciesGroup>,
+    capturedSks: Set<Int>,
+    onSpeciesClick: (Int) -> Unit,
+) {
+    val ctx = LocalContext.current
+    val firstPhotoBySk: Map<Int, File> = remember(speciesGroups, ctx) {
+        speciesGroups.associate { it.entry.index to it.captures.first().resolvedFile(ctx) }
+    }
+    // Pré-calcul des chapitres + assignation du `#N` front en un seul passage
+    // (compteur incrémenté dans l'ordre d'affichage genre→pokedex). Memoisé
+    // sur (speciesIndex, capturedSks) : recompute uniquement à la capture.
+    val chapters = remember(speciesIndex, capturedSks) {
+        var displayN = 1
+        speciesIndex.genres().map { genre ->
+            val all = speciesIndex.entriesOfGenre(genre)
+            val identifiedSorted = all
+                .filter { !it.unknownSpecies }
+                .sortedWith(
+                    compareBy<SpeciesEntry> { it.pokedexNumber == null }
+                        .thenBy { it.pokedexNumber ?: Int.MAX_VALUE }
+                        .thenBy { it.index }
+                )
+            val identifiedWithN = identifiedSorted.map { entry ->
+                val n = displayN
+                displayN += 1
+                entry to n
+            }
+            val sps = all.filter { it.unknownSpecies }
+            GenreChapter(
+                genre = genre,
+                identifiedWithDisplayN = identifiedWithN,
+                sps = sps,
+                captured = speciesIndex.capturedCountInGenre(genre, capturedSks),
+                total = speciesIndex.genreCount(genre),
+            )
+        }
     }
 
     LazyVerticalGrid(
@@ -246,34 +323,33 @@ private fun CatalogueView(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        itemsIndexed(identified, key = { _, e -> e.index }) { position, entry ->
-            val photoFile = firstPhotoBySk[entry.index]
-            val discovered = speciesIndex.isDiscovered(entry.index, capturedSks)
-            CatalogueCell(
-                // `pokedexNumber` (cycle Catalogue) si présent, sinon rang
-                // 1-based dans l'ordre count Paris (asset legacy).
-                displayLabel = "#%03d".format(entry.pokedexNumber ?: (position + 1)),
-                entry = entry,
-                photoFile = photoFile,
-                discovered = discovered,
-                onClick = if (discovered) {
-                    { onSpeciesClick(entry.index) }
-                } else null,
-            )
-        }
-        if (unknowns.isNotEmpty()) {
-            item(span = { GridItemSpan(maxLineSpan) }) {
-                Text(
-                    "Espèces indéterminées",
-                    style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier.padding(top = 16.dp, bottom = 4.dp),
+        chapters.forEach { chapter ->
+            item(
+                span = { GridItemSpan(maxLineSpan) },
+                key = "chapter-${chapter.genre}",
+            ) {
+                GenreChapterHeader(chapter)
+            }
+            gridItems(
+                chapter.identifiedWithDisplayN,
+                key = { (entry, _) -> entry.index },
+            ) { (entry, displayN) ->
+                val discovered = entry.index in capturedSks
+                val photoFile = if (discovered) firstPhotoBySk[entry.index] else null
+                CatalogueCell(
+                    displayLabel = "#%03d".format(displayN),
+                    entry = entry,
+                    photoFile = photoFile,
+                    discovered = discovered,
+                    onClick = if (discovered) {
+                        { onSpeciesClick(entry.index) }
+                    } else null,
                 )
             }
-            itemsIndexed(unknowns, key = { _, e -> e.index }) { _, entry ->
-                val photoFile = firstPhotoBySk[entry.index]
+            gridItems(chapter.sps, key = { it.index }) { entry ->
                 val discovered = speciesIndex.isDiscovered(entry.index, capturedSks)
+                val photoFile = if (entry.index in capturedSks) firstPhotoBySk[entry.index] else null
                 CatalogueCell(
-                    // Pas de `#` pour les `unknownSpecies` — section parallèle.
                     displayLabel = "—",
                     entry = entry,
                     photoFile = photoFile,
@@ -284,6 +360,35 @@ private fun CatalogueView(
                 )
             }
         }
+    }
+}
+
+private data class GenreChapter(
+    val genre: String,
+    val identifiedWithDisplayN: List<Pair<SpeciesEntry, Int>>,
+    val sps: List<SpeciesEntry>,
+    val captured: Int,
+    val total: Int,
+)
+
+@Composable
+private fun GenreChapterHeader(chapter: GenreChapter) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 16.dp, bottom = 4.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Text(
+            chapter.genre,
+            style = MaterialTheme.typography.titleMedium,
+            modifier = Modifier.weight(1f),
+        )
+        Text(
+            "${chapter.captured} / ${chapter.total}",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 

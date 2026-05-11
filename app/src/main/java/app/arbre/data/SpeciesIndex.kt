@@ -85,6 +85,40 @@ class SpeciesIndex(entries: List<SpeciesEntry>) {
     }
 
     /**
+     * Liste alphabétique des genres ayant **au moins une espèce identifiée**
+     * (i.e. non `unknownSpecies`). Les genres only-unknown (genres dont toutes
+     * les entrées sont `(G, sp.)`, e.g. `Genista`, `Vitex`, `Ziziphus`) sont
+     * exclus — ils seront couverts par les fiches genre du S8 (cf. ROADMAP).
+     *
+     * Source du mode Catalogue par chapitres (cycle Catalogue, sprint 7).
+     */
+    private val genresWithIdentified: List<String> = sksByGenre
+        .filter { (_, sks) -> sks.any { sk -> byIndex[sk]?.unknownSpecies == false } }
+        .keys
+        .sortedBy { it.lowercase() }
+
+    fun genres(): List<String> = genresWithIdentified
+
+    /**
+     * Nombre d'espèces **identifiées** du genre (exclut `unknownSpecies`).
+     * Sert au compteur `X / Y` du header de chapitre en mode Catalogue.
+     */
+    fun genreCount(genre: String): Int {
+        val sks = sksByGenre[genre] ?: return 0
+        return sks.count { sk -> byIndex[sk]?.unknownSpecies == false }
+    }
+
+    /**
+     * Nombre d'espèces **identifiées** du genre intersectées avec `capturedSks`.
+     * Sert au numérateur du compteur `X / Y` du header de chapitre. Les `sp.`
+     * capturés ne comptent pas — la sémantique est « progression Pokédex ».
+     */
+    fun capturedCountInGenre(genre: String, capturedSks: Set<Int>): Int {
+        val sks = sksByGenre[genre] ?: return 0
+        return sks.count { sk -> sk in capturedSks && byIndex[sk]?.unknownSpecies == false }
+    }
+
+    /**
      * Auto-débloquage genre-based des fiches `(G, sp.)` : un sk `unknownSpecies`
      * est considéré découvert dès qu'un sk frère du même genre est capturé.
      * Les sks identifiés (non `unknownSpecies`) sont découverts au sens strict

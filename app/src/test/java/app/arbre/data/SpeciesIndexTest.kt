@@ -205,6 +205,51 @@ class SpeciesIndexTest {
         assertNull(entry.pokedexNumber)
     }
 
+    // ---------- Hooks chapitres genre (cycle Catalogue, sprint 7) ----------
+
+    @Test fun `genres returns alphabetical list excluding only-unknown genres`() {
+        // Vitex est only-unknown (uniquement une entrée sp.) → exclu.
+        // Acer et Quercus ont chacun ≥ 1 entrée identifiée → présents.
+        val idx = SpeciesIndex(listOf(
+            entry(0, "Quercus", "robur"),
+            entry(1, "Quercus", "petraea"),
+            entry(2, "Acer", "platanoides"),
+            entry(98, "Quercus", "sp.", unknownSpecies = true),
+            entry(99, "Vitex", "sp.", unknownSpecies = true),
+        ))
+        assertEquals(listOf("Acer", "Quercus"), idx.genres())
+    }
+
+    @Test fun `genreCount excludes sp entries`() {
+        val idx = SpeciesIndex(listOf(
+            entry(0, "Quercus", "robur"),
+            entry(1, "Quercus", "petraea"),
+            entry(98, "Quercus", "sp.", unknownSpecies = true),
+        ))
+        assertEquals(2, idx.genreCount("Quercus"))
+        assertEquals(0, idx.genreCount("Unknown"))
+    }
+
+    @Test fun `capturedCountInGenre returns identified-only intersection`() {
+        // 2 identifiées + 1 sp. ; on capture 1 identifiée + le sp. → 1.
+        val idx = SpeciesIndex(listOf(
+            entry(0, "Quercus", "robur"),
+            entry(1, "Quercus", "petraea"),
+            entry(98, "Quercus", "sp.", unknownSpecies = true),
+        ))
+        assertEquals(1, idx.capturedCountInGenre("Quercus", setOf(0, 98)))
+        assertEquals(2, idx.capturedCountInGenre("Quercus", setOf(0, 1)))
+    }
+
+    @Test fun `capturedCountInGenre returns zero for empty capturedSks`() {
+        val idx = SpeciesIndex(listOf(
+            entry(0, "Quercus", "robur"),
+            entry(1, "Quercus", "petraea"),
+        ))
+        assertEquals(0, idx.capturedCountInGenre("Quercus", emptySet()))
+        assertEquals(0, idx.capturedCountInGenre("Unknown", setOf(0)))
+    }
+
     @Test fun `indexOf round-trip works`() {
         val idx = SpeciesIndex(listOf(
             entry(0, "Quercus", "robur"),
