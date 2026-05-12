@@ -8,7 +8,7 @@ App perso, pas de calendrier engageant. Single-player, stockage local strict —
 
 Refonte de l'expression de la progression dans l'app. Deux axes : (1) le FAB ★ devient un **mode chasse persistant** plutôt qu'un popup éphémère ; (2) **Profil et Badges** sont séparés conceptuellement — la progression chiffrée vit en **barres** sur le Profil, les badges ne sont plus que **binaires** et s'élargissent avec deux familles dynamiques **« Familier »** (un genre avec ≥ 7 espèces, les 20 arrondissements + 2 bois). En corollaire, le cycle Endgame disparaît comme cycle nommé : sa pièce maîtresse (badge « Familier du Xe ») est absorbée ici, le reste retombe en `[creuser]` ou refusé (cf. `BACKLOG.md`).
 
-Cinq sprints :
+Six sprints :
 
 1. ✅ **S1 — Mode chasse Étoile** (livré, `HuntPanel.kt`). Tap ★ ouvre un panneau bas pleine largeur (~28 % de l'écran, fond plein-cadre qui masque le bas de la carte) : radar animé, nom + qualification glosée (« Paysager » → « Intérêt paysager ») du remarquable non découvert le plus proche, distance live rafraîchie toutes les 5 s **en phase** avec le balayage du radar (pulse — trait qui flashe + anneau ping — au moment du refresh), ✕ au même emplacement que le FAB ★ (entrer/sortir au même endroit). Cible **dynamique** recalculée à chaque tick. `huntActive` en `remember` côté `MapScreen` → **fermeture auto** à la sortie de l'écran. FAB GPS / SnackbarHost décalés au-dessus du panneau. Cas « tous découverts » : message dédié. Radar + pulse pilotés par `withFrameNanos` (insensibles à l'échelle d'animation système — un audit des autres animations Compose figées dans ce cas est noté au BACKLOG). Plus de snackbar éphémère.
 
@@ -26,6 +26,8 @@ Cinq sprints :
    - **Logos** : badges de genre = icône partagée `Icons.Outlined.Forest` (le placeholder S3 devient le choix final — « tout le genre »). Badges d'arrondissement = **chiffre romain** (I…XX, `ArrKey.romanNumeral()`) rendu en **texte dans le cercle** en Fraunces SemiBold ; les 2 bois = **« Boulogne »** / **« Vincennes »** en texte. `BadgeDef.visual()` (`BadgeVisual.Vector`/`.Label`, `ui/badges/BadgeIcons.kt`) + `arrKeyFromSlug` (inverse de `ArrKey.idSlug`). Le cercle `BadgeIconCircle` est extrait dans son propre fichier, partagé `BadgesScreen` ↔ rangée « Derniers badges » du Profil ; taille de police du texte adaptée à la longueur pour tenir dans 48 dp.
    - **Polish Profil** : titre de section « Infos » (style `titleLarge`, comme « Badges » / « Sauvegarde ») inséré entre « Voir tous les badges » et « Comment jouer » ; couvre « Comment jouer » + « À propos ».
    - Scope volontairement restreint aux 2 items ci-dessus : pas de refonte des sections de `BadgesScreen` par `BadgeCategory` (idée retirée de `CLAUDE.md`).
+
+6. ✅ **S6 — Quickfix detekt** (livré). Le bloc `detekt {}` de `app/build.gradle.kts` n'avait jamais wiré `baseline = …` : `detekt-baseline.xml` était committé mais ignoré, donc `./gradlew detekt` échouait sur tout (issues structurelles pré-existantes incluses — gros composables `LongMethod`/`LongParameterList`/`CyclomaticComplexMethod`, assumées). On branche la baseline (`file("$projectDir/detekt-baseline.xml")`), on la régénère post-S5, et on corrige les 3 findings réellement neufs plutôt que de les figer : `SpeciesDetailScreen` — param `onSpeciesClick` + val `capturedSpecies` morts depuis le déménagement `(G, sp.)` → `GenreDetailScreen` (S8 cycle Catalogue), supprimés + call site `ArbresNavHost` ; `SpeciesIndex` — `frères` → `freres` (`VariableNaming`). `./gradlew detekt` repasse au vert.
 
 ## Prochains cycles
 
