@@ -13,6 +13,14 @@ Triage en lot au début de chaque cycle. Process complet dans `CLAUDE.md` (*Work
 
 ---
 
+## Cycle Réveil (en cours — écrans de chargement & animations)
+
+- [→Réveil] Animations Compose neutralisées si « échelle d'animation système = 0 » (cas device:moi) : `rememberInfiniteTransition` reste figé (pulse FAB GPS, sway du ColdStartSplash, couronne MiniArbreCrown, hero WelcomeScreen) ; `Animatable`/`animate*AsState`/`AnimatedVisibility`/`Crossfade` snap au lieu d'animer (fades splash/célébration 1re capture, décalage FAB GPS, chiffre de distance de la chasse). Aucune casse fonctionnelle. **Cadré** : on convertit *seulement les 2-3 qui comptent* (couronne mini-platanes + fades du ColdStartSplash, hero onboarding, célébration capture) en pilotage `withFrameNanos` comme le radar du mode chasse ; le reste accepté tel quel. Le tint saisonnier a déjà disparu du thème — concerne plus que la ligne périmée de CLAUDE.md. (device:moi, 2026-05-12 ; émergé du sprint S1 Progression ; cadré 2026-05-12)
+- [→Réveil] Écran de chargement carte filtrée (`FilterSplash`) : remplacer « Filtrage de X… » + spinner par un texte au ton du splash principal (« Réveil des {count} {label} ») ; **pas** d'animation platanes (user:moi, 2026-05-12)
+- [→Réveil] Bug : la séquence intro de 10 tips ne s'affiche pas à la 1re ouverture post-onboarding, le splash part directement en mode aléatoire — à reproduire sur device avec logcat DEBUG, fix sans casser les invariants de `SplashTipsController` (user:moi, 2026-05-12)
+- [→Réveil] Allonger le splash cold-start : aujourd'hui il disparaît dès que la loc est trouvée, avant que les pins soient peints (instant « carte sans arbre ») — flip `arbresPrets` après `setArbresGeoJson` + plancher de durée min (~2,5 s) (user:moi, 2026-05-12)
+- [→Réveil] Refresh des valeurs des tips (chiffres dataset périmés post-1.1.0/1.2.0) + outil HTML de revue (`docs/tips/index.html` : tous les tips, verdict RAS / à tuer / chute à réécrire / commentaire, export copiable) + nouveaux tips liés aux évolutions post-1.0 et créations inédites (user:moi, 2026-05-12)
+
 ## Cycle Variantes
 
 - [→Variantes] Refonte Arboretum « états » : la colonne `season` devient `variants` (en fleur, tout nu, fruits, bébé, géant) (user:moi, 2026-05-07)
@@ -42,7 +50,8 @@ Résumé dans `ROADMAP.md` (*Cycles livrés post-1.0*), détail dans `CHANGELOG.
 - [creuser] Mini-quiz ou capacité d'identification entre espèces partageant le même `nc` (Quercus robur vs petraea, Tilia cordata vs platyphyllos) (claude:analyse, 2026-05-08 ; refusé du cycle Catalogue 2026-05-10 — scope dédié, UX du quiz + génération de paires + scoring trop coûteux à empiler)
 - [creuser] Aide à l'indentification des genres/espèces
 - [creuser] Leaderboard optionnel et minimaliste ?
-- [creuser] Animations Compose neutralisées si « échelle d'animation système = 0 » (cas device:moi) : `rememberInfiniteTransition` reste figé (pulse FAB GPS, sway du ColdStartSplash, couronne MiniArbreCrown, hero WelcomeScreen) ; `Animatable`/`animate*AsState`/`AnimatedVisibility`/`Crossfade` snap au lieu d'animer (fades splash/célébration 1re capture, tint saisonnier, décalage FAB GPS, chiffre de distance de la chasse). Aucune casse fonctionnelle. À trancher : (a) accepter la dégradation, ou (b) repasser les quelques animations qui comptent (hero onboarding, célébration capture) en `withFrameNanos` comme le radar du mode chasse. (device:moi, 2026-05-12 ; émergé du sprint S1 Progression — le radar a été corrigé ainsi)
+- [ ] CI : bumper les GitHub Actions sur Node.js 24 — `actions/checkout@v4`, `actions/setup-java@v4`, `actions/setup-python@v5`, `actions/cache@v4`, `gradle/actions/setup-gradle@v3`, `softprops/action-gh-release@v2` tournent encore sur Node 20 (forcé Node 24 le 2026-06-02, Node 20 retiré le 2026-09-16). Bumper les versions ou poser `FORCE_JAVASCRIPT_ACTIONS_TO_NODE24=true` (ci:release.yml run v1.2.0, 2026-05-12)
+- [ ] CI : `release.yml` — échec transitoire de restauration du cache Gradle (`Failed to restore gradle-home-… : Cache service responded with 400`), sans effet sur le build. À surveiller : si ça récidive, vérifier la conf de `gradle/actions/setup-gradle` (clé de cache / quota) (ci:release.yml run v1.2.0, 2026-05-12)
 
 ## Refusé
 

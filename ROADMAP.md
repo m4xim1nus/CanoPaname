@@ -4,7 +4,67 @@ App perso, pas de calendrier engageant. Single-player, stockage local strict —
 
 ## Cycle en cours
 
-_Aucun cycle en cours._ Le cycle *Progression* vient d'être clôturé (→ `CHANGELOG.md` `[1.2.0]`, résumé dans « Cycles livrés post-1.0 » ci-dessous). La prochaine rotation reste à planifier : candidats dans « Prochains cycles », plus les items `[→…]` et `[creuser]` du `BACKLOG.md`.
+### Réveil — écrans de chargement & animations
+
+Cycle de polish ciblé sur le cold-start et les animations Compose. Cinq motivations :
+le point BACKLOG « animations neutralisées si échelle d'animation système = 0 » (le radar du
+mode chasse est déjà corrigé via `withFrameNanos`, le reste pas) ; le `FilterSplash` qui dit
+encore « Filtrage de X… » + spinner au lieu du ton « Réveil des … » du splash principal ; un
+bug — la séquence intro de 10 tips ne joue pas au tout 1er lancement, le splash part direct en
+aléatoire ; le splash cold-start qui disparaît avant que les pins soient peints (instant « carte
+sans arbre ») ; et la banque de ~242 tips qui date d'avant 1.1.0/1.2.0 (chiffres dataset périmés,
+aucune phrase sur genres / badges binaires + familles / chasse / fiches espèce-genre / barres de
+progression / logos d'arrondissement).
+
+Décisions de cadrage : animations résistantes à scale=0 → seulement les 2-3 qui comptent
+(couronne mini-platanes + fades du `ColdStartSplash`, hero `WelcomeScreen`, célébration 1re
+capture) repassées en pilotage `withFrameNanos` ; allongement du splash → flip `arbresPrets`
+après `setArbresGeoJson` (pins peints) + plancher de durée min (~2,5 s) ; `FilterSplash` → texte
+au même ton, **pas** d'anim platanes ; bug intro → repro sur device avec logcat DEBUG puis fix
+sans casser les invariants documentés de `SplashTipsController` ; tips → refresh des valeurs +
+outil HTML de revue livré tôt + intégration des retours + nouveaux tips post-1.0. *Bonus repéré :
+le tint saisonnier du `surface` a déjà disparu du thème — rien à killer, mais la ligne `CLAUDE.md`
+qui le mentionne est périmée → à retirer en clôture.*
+
+Sprints :
+
+- **S1 — Tips : refresh valeurs + outil HTML de revue.** Régénérer `assets/splash-tips.json`
+  via `python3 tools/build_dataset.py` (chiffres dataset à jour). Créer `tools/build_tips_preview.py`
+  → `docs/tips/index.html` (patron : `build_report.py` → `docs/dataset/index.html`) : tous les
+  tips groupés par catégorie, placeholders rendus, et pour chaque tip un verdict `RAS` / `à tuer`
+  / `chute à réécrire` + commentaire libre + bouton « Exporter mon avis » → bloc texte copiable.
+  Tout client-side. Livré tôt → débloque la revue async pendant S2-S5.
+- **S2 — Bug : intro tips non jouée au 1er lancement.** Instrumentation `Log.d` temporaire
+  (`SplashTipsController`, flip `arbresPrets`), build debug, séance logcat avec moi sur un fresh
+  install, diagnostic (course `markDone()`↔nav, mount transient du fallback `MAP` du `NavHost`,
+  ordre des `LaunchedEffect`…), fix sans toucher aux invariants (`.first()` figé, pas de
+  `collectAsState` sur `splashIntroSeen`, keys minimales, `markSplashIntroSeen()` post-onboarding
+  seulement), instrumentation retirée.
+- **S3 — Allongement du splash cold-start.** `MapScreen.kt` : ne plus flipper `arbresPrets`
+  après les layers vides mais après `setArbresGeoJson` (pins peints) ; + plancher de durée min
+  (~2,5 s depuis le mount, constante nommée). Path filtré : flip après `addArbresLayers` + petit
+  plancher (~1 s). Path « cache enrichi » (retour Profil → Map) : plancher réduit/0 pour ne pas
+  ralentir une nav rapide. Vérif : plus de moment « carte sans arbre », cold-start < ~4 s.
+- **S4 — Animations résistantes à animation-scale=0.** Helper réutilisable (`ui/common/FrameClock.kt` :
+  `rememberFrameProgress(periodMs)` / `rememberFrameMillis()`), modelé sur le `withFrameNanos` du
+  `RadarGlyph`. Convertir : `MiniArbreCrown` (sway + drift + cascade par arbre), fades du
+  `ColdStartSplash`, hero du `WelcomeScreen`, célébration 1re capture (`SpeciesDetailScreen`).
+  Laisser tel quel : pulse FAB GPS, décalage FAB chasse, chiffre de distance, `AnimatedVisibility`
+  du splash — choix documenté en commentaire. Vérif device avec échelle d'animation désactivée.
+- **S5 — `FilterSplash` : texte au ton « Réveil des … ».** Remplacer « Filtrage de X… » + gros
+  spinner par « Réveil des {count} {label} » (count via `DatasetStats`/`SpeciesInfo` quand dispo ;
+  mode genre / fallback : sans nombre), petit indicateur de progression discret conservé, couleurs
+  et typo alignées sur le `ColdStartSplash`. Pas d'anim platanes.
+- **S6 — Tips : intégration des retours + nouveaux tips.** Appliquer les verdicts de l'HTML (tuer
+  / réécrire / commentaires) sur `splash-tips-static.json` et les générateurs de `write_splash_tips()`.
+  Ajouter des tips post-1.0 (saisons calendaires, badges binaires + familles « Familier des/du … »,
+  backup ZIP, mode chasse radar, fiches espèce & genre, barres de progression Profil, logos
+  d'arrondissement, catalogue ~929 entrées) + quelques créations history/popculture. Regénérer
+  `splash-tips.json` + `docs/tips/index.html`, revérifier le sanity-check placeholders. (option)
+  test dans `tools/test_build_dataset.py` : ids uniques, `intro` présents, placeholders ∈ set.
+- **Clôture.** Entrée `CHANGELOG.md` (`[1.3.0]` probable), bump `versionCode`/`versionName`,
+  rotation ROADMAP (Réveil → « Cycles livrés post-1.0 », promotion de *Variantes*), `BACKLOG.md`
+  (items absorbés barrés), `CLAUDE.md` (retrait de la ligne périmée sur le tint saisonnier).
 
 ## Prochains cycles
 
