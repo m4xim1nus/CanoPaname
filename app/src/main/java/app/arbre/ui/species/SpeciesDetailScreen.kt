@@ -2,8 +2,6 @@ package app.arbre.ui.species
 
 import android.content.Intent
 import android.net.Uri
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -48,6 +46,7 @@ import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import app.arbre.R
+import app.arbre.ui.common.rememberFrameProgress
 import app.arbre.ui.theme.arbresColors
 import app.arbre.ui.theme.arbresMotion
 import app.arbre.data.Arbre
@@ -310,11 +309,8 @@ private fun SpeciesDetailTopBar(
 private fun CelebrationHero(entry: SpeciesEntry) {
     val arbresColors = MaterialTheme.arbresColors
     val motion = MaterialTheme.arbresMotion
-    val progress = remember { Animatable(0f) }
-    LaunchedEffect(Unit) {
-        progress.animateTo(1f, tween(durationMillis = motion.celebration, easing = motion.swayEasing))
-    }
-    val p = progress.value
+    // Frame-clock (cf. `ui/common/FrameClock.kt`) : la cascade joue même échelle d'animation = 0.
+    val p by rememberFrameProgress(durationMs = motion.celebration, easing = motion.swayEasing)
     val bgAlpha = ((p / 0.17f).coerceIn(0f, 1f)) * 0.10f
     val silhouetteAlpha = ((p - 0.17f) / 0.33f).coerceIn(0f, 1f)
     val silhouetteScale = 0.85f + silhouetteAlpha * 0.15f

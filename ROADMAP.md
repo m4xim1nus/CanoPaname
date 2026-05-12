@@ -77,12 +77,21 @@ Sprints :
   `MapScreen` : « GeoJSON poussé dans la source (… parse async en cours) » puis « Arbres rendus à
   l'écran (… total cold start) ». Testé device GrapheneOS : plus de moment « carte vide ».
   (`BACKLOG.md` : item « Allonger le splash cold-start » barré « livré S3 ».)
-- **S4 — Animations résistantes à animation-scale=0.** Helper réutilisable (`ui/common/FrameClock.kt` :
-  `rememberFrameProgress(periodMs)` / `rememberFrameMillis()`), modelé sur le `withFrameNanos` du
-  `RadarGlyph`. Convertir : `MiniArbreCrown` (sway + drift + cascade par arbre), fades du
-  `ColdStartSplash`, hero du `WelcomeScreen`, célébration 1re capture (`SpeciesDetailScreen`).
-  Laisser tel quel : pulse FAB GPS, décalage FAB chasse, chiffre de distance, `AnimatedVisibility`
-  du splash — choix documenté en commentaire. Vérif device avec échelle d'animation désactivée.
+- ✅ **S4 — Animations résistantes à animation-scale=0** (livré). Nouveau `ui/common/FrameClock.kt` :
+  `rememberFrameMillis()` (ms écoulées), `rememberFrameProgress(durationMs, easing)` (rampe one-shot
+  0→1 figée à 1f) et `rememberFramePingPong(periodMs, easing)` (triangle 0→1→0 ; `periodMs` =
+  aller-retour entier, donc `tween(d, Reverse)` → `* 2`), tous modelés sur la boucle `withFrameNanos`
+  de `RadarGlyph` (insensible à `MotionDurationScale`, contrairement aux API d'animation Compose qui
+  se figent quand l'échelle système vaut 0). Convertis : fade-in + sway du `ColdStartSplash` ;
+  `MiniArbreCrown`/`MiniArbreItem` — les 7 platanes lisent désormais `elapsed`/`swayP`/`driftP` (des
+  `State` partagés) dans leur `graphicsLayer`, le cycle fade-in/plateau/fade-out/invisible (3500 ms,
+  décalé par `delayMs`) devenu la fonction pure `miniArbrePhase(localMs, targetAlpha, easing)`, donc
+  la couronne ne recompose plus par frame (mieux qu'avant) ; hero du `WelcomeScreen` (respiration
+  gris↔vert) ; célébration 1re capture (`CelebrationHero`). Laissé tel quel, commenté : `AnimatedVisibility`
+  de sortie du voile splash, `animateDpAsState`/pulse des FAB, `animateIntAsState` du chiffre de
+  distance, `AnimatedContent` de rotation des tips (snap de texte acceptable) ; `FilterSplash` → S5 ;
+  `SeasonAmbience` → BACKLOG (`[ ]`, faible priorité). `assembleDebug` + `:app:testDebugUnitTest` +
+  `detekt` OK. Reste : vérif device GrapheneOS avec l'échelle d'animation des animateurs désactivée.
 - **S5 — `FilterSplash` : texte au ton « Réveil des … ».** Remplacer « Filtrage de X… » + gros
   spinner par « Réveil des {count} {label} » (count via `DatasetStats`/`SpeciesInfo` quand dispo ;
   mode genre / fallback : sans nombre), petit indicateur de progression discret conservé, couleurs

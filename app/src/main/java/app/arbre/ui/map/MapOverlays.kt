@@ -2,10 +2,7 @@ package app.arbre.ui.map
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.Easing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -34,6 +31,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.State
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -54,10 +52,11 @@ import app.arbre.data.rememberCaptureRepository
 import app.arbre.data.rememberDatasetStats
 import app.arbre.data.rememberOnboardingStore
 import app.arbre.data.rememberSplashTipsRepository
+import app.arbre.ui.common.rememberFrameMillis
+import app.arbre.ui.common.rememberFramePingPong
+import app.arbre.ui.common.rememberFrameProgress
 import app.arbre.ui.theme.ArbresMotion
 import app.arbre.ui.theme.arbresMotion
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 import java.text.NumberFormat
 import java.util.Locale
 import kotlin.math.cos
@@ -147,29 +146,16 @@ internal fun ColdStartSplash() {
     val splashGreen = MaterialTheme.colorScheme.primary
     val motion = MaterialTheme.arbresMotion
 
-    val infinite = rememberInfiniteTransition(label = "sway")
-    val sway by infinite.animateFloat(
-        initialValue = -3f,
-        targetValue = 3f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = motion.sway, easing = motion.swayEasing),
-            repeatMode = RepeatMode.Reverse,
-        ),
-        label = "swayAngle",
-    )
-    // `Animatable` (pas `animateFloatAsState`) : ce dernier saute direct à 1f
-    // à la 1re composition faute de valeur précédente.
-    val intro = remember { Animatable(0f) }
-    LaunchedEffect(Unit) {
-        intro.animateTo(
-            targetValue = 1f,
-            animationSpec = tween(durationMillis = motion.medium, easing = motion.swayEasing),
-        )
-    }
-    val introValue = intro.value
+    // Pilotage `withFrameNanos` (cf. `ui/common/FrameClock.kt`) : ces animations doivent rester
+    // vivantes même si l'échelle d'animation système est à 0 — le splash est le seul retour visuel
+    // pendant le chargement DB + GeoJSON.
+    val swayP by rememberFramePingPong(periodMs = motion.sway * 2, easing = motion.swayEasing)
+    val sway = -3f + swayP * 6f   // -3° → +3° → -3°
+    val introState = rememberFrameProgress(durationMs = motion.medium, easing = motion.swayEasing)
+    val introValue by introState
     // `derivedStateOf` pour ne déclencher qu'au passage 0.99 → 1f — sinon la
     // rotation des tips redémarrerait à chaque frame du fade-in.
-    val canRotateTips by remember { derivedStateOf { intro.value >= 1f } }
+    val canRotateTips by remember { derivedStateOf { introState.value >= 1f } }
 
     val splashTips = rememberSplashTipsRepository()
     val captureRepo = rememberCaptureRepository()
@@ -228,6 +214,9 @@ internal fun ColdStartSplash() {
                     .padding(horizontal = 28.dp),
                 contentAlignment = Alignment.Center,
             ) {
+                // Laissé en `AnimatedContent` (≠ frame-clock) : à échelle d'animation = 0 le
+                // tip change sec, ce qui est acceptable — un crossfade manuel devrait tenir les
+                // deux textes en parallèle pour un gain quasi nul.
                 AnimatedContent(
                     targetState = tipText,
                     transitionSpec = {
@@ -278,6 +267,31 @@ private data class MiniArbre(
 // 600 + invisible 1000). `delayMs` étalés 0-3000 ms : à tout instant 1-2
 // platanes en transition + 2-3 en plateau, donc cascade continue pendant
 // tout le cold start.
+private const val MINI_FADE_MS = 600L
+private const val MINI_HOLD_MS = 1300L
+private const val MINI_GONE_MS = 1000L
+private const val MINI_CYCLE_MS = MINI_FADE_MS * 2 + MINI_HOLD_MS + MINI_GONE_MS // 3500
+
+/** Position `(alpha, scale)` d'un mini-platane à `localMs` ms après son `delayMs` propre.
+ *  alpha ∈ [0, targetAlpha], scale ∈ [0.6, 1]. Pendant inerte du state-machine
+ *  `Animatable` d'avant, jouable depuis une horloge frame-clock partagée. */
+private fun miniArbrePhase(localMs: Long, targetAlpha: Float, easing: Easing): Pair<Float, Float> {
+    if (localMs < 0L) return 0f to 0.6f
+    val pos = localMs % MINI_CYCLE_MS
+    return when {
+        pos < MINI_FADE_MS -> {
+            val t = easing.transform(pos.toFloat() / MINI_FADE_MS)
+            (targetAlpha * t) to (0.6f + 0.4f * t)
+        }
+        pos < MINI_FADE_MS + MINI_HOLD_MS -> targetAlpha to 1f
+        pos < MINI_FADE_MS * 2 + MINI_HOLD_MS -> {
+            val t = easing.transform((pos - MINI_FADE_MS - MINI_HOLD_MS).toFloat() / MINI_FADE_MS)
+            (targetAlpha * (1f - t)) to (1f - 0.4f * t)
+        }
+        else -> 0f to 0.6f
+    }
+}
+
 private val miniArbres = listOf(
     MiniArbre(angleDeg = -88f, radiusDp = 130f, sizeDp = 22f, targetAlpha = 0.50f, delayMs = 0, phaseOffset = 0.00f),
     MiniArbre(angleDeg = -55f, radiusDp = 115f, sizeDp = 30f, targetAlpha = 0.62f, delayMs = 500, phaseOffset = 0.37f),
@@ -290,70 +304,34 @@ private val miniArbres = listOf(
 
 @Composable
 private fun MiniArbreCrown(motion: ArbresMotion, cream: Color) {
-    val infinite = rememberInfiniteTransition(label = "crown")
-    val sway by infinite.animateFloat(
-        initialValue = -1f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = motion.sway, easing = motion.swayEasing),
-            repeatMode = RepeatMode.Reverse,
-        ),
-        label = "crownSway",
-    )
-    val drift by infinite.animateFloat(
-        initialValue = -1f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 3600, easing = motion.swayEasing),
-            repeatMode = RepeatMode.Reverse,
-        ),
-        label = "crownDrift",
-    )
+    // Horloges frame-clock partagées (cf. `ui/common/FrameClock.kt`) : insensibles à l'échelle
+    // d'animation système. `elapsed`/`swayP`/`driftP` sont des `State` passés tels quels — lus dans
+    // le `graphicsLayer` des items, donc cette couronne ne recompose pas par frame (l'ancien
+    // `infiniteTransition` re-rendait les 7 items chaque frame).
+    val elapsed = rememberFrameMillis()
+    val swayP = rememberFramePingPong(periodMs = motion.sway * 2, easing = motion.swayEasing)
+    val driftP = rememberFramePingPong(periodMs = 3600 * 2, easing = motion.swayEasing)
     miniArbres.forEach { mini ->
-        MiniArbreItem(mini = mini, sway = sway, drift = drift, motion = motion, cream = cream)
+        MiniArbreItem(
+            mini = mini,
+            elapsed = elapsed,
+            swayP = swayP,
+            driftP = driftP,
+            easing = motion.swayEasing,
+            cream = cream,
+        )
     }
 }
 
 @Composable
 private fun MiniArbreItem(
     mini: MiniArbre,
-    sway: Float,
-    drift: Float,
-    motion: ArbresMotion,
+    elapsed: State<Long>,
+    swayP: State<Float>,
+    driftP: State<Float>,
+    easing: Easing,
     cream: Color,
 ) {
-    // `Animatable.value` lu comme `State` dans `graphicsLayer { }` invalide
-    // le draw layer à chaque frame ; un `Float` plain passé en param serait
-    // capturé à la composition et figerait l'animation.
-    val alpha = remember { Animatable(0f) }
-    val scale = remember { Animatable(0.6f) }
-    LaunchedEffect(Unit) {
-        delay(mini.delayMs.toLong())
-        while (true) {
-            launch {
-                alpha.animateTo(
-                    targetValue = mini.targetAlpha,
-                    animationSpec = tween(durationMillis = 600, easing = motion.swayEasing),
-                )
-            }
-            scale.animateTo(
-                targetValue = 1f,
-                animationSpec = tween(durationMillis = 600, easing = motion.swayEasing),
-            )
-            delay(1300)
-            launch {
-                alpha.animateTo(
-                    targetValue = 0f,
-                    animationSpec = tween(durationMillis = 600, easing = motion.swayEasing),
-                )
-            }
-            scale.animateTo(
-                targetValue = 0.6f,
-                animationSpec = tween(durationMillis = 600, easing = motion.swayEasing),
-            )
-            delay(1000)
-        }
-    }
     // Convention : 0° = vertical haut, -90° = gauche, +90° = droite. Le
     // `Modifier.offset` translate depuis le centre du Box parent.
     val angleRad = Math.toRadians(mini.angleDeg.toDouble() - 90.0)
@@ -369,13 +347,17 @@ private fun MiniArbreItem(
         modifier = Modifier
             .size(mini.sizeDp.dp)
             .offset(baseX, baseY)
+            // Lecture des `State` ici (pas dans le corps du composable) : invalide le draw layer
+            // à chaque frame sans recomposer. `swayP`/`driftP` sont des ping-pongs 0→1→0, remappés
+            // en -1→1→-1 par `* 2f - 1f` (les amplitudes héritées étaient en [-1, 1]).
             .graphicsLayer {
-                this.alpha = alpha.value
-                val s = scale.value
+                val local = elapsed.value - mini.delayMs
+                val (a, s) = miniArbrePhase(local, mini.targetAlpha, easing)
+                alpha = a
                 scaleX = s
                 scaleY = s
-                rotationZ = sway * rotationAmplitude * sin(mini.phaseOffset)
-                translationY = drift * 3.dp.toPx() * cos(mini.phaseOffset * 1.3f)
+                rotationZ = (swayP.value * 2f - 1f) * rotationAmplitude * sin(mini.phaseOffset)
+                translationY = (driftP.value * 2f - 1f) * 3.dp.toPx() * cos(mini.phaseOffset * 1.3f)
             },
     )
 }

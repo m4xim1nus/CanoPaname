@@ -5,11 +5,6 @@ import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -43,6 +38,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import app.arbre.R
+import app.arbre.ui.common.rememberFramePingPong
 import app.arbre.ui.theme.arbresColors
 import app.arbre.util.LocationProvider
 
@@ -170,16 +166,10 @@ private fun HeroLogo() {
  */
 @Composable
 private fun WelcomeAnimation() {
-    val infinite = rememberInfiniteTransition(label = "welcome")
-    val progress by infinite.animateFloat(
-        initialValue = 0f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 4000, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse,
-        ),
-        label = "welcomeProgress",
-    )
+    // Frame-clock (cf. `ui/common/FrameClock.kt`) plutôt qu'`infiniteRepeatable` : la respiration
+    // gris↔vert doit jouer même si l'échelle d'animation système est à 0. Période = aller-retour
+    // complet (= 2 × les 4 s d'un leg de l'ancien `tween(... , Reverse)`).
+    val progress by rememberFramePingPong(periodMs = 8_000, easing = FastOutSlowInEasing)
     val grey = MaterialTheme.arbresColors.ecorce.copy(alpha = 0.5f)
     val green = MaterialTheme.arbresColors.feuilleSombre
     val tint = lerp(grey, green, progress)
