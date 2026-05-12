@@ -4,121 +4,7 @@ App perso, pas de calendrier engageant. Single-player, stockage local strict —
 
 ## Cycle en cours
 
-### Réveil — écrans de chargement & animations
-
-Cycle de polish ciblé sur le cold-start et les animations Compose. Cinq motivations :
-le point BACKLOG « animations neutralisées si échelle d'animation système = 0 » (le radar du
-mode chasse est déjà corrigé via `withFrameNanos`, le reste pas) ; le `FilterSplash` qui dit
-encore « Filtrage de X… » + spinner au lieu du ton « Réveil des … » du splash principal ; un
-bug — la séquence intro de 10 tips ne joue pas au tout 1er lancement, le splash part direct en
-aléatoire ; le splash cold-start qui disparaît avant que les pins soient peints (instant « carte
-sans arbre ») ; et la banque de ~242 tips qui date d'avant 1.1.0/1.2.0 (chiffres dataset périmés,
-aucune phrase sur genres / badges binaires + familles / chasse / fiches espèce-genre / barres de
-progression / logos d'arrondissement).
-
-Décisions de cadrage : animations résistantes à scale=0 → seulement les 2-3 qui comptent
-(couronne mini-platanes + fades du `ColdStartSplash`, hero `WelcomeScreen`, célébration 1re
-capture) repassées en pilotage `withFrameNanos` ; allongement du splash → flip `arbresPrets`
-après `setArbresGeoJson` (pins peints) + plancher de durée min (~2,5 s) ; `FilterSplash` → texte
-au même ton, **pas** d'anim platanes ; bug intro → repro sur device avec logcat DEBUG puis fix
-sans casser les invariants documentés de `SplashTipsController` ; tips → refresh des valeurs +
-outil HTML de revue livré tôt + intégration des retours + nouveaux tips post-1.0. *Bonus repéré :
-le tint saisonnier du `surface` a déjà disparu du thème — rien à killer, mais la ligne `CLAUDE.md`
-qui le mentionne est périmée → à retirer en clôture.*
-
-Sprints :
-
-- ✅ **S1 — Tips : refresh valeurs + outil HTML de revue** (livré). Délittéralisé 2 nombres figés
-  dans `write_splash_tips()` de `tools/build_dataset.py` (`dataset.top10_share` « Les 897 autres »
-  → `len(sorted_sk)-10`, `dataset.club_100` « Sur 907. » → `len(species_index)`) ; rafraîchi les
-  littéraux dataset périmés de `tools/splash-tips-static.json` (210 000 → 217 000, 907 → 930, 247
-  → 237 singletons, pareto 10 → 11 espèces) ; régénéré `assets/splash-tips.json` via
-  `python3 tools/build_dataset.py`. Créé `tools/build_tips_preview.py` → `docs/tips/index.html`
-  (patron `build_report.py`, autonome, zéro CDN) : tips groupés par catégorie (`intro` dans l'ordre
-  figé puis `dataset`/`history`/`popculture`/`player`), placeholders rendus + gabarit brut affiché,
-  verdict `RAS` / `à tuer` / `formulation à revoir` / `chute à réécrire` + commentaire libre
-  persistés en `localStorage`, filtre texte, bouton « Exporter mon avis » → bloc texte copiable.
-  Doc dans `tools/README.md`. Débloque la revue async pendant S2-S5.
-- ✅ **S2 — Bug : intro tips non jouée au 1er lancement** (livré). Instrumentation `Log.d`
-  temporaire (`SplashTipsController`, `MapScreen`, `ColdStartSplash`, `OnboardingStore`, `NavHost`),
-  build debug + 2 séances logcat sur fresh install avec moi. **Diagnostic** : `ArbresNavHost`
-  dérivait `startDestination` de `onboardingDone` → le `remember(route, startDestination)` interne
-  de `NavHost` reconstruisait le graphe à chaque changement (install frais : `null → false → true`
-  via `markDone()`) → `MapScreen` monté **3×** ; l'instance transiente créée par `onContinue`,
-  tuée 200 ms plus tard par la reconstruction `true → map`, jouait l'intro **et** écrivait
-  `markSplashIntroSeen()` avant que l'instance stable ne lise le flag → l'instance stable lisait
-  `splashIntroSeen=true` → mode aléatoire. **Fix** : `startDestination` passé en constante
-  `Routes.map()` ; redirection vers `WELCOME` via un `LaunchedEffect(onboardingDone)` (le graphe
-  n'est plus reconstruit ; `markDone()` ne fait que re-exécuter l'effet sans action). Invariants
-  `SplashTipsController` intacts (`.first()` figé, pas de `collectAsState` sur `splashIntroSeen`,
-  keys minimales). Instrumentation retirée. **Bonus repéré au logcat et corrigé dans S2** :
-  `computeInitialCamera` faisait un `getCurrentLocation()` bloquant (~30 s timeout système, GPS
-  froid en intérieur) **sur le chemin critique** — `map.setStyle(...)` n'est appelé qu'après, donc
-  carte invisible ~30 s ; et la caméra ne se recadrait jamais sur le 1er fix (Paris dézoomé jusqu'au
-  tap FAB). → `computeInitialCamera` non-bloquant (`LocationProvider.currentLocation.value ?:
-  parisCamera()`, plus de `suspend`) + `LaunchedEffect(mapRef)` de recadrage GPS auto au 1er fix
-  (coupé si geste utilisateur / tap cluster / mode filtré / `pulseArbreId` / caméra mémorisée
-  restaurée — flag `userMovedCamera`) + suppression du `scope.launch` devenu inutile dans
-  `getMapAsync`. Cold-start retombé de ~30-37 s à ~1 s en intérieur. (`BACKLOG.md` : les 2 items
-  barrés « livré S2 ».)
-- ✅ **S3 — Allongement du splash cold-start** (livré). `MapScreen.kt` uniquement. Cause réelle,
-  plus subtile qu'anticipé : `GeoJsonSource.setGeoJson(String)` sur une source déjà attachée parse
-  + cluster **en background** — la fonction rend la main aussitôt (« Arbres injectés » loggé tout
-  de suite), le voile s'effaçait, mais les pins n'apparaissaient que 1-3 s plus tard → « carte vide »
-  persistante. Fix : on garde le voile **pleinement opaque jusqu'au rendu effectif des pins**, pas
-  jusqu'au retour de `setArbresGeoJson`. `suspend fun awaitArbresRendered(map, timeoutMs)` boucle
-  (`delay(120)`) tant que `map.queryRenderedFeatures(plein écran, arbres-points, arbres-clusters)`
-  est vide, sous `withTimeoutOrNull` (sécurité si le viewport ne couvre aucun arbre). + plancher de
-  durée min `awaitSplashFloor` (`COLD_SPLASH_MIN_MS = 2500`, mesuré depuis le mount) appliqué au
-  cold-start fresh seulement — remount avec GeoJSON enrichi en cache → plancher 0 (on garde le voile
-  bref au remount, pas de flag de suppression — décision retenue). Mode filtré : même
-  `awaitArbresRendered` + `FILTER_SPLASH_MIN_MS = 1000`. `finally { arbresPrets = true }` ajouté au
-  `try/catch` du `scope.launch` (jamais coincé sous le voile si OOM au parse). Nouveaux logs
-  `MapScreen` : « GeoJSON poussé dans la source (… parse async en cours) » puis « Arbres rendus à
-  l'écran (… total cold start) ». Testé device GrapheneOS : plus de moment « carte vide ».
-  (`BACKLOG.md` : item « Allonger le splash cold-start » barré « livré S3 ».)
-- ✅ **S4 — Animations résistantes à animation-scale=0** (livré). Nouveau `ui/common/FrameClock.kt` :
-  `rememberFrameMillis()` (ms écoulées), `rememberFrameProgress(durationMs, easing)` (rampe one-shot
-  0→1 figée à 1f) et `rememberFramePingPong(periodMs, easing)` (triangle 0→1→0 ; `periodMs` =
-  aller-retour entier, donc `tween(d, Reverse)` → `* 2`), tous modelés sur la boucle `withFrameNanos`
-  de `RadarGlyph` (insensible à `MotionDurationScale`, contrairement aux API d'animation Compose qui
-  se figent quand l'échelle système vaut 0). Convertis : fade-in + sway du `ColdStartSplash` ;
-  `MiniArbreCrown`/`MiniArbreItem` — les 7 platanes lisent désormais `elapsed`/`swayP`/`driftP` (des
-  `State` partagés) dans leur `graphicsLayer`, le cycle fade-in/plateau/fade-out/invisible (3500 ms,
-  décalé par `delayMs`) devenu la fonction pure `miniArbrePhase(localMs, targetAlpha, easing)`, donc
-  la couronne ne recompose plus par frame (mieux qu'avant) ; hero du `WelcomeScreen` (respiration
-  gris↔vert) ; célébration 1re capture (`CelebrationHero`). Laissé tel quel, commenté : `AnimatedVisibility`
-  de sortie du voile splash, `animateDpAsState`/pulse des FAB, `animateIntAsState` du chiffre de
-  distance, `AnimatedContent` de rotation des tips (snap de texte acceptable) ; `FilterSplash` → S5 ;
-  `SeasonAmbience` → BACKLOG (`[ ]`, faible priorité). `assembleDebug` + `:app:testDebugUnitTest` +
-  `detekt` OK. Reste : vérif device GrapheneOS avec l'échelle d'animation des animateurs désactivée.
-- ✅ **S5 — `FilterSplash` au look du `ColdStartSplash`** (livré). Décision révisée avec moi
-  (l'option « pas d'anim platanes » envisagée au cadrage est tombée) : le `FilterSplash` doit
-  *ressembler* au splash principal — même disposition, même hero platane qui se balance + couronne
-  de 7 mini-platanes flottants. `MapOverlays.kt` : extrait un `SplashScaffold` privé (fond vert
-  `colorScheme.primary`, hero `ic_launcher_foreground` 168 dp `scale`+`rotationZ=sway`, fondu
-  d'entrée, `MiniArbreCrown` par-dessus — tout le pilotage `withFrameNanos` mutualisé, donc le
-  `FilterSplash` hérite gratuitement de la résistance à animation-scale=0 du S4) ; `ColdStartSplash`
-  et `FilterSplash` réécrits par-dessus. À la place de « Réveil des {count} arbres parisiens », le
-  `FilterSplash` affiche « Réveil des **{nv pluriel}** parisiens » (un seul `Text`/`AnnotatedString`,
-  le nom vernaculaire dans un span 20 sp SemiBold — « un peu plus gros et gras que le reste ») +
-  un petit `CircularProgressIndicator` discret (20 dp), **sans zone de tips**. Pluriel = +s sur le
-  1er mot du nv (`pluralizeHead` : `-eau`/`-eu`→`-eaux`/`-eux`, invariant en s/x/z ; accord
-  d'adjectif non géré — « Chêne vert » → « Chênes vert », assumé, le bandeau qui suit donne le nom
-  exact). `MapScreen.kt` : `splashSpeciesLabel` résolu depuis `filteredEntry` — filtre genre /
-  fiche `(G, sp.)` → `GenreInfo.nomFr` (« Prunier », pas « Prunier (Prunus sp.) ») ; filtre espèce
-  → `displayNomCommun`. `FilterBanner` inchangé. `FILTER_SPLASH_MIN_MS = 1000` conservé.
-  `:app:testDebugUnitTest` + `detekt` + `assembleDebug` OK. Reste : vérif device GrapheneOS.
-- **S6 — Tips : intégration des retours + nouveaux tips.** Appliquer les verdicts de l'HTML (tuer
-  / réécrire / commentaires) sur `splash-tips-static.json` et les générateurs de `write_splash_tips()`.
-  Ajouter des tips post-1.0 (saisons calendaires, badges binaires + familles « Familier des/du … »,
-  backup ZIP, mode chasse radar, fiches espèce & genre, barres de progression Profil, logos
-  d'arrondissement, catalogue ~929 entrées) + quelques créations history/popculture. Regénérer
-  `splash-tips.json` + `docs/tips/index.html`, revérifier le sanity-check placeholders. (option)
-  test dans `tools/test_build_dataset.py` : ids uniques, `intro` présents, placeholders ∈ set.
-- **Clôture.** Entrée `CHANGELOG.md` (`[1.3.0]` probable), bump `versionCode`/`versionName`,
-  rotation ROADMAP (Réveil → « Cycles livrés post-1.0 », promotion de *Variantes*), `BACKLOG.md`
-  (items absorbés barrés), `CLAUDE.md` (retrait de la ligne périmée sur le tint saisonnier).
+_Aucun cycle ouvert._ Prochain cycle à cadrer — candidats dans « Prochains cycles » ci-dessous et dans `BACKLOG.md` (items `[→Codename]` / `[ ]` / `[creuser]`). Le triage du backlog se fait à l'ouverture du cycle suivant (procédure dans `CLAUDE.md`, *Workflow & docs*).
 
 ## Prochains cycles
 
@@ -129,6 +15,10 @@ Refonte Arboretum « états/variants ». La colonne `season` (devenue inerte par
 Inspiration : Dave the Diver / Pokédex enrichi. Re-capture du même arbre dans un état nouveau = upgrade visible de l'élément Arboretum, sans inflation artificielle. Migration `MIGRATION_4_5`, backup `schemaVersion = 3`. Badges variantes émergent naturellement. Items détaillés dans `BACKLOG.md`.
 
 ## Cycles livrés post-1.0
+
+### Réveil — `1.3.0` (2026-05-12)
+
+Cycle de polish sur les écrans de chargement et les animations Compose. Six sprints : refresh des valeurs des splash tips + outil HTML de revue (`tools/build_tips_preview.py` → `docs/tips/index.html`) ; fix du bug d'intro tips (le splash partait direct en aléatoire au 1er lancement — cause : `ArbresNavHost.startDestination` dérivé d'un `Flow` → reconstruction du graphe `NavHost` → `MapScreen` monté 3×) ; fix d'un cold-start bloquant ~30 s (`computeInitialCamera` faisait un `getCurrentLocation()` synchrone sur le chemin critique) + recadrage caméra auto au 1er fix GPS ; splash cold-start opaque jusqu'au rendu effectif des pins (`awaitArbresRendered`) + plancher de durée ; animations clés repassées en `withFrameNanos` via `ui/common/FrameClock.kt` (insensibles à l'échelle d'animation système = 0) ; `FilterSplash` réécrit au look du `ColdStartSplash` (`SplashScaffold` privé mutualisé, « Réveil des {nv pluriel} parisiens »). Banque de tips refondue (≈ 231, +15 catégorie `app`, 18 popculture supprimés, placeholder `{captureCount}` retiré). Aucune casse de schéma. Détails dans `CHANGELOG.md` `[1.3.0]`.
 
 ### Progression — `1.2.0` (2026-05-12)
 

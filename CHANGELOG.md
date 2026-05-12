@@ -2,6 +2,35 @@
 
 Format basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions [SemVer](https://semver.org/lang/fr/).
 
+## [1.3.0] — 2026-05-12
+
+Cycle de polish *Réveil* : écrans de chargement et animations Compose. Six sprints — refresh + outil de revue des splash tips, fix du bug d'intro tips, fix d'un cold-start bloquant ~30 s, splash cold-start qui reste opaque jusqu'au rendu effectif des pins, animations clés rendues insensibles à l'échelle d'animation système, `FilterSplash` réécrit au look du splash principal. Aucune casse de schéma.
+
+### Ajouté
+
+- Outillage : `tools/build_tips_preview.py` → `docs/tips/index.html` — revue de tous les splash tips (placeholders rendus + gabarit brut affichés, verdict `RAS` / `à tuer` / `chute à réécrire` + commentaire libre persistés en `localStorage`, filtre texte, export copiable). Doc dans `tools/README.md`.
+- Outillage : `SplashTipsTest` dans `tools/test_build_dataset.py` (ids uniques, `intro` présent, placeholders ⊆ set runtime).
+- `ui/common/FrameClock.kt` : `rememberFrameMillis()`, `rememberFrameProgress(durationMs, easing)` (rampe one-shot 0→1 figée à 1f), `rememberFramePingPong(periodMs, easing)` (triangle 0→1→0) — modelés sur la boucle `withFrameNanos` du radar de chasse, insensibles à `MotionDurationScale`.
+
+### Modifié
+
+- `ColdStartSplash` : le voile reste **pleinement opaque jusqu'au rendu effectif des pins** (`awaitArbresRendered` poll `queryRenderedFeatures` sous `withTimeoutOrNull`) et non plus jusqu'au retour de `setArbresGeoJson` (qui parse / cluster en background, pins 1-3 s plus tard) — fin du moment « carte vide ». Plancher de durée minimale `COLD_SPLASH_MIN_MS = 2500` en cold-start fresh (0 au remount avec GeoJSON enrichi en cache). `finally { arbresPrets = true }` pour ne jamais rester coincé sous le voile.
+- `FilterSplash` réécrit au look du `ColdStartSplash` : `SplashScaffold` privé extrait dans `MapOverlays.kt` (fond `colorScheme.primary`, hero platane `ic_launcher_foreground` `scale` + `rotationZ=sway`, fondu d'entrée, couronne de 7 mini-platanes flottants — tout le pilotage `withFrameNanos` mutualisé) ; à la place de « Filtrage de X… » + spinner, « Réveil des **{nom vernaculaire pluriel}** parisiens » (nv dans un span 20 sp SemiBold) + `CircularProgressIndicator` discret, sans zone de tips. Pluriel via `pluralizeHead` (`-eau`/`-eu` → `-eaux`/`-eux`, invariant en s/x/z) ; `splashSpeciesLabel` résolu depuis `filteredEntry` (filtre genre → `GenreInfo.nomFr`, filtre espèce → `displayNomCommun`). `FILTER_SPLASH_MIN_MS = 1000`.
+- Animations clés repassées en pilotage `withFrameNanos` (insensibles à l'échelle d'animation système = 0) : fade-in + sway du `ColdStartSplash`, couronne `MiniArbreCrown`/`MiniArbreItem` (sway / drift / cascade par platane → fonction pure `miniArbrePhase` lue dans le `graphicsLayer`, la couronne ne recompose plus par frame), hero du `WelcomeScreen` (respiration gris↔vert), célébration 1re capture (`CelebrationHero`). Laissés en l'état (snap acceptable) : sortie du voile, micro-shift / pulse des FAB, chiffre de distance de la chasse, rotation des tips.
+- Splash tips : banque rafraîchie (≈ 231 tips). Chiffres dataset réalignés post-1.1 / 1.2 (782 espèces identifiées, 930 entrées catalogue, 217 042 arbres). +15 tips d'une nouvelle catégorie `app` (saisons calendaires, badges binaires + familles « Familier des/du … », backup ZIP, mode chasse radar, fiches espèce & genre, barres de progression du Profil, logos d'arrondissement, catalogue, map-pulse) + 6 history/popculture + 5 player. 18 tips popculture supprimés (hors-sujet ou doublons), ≈ 30 réécritures. Placeholder `{captureCount}` retiré partout (`splash-tips-static.json`, `SUPPORTED_PLACEHOLDERS`, `SplashTipsController`, preview → 17 tips player concernés supprimés) ; le set runtime restant est `{speciesCount, remarquableCount, daysSinceFirst}`. Fixup accents / casse des noms communs CSV (`erable` → `Érable`).
+- `ArbresNavHost.startDestination` passé en **constante** (`Routes.map()`) ; la redirection vers `WELCOME` est désormais portée par un `LaunchedEffect(onboardingDone)` — le graphe n'est plus reconstruit quand `onboardingDone` change.
+- CI : actions GitHub bumpées sur le runtime Node 24 (`actions/checkout` v6, `actions/setup-java` v5, `actions/setup-python` v6, `actions/cache` v5, `actions/upload-artifact` v7, `gradle/actions/setup-gradle` v6, `softprops/action-gh-release` v3).
+
+### Corrigé
+
+- La séquence intro de 10 tips ne jouait pas au tout 1er lancement post-onboarding (le splash partait directement en mode aléatoire). Cause : `startDestination` dérivé de `onboardingDone` → reconstruction du graphe `NavHost` à chaque changement (`null → false → true` sur install frais) → `MapScreen` monté 3×, une instance transiente jouait l'intro **et** appelait `markSplashIntroSeen()` avant que l'instance stable ne lise le flag. Fix via la `startDestination` constante (cf. *Modifié*) ; invariants de `SplashTipsController` intacts (`.first()` figé, pas de `collectAsState` sur `splashIntroSeen`, keys minimales).
+- Cold-start de ~30-37 s en intérieur (GPS froid) : `computeInitialCamera` faisait un `getCurrentLocation()` **bloquant** (timeout système ~30 s) sur le chemin critique avant `map.setStyle(...)`, et la caméra ne se recadrait jamais sur le 1er fix. Rendu non-bloquant (`LocationProvider.currentLocation.value ?: parisCamera()`, plus `suspend`) + recadrage caméra automatique au 1er fix GPS (`LaunchedEffect(mapRef)`, coupé si geste utilisateur / tap cluster / mode filtré / `pulseArbreId` / caméra mémorisée restaurée). Cold-start retombé à ~1 s en intérieur.
+- `tools/test_build_dataset.py` : 2 attendus de test réalignés sur le pipeline courant (`UNKNOWN_ESPECE_FORMS` inclut `fleur n. sp.` / `fruit n. sp.` depuis le cycle Catalogue ; numérotation Pokédex par count décroissant). La suite repasse entièrement au vert.
+
+### Privacy
+
+- Inchangé : 100 % local, aucune télémétrie, aucun service tiers au runtime.
+
 ## [1.2.0] — 2026-05-12
 
 Refonte de l'expression de la progression sous le codename *Progression*. Six sprints : le FAB ★ devient un mode chasse persistant ; Profil et Badges sont séparés conceptuellement (progression chiffrée en barres sur le Profil, badges désormais tous binaires) ; deux familles de badges dynamiques « Familier » émergent du dataset (un genre avec ≥ 7 espèces identifiées, les 20 arrondissements + 2 bois). En corollaire, le cycle « Endgame » disparaît comme cycle nommé — sa pièce maîtresse (maîtrise par arrondissement) est absorbée ici.
