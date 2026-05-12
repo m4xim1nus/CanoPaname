@@ -42,6 +42,7 @@ Détail complet dans `ROADMAP.md` (*Cycle en cours*). Item absorbé du BACKLOG (
 - [creuser] Mini-quiz ou capacité d'identification entre espèces partageant le même `nc` (Quercus robur vs petraea, Tilia cordata vs platyphyllos) (claude:analyse, 2026-05-08 ; refusé du cycle Catalogue 2026-05-10 — scope dédié, UX du quiz + génération de paires + scoring trop coûteux à empiler)
 - [creuser] Aide à l'indentification des genres/espèces
 - [creuser] Leaderboard optionnel et minimaliste ?
+- [creuser] Animations Compose neutralisées si « échelle d'animation système = 0 » (cas device:moi) : `rememberInfiniteTransition` reste figé (pulse FAB GPS, sway du ColdStartSplash, couronne MiniArbreCrown, hero WelcomeScreen) ; `Animatable`/`animate*AsState`/`AnimatedVisibility`/`Crossfade` snap au lieu d'animer (fades splash/célébration 1re capture, tint saisonnier, décalage FAB GPS, chiffre de distance de la chasse). Aucune casse fonctionnelle. À trancher : (a) accepter la dégradation, ou (b) repasser les quelques animations qui comptent (hero onboarding, célébration capture) en `withFrameNanos` comme le radar du mode chasse. (device:moi, 2026-05-12 ; émergé du sprint S1 Progression — le radar a été corrigé ainsi)
 
 ## Refusé
 

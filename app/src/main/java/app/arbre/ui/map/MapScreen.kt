@@ -11,6 +11,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
@@ -43,6 +44,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -51,7 +53,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -182,6 +186,28 @@ fun MapScreen(
         .collectAsState(initial = emptySet())
     val capturedRemarquables by captureRepo.capturedRemarquableIds()
         .collectAsState(initial = emptySet())
+
+    // Mode chasse (S1 cycle Progression). `huntActive` est `remember`-é ici (pas
+    // dans le VM) pour que le mode se ferme tout seul quand on quitte l'écran.
+    // La liste des remarquables est chargée paresseusement au 1er passage en
+    // mode chasse et mémorisée dans le VM (évite un re-query aux remounts).
+    var huntActive by remember { mutableStateOf(false) }
+    var remarquablesList by remember { mutableStateOf(viewModel.remarquablesCache) }
+    LaunchedEffect(huntActive) {
+        if (huntActive && remarquablesList == null) {
+            val loaded = repo.arbresRemarquables()
+            viewModel.remarquablesCache = loaded
+            remarquablesList = loaded
+        }
+    }
+    val density = LocalDensity.current
+    var huntPanelHeightPx by remember { mutableIntStateOf(0) }
+    val bottomShiftForHunt by animateDpAsState(
+        targetValue = if (huntActive && huntPanelHeightPx > 0)
+            with(density) { huntPanelHeightPx.toDp() } + 8.dp
+        else 0.dp,
+        label = "huntBottomShift",
+    )
 
     val mapView = remember {
         MapView(ctx).apply {
@@ -548,36 +574,6 @@ fun MapScreen(
         }
     }
 
-    fun onNearestRemarquableClick() {
-        scope.launch {
-            val loc = LocationProvider.currentLocation.value
-                ?: LocationProvider.currentOrLastKnown(ctx)
-            if (loc == null) {
-                snackbar.showSnackbar("Position indisponible (active le GPS)")
-                return@launch
-            }
-            val tous = repo.arbresRemarquables()
-            val restants = tous.filterNot { it.id in capturedRemarquables }
-            if (restants.isEmpty()) {
-                snackbar.showSnackbar("Tous les remarquables sont découverts")
-                return@launch
-            }
-            val results = FloatArray(1)
-            val nearest = restants.map { rem ->
-                Location.distanceBetween(
-                    loc.latitude, loc.longitude,
-                    rem.latitude, rem.longitude,
-                    results,
-                )
-                rem to results[0]
-            }.minBy { it.second }
-            showSnackbarFor(
-                snackbar,
-                "Plus proche remarquable non découvert : ${nearest.second.toInt()} m",
-            )
-        }
-    }
-
     Box(modifier = Modifier.fillMaxSize()) {
         AndroidView(factory = { mapView })
         CaptureCelebrationOverlay(
@@ -641,18 +637,20 @@ fun MapScreen(
                     )
                 }
             }
-            FloatingActionButton(
-                onClick = ::onNearestRemarquableClick,
-                modifier = Modifier
-                    .align(Alignment.BottomStart)
-                    .windowInsetsPadding(WindowInsets.navigationBars)
-                    .padding(16.dp),
-            ) {
-                Icon(
-                    Icons.Outlined.Star,
-                    contentDescription = "Plus proche remarquable",
-                    tint = MaterialTheme.arbresColors.remarquableOrange,
-                )
+            if (!huntActive) {
+                FloatingActionButton(
+                    onClick = { huntActive = !huntActive },
+                    modifier = Modifier
+                        .align(Alignment.BottomStart)
+                        .windowInsetsPadding(WindowInsets.navigationBars)
+                        .padding(16.dp),
+                ) {
+                    Icon(
+                        Icons.Outlined.Star,
+                        contentDescription = "Chasse aux remarquables",
+                        tint = MaterialTheme.arbresColors.remarquableOrange,
+                    )
+                }
             }
         }
         // Pulse infini 1.0 → 1.12 pendant `awaitingFirstFix`. `Modifier.scale`
@@ -679,13 +677,33 @@ fun MapScreen(
                 .align(Alignment.BottomEnd)
                 .windowInsetsPadding(WindowInsets.navigationBars)
                 .padding(16.dp)
+                .padding(bottom = bottomShiftForHunt)
                 .scale(pulseScale),
         ) {
             Icon(Icons.Outlined.MyLocation, contentDescription = "Me localiser")
         }
+
+        if (huntActive && !isFiltered) {
+            HuntPanel(
+                remarquables = remarquablesList,
+                capturedIds = capturedRemarquables,
+                resolveName = { arbre ->
+                    speciesIndex.indexOf(arbre)?.let { speciesIndex.get(it)?.displayNomCommun }
+                        ?: arbre.nomAffichage
+                },
+                resolveQualification = { remarquableInfoRepo.get(it.id)?.qualification },
+                onClose = { huntActive = false },
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .onSizeChanged { huntPanelHeightPx = it.height },
+            )
+        }
+
         SnackbarHost(
             hostState = snackbar,
-            modifier = Modifier.align(Alignment.BottomCenter),
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = bottomShiftForHunt),
         )
 
         // Splash : reste au-dessus de la carte tant que les layers d'arbres

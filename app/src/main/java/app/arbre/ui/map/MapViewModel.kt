@@ -36,6 +36,14 @@ class MapViewModel(
     var openedArbre: Arbre? by mutableStateOf(null)
         private set
 
+    /**
+     * Cache de `arbresRemarquables()` pour le mode chasse (sprint S1 cycle
+     * Progression) — peuplé au 1er passage en mode chasse, survit aux remounts.
+     * Le flag `huntActive` lui vit côté `MapScreen` (`remember`) : le mode se
+     * ferme automatiquement quand on quitte l'écran.
+     */
+    var remarquablesCache: List<Arbre>? = null
+
     fun rememberCamera(position: CameraPosition) {
         lastCamera = position
     }
