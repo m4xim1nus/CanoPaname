@@ -83,6 +83,7 @@ import app.arbre.ui.theme.arbresColors
 import app.arbre.ui.theme.arbresMotion
 import app.arbre.util.LocationProvider
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.filterNotNull
@@ -111,6 +112,14 @@ private val PARIS = LatLng(48.8566, 2.3522)
 private const val PARIS_ZOOM = 13.0
 private const val PARIS_OVERVIEW_ZOOM = 11.5
 private const val USER_ZOOM = 16.0
+
+// Durée minimale d'affichage du ColdStartSplash sur un cold-start fresh, pour
+// qu'il ne flashe pas sur un device rapide (le temps de lire un tip). Mesurée
+// depuis le mount de `MapScreen`. NON appliquée quand on pose un GeoJSON enrichi
+// déjà en cache (remount retour Profil → Map) ni en mode filtré.
+private const val COLD_SPLASH_MIN_MS = 2_500L
+// Plancher réduit du FilterSplash (pré-filtre Kotlin < 1 s + setStyle 1-3 s).
+private const val FILTER_SPLASH_MIN_MS = 1_000L
 
 private fun parisCamera(zoom: Double = PARIS_ZOOM): CameraPosition =
     CameraPosition.Builder().target(PARIS).zoom(zoom).build()
@@ -227,6 +236,33 @@ fun MapScreen(
     var mapRef by remember { mutableStateOf<MapLibreMap?>(null) }
     var styleRef by remember { mutableStateOf<Style?>(null) }
     var arbresPrets by remember { mutableStateOf(false) }
+    // Plancher de durée du splash : on garde le voile vert affiché au moins le
+    // temps de lire un tip avant de flipper `arbresPrets`. Mesuré depuis le mount.
+    val mountElapsedMs = remember { android.os.SystemClock.elapsedRealtime() }
+    suspend fun awaitSplashFloor(minMs: Long) {
+        val elapsed = android.os.SystemClock.elapsedRealtime() - mountElapsedMs
+        if (elapsed < minMs) delay(minMs - elapsed)
+    }
+    // `GeoJsonSource.setGeoJson(String)` sur une source déjà attachée — et, dans
+    // une moindre mesure, le parse + clustering du ctor sur un gros corpus —
+    // traitent les features EN BACKGROUND : la pose des layers rend la main bien
+    // avant que les pins/clusters soient réellement rendus (1-3 s de décalage
+    // observé sur device pour les 217 k features). Tant que le splash est levé,
+    // on attend donc que la source ait produit des features rendues à l'écran —
+    // sinon le voile s'efface sur une « carte vide ». Timeout de sécurité au cas
+    // (improbable dans Paris) où le viewport ne couvre aucun arbre.
+    suspend fun awaitArbresRendered(map: MapLibreMap, timeoutMs: Long) {
+        withTimeoutOrNull(timeoutMs) {
+            val screen = RectF(0f, 0f, mapView.width.toFloat(), mapView.height.toFloat())
+            while (true) {
+                val rendered = map.queryRenderedFeatures(
+                    screen, POINTS_LAYER_ID, CLUSTERS_LAYER_ID,
+                )
+                if (rendered.isNotEmpty()) break
+                delay(120)
+            }
+        }
+    }
     // Vrai dès que l'utilisateur a bougé/redirigé la caméra (geste de carte ou
     // tap sur un cluster) — coupe le recadrage GPS auto pour ne pas le contrarier.
     var userMovedCamera by remember { mutableStateOf(false) }
@@ -512,29 +548,35 @@ fun MapScreen(
                             }
                             addArbresLayers(style, json)
                             styleRef = style
-                            arbresPrets = true
                             val tLayers = android.os.SystemClock.elapsedRealtime()
                             android.util.Log.i(
                                 "MapScreen",
                                 "Layers posées (process+${tLayers - tProcess}ms, total filtered)",
                             )
+                            // Attendre le rendu effectif (le clustering de la
+                            // source filtrée peut traîner un peu), puis petit
+                            // plancher : pré-filtre + setStyle sont souvent
+                            // < 1 s, le voile flasherait sinon.
+                            awaitArbresRendered(map, 6_000)
+                            awaitSplashFloor(FILTER_SPLASH_MIN_MS)
+                            arbresPrets = true
                         } else {
-                            // Cold-start global : 2-passes flip-avant-load.
-                            // Le `GeoJsonSource` ctor parse le JSON 32 Mo sur
-                            // le UI thread (exigence MapLibre) et bloque
-                            // ~700 ms ; Choreographer s'arrête et le splash
-                            // apparaît figé. Solution : poser les layers
-                            // VIDES (instantané), flip `arbresPrets = true`
-                            // pour que le splash joue son anim de sortie,
-                            // PUIS injecter les arbres via `setArbresGeoJson`
-                            // — le freeze 700 ms est masqué par « carte vide ».
+                            // Cold-start global, 2-passes : on pose les layers
+                            // sur une source VIDE (instantané), puis on injecte
+                            // les 217 k features via `setArbresGeoJson` — qui
+                            // parse + cluster en background et ne bloque pas le
+                            // UI thread. Le voile reste PLEINEMENT OPAQUE jusqu'à
+                            // ce que les pins/clusters soient réellement rendus
+                            // (`awaitArbresRendered` plus bas) — sinon il
+                            // s'effacerait sur une « carte vide » 1-3 s, le temps
+                            // que le parse async aboutisse (bug repéré au S3 du
+                            // cycle Réveil : « flip avant load » faisait ça).
                             addArbresLayers(style, EMPTY_GEOJSON)
                             styleRef = style
-                            arbresPrets = true
                             val tEmpty = android.os.SystemClock.elapsedRealtime()
                             android.util.Log.i(
                                 "MapScreen",
-                                "Layers vides posées (process+${tEmpty - tProcess}ms, splash exit)",
+                                "Layers vides posées (process+${tEmpty - tProcess}ms)",
                             )
                             // Si on a déjà un GeoJSON enrichi cached (mount
                             // post retour Profil → Map), on le pose direct
@@ -558,11 +600,31 @@ fun MapScreen(
                             val tLayers = android.os.SystemClock.elapsedRealtime()
                             android.util.Log.i(
                                 "MapScreen",
-                                "Arbres injectés (process+${tLayers - tProcess}ms, total cold start)",
+                                "GeoJSON poussé dans la source (process+${tLayers - tProcess}ms, parse async en cours)",
                             )
+                            // Le setGeoJson ci-dessus parse + cluster en
+                            // background : on attend que les pins/clusters
+                            // soient effectivement rendus avant de baisser
+                            // le voile (sinon « carte vide » 1-3 s).
+                            awaitArbresRendered(map, 10_000)
+                            val tRendered = android.os.SystemClock.elapsedRealtime()
+                            android.util.Log.i(
+                                "MapScreen",
+                                "Arbres rendus à l'écran (process+${tRendered - tProcess}ms, total cold start)",
+                            )
+                            // Plancher : pleine durée uniquement en cold-start
+                            // fresh ; remount avec cache enrichi → flip direct
+                            // (inutile de ralentir une nav rapide).
+                            if (cached == null) awaitSplashFloor(COLD_SPLASH_MIN_MS)
+                            arbresPrets = true
                         }
                     } catch (e: Throwable) {
                         android.util.Log.e("MapScreen", "Échec chargement arbres", e)
+                    } finally {
+                        // Ne jamais rester coincé sous le splash si une étape a
+                        // échoué (OOM possible au parse du GeoJSON). Idempotent
+                        // si le chemin nominal a déjà flippé.
+                        arbresPrets = true
                     }
                 }
             }

@@ -61,11 +61,22 @@ Sprints :
   restaurée — flag `userMovedCamera`) + suppression du `scope.launch` devenu inutile dans
   `getMapAsync`. Cold-start retombé de ~30-37 s à ~1 s en intérieur. (`BACKLOG.md` : les 2 items
   barrés « livré S2 ».)
-- **S3 — Allongement du splash cold-start.** `MapScreen.kt` : ne plus flipper `arbresPrets`
-  après les layers vides mais après `setArbresGeoJson` (pins peints) ; + plancher de durée min
-  (~2,5 s depuis le mount, constante nommée). Path filtré : flip après `addArbresLayers` + petit
-  plancher (~1 s). Path « cache enrichi » (retour Profil → Map) : plancher réduit/0 pour ne pas
-  ralentir une nav rapide. Vérif : plus de moment « carte sans arbre », cold-start < ~4 s.
+- ✅ **S3 — Allongement du splash cold-start** (livré). `MapScreen.kt` uniquement. Cause réelle,
+  plus subtile qu'anticipé : `GeoJsonSource.setGeoJson(String)` sur une source déjà attachée parse
+  + cluster **en background** — la fonction rend la main aussitôt (« Arbres injectés » loggé tout
+  de suite), le voile s'effaçait, mais les pins n'apparaissaient que 1-3 s plus tard → « carte vide »
+  persistante. Fix : on garde le voile **pleinement opaque jusqu'au rendu effectif des pins**, pas
+  jusqu'au retour de `setArbresGeoJson`. `suspend fun awaitArbresRendered(map, timeoutMs)` boucle
+  (`delay(120)`) tant que `map.queryRenderedFeatures(plein écran, arbres-points, arbres-clusters)`
+  est vide, sous `withTimeoutOrNull` (sécurité si le viewport ne couvre aucun arbre). + plancher de
+  durée min `awaitSplashFloor` (`COLD_SPLASH_MIN_MS = 2500`, mesuré depuis le mount) appliqué au
+  cold-start fresh seulement — remount avec GeoJSON enrichi en cache → plancher 0 (on garde le voile
+  bref au remount, pas de flag de suppression — décision retenue). Mode filtré : même
+  `awaitArbresRendered` + `FILTER_SPLASH_MIN_MS = 1000`. `finally { arbresPrets = true }` ajouté au
+  `try/catch` du `scope.launch` (jamais coincé sous le voile si OOM au parse). Nouveaux logs
+  `MapScreen` : « GeoJSON poussé dans la source (… parse async en cours) » puis « Arbres rendus à
+  l'écran (… total cold start) ». Testé device GrapheneOS : plus de moment « carte vide ».
+  (`BACKLOG.md` : item « Allonger le splash cold-start » barré « livré S3 ».)
 - **S4 — Animations résistantes à animation-scale=0.** Helper réutilisable (`ui/common/FrameClock.kt` :
   `rememberFrameProgress(periodMs)` / `rememberFrameMillis()`), modelé sur le `withFrameNanos` du
   `RadarGlyph`. Convertir : `MiniArbreCrown` (sway + drift + cascade par arbre), fades du
