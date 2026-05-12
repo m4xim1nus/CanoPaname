@@ -8,6 +8,7 @@ Sorties :
 - ../app/src/main/assets/arbres-paris.geojson        (MapLibre, source clusterisée)
 - ../app/src/main/assets/species-index.json          (lookup int -> {genre, espece})
 - ../app/src/main/assets/dataset-stats.json          (totals affichés en Arboretum)
+- ../app/src/main/assets/arr-species.json            (slug ArrKey -> [speciesIndex] présents — dénominateur des badges « Familier d'arrondissement »)
 
 Schéma SQLite identique à celui que Room générerait pour `ArbreEntity` —
 sans cela, `createFromAsset()` rejette la base au runtime.
@@ -54,6 +55,7 @@ OUT_SPECIES_INFO = ASSETS_DIR / "species-info.json"
 OUT_REMARQUABLES_INFO = ASSETS_DIR / "remarquables-info.json"
 OUT_GENRE_INFO = ASSETS_DIR / "genre-info.json"
 OUT_SPLASH_TIPS = ASSETS_DIR / "splash-tips.json"
+OUT_ARR_SPECIES = ASSETS_DIR / "arr-species.json"
 STATIC_SPLASH_TIPS = ROOT / "tools" / "splash-tips-static.json"
 
 # Placeholders runtime supportés côté Kotlin (cf. SplashTipsController). Toute
@@ -605,6 +607,69 @@ def normalize_arr(raw: str) -> str | None:
     if upper == "HAUTS-DE-SEINE":
         return "Hauts-de-Seine"
     return raw.title()
+
+
+# Slugs ArrKey reconnus (20 arrondissements + 2 bois), dans l'ordre canonique
+# `ArrKey.sortKey()` côté Kotlin. Sert de dénominateur aux badges « Familier
+# d'arrondissement » (`arr-species.json`).
+ARR_KEY_SLUGS: list[str] = [str(n) for n in range(1, 21)] + ["vincennes", "boulogne"]
+
+# Mirror EXACT de `PARIS_RAW` / `PARIS_NORMALIZED` dans data/ArrKey.kt (Kotlin) :
+# case-sensitive, accepte « PARIS 1ER ARRDT » comme « PARIS 12E ARRDT ». À ne
+# PAS confondre avec `ARR_PARIS_PATTERN` (IGNORECASE, ne matche pas « 1ER »).
+_ARRKEY_PARIS_RAW_RE = re.compile(r"^PARIS (\d{1,2})(?:ER|E) ARRDT$")
+_ARRKEY_PARIS_NORM_RE = re.compile(r"^(\d{1,2})(?:er|e)$")
+
+
+def arr_key_slug(adresse: str | None) -> str | None:
+    """Reproduit `parseArrKey(adresse)` côté Kotlin (data/ArrKey.kt).
+
+    Prend l'adresse telle que stockée dans `ArbreEntity.adresse` (sortie de
+    `build_address`), isole le segment post-dernière-virgule (« ", " »), et
+    renvoie le slug ArrKey (« 1 ».. « 20 » / « vincennes » / « boulogne ») ou
+    `None` pour les exclaves (Seine-Saint-Denis, Hauts-de-Seine…) et les
+    adresses sans suffixe d'arrondissement reconnaissable.
+    """
+    if not adresse or not adresse.strip():
+        return None
+    idx = adresse.rfind(", ")
+    tail = (adresse[idx + 2:] if idx != -1 else adresse).strip()
+    m = _ARRKEY_PARIS_RAW_RE.match(tail) or _ARRKEY_PARIS_NORM_RE.match(tail)
+    if m:
+        n = int(m.group(1))
+        if 1 <= n <= 20:
+            return str(n)
+    up = tail.upper()
+    if up == "BOIS DE VINCENNES":
+        return "vincennes"
+    if up == "BOIS DE BOULOGNE":
+        return "boulogne"
+    return None
+
+
+def write_arr_species(arr_species: dict[str, set[int]], all_sks: set[int]) -> None:
+    """Écrit `arr-species.json` : `{slug ArrKey -> [speciesIndex triés]}`.
+
+    Dénominateur des badges « Familier d'arrondissement » : un badge se
+    débloque quand l'utilisateur a capturé toutes les espèces recensées dans
+    cet arrondissement. 22 clés (20 arr. + 2 bois), exclaves exclues.
+    """
+    missing = [s for s in ARR_KEY_SLUGS if not arr_species.get(s)]
+    if missing:
+        raise SystemExit(f"[err] arr-species : slugs vides ou absents : {missing}")
+    rogue = set(arr_species) - set(ARR_KEY_SLUGS)
+    if rogue:
+        raise SystemExit(f"[err] arr-species : slugs inattendus : {sorted(rogue)}")
+    for s, sks in arr_species.items():
+        bad = [sk for sk in sks if sk not in all_sks]
+        if bad:
+            raise SystemExit(f"[err] arr-species[{s}] : sk hors index : {bad[:5]}…")
+    payload = {s: sorted(arr_species[s]) for s in ARR_KEY_SLUGS}
+    with OUT_ARR_SPECIES.open("w", encoding="utf-8") as f:
+        json.dump(payload, f, ensure_ascii=False, separators=(",", ":"))
+    kb = OUT_ARR_SPECIES.stat().st_size // 1024
+    sizes = ", ".join(f"{s}:{len(payload[s])}" for s in ("2", "16", "vincennes"))
+    print(f"       → {OUT_ARR_SPECIES.name} ({len(payload)} clés, {kb} Ko ; {sizes})")
 
 
 class WikiTransient(Exception):
@@ -2961,6 +3026,10 @@ def build(csv_path: Path, db_path: Path, geojson_path: Path) -> None:
     arr_by_sk: dict[int, dict[str, int]] = defaultdict(lambda: defaultdict(int))
     count_by_sk: dict[int, int] = defaultdict(int)
     arr_total: dict[str, int] = defaultdict(int)
+    # arr-species.json : ensemble des speciesIndex présents par ArrKey (slug),
+    # dérivé via `arr_key_slug(adresse)` — même règle que `parseArrKey` côté
+    # Kotlin, donc cohérent avec ce que l'évaluateur de badges accumulera.
+    arr_species: dict[str, set[int]] = defaultdict(set)
     # Pour species-index.json : on retient le nom commun (`libellefrancais`)
     # le plus fréquent par espèce. Le CSV en colle plusieurs variantes ("Tilleul
     # à grandes feuilles" / "Tilleul" / "" / null) sur des arbres de la même
@@ -3067,6 +3136,9 @@ def build(csv_path: Path, db_path: Path, geojson_path: Path) -> None:
                 if arr_norm:
                     arr_by_sk[sk][arr_norm] += 1
                     arr_total[arr_norm] += 1
+                arr_slug = arr_key_slug(adresse)
+                if arr_slug:
+                    arr_species[arr_slug].add(sk)
 
                 feature = {
                     "type": "Feature",
@@ -3107,6 +3179,8 @@ def build(csv_path: Path, db_path: Path, geojson_path: Path) -> None:
     }
     with OUT_DATASET_STATS.open("w", encoding="utf-8") as f:
         json.dump(stats, f, ensure_ascii=False, indent=2)
+
+    write_arr_species(dict(arr_species), set(species_index.values()))
 
     essences_records = fetch_essences()
     essences_pdf = _build_essences_index(essences_records)
@@ -3204,6 +3278,7 @@ def build(csv_path: Path, db_path: Path, geojson_path: Path) -> None:
     print(f"       → {OUT_REMARQUABLES_INFO.name}")
     print(f"       → {OUT_GENRE_INFO.name}")
     print(f"       → {OUT_SPLASH_TIPS.name}")
+    print(f"       → {OUT_ARR_SPECIES.name}")
 
 
 def main() -> int:

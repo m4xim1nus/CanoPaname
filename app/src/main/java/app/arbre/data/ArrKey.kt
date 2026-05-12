@@ -53,3 +53,26 @@ fun ArrKey.sortKey(): Int = when (this) {
     ArrKey.BoisBoulogne -> 22
     ArrKey.Other -> 23
 }
+
+/**
+ * Slug stable utilisé comme clé dans `arr-species.json` et dans les ids de
+ * badges « Familier d'arrondissement » (`familier_arr_{slug}`). Doit rester
+ * aligné avec `arr_key_slug()` côté `tools/build_dataset.py`.
+ */
+fun ArrKey.idSlug(): String = when (this) {
+    is ArrKey.Paris -> num.toString()
+    ArrKey.BoisVincennes -> "vincennes"
+    ArrKey.BoisBoulogne -> "boulogne"
+    ArrKey.Other -> "other"
+}
+
+private val ROMAN_1_20: List<String> = listOf(
+    "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X",
+    "XI", "XII", "XIII", "XIV", "XV", "XVI", "XVII", "XVIII", "XIX", "XX",
+)
+
+/** Chiffre romain de l'arrondissement (logo des badges), `null` pour les bois. */
+fun ArrKey.romanNumeral(): String? = when (this) {
+    is ArrKey.Paris -> ROMAN_1_20.getOrNull(num - 1)
+    else -> null
+}

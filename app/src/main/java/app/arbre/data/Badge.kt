@@ -1,11 +1,18 @@
 package app.arbre.data
 
 /**
- * Définition statique d'un badge. Pas de table Room — le déblocage est calculé
- * à partir des captures par `BadgeEvaluator`. Tous les badges sont binaires :
- * un critère franchi une fois fige le `unlockedAt` sur la capture déclenchante.
- * Ajouter un badge : entrée dans `BadgeCatalog` + critère dans `BadgeEvaluator`
- * + icône dans `ui/badges/BadgeIcons.kt`.
+ * Définition d'un badge. Pas de table Room — le déblocage est calculé à partir
+ * des captures par `BadgeEvaluator` (tous binaires : un critère franchi une
+ * fois fige le `unlockedAt` sur la capture déclenchante).
+ *
+ * Deux origines : les badges **statiques** ([BadgeCatalog.ALL]) et deux familles
+ * **dynamiques** dérivées du dataset — « Familier des … » (un genre avec ≥
+ * [BadgeCatalog.GENRE_FAMILIER_MIN_SPECIES] espèces identifiées) et « Familier
+ * du … » (les 20 arrondissements + 2 bois). Le catalogue complet =
+ * [BadgeCatalog.full].
+ *
+ * Ajouter un badge statique : entrée dans [BadgeCatalog] + critère dans
+ * `BadgeEvaluator` + icône dans `ui/badges/BadgeIcons.kt`.
  */
 data class BadgeDef(
     val id: String,
@@ -31,6 +38,13 @@ data class BadgeState(
 }
 
 object BadgeCatalog {
+
+    /** Un genre obtient un badge « Familier des … » s'il a au moins ce nombre
+     *  d'espèces **identifiées** (cf. distribution dataset : 26 genres). */
+    const val GENRE_FAMILIER_MIN_SPECIES = 7
+
+    const val FAMILIER_GENRE_PREFIX = "familier_genre_"
+    const val FAMILIER_ARR_PREFIX = "familier_arr_"
 
     val PREMIERE_CAPTURE = BadgeDef(
         id = "premiere_capture",
@@ -108,6 +122,7 @@ object BadgeCatalog {
         category = BadgeCategory.DEMESURE,
     )
 
+    /** Les badges statiques. Les familles « Familier » s'y ajoutent dans [full]. */
     val ALL: List<BadgeDef> = listOf(
         PREMIERE_CAPTURE,
         ESPECE_UNIQUE,
@@ -120,4 +135,66 @@ object BadgeCatalog {
         VIEUX_SAGE,
         JEUNE_POUSSE,
     )
+
+    /** Id stable d'un badge « Familier des … » à partir du genre latin. */
+    fun genreBadgeId(genre: String): String =
+        FAMILIER_GENRE_PREFIX + genre.lowercase().replace(' ', '_')
+
+    /** Id stable d'un badge « Familier du … » à partir d'un ArrKey. */
+    fun arrBadgeId(key: ArrKey): String = FAMILIER_ARR_PREFIX + key.idSlug()
+
+    /**
+     * Genres éligibles à un badge « Familier des … » (≥
+     * [GENRE_FAMILIER_MIN_SPECIES] espèces identifiées), ordre count décroissant
+     * puis latin. Le critère de comptage est `SpeciesIndex.genreCount` (exclut
+     * les `unknownSpecies`).
+     */
+    fun familierGenres(speciesIndex: SpeciesIndex): List<String> =
+        speciesIndex.allGenres()
+            .filter { speciesIndex.genreCount(it) >= GENRE_FAMILIER_MIN_SPECIES }
+            .sortedWith(compareByDescending<String> { speciesIndex.genreCount(it) }.thenBy { it })
+
+    /** Badges « Familier des … » (un par genre éligible). */
+    fun genreBadges(speciesIndex: SpeciesIndex, genreInfo: GenreInfoRepository): List<BadgeDef> =
+        familierGenres(speciesIndex).map { genre ->
+            val plural = frenchPluralLower(genreInfo.get(genre)?.nomFr ?: genre)
+            BadgeDef(
+                id = genreBadgeId(genre),
+                label = "Familier des $plural",
+                description = "Toutes les espèces de $plural recensées à Paris, capturées.",
+                category = BadgeCategory.BOTANIQUE,
+            )
+        }
+
+    /** Badges « Familier du … » (un par ArrKey couvert par l'asset). */
+    fun arrBadges(arrSpecies: ArrSpeciesIndex): List<BadgeDef> =
+        arrSpecies.keys.map { key ->
+            val where = when (key) {
+                is ArrKey.Paris -> "le ${key.label()} arrondissement"
+                else -> "le ${key.label()}"
+            }
+            BadgeDef(
+                id = arrBadgeId(key),
+                label = "Familier du ${key.label()}",
+                description = "Toutes les espèces d'arbres recensées dans $where, capturées.",
+                category = BadgeCategory.GEOGRAPHIE,
+            )
+        }
+
+    /** Catalogue complet : statiques + Familier de genre + Familier d'arrondissement. */
+    fun full(
+        speciesIndex: SpeciesIndex,
+        genreInfo: GenreInfoRepository,
+        arrSpecies: ArrSpeciesIndex,
+    ): List<BadgeDef> = ALL + genreBadges(speciesIndex, genreInfo) + arrBadges(arrSpecies)
+}
+
+/**
+ * Pluriel français du nom vernaculaire d'un genre, minuscule initiale, pour les
+ * libellés « Familier des chênes / bouleaux / érables ». Règle « -eau → -eaux »
+ * + défaut « +s » : couvre les 26 genres à badge (seul irrégulier : Bouleau).
+ */
+private fun frenchPluralLower(nomFr: String): String {
+    val plural = if (nomFr.endsWith("eau")) nomFr + "x" else nomFr + "s"
+    return plural.replaceFirstChar { it.lowercase() }
 }

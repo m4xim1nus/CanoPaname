@@ -53,6 +53,12 @@ fun rememberGenreInfoRepository(): GenreInfoRepository {
 }
 
 @Composable
+fun rememberArrSpeciesIndex(): ArrSpeciesIndex {
+    val ctx = LocalContext.current
+    return remember(ctx) { ctx.app().arrSpeciesIndex }
+}
+
+@Composable
 fun rememberSeasonStore(): SeasonStore {
     val ctx = LocalContext.current
     return remember(ctx) { ctx.app().seasonStore }
@@ -95,6 +101,7 @@ fun Context.datasetStats(): DatasetStats = app().datasetStats
 fun Context.speciesInfoRepository(): SpeciesInfoRepository = app().speciesInfoRepository
 fun Context.remarquableInfoRepository(): RemarquableInfoRepository = app().remarquableInfoRepository
 fun Context.genreInfoRepository(): GenreInfoRepository = app().genreInfoRepository
+fun Context.arrSpeciesIndex(): ArrSpeciesIndex = app().arrSpeciesIndex
 fun Context.seasonStore(): SeasonStore = app().seasonStore
 fun Context.onboardingStore(): OnboardingStore = app().onboardingStore
 fun Context.splashTipsRepository(): SplashTipsRepository = app().splashTipsRepository

@@ -36,7 +36,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import app.arbre.R
-import app.arbre.data.BadgeCatalog
 import app.arbre.data.BadgeState
 import app.arbre.data.rememberBadgeRepository
 import app.arbre.ui.common.EmptyState
@@ -80,7 +79,7 @@ fun BadgesScreen(onBack: () -> Unit) {
         ) {
             item(span = { GridItemSpan(maxLineSpan) }) {
                 Text(
-                    "${unlocked.size} / ${BadgeCatalog.ALL.size} débloqués",
+                    "${unlocked.size} / ${badgeRepo.catalog.size} débloqués",
                     style = MaterialTheme.typography.titleMedium,
                 )
             }
