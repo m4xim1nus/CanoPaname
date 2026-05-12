@@ -38,12 +38,13 @@ OUT_HTML = OUT_DIR / "index.html"
 # Ordre d'affichage des catégories. `intro` en tête, ordonné par la liste
 # `intro[]` (ordre figé du 1er lancement) ; les autres dans cet ordre, chaque
 # bloc trié par id.
-CATEGORY_ORDER = ["intro", "dataset", "history", "popculture", "player"]
+CATEGORY_ORDER = ["intro", "dataset", "history", "popculture", "app", "player"]
 CATEGORY_LABELS = {
     "intro": "Intro (1er lancement)",
     "dataset": "Dataset (généré)",
     "history": "Histoire & faits",
     "popculture": "Pop culture",
+    "app": "L'app elle-même",
     "player": "Stats joueur",
 }
 CATEGORY_NOTES = {
@@ -58,16 +59,17 @@ CATEGORY_NOTES = {
                "(tools/splash-tips-static.json).",
     "popculture": "Références culturelles écrites à la main "
                   "(tools/splash-tips-static.json).",
+    "app": "Tips sur les fonctionnalités de l'app (saisons, badges, mode chasse, "
+           "sauvegarde, fiches…), écrits à la main (tools/splash-tips-static.json).",
     "player": "Gabarits avec placeholders runtime "
-              "({captureCount}, {speciesCount}, {remarquableCount}, "
-              "{daysSinceFirst}). Affichés ici avec des valeurs d'exemple.",
+              "({speciesCount}, {remarquableCount}, {daysSinceFirst}). "
+              "Affichés ici avec des valeurs d'exemple.",
 }
 
 # Valeurs d'exemple pour rendre les placeholders runtime. Choisies « petites mais
 # pas triviales » pour que les chutes du genre « ce n'est plus une lubie » aient
 # du sens.
 SAMPLE_VALUES = {
-    "captureCount": "42",
     "speciesCount": "12",
     "remarquableCount": "3",
     "daysSinceFirst": "37",

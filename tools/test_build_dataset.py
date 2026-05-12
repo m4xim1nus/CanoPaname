@@ -1221,5 +1221,55 @@ class DisambiguateVernacularsZombieFormatTest(unittest.TestCase):
         self.assertEqual(nvs, ["Pommier (Malus n. sp.)", "Pommier (Malus sp.)"])
 
 
+class SplashTipsTest(unittest.TestCase):
+    """Invariants sur la banque de tips : source statique + payload généré."""
+
+    PLACEHOLDERS = {"speciesCount", "remarquableCount", "daysSinceFirst"}
+
+    def test_supported_placeholders_in_sync(self):
+        self.assertEqual(build_dataset.SUPPORTED_PLACEHOLDERS, self.PLACEHOLDERS)
+
+    def test_static_intro_is_ten_without_requires(self):
+        with build_dataset.STATIC_SPLASH_TIPS.open(encoding="utf-8") as f:
+            static = json.load(f)
+        intro = static["intro"]
+        self.assertEqual(len(intro), 10)
+        for t in intro:
+            self.assertFalse(t.get("requires"), t["id"])
+        # Placeholders connus uniquement, partout dans le statique.
+        for t in intro + static["tips"]:
+            for ph in build_dataset.PLACEHOLDER_RE.findall(t.get("text", "")):
+                self.assertIn(ph, self.PLACEHOLDERS, (t["id"], ph))
+            for req in t.get("requires", []):
+                self.assertIn(req, self.PLACEHOLDERS, (t["id"], req))
+
+    def test_static_ids_unique(self):
+        with build_dataset.STATIC_SPLASH_TIPS.open(encoding="utf-8") as f:
+            static = json.load(f)
+        ids = [t["id"] for t in static["intro"]] + [t["id"] for t in static["tips"]]
+        self.assertEqual(len(ids), len(set(ids)), "id en doublon dans le statique")
+
+    def test_generated_payload_invariants(self):
+        out = build_dataset.OUT_SPLASH_TIPS
+        if not out.exists():
+            self.skipTest("splash-tips.json non généré (lancer build_dataset.py)")
+        with out.open(encoding="utf-8") as f:
+            payload = json.load(f)
+        tips_by_id = {t["id"]: t for t in payload["tips"]}
+        # ids uniques
+        self.assertEqual(len(payload["tips"]), len(tips_by_id))
+        # intro : 10 ids, tous présents dans tips, aucun avec requires
+        self.assertEqual(len(payload["intro"]), 10)
+        for tid in payload["intro"]:
+            self.assertIn(tid, tips_by_id, tid)
+            self.assertFalse(tips_by_id[tid].get("requires"), tid)
+        # placeholders : uniquement ceux supportés (dataset déjà résolus côté Python)
+        for t in payload["tips"]:
+            for ph in build_dataset.PLACEHOLDER_RE.findall(t["text"]):
+                self.assertIn(ph, self.PLACEHOLDERS, (t["id"], ph))
+            for req in t.get("requires", []):
+                self.assertIn(req, self.PLACEHOLDERS, (t["id"], req))
+
+
 if __name__ == "__main__":
     unittest.main()

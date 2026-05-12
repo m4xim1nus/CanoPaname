@@ -61,7 +61,7 @@ STATIC_SPLASH_TIPS = ROOT / "tools" / "splash-tips-static.json"
 # Placeholders runtime supportés côté Kotlin (cf. SplashTipsController). Toute
 # autre clé `{xxx}` rencontrée dans un tip player du JSON statique fait
 # planter le build — sinon affichage de `Tu as croisé {???} espèces.` brut.
-SUPPORTED_PLACEHOLDERS = {"captureCount", "speciesCount", "remarquableCount", "daysSinceFirst"}
+SUPPORTED_PLACEHOLDERS = {"speciesCount", "remarquableCount", "daysSinceFirst"}
 PLACEHOLDER_RE = re.compile(r"\{([a-zA-Z]+)\}")
 
 # Filtrage strict des arrondissements parisiens dans les agrégats `arr_*` :
@@ -2018,6 +2018,7 @@ def write_splash_tips(
     total_arbres: int,
     total_remarquables: int,
     nom_commun_by_sk: dict[int, dict[str, int]],
+    genre_info: list[dict] | None = None,
 ) -> None:
     """Génère `app/src/main/assets/splash-tips.json` (fusion static + dataset).
 
@@ -2068,6 +2069,11 @@ def write_splash_tips(
     def push(tip_id: str, text: str) -> None:
         dataset_tips.append({"id": tip_id, "category": "dataset", "text": text})
 
+    # Quelques noms communs du CSV OpenData arrivent sans accent / capitale
+    # (« erable »). On les corrige ici — les tips n'ont pas vocation à exposer
+    # la saleté de la source.
+    _NC_FIXUPS = {"erable": "Érable", "frene": "Frêne", "cedre": "Cèdre"}
+
     def species_label(sk: int, fallback_genre: str, fallback_espece: str) -> str:
         """Nom commun le plus fréquent ou fallback sur le binomial.
 
@@ -2078,7 +2084,8 @@ def write_splash_tips(
         """
         counts = nom_commun_by_sk.get(sk)
         if counts:
-            return max(counts.items(), key=lambda kv: kv[1])[0]
+            raw = max(counts.items(), key=lambda kv: kv[1])[0]
+            return _NC_FIXUPS.get(raw.strip().lower(), raw)
         return f"{fallback_genre} {fallback_espece}"
 
     def _lower_label(label: str) -> str:
@@ -2101,6 +2108,26 @@ def write_splash_tips(
             return "L'"
         return "Le "
 
+    # `sk_to_pair` et `sorted_sk` *filtré sur les espèces identifiées* (count > 0
+    # et pas un bucket « Genre sp. ») : tous les chiffres « X espèces » des tips
+    # ci-dessous restent cohérents avec `dataset-stats.totalEspecesIdentifiees`
+    # (≈ 782) et avec le compteur du Profil. Le top ~50 est inchangé (les têtes
+    # de liste sont toutes identifiées) ; seuls les buckets `sp.` sortent.
+    sk_to_pair = {sk: pair for pair, sk in species_index.items()}
+    sorted_sk = sorted(
+        ((sk, c) for sk, c in count_by_sk.items()
+         if not is_unknown_species(*sk_to_pair[sk])),
+        key=lambda kv: -kv[1],
+    )
+    n_identified = len(sorted_sk)
+    # Nom vernaculaire de genre (« Chêne » pour Quercus), fallback latin nu.
+    genre_fr: dict[str, str] = {}
+    if genre_info:
+        for g in genre_info:
+            fr = (g.get("fr") or "").strip()
+            if fr:
+                genre_fr[g["g"]] = fr
+
     # 1. Stats globales.
     push(
         "dataset.total_arbres",
@@ -2109,8 +2136,8 @@ def write_splash_tips(
     )
     push(
         "dataset.total_especes",
-        f"{len(species_index)} espèces différentes vivent à Paris. Plus de "
-        f"diversité que dans certains menus."
+        f"{n_identified} espèces d'arbres ont été identifiées à Paris. "
+        f"Plus de diversité que dans certains menus."
     )
     push(
         "dataset.total_remarquables",
@@ -2119,8 +2146,6 @@ def write_splash_tips(
     )
 
     # 2. Top espèces — concentration et noms.
-    sorted_sk = sorted(count_by_sk.items(), key=lambda kv: -kv[1])
-    sk_to_pair = {sk: pair for pair, sk in species_index.items()}
     if sorted_sk:
         top_sk, top_count = sorted_sk[0]
         top_genre, top_espece = sk_to_pair[top_sk]
@@ -2248,9 +2273,9 @@ def write_splash_tips(
         bottom_arr, bottom_arr_c = paris_arrs[-1]
         push(
             "dataset.bottom_arr",
-            f"L'arrondissement le moins arboré est le {bottom_arr}, "
-            f"avec {_format_int_fr(bottom_arr_c)} arbres seulement. "
-            f"Ce n'est pas leur faute."
+            f"L'arrondissement le moins arboré est le {bottom_arr} : "
+            f"{_format_int_fr(bottom_arr_c)} arbres seulement. "
+            f"On les connaît presque tous par leur prénom."
         )
 
     bois = [(a, c) for a, c in arr_total.items() if "Bois" in a]
@@ -2278,7 +2303,8 @@ def write_splash_tips(
     # 7. Quelques espèces emblématiques — formulation évitant la pluralisation
     # automatique (les noms communs CSV mélangent singulier/pluriel et compléments).
     iconic_named = [
-        ("Aesculus", "hippocastanum", "marronnier d'Inde"),
+        # NB : Aesculus hippocastanum (le marronnier) est déjà couvert par
+        # `dataset.top_species_second` — pas de doublon ici.
         ("Tilia", "platyphyllos", "tilleul à grandes feuilles"),
         ("Tilia", "cordata", "tilleul à petites feuilles"),
         ("Quercus", "robur", "chêne pédonculé"),
@@ -2308,8 +2334,8 @@ def write_splash_tips(
     if n_above_10000:
         push(
             "dataset.club_10k",
-            f"{n_above_10000} espèces dépassent les 10 000 individus à Paris. "
-            f"Le club très fermé."
+            f"{n_above_10000} espèces seulement dépassent les 10 000 arbres à "
+            f"Paris. Le très petit club des très grandes familles."
         )
     if n_above_1000:
         push(
@@ -2320,8 +2346,8 @@ def write_splash_tips(
     if n_above_100:
         push(
             "dataset.club_100",
-            f"{n_above_100} espèces parviennent à 100 individus ou plus. "
-            f"Sur {len(species_index)}. Les autres sont rares à divers degrés."
+            f"{n_above_100} espèces sur {n_identified} atteignent les 100 arbres "
+            f"à Paris. Les autres se font plus discrètes. Beaucoup plus."
         )
     if n_under_10:
         push(
@@ -2363,20 +2389,6 @@ def write_splash_tips(
             f"des arbres parisiens."
         )
 
-    # Espèce médiane (rang n/2 par count décroissant).
-    if len(sorted_sk) >= 2:
-        median_rank = len(sorted_sk) // 2
-        median_sk, median_c = sorted_sk[median_rank]
-        if median_c >= 1:
-            mg, me = sk_to_pair[median_sk]
-            mlabel = species_label(median_sk, mg, me)
-            push(
-                "dataset.median_species",
-                f"L'espèce médiane (rang {median_rank} sur {len(sorted_sk)}) "
-                f"compte {median_c} arbre{'s' if median_c > 1 else ''} : "
-                f"{_lower_label(mlabel)}."
-            )
-
     # 9. Démesure étendue — combien d'arbres dépassent les seuils.
     all_heights: list[int] = [h for hs in heights_by_sk.values() for h in hs
                               if 0 < h <= HEIGHT_PLAUSIBLE_MAX_M]
@@ -2410,13 +2422,13 @@ def write_splash_tips(
         push(
             "dataset.circ_400",
             f"{_format_int_fr(n_c_400)} troncs parisiens font plus de 4 m de tour. "
-            f"Tu sauras qui embrasser."
+            f"Il faut s'y mettre à plusieurs pour en faire le tour."
         )
     if n_c_200:
         push(
             "dataset.circ_200",
-            f"{_format_int_fr(n_c_200)} troncs parisiens dépassent les 2 m de circonférence. "
-            f"De vieilles connaissances."
+            f"{_format_int_fr(n_c_200)} troncs parisiens dépassent les 2 m de tour. "
+            f"De quoi se cacher derrière, presque."
         )
 
     # 10. Arrondissements — top 5, intra-muros vs bois, diversité, espèce dominante.
@@ -2451,11 +2463,11 @@ def write_splash_tips(
 
     if len(paris_arrs_sorted) >= 2:
         worst_two = paris_arrs_sorted[-2:]
-        names = " et ".join(a for a, _ in worst_two)
+        names = " et le ".join(a for a, _ in worst_two)
         push(
             "dataset.bottom2_arr",
-            f"Les arrondissements les moins arborés sont le {names}. "
-            f"Conséquence du tissu urbain dense."
+            f"Les deux arrondissements les moins arborés : le {names}. "
+            f"Petits, denses, anciens — l'arbre n'avait pas la place."
         )
 
     # Diversité par arrondissement : nb d'espèces distinctes.
@@ -2471,8 +2483,8 @@ def write_splash_tips(
         most_div, n_most = paris_diversity[0]
         push(
             "dataset.diversity_top",
-            f"L'arrondissement le plus divers en espèces est le {most_div}, "
-            f"avec {n_most} espèces différentes recensées."
+            f"L'arrondissement le plus divers en espèces est le {most_div} : "
+            f"{n_most} espèces différentes. Un arrondissement, presque un arboretum."
         )
         least_div, n_least = paris_diversity[-1]
         push(
@@ -2524,13 +2536,16 @@ def write_splash_tips(
                 f"c'est {article}{ll} qui mène. Atypique."
             )
 
-    # 11. Genres — diversité de genres représentés.
+    # 11. Genres — diversité de genres représentés. `genre_species` ne compte
+    # que les espèces *identifiées et présentes* (cohérent avec `speciesIdentified`
+    # de genre-info.json) ; `genre_count` agrège tous les arbres du genre.
     genre_count: dict[str, int] = defaultdict(int)
     genre_species: dict[str, set] = defaultdict(set)
     for (g, e), sk in species_index.items():
         c = count_by_sk.get(sk, 0)
         genre_count[g] += c
-        genre_species[g].add(e)
+        if c > 0 and not is_unknown_species(g, e):
+            genre_species[g].add(e)
 
     genres_sorted = sorted(genre_count.items(), key=lambda kv: -kv[1])
     if len(genres_sorted) >= 3:
@@ -2544,10 +2559,13 @@ def write_splash_tips(
 
     most_diverse_genre = max(genre_species.items(), key=lambda kv: len(kv[1]))
     if len(most_diverse_genre[1]) >= 5:
+        g_div = most_diverse_genre[0]
+        gl = _lower_label(genre_fr.get(g_div, g_div))
         push(
             "dataset.diverse_genus",
-            f"Le genre {most_diverse_genre[0]} est le plus diversifié à Paris : "
-            f"{len(most_diverse_genre[1])} espèces différentes recensées."
+            f"{_le_or_l(gl)}{gl} est le genre le plus divers à Paris : "
+            f"{len(most_diverse_genre[1])} espèces différentes recensées. "
+            f"À ce stade, ce n'est plus un arbre, c'est une famille nombreuse."
         )
 
     push(
@@ -2575,7 +2593,7 @@ def write_splash_tips(
         push(
             f"dataset.rank_{rank}",
             f"Rang {rank} des arbres parisiens : {display} "
-            f"({_format_int_fr(c)} individus). Solide mais discret."
+            f"({_format_int_fr(c)} arbres). Solide mais discret."
         )
 
     # 13. Curiosités et comparaisons.
@@ -2593,8 +2611,8 @@ def write_splash_tips(
                 f"{n_rares} espèces rares (< 100 ind.) réunies."
             )
 
-    if len(species_index) >= 100:
-        avg_per_species = total_arbres // len(species_index)
+    if n_identified >= 100:
+        avg_per_species = total_arbres // n_identified
         push(
             "dataset.uniform_avg",
             f"Si la diversité était parfaitement répartie, chaque espèce aurait "
@@ -2631,8 +2649,8 @@ def write_splash_tips(
         mean_c = sum(all_circs) / len(all_circs)
         push(
             "dataset.mean_circ",
-            f"La circonférence moyenne d'un tronc parisien fait environ "
-            f"{mean_c:.0f} cm. Enlace librement."
+            f"La circonférence moyenne d'un tronc parisien tourne autour de "
+            f"{mean_c:.0f} cm. Un tour de bras suffit. Presque."
         )
 
     # Comparaison platane vs cumul d'autres top espèces.
@@ -3258,6 +3276,7 @@ def build(csv_path: Path, db_path: Path, geojson_path: Path) -> None:
         total_arbres=inserted,
         total_remarquables=remarquables,
         nom_commun_by_sk=nom_commun_by_sk,
+        genre_info=genre_info,
     )
 
     db_mb = db_path.stat().st_size // 1_000_000

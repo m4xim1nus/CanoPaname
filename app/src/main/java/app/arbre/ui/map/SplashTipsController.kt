@@ -18,7 +18,7 @@ private const val ROTATION_INTERVAL_MS = 7_000L
 
 /** Placeholders runtime supportés. Doit rester aligné avec `tools/build_dataset.py`. */
 private val SUPPORTED_PLACEHOLDERS = setOf(
-    "captureCount", "speciesCount", "remarquableCount", "daysSinceFirst",
+    "speciesCount", "remarquableCount", "daysSinceFirst",
 )
 
 private val PLACEHOLDER_REGEX = Regex("""\{([a-zA-Z]+)\}""")
@@ -29,10 +29,11 @@ private val PLACEHOLDER_REGEX = Regex("""\{([a-zA-Z]+)\}""")
  * - Au mount : décide du mode `intro` (séquence figée 10 tips d'accueil) vs
  *   `random` (shuffle non-répétitif sur tout le pool éligible) selon le flag
  *   persistant `splashIntroSeen` (DataStore Preferences `onboarding`).
- * - Snapshot **une seule fois** les Flows joueur (captureCount, espèces vues,
- *   remarquables, première capture). Les valeurs servent à filtrer les tips
- *   `requires` et à substituer les placeholders `{captureCount}`, etc. Si Room
- *   est lent, le splash affiche déjà des tips dataset/history pendant ce temps.
+ * - Snapshot **une seule fois** les Flows joueur (espèces vues, remarquables,
+ *   première capture). Les valeurs servent à filtrer les tips `requires` et à
+ *   substituer les placeholders `{speciesCount}`, `{remarquableCount}`,
+ *   `{daysSinceFirst}`. Si Room est lent, le splash affiche déjà des tips
+ *   dataset/history pendant ce temps.
  * - Rotation : tick de [ROTATION_INTERVAL_MS] ms, démarrée seulement quand
  *   `canRotate == true` (= l'`Animatable` du hero a fini son fade-in, sinon
  *   double-fade visuel au tout 1er affichage).
@@ -78,26 +79,23 @@ fun rememberSplashTipText(
     // n'est possible (la map n'est pas prête), la photo est donc figée.
     LaunchedEffect(repository) {
         try {
-            val (captures, speciesCount, remarquableCount, firstTs) = combine(
-                captureRepository.captureCount(),
+            val (speciesCount, remarquableCount, firstTs) = combine(
                 captureRepository.capturedSpeciesIndices(),
                 captureRepository.capturedRemarquableIds(),
                 captureRepository.firstCaptureTimestamp(),
-            ) { c, s, r, f ->
-                listOf<Any?>(c, s.size, r.size, f)
+            ) { s, r, f ->
+                Triple(s.size, r.size, f)
             }.first()
 
-            val cFirstTs = firstTs as Long?
-            val daysSince = if (cFirstTs != null) {
-                ((System.currentTimeMillis() - cFirstTs) / 86_400_000L)
+            val daysSince = if (firstTs != null) {
+                ((System.currentTimeMillis() - firstTs) / 86_400_000L)
                     .toInt()
                     .coerceAtLeast(0)
             } else 0
 
             playerSnapshot.value = mapOf(
-                "captureCount" to (captures as Int),
-                "speciesCount" to (speciesCount as Int),
-                "remarquableCount" to (remarquableCount as Int),
+                "speciesCount" to speciesCount,
+                "remarquableCount" to remarquableCount,
                 "daysSinceFirst" to daysSince,
             )
         } catch (_: Exception) {
