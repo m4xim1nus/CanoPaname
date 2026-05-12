@@ -39,12 +39,28 @@ Sprints :
   verdict `RAS` / `à tuer` / `formulation à revoir` / `chute à réécrire` + commentaire libre
   persistés en `localStorage`, filtre texte, bouton « Exporter mon avis » → bloc texte copiable.
   Doc dans `tools/README.md`. Débloque la revue async pendant S2-S5.
-- **S2 — Bug : intro tips non jouée au 1er lancement.** Instrumentation `Log.d` temporaire
-  (`SplashTipsController`, flip `arbresPrets`), build debug, séance logcat avec moi sur un fresh
-  install, diagnostic (course `markDone()`↔nav, mount transient du fallback `MAP` du `NavHost`,
-  ordre des `LaunchedEffect`…), fix sans toucher aux invariants (`.first()` figé, pas de
-  `collectAsState` sur `splashIntroSeen`, keys minimales, `markSplashIntroSeen()` post-onboarding
-  seulement), instrumentation retirée.
+- ✅ **S2 — Bug : intro tips non jouée au 1er lancement** (livré). Instrumentation `Log.d`
+  temporaire (`SplashTipsController`, `MapScreen`, `ColdStartSplash`, `OnboardingStore`, `NavHost`),
+  build debug + 2 séances logcat sur fresh install avec moi. **Diagnostic** : `ArbresNavHost`
+  dérivait `startDestination` de `onboardingDone` → le `remember(route, startDestination)` interne
+  de `NavHost` reconstruisait le graphe à chaque changement (install frais : `null → false → true`
+  via `markDone()`) → `MapScreen` monté **3×** ; l'instance transiente créée par `onContinue`,
+  tuée 200 ms plus tard par la reconstruction `true → map`, jouait l'intro **et** écrivait
+  `markSplashIntroSeen()` avant que l'instance stable ne lise le flag → l'instance stable lisait
+  `splashIntroSeen=true` → mode aléatoire. **Fix** : `startDestination` passé en constante
+  `Routes.map()` ; redirection vers `WELCOME` via un `LaunchedEffect(onboardingDone)` (le graphe
+  n'est plus reconstruit ; `markDone()` ne fait que re-exécuter l'effet sans action). Invariants
+  `SplashTipsController` intacts (`.first()` figé, pas de `collectAsState` sur `splashIntroSeen`,
+  keys minimales). Instrumentation retirée. **Bonus repéré au logcat et corrigé dans S2** :
+  `computeInitialCamera` faisait un `getCurrentLocation()` bloquant (~30 s timeout système, GPS
+  froid en intérieur) **sur le chemin critique** — `map.setStyle(...)` n'est appelé qu'après, donc
+  carte invisible ~30 s ; et la caméra ne se recadrait jamais sur le 1er fix (Paris dézoomé jusqu'au
+  tap FAB). → `computeInitialCamera` non-bloquant (`LocationProvider.currentLocation.value ?:
+  parisCamera()`, plus de `suspend`) + `LaunchedEffect(mapRef)` de recadrage GPS auto au 1er fix
+  (coupé si geste utilisateur / tap cluster / mode filtré / `pulseArbreId` / caméra mémorisée
+  restaurée — flag `userMovedCamera`) + suppression du `scope.launch` devenu inutile dans
+  `getMapAsync`. Cold-start retombé de ~30-37 s à ~1 s en intérieur. (`BACKLOG.md` : les 2 items
+  barrés « livré S2 ».)
 - **S3 — Allongement du splash cold-start.** `MapScreen.kt` : ne plus flipper `arbresPrets`
   après les layers vides mais après `setArbresGeoJson` (pins peints) ; + plancher de durée min
   (~2,5 s depuis le mount, constante nommée). Path filtré : flip après `addArbresLayers` + petit

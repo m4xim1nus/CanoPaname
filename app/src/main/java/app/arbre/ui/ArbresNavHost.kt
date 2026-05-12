@@ -2,6 +2,7 @@ package app.arbre.ui
 
 import android.net.Uri
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
@@ -63,16 +64,22 @@ fun ArbresNavHost() {
     val nav = rememberNavController()
     val onboardingStore = rememberOnboardingStore()
     val coScope = rememberCoroutineScope()
-    // `null` = round-trip DataStore en cours. Pendant ce délai (quelques ms),
-    // le splash overlay du MapScreen masque déjà l'écran.
+    // `null` tant que le round-trip DataStore initial n'a pas répondu (quelques
+    // ms) ; `false` = onboarding pas fait ; `true` = fait.
     val onboardingDone by onboardingStore.onboardingDone.collectAsState(initial = null)
-    val start = when (onboardingDone) {
-        null -> Routes.map()
-        true -> Routes.map()
-        false -> Routes.WELCOME
-    }
 
-    NavHost(navController = nav, startDestination = start) {
+    // `startDestination` est une CONSTANTE — surtout PAS dérivé de `onboardingDone`.
+    // S'il l'était, chaque changement de valeur (sur un install frais :
+    // null → false → true via `markDone()`) reconstruirait le graphe via le
+    // `remember(route, startDestination)` interne de `NavHost`, démontant/remontant
+    // MapScreen 3× : une instance transiente (créée par `onContinue`, tuée 200 ms
+    // plus tard par la reconstruction `true → map`) jouerait et « consommerait »
+    // l'intro tips (`markSplashIntroSeen()`) avant que l'instance stable ne lise
+    // le flag → l'intro ne joue jamais. Cf. Réveil S2. La redirection vers le
+    // WelcomeScreen passe donc par un `LaunchedEffect` (en fin de fonction), pas
+    // par le `startDestination` ; le splash overlay du MapScreen couvre la
+    // transition, donc pas de flicker.
+    NavHost(navController = nav, startDestination = Routes.map()) {
         composable(Routes.WELCOME) {
             WelcomeScreen(
                 onContinue = {
@@ -234,6 +241,21 @@ fun ArbresNavHost() {
                 },
                 onUnlockLost = { nav.popBackStack(Routes.MAP, inclusive = false) },
             )
+        }
+    }
+
+    // Redirection one-shot vers l'onboarding. Tant que `onboardingDone == null`
+    // (DataStore en cours) on reste sur la carte (couverte par le splash) ;
+    // `false` → on bascule sur le WelcomeScreen en purgeant la carte du backstack ;
+    // `true` → ne fait rien (l'utilisateur est déjà sur la carte, ou y revient via
+    // `WelcomeScreen.onContinue`). Le key étant `onboardingDone`, le passage
+    // `false → true` provoqué par `markDone()` re-exécute l'effet une fois mais
+    // sans action — donc pas de reconstruction du graphe NavHost.
+    LaunchedEffect(onboardingDone) {
+        if (onboardingDone == false) {
+            nav.navigate(Routes.WELCOME) {
+                popUpTo(Routes.MAP) { inclusive = true }
+            }
         }
     }
 }

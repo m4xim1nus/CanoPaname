@@ -61,12 +61,15 @@ fun rememberSplashTipText(
 
     LaunchedEffect(Unit) {
         // Suspend jusqu'à `onboardingDone == true`. Deux cas couverts :
-        // - Mount transient du fallback `MAP` du `ArbresNavHost` pré-Welcome :
-        //   `onboardingDone` reste à `false` jusqu'à cancellation par démontage,
+        // - Mount transient de la carte par défaut du `ArbresNavHost` pré-Welcome :
+        //   `onboardingDone` reste à `false` jusqu'à cancellation par démontage
+        //   (le `LaunchedEffect` de redirection bascule vers le WelcomeScreen),
         //   l'intro n'est pas consommée.
         // - Mount post-Welcome : `WelcomeScreen.onContinue` lance `markDone()`
         //   en parallèle de `nav.navigate(MAP)` — un `.first()` nu attraperait
         //   souvent encore `false`. `.first { it }` attend l'edit DataStore.
+        //   Le `startDestination` du NavHost étant une constante, ce mount-là est
+        //   stable (pas de reconstruction de graphe à l'arrivée de `markDone()`).
         onboardingStore.onboardingDone.first { it }
         isIntroMode.value = !onboardingStore.splashIntroSeen.first()
     }
