@@ -92,7 +92,14 @@ class IsUnknownSpeciesTest(unittest.TestCase):
     def test_unknown_forms_set_is_minimal(self):
         # Si on étend cette liste, `species-index.json` repassera des entrées
         # known en unknown au prochain build — décision à prendre consciemment.
-        self.assertEqual(UNKNOWN_ESPECE_FORMS, frozenset({"sp.", "n. sp."}))
+        # `fleur n. sp.` / `fruit n. sp.` : marqueurs OpenData des cultivars
+        # Prunus génériques (décoratifs / fruitiers), ajoutés au cycle Catalogue
+        # pour les rabattre sur l'entrée `Prunus sp.` plutôt que de polluer le
+        # catalogue identifié.
+        self.assertEqual(
+            UNKNOWN_ESPECE_FORMS,
+            frozenset({"sp.", "n. sp.", "fleur n. sp.", "fruit n. sp."}),
+        )
 
 
 class FirstP1843Test(unittest.TestCase):
@@ -320,11 +327,13 @@ class ComputeVernacularAndPokedexTest(unittest.TestCase):
         self.assertEqual(counters["nv_via_construit_nc_disamb"], 0)
         self.assertEqual(counters["nv_disambiguations"], 0)
 
-        # n attribué à toutes (toutes identifiées avec count > 0).
-        self.assertEqual(by_sk[0]["n"], 1)
-        self.assertEqual(by_sk[1]["n"], 2)
-        self.assertEqual(by_sk[2]["n"], 3)
-        self.assertEqual(by_sk[3]["n"], 4)
+        # n attribué à toutes (toutes identifiées, count > 0), numérotées par
+        # count décroissant (puis sk croissant) : sk1 (4000) → 1, sk0 (1500) → 2,
+        # sk3 (10) → 3, sk2 (5) → 4.
+        self.assertEqual(by_sk[1]["n"], 1)
+        self.assertEqual(by_sk[0]["n"], 2)
+        self.assertEqual(by_sk[3]["n"], 3)
+        self.assertEqual(by_sk[2]["n"], 4)
         self.assertEqual(counters["pokedex_count"], 4)
 
     def test_pokedex_skips_unknown_and_zombies(self):
