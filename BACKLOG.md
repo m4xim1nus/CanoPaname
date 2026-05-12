@@ -52,6 +52,7 @@ Résumé dans `ROADMAP.md` (*Cycles livrés post-1.0*), détail dans `CHANGELOG.
 - [creuser] Leaderboard optionnel et minimaliste ?
 - [ ] CI : bumper les GitHub Actions sur Node.js 24 — `actions/checkout@v4`, `actions/setup-java@v4`, `actions/setup-python@v5`, `actions/cache@v4`, `gradle/actions/setup-gradle@v3`, `softprops/action-gh-release@v2` tournent encore sur Node 20 (forcé Node 24 le 2026-06-02, Node 20 retiré le 2026-09-16). Bumper les versions ou poser `FORCE_JAVASCRIPT_ACTIONS_TO_NODE24=true` (ci:release.yml run v1.2.0, 2026-05-12)
 - [ ] CI : `release.yml` — échec transitoire de restauration du cache Gradle (`Failed to restore gradle-home-… : Cache service responded with 400`), sans effet sur le build. À surveiller : si ça récidive, vérifier la conf de `gradle/actions/setup-gradle` (clé de cache / quota) (ci:release.yml run v1.2.0, 2026-05-12)
+- [ ] `tools/test_build_dataset.py` : 2 échecs pré-existants — épithètes `fruit n. sp.` / `fleur n. sp.` non couvertes par les fixups (drift OpenData ; le pipeline normalise déjà `n. sp.` → `sp.` mais le test attend l'ancien set). Soit étendre la table de fixups, soit relâcher l'assertion du test (claude:test-run, 2026-05-12)
 
 ## Refusé
 
