@@ -50,14 +50,19 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import app.arbre.backup.ExportResult
 import app.arbre.backup.ImportError
 import app.arbre.backup.ImportResult
 import app.arbre.backup.defaultExportFilename
+import app.arbre.data.ArrKey
+import app.arbre.data.BadgeCatalog
 import app.arbre.data.BadgeDef
+import app.arbre.data.parseArrKey
 import app.arbre.data.rememberArbreRepository
+import app.arbre.data.rememberArrSpeciesIndex
 import app.arbre.data.rememberBackupExporter
 import app.arbre.data.rememberBackupImporter
 import app.arbre.data.rememberBadgeRepository
@@ -91,6 +96,7 @@ fun ProfileScreen(
     val badgeRepo = rememberBadgeRepository()
     val datasetStats = rememberDatasetStats()
     val speciesIndex = rememberSpeciesIndex()
+    val arrSpecies = rememberArrSpeciesIndex()
     val backupExporter = rememberBackupExporter()
     val backupImporter = rememberBackupImporter()
     val coScope = rememberCoroutineScope()
@@ -150,7 +156,7 @@ fun ProfileScreen(
         .collectAsState(initial = emptySet())
     val capturedRemarquables by captureRepo.capturedRemarquableIds()
         .collectAsState(initial = emptySet())
-    val captureCount by captureRepo.captureCount().collectAsState(initial = 0)
+    val toutesCaptures by captureRepo.toutesLesCaptures().collectAsState(initial = emptyList())
     val allBadges by badgeRepo.badges().collectAsState(initial = emptyList())
 
     // Cycle Catalogue : split en sks identifiés (compteur principal) vs sks
@@ -168,6 +174,36 @@ fun ProfileScreen(
             capturedRemarquables,
             speciesIndex,
         )
+    }
+
+    // Genres « croisés » : un genre compte dès qu'une espèce capturée en relève
+    // (y compris une capture `(G, sp.)`). Dénominateur = univers Catalogue.
+    val genresDecouverts = remember(capturedSpecies, speciesIndex) {
+        val capturedGenres = capturedSpecies.mapNotNull { speciesIndex.genreOf(it) }.toSet()
+        speciesIndex.genres().count { it in capturedGenres }
+    }
+    val totalGenres = speciesIndex.genres().size
+
+    // Familles « Familier » : on lit l'état des badges plutôt que de recalculer.
+    val genresComplets = allBadges.count {
+        it.def.id.startsWith(BadgeCatalog.FAMILIER_GENRE_PREFIX) && it.unlocked
+    }
+    val totalGenresMajeurs = allBadges.count {
+        it.def.id.startsWith(BadgeCatalog.FAMILIER_GENRE_PREFIX)
+    }
+    val arrComplets = allBadges.count {
+        it.def.id.startsWith(BadgeCatalog.FAMILIER_ARR_PREFIX) && it.unlocked
+    }
+    val totalArr = arrSpecies.keys.size
+
+    var arrVisites by remember { mutableStateOf<Int?>(null) }
+    LaunchedEffect(toutesCaptures) {
+        val arbres = arbreRepo.arbresParIds(toutesCaptures.map { it.arbreId }.toSet())
+        arrVisites = arbres.values
+            .map { parseArrKey(it.adresse) }
+            .filter { it != ArrKey.Other }
+            .distinct()
+            .size
     }
 
     val recentUnlocks = remember(allBadges) {
@@ -222,18 +258,31 @@ fun ProfileScreen(
                         },
                     )
                 }
-            }
-            item {
-                StatsCard(
-                    firstCaptureTs = firstCaptureTs,
-                    nbIdentifiees = nbIdentifiees,
-                    totalEspecesIdentifiees = datasetStats.totalEspecesIdentifiees,
-                    nbIndeterminees = nbIndeterminees,
-                    nbRemarquables = nbRemarquables,
-                    nbCaptures = captureCount,
-                    arbresDecouverts = arbresDecouverts,
-                    totalArbres = datasetStats.totalArbres,
-                )
+            } else {
+                item { DaysSinceLine(firstCaptureTs!!) }
+                item {
+                    Text(
+                        "Progression",
+                        style = MaterialTheme.typography.titleLarge,
+                    )
+                }
+                item {
+                    ProgressionCard(
+                        arbresDecouverts = arbresDecouverts,
+                        totalArbres = datasetStats.totalArbres,
+                        nbRemarquables = nbRemarquables,
+                        totalRemarquables = datasetStats.totalRemarquables,
+                        nbIdentifiees = nbIdentifiees,
+                        totalEspecesIdentifiees = datasetStats.totalEspecesIdentifiees,
+                        genresDecouverts = genresDecouverts,
+                        totalGenres = totalGenres,
+                        genresComplets = genresComplets,
+                        totalGenresMajeurs = totalGenresMajeurs,
+                        arrVisites = arrVisites,
+                        arrComplets = arrComplets,
+                        totalArr = totalArr,
+                    )
+                }
             }
             item {
                 Text(
@@ -402,15 +451,37 @@ private fun BackupActionCard(
 }
 
 @Composable
-private fun StatsCard(
-    firstCaptureTs: Long?,
-    nbIdentifiees: Int,
-    totalEspecesIdentifiees: Int,
-    nbIndeterminees: Int,
-    nbRemarquables: Int,
-    nbCaptures: Int,
+private fun DaysSinceLine(firstCaptureTs: Long) {
+    val days = daysSince(firstCaptureTs)
+    val text = when (days) {
+        0L -> "Première capture aujourd'hui"
+        1L -> "1 jour depuis ta première capture"
+        else -> "$days jours depuis ta première capture"
+    }
+    Text(
+        text,
+        style = MaterialTheme.typography.titleLarge,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        textAlign = TextAlign.Center,
+        modifier = Modifier.fillMaxWidth(),
+    )
+}
+
+@Composable
+private fun ProgressionCard(
     arbresDecouverts: Int?,
     totalArbres: Int,
+    nbRemarquables: Int,
+    totalRemarquables: Int,
+    nbIdentifiees: Int,
+    totalEspecesIdentifiees: Int,
+    genresDecouverts: Int,
+    totalGenres: Int,
+    genresComplets: Int,
+    totalGenresMajeurs: Int,
+    arrVisites: Int?,
+    arrComplets: Int,
+    totalArr: Int,
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -420,67 +491,57 @@ private fun StatsCard(
     ) {
         Column(
             modifier = Modifier.padding(20.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+            verticalArrangement = Arrangement.spacedBy(18.dp),
         ) {
-            Text(
-                "Statistiques",
-                style = MaterialTheme.typography.titleMedium,
-            )
-            StatLine(
-                label = if (firstCaptureTs != null) "Première capture" else "Aucune capture",
-                value = if (firstCaptureTs != null) {
-                    val days = daysSince(firstCaptureTs)
-                    when (days) {
-                        0L -> "aujourd'hui"
-                        1L -> "il y a 1 jour"
-                        else -> "il y a $days jours"
-                    }
-                } else "—",
-            )
-            StatLine(
-                label = "Espèces du Catalogue",
-                value = formatProgress(nbIdentifiees, totalEspecesIdentifiees),
-            )
-            if (nbIndeterminees > 0) {
-                val plural = if (nbIndeterminees > 1) "s" else ""
-                StatLine(
-                    label = "Espèces indéterminées",
-                    value = "+ $nbIndeterminees espèce$plural",
-                )
-            }
-            StatLine(
-                label = "Arbres déverrouillés",
-                value = arbresDecouverts?.let { formatProgress(it, totalArbres) } ?: "…",
-            )
-            StatLine(
-                label = "Arbres remarquables",
-                value = nbRemarquables.toString(),
-            )
-            StatLine(
-                label = "Captures totales",
-                value = nbCaptures.toString(),
-            )
+            ProgressBar("Arbres déverrouillés", arbresDecouverts ?: 0, totalArbres)
+            ProgressBar("Remarquables capturés", nbRemarquables, totalRemarquables)
+            ProgressBar("Espèces capturées", nbIdentifiees, totalEspecesIdentifiees)
+            ProgressBar("Genres découverts", genresDecouverts, totalGenres)
+            ProgressBar("Genres complétés", genresComplets, totalGenresMajeurs)
+            ProgressBar("Arrondissements visités", arrVisites ?: 0, totalArr)
+            ProgressBar("Arrondissements complétés", arrComplets, totalArr)
         }
     }
 }
 
-private fun formatProgress(value: Int, total: Int): String {
-    if (total <= 0) return value.toString()
-    val pct = (value.toLong() * 100 / total).toInt().coerceIn(0, 100)
-    return "$value / $total ($pct %)"
-}
-
+/**
+ * Barre de progression Material 3 : titre, `X / Y · Z %`, barre pleine largeur
+ * épaisse. **Masquée intégralement si `value <= 0`** — on n'expose pas les
+ * compteurs tant que le joueur n'a rien marqué dessus.
+ */
 @Composable
-private fun StatLine(label: String, value: String) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(label, style = MaterialTheme.typography.bodyMedium)
-        Text(
-            value,
-            style = MaterialTheme.typography.titleMedium,
+private fun ProgressBar(
+    label: String,
+    value: Int,
+    total: Int,
+) {
+    if (value <= 0 || total <= 0) return
+    val pct = (value.toLong() * 100 / total).toInt().coerceIn(0, 100)
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.Bottom,
+        ) {
+            Text(
+                label,
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.weight(1f),
+            )
+            Text(
+                "$value / $total · $pct %",
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        LinearProgressIndicator(
+            progress = { (value.toFloat() / total).coerceIn(0f, 1f) },
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(12.dp),
+            strokeCap = StrokeCap.Round,
+            gapSize = 0.dp,
+            drawStopIndicator = {},
         )
     }
 }
