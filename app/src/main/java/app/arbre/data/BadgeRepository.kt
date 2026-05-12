@@ -12,12 +12,11 @@ class BadgeRepository(
     private val captureRepo: CaptureRepository,
     private val arbreRepo: ArbreRepository,
     private val speciesInfoRepo: SpeciesInfoRepository,
-    private val speciesIndex: SpeciesIndex,
 ) {
     fun badges(): Flow<List<BadgeState>> = captureRepo.toutesLesCaptures()
         .map { captures ->
             val arbreIds = captures.map { it.arbreId }.toSet()
             val arbresById = arbreRepo.arbresParIds(arbreIds)
-            BadgeEvaluator.evaluate(captures, arbresById, speciesInfoRepo, speciesIndex)
+            BadgeEvaluator.evaluate(captures, arbresById, speciesInfoRepo)
         }
 }

@@ -57,7 +57,6 @@ import app.arbre.backup.ImportError
 import app.arbre.backup.ImportResult
 import app.arbre.backup.defaultExportFilename
 import app.arbre.data.BadgeDef
-import app.arbre.data.BadgeState
 import app.arbre.data.rememberArbreRepository
 import app.arbre.data.rememberBackupExporter
 import app.arbre.data.rememberBackupImporter
@@ -172,27 +171,9 @@ fun ProfileScreen(
     }
 
     val recentUnlocks = remember(allBadges) {
-        allBadges.flatMap { state ->
-            when (state) {
-                is BadgeState.Binary -> if (state.unlockedAt != null) {
-                    listOf(
-                        BadgeUnlock(
-                            def = state.def,
-                            displayLabel = state.def.label,
-                            unlockedAt = state.unlockedAt,
-                        )
-                    )
-                } else emptyList()
-                is BadgeState.Progressive -> state.tiers
-                    .mapNotNull { tier ->
-                        tier.unlockedAt?.let { ts ->
-                            BadgeUnlock(
-                                def = state.def,
-                                displayLabel = "${state.def.label} · ${tier.label}",
-                                unlockedAt = ts,
-                            )
-                        }
-                    }
+        allBadges.mapNotNull { state ->
+            state.unlockedAt?.let { ts ->
+                BadgeUnlock(def = state.def, displayLabel = state.def.label, unlockedAt = ts)
             }
         }.sortedByDescending { it.unlockedAt }.take(3)
     }

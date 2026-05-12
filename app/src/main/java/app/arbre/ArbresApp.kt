@@ -51,7 +51,7 @@ class ArbresApp : Application() {
     }
 
     val badgeRepository: BadgeRepository by lazy {
-        BadgeRepository(captureRepository, arbreRepository, speciesInfoRepository, speciesIndex)
+        BadgeRepository(captureRepository, arbreRepository, speciesInfoRepository)
     }
 
     val seasonStore: SeasonStore = SeasonStore()
