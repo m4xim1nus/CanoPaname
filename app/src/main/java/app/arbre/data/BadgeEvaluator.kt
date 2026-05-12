@@ -14,33 +14,36 @@ object BadgeEvaluator {
     ): List<BadgeState> {
         val sorted = captures.sortedBy { it.timestamp }
         val binaryUnlocks = mutableMapOf<String, Long>()
-        val seenArrondissements = mutableSetOf<Int>()
 
         for (capture in sorted) {
             val ts = capture.timestamp
             val arbre = arbresById[capture.arbreId]
 
+            unlockBinaryOnce(binaryUnlocks, BadgeCatalog.PREMIERE_CAPTURE.id, true, ts)
+
+            // Espèces ultra-rares : compte exact d'individus dans Paris (1..5).
+            // Les captures de remarquables n'alimentent pas la dimension espèce.
             if (!capture.remarquable) {
                 val count = speciesInfo.get(capture.speciesIndex)?.stats?.count
-                if (count != null && count < 100) {
-                    unlockBinaryOnce(binaryUnlocks, BadgeCatalog.ESPECE_RARE.id, true, ts)
+                val rarityBadge = count?.let(BadgeCatalog.ESPECE_RARETE::get)
+                if (rarityBadge != null) {
+                    unlockBinaryOnce(binaryUnlocks, rarityBadge.id, true, ts)
                 }
             }
-
-            val arr = arbre?.adresse?.let(::parseArrondissement)
-            if (arr != null) {
-                seenArrondissements.add(arr)
-            }
-            unlockBinaryOnce(binaryUnlocks, BadgeCatalog.TOURNEUR_DE_PARIS.id, seenArrondissements.size >= 10, ts)
-            unlockBinaryOnce(binaryUnlocks, BadgeCatalog.TOUR_COMPLET.id, seenArrondissements.size >= 20, ts)
 
             val hauteur = arbre?.hauteurM
             if (hauteur != null && hauteur > 30) {
                 unlockBinaryOnce(binaryUnlocks, BadgeCatalog.GEANT.id, true, ts)
             }
+            if (hauteur != null && hauteur < 2) {
+                unlockBinaryOnce(binaryUnlocks, BadgeCatalog.BONSAI.id, true, ts)
+            }
             val circ = arbre?.circonferenceCm
             if (circ != null && circ > 400) {
                 unlockBinaryOnce(binaryUnlocks, BadgeCatalog.VIEUX_SAGE.id, true, ts)
+            }
+            if (circ != null && circ < 10) {
+                unlockBinaryOnce(binaryUnlocks, BadgeCatalog.JEUNE_POUSSE.id, true, ts)
             }
         }
 

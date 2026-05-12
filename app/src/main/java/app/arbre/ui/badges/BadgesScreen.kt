@@ -88,7 +88,7 @@ fun BadgesScreen(onBack: () -> Unit) {
                 item(span = { GridItemSpan(maxLineSpan) }) {
                     EmptyState(
                         title = "Aucun badge débloqué",
-                        body = "Capture tes premiers arbres. Espèces rares, arrondissements parcourus, géants de plus de 30 m : chaque badge se gagne d'un coup.",
+                        body = "Capture ton premier arbre : « Première capture » se débloque aussitôt. Ensuite, espèces ultra-rares, géants de plus de 30 m et jeunes pousses t'attendent.",
                         illustration = {
                             Image(
                                 painter = painterResource(R.drawable.illus_empty_badges),

@@ -32,24 +32,55 @@ data class BadgeState(
 
 object BadgeCatalog {
 
-    val ESPECE_RARE = BadgeDef(
-        id = "espece_rare",
-        label = "Espèce rare",
-        description = "Une espèce avec moins de 100 individus à Paris.",
+    val PREMIERE_CAPTURE = BadgeDef(
+        id = "premiere_capture",
+        label = "Première capture",
+        description = "Ton premier arbre révélé.",
+        category = BadgeCategory.DECOUVERTE,
+    )
+
+    // Espèces ultra-rares : une espèce dont le nombre d'individus dans Paris
+    // est exactement N. Seuils calés sur la distribution réelle du dataset
+    // (≈ 237 espèces à 1 ind., 113 à 2, 75 à 3, 30 à 4, 35 à 5 — toutes
+    // atteignables en tapant le bon pin gris).
+    val ESPECE_UNIQUE = BadgeDef(
+        id = "espece_unique",
+        label = "Unique",
+        description = "Une espèce dont il n'existe qu'un seul arbre dans Paris.",
+        category = BadgeCategory.BOTANIQUE,
+    )
+    val ESPECE_COUPLE = BadgeDef(
+        id = "espece_couple",
+        label = "Couple",
+        description = "Une espèce dont il n'existe que deux arbres dans Paris.",
+        category = BadgeCategory.BOTANIQUE,
+    )
+    val ESPECE_TRINITE = BadgeDef(
+        id = "espece_trinite",
+        label = "Trinité",
+        description = "Une espèce dont il n'existe que trois arbres dans Paris.",
+        category = BadgeCategory.BOTANIQUE,
+    )
+    val ESPECE_QUATUOR = BadgeDef(
+        id = "espece_quatuor",
+        label = "Quatuor",
+        description = "Une espèce dont il n'existe que quatre arbres dans Paris.",
+        category = BadgeCategory.BOTANIQUE,
+    )
+    val ESPECE_QUINTETTE = BadgeDef(
+        id = "espece_quintette",
+        label = "Quintette",
+        description = "Une espèce dont il n'existe que cinq arbres dans Paris.",
         category = BadgeCategory.BOTANIQUE,
     )
 
-    val TOURNEUR_DE_PARIS = BadgeDef(
-        id = "tourneur_de_paris",
-        label = "Tourneur de Paris",
-        description = "Captures dans 10 arrondissements.",
-        category = BadgeCategory.GEOGRAPHIE,
-    )
-    val TOUR_COMPLET = BadgeDef(
-        id = "tour_complet",
-        label = "Tour complet",
-        description = "Les 20 arrondissements de Paris.",
-        category = BadgeCategory.GEOGRAPHIE,
+    /** Espèce → palier de rareté correspondant (compte exact 1..5), ou `null`. */
+    val ESPECE_RARETE: Map<Int, BadgeDef> = mapOf(
+        1 to ESPECE_UNIQUE,
+        2 to ESPECE_COUPLE,
+        3 to ESPECE_TRINITE,
+        4 to ESPECE_QUATUOR,
+        5 to ESPECE_QUINTETTE,
     )
 
     val GEANT = BadgeDef(
@@ -58,18 +89,35 @@ object BadgeCatalog {
         description = "Un arbre de plus de 30 m de haut.",
         category = BadgeCategory.DEMESURE,
     )
+    val BONSAI = BadgeDef(
+        id = "bonsai",
+        label = "Bonsaï",
+        description = "Un arbre de moins de 2 m de haut.",
+        category = BadgeCategory.DEMESURE,
+    )
     val VIEUX_SAGE = BadgeDef(
         id = "vieux_sage",
         label = "Vieux sage",
         description = "Un arbre de plus de 4 m de circonférence.",
         category = BadgeCategory.DEMESURE,
     )
+    val JEUNE_POUSSE = BadgeDef(
+        id = "jeune_pousse",
+        label = "Jeune pousse",
+        description = "Un arbre de moins de 10 cm de circonférence.",
+        category = BadgeCategory.DEMESURE,
+    )
 
     val ALL: List<BadgeDef> = listOf(
-        ESPECE_RARE,
-        TOURNEUR_DE_PARIS,
-        TOUR_COMPLET,
+        PREMIERE_CAPTURE,
+        ESPECE_UNIQUE,
+        ESPECE_COUPLE,
+        ESPECE_TRINITE,
+        ESPECE_QUATUOR,
+        ESPECE_QUINTETTE,
         GEANT,
+        BONSAI,
         VIEUX_SAGE,
+        JEUNE_POUSSE,
     )
 }

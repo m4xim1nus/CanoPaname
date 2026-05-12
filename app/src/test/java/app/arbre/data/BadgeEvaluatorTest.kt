@@ -39,8 +39,7 @@ class BadgeEvaluatorTest {
     }
 
     @Test fun `parseArrondissement matches raw OpenData format`() {
-        // Format réellement stocké en DB (cf. dump 2026-05-04). C'est le cas
-        // qui fait foi pour les badges Tourneur/Tour Complet sur device.
+        // Format réellement stocké en DB (cf. dump 2026-05-04).
         assertEquals(
             12,
             BadgeEvaluator.parseArrondissement("PARC DE BERCY / 128 QUAI DE BERCY, PARIS 12E ARRDT"),
@@ -90,14 +89,30 @@ class BadgeEvaluatorTest {
 
     // ---------- evaluate : aucun ----------
 
-    @Test fun `evaluate with no captures returns 5 badges all locked`() {
+    @Test fun `evaluate with no captures returns all badges locked`() {
         val states = eval(emptyList(), emptyMap(), emptySpeciesInfo())
-        assertEquals(5, states.size)
+        assertEquals(BadgeCatalog.ALL.size, states.size)
         assertEquals(BadgeCatalog.ALL.map { it.id }, states.map { it.def.id })
         assertTrue(states.all { !it.unlocked })
     }
 
-    // ---------- demesure (binaires) ----------
+    // ---------- première capture (binaire) ----------
+
+    @Test fun `evaluate unlocks premiere capture on the very first capture`() {
+        val first = parisTs("2025-04-01T10:00:00Z")
+        val second = parisTs("2025-04-02T10:00:00Z")
+        val states = eval(
+            captures = listOf(
+                capture(arbreId = 2L, ts = second),
+                capture(arbreId = 1L, ts = first),
+            ),
+            arbresById = mapOf(1L to arbre(id = 1L), 2L to arbre(id = 2L)),
+            speciesInfo = emptySpeciesInfo(),
+        )
+        assertEquals(first, binaryUnlockedAt(states, BadgeCatalog.PREMIERE_CAPTURE.id))
+    }
+
+    // ---------- démesure (binaires) ----------
 
     @Test fun `evaluate unlocks geant when hauteur exceeds 30m`() {
         val ts = parisTs("2025-06-01T08:00:00Z")
@@ -107,6 +122,7 @@ class BadgeEvaluatorTest {
             speciesInfo = emptySpeciesInfo(),
         )
         assertEquals(ts, binaryUnlockedAt(states, BadgeCatalog.GEANT.id))
+        assertNull(binaryUnlockedAt(states, BadgeCatalog.BONSAI.id))
         assertNull(binaryUnlockedAt(states, BadgeCatalog.VIEUX_SAGE.id))
     }
 
@@ -119,6 +135,26 @@ class BadgeEvaluatorTest {
         assertNull(binaryUnlockedAt(states, BadgeCatalog.GEANT.id))
     }
 
+    @Test fun `evaluate unlocks bonsai when hauteur below 2m`() {
+        val ts = parisTs("2025-06-01T08:00:00Z")
+        val states = eval(
+            captures = listOf(capture(arbreId = 7L, ts = ts)),
+            arbresById = mapOf(7L to arbre(id = 7L, hauteurM = 1)),
+            speciesInfo = emptySpeciesInfo(),
+        )
+        assertEquals(ts, binaryUnlockedAt(states, BadgeCatalog.BONSAI.id))
+        assertNull(binaryUnlockedAt(states, BadgeCatalog.GEANT.id))
+    }
+
+    @Test fun `evaluate does not unlock bonsai at exactly 2m`() {
+        val states = eval(
+            captures = listOf(capture(arbreId = 7L, ts = 1L)),
+            arbresById = mapOf(7L to arbre(id = 7L, hauteurM = 2)),
+            speciesInfo = emptySpeciesInfo(),
+        )
+        assertNull(binaryUnlockedAt(states, BadgeCatalog.BONSAI.id))
+    }
+
     @Test fun `evaluate unlocks vieux sage when circ exceeds 400cm`() {
         val ts = parisTs("2025-06-01T08:00:00Z")
         val states = eval(
@@ -127,70 +163,76 @@ class BadgeEvaluatorTest {
             speciesInfo = emptySpeciesInfo(),
         )
         assertEquals(ts, binaryUnlockedAt(states, BadgeCatalog.VIEUX_SAGE.id))
+        assertNull(binaryUnlockedAt(states, BadgeCatalog.JEUNE_POUSSE.id))
     }
 
-    // ---------- espèce rare (binaire) ----------
+    @Test fun `evaluate unlocks jeune pousse when circ below 10cm`() {
+        val ts = parisTs("2025-06-01T08:00:00Z")
+        val states = eval(
+            captures = listOf(capture(arbreId = 8L, ts = ts)),
+            arbresById = mapOf(8L to arbre(id = 8L, circonferenceCm = 5)),
+            speciesInfo = emptySpeciesInfo(),
+        )
+        assertEquals(ts, binaryUnlockedAt(states, BadgeCatalog.JEUNE_POUSSE.id))
+        assertNull(binaryUnlockedAt(states, BadgeCatalog.VIEUX_SAGE.id))
+    }
 
-    @Test fun `evaluate unlocks espece rare when species count below 100`() {
+    @Test fun `evaluate does not unlock jeune pousse at exactly 10cm`() {
+        val states = eval(
+            captures = listOf(capture(arbreId = 8L, ts = 1L)),
+            arbresById = mapOf(8L to arbre(id = 8L, circonferenceCm = 10)),
+            speciesInfo = emptySpeciesInfo(),
+        )
+        assertNull(binaryUnlockedAt(states, BadgeCatalog.JEUNE_POUSSE.id))
+    }
+
+    // ---------- espèces ultra-rares (binaires) ----------
+
+    @Test fun `evaluate unlocks the rarity badge matching the species exact count`() {
         val ts = parisTs("2025-04-01T10:00:00Z")
-        val info = speciesInfo(speciesIndex = 42, count = 50)
+        val info = speciesInfo(speciesIndex = 42, count = 3)
         val states = eval(
             captures = listOf(capture(arbreId = 1L, speciesIndex = 42, ts = ts)),
             arbresById = mapOf(1L to arbre(id = 1L)),
             speciesInfo = info,
         )
-        assertEquals(ts, binaryUnlockedAt(states, BadgeCatalog.ESPECE_RARE.id))
+        assertEquals(ts, binaryUnlockedAt(states, BadgeCatalog.ESPECE_TRINITE.id))
+        assertNull(binaryUnlockedAt(states, BadgeCatalog.ESPECE_UNIQUE.id))
+        assertNull(binaryUnlockedAt(states, BadgeCatalog.ESPECE_COUPLE.id))
+        assertNull(binaryUnlockedAt(states, BadgeCatalog.ESPECE_QUATUOR.id))
+        assertNull(binaryUnlockedAt(states, BadgeCatalog.ESPECE_QUINTETTE.id))
     }
 
-    @Test fun `evaluate does not unlock espece rare for common species`() {
-        val info = speciesInfo(speciesIndex = 42, count = 50_000)
+    @Test fun `evaluate unlocks espece unique for a single-individual species`() {
+        val info = speciesInfo(speciesIndex = 7, count = 1)
+        val states = eval(
+            captures = listOf(capture(arbreId = 1L, speciesIndex = 7, ts = 1L)),
+            arbresById = mapOf(1L to arbre(id = 1L)),
+            speciesInfo = info,
+        )
+        assertNotNull(binaryUnlockedAt(states, BadgeCatalog.ESPECE_UNIQUE.id))
+    }
+
+    @Test fun `evaluate does not unlock any rarity badge for a common species`() {
+        val info = speciesInfo(speciesIndex = 42, count = 6)
         val states = eval(
             captures = listOf(capture(arbreId = 1L, speciesIndex = 42, ts = 1L)),
             arbresById = mapOf(1L to arbre(id = 1L)),
             speciesInfo = info,
         )
-        assertNull(binaryUnlockedAt(states, BadgeCatalog.ESPECE_RARE.id))
+        assertTrue(BadgeCatalog.ESPECE_RARETE.values.all { binaryUnlockedAt(states, it.id) == null })
     }
 
-    @Test fun `evaluate does not unlock espece rare for rare remarquable capture`() {
-        // Une capture remarquable n'alimente pas la dimension espèce.
-        val info = speciesInfo(speciesIndex = 42, count = 50)
+    @Test fun `evaluate ignores remarquable captures for rarity badges`() {
+        // Une capture remarquable n'alimente pas la dimension espèce, même si
+        // l'espèce sous-jacente est ultra-rare.
+        val info = speciesInfo(speciesIndex = 42, count = 1)
         val states = eval(
             captures = listOf(capture(arbreId = 1L, speciesIndex = 42, remarquable = true, ts = 1L)),
             arbresById = mapOf(1L to arbre(id = 1L, remarquable = true)),
             speciesInfo = info,
         )
-        assertNull(binaryUnlockedAt(states, BadgeCatalog.ESPECE_RARE.id))
-    }
-
-    // ---------- géographie (binaires) ----------
-
-    @Test fun `evaluate unlocks tourneur de Paris with 10 distinct arrondissements`() {
-        val captures = (1..10).map { arrNum ->
-            capture(arbreId = arrNum.toLong(), ts = arrNum.toLong())
-        }
-        val arbres = (1..10).associate { arrNum ->
-            arrNum.toLong() to arbre(id = arrNum.toLong(), adresse = "RUE TEST, ${arrNum}e")
-        }
-        val states = eval(captures, arbres, emptySpeciesInfo())
-        assertNotNull(binaryUnlockedAt(states, BadgeCatalog.TOURNEUR_DE_PARIS.id))
-        assertNull(binaryUnlockedAt(states, BadgeCatalog.TOUR_COMPLET.id))
-    }
-
-    @Test fun `evaluate unlocks tour complet with 20 distinct arrondissements`() {
-        val captures = (1..20).map { capture(arbreId = it.toLong(), ts = it.toLong()) }
-        val arbres = (1..20).associate { arrNum ->
-            arrNum.toLong() to arbre(id = arrNum.toLong(), adresse = "RUE TEST, ${arrNum}e")
-        }
-        val states = eval(captures, arbres, emptySpeciesInfo())
-        assertNotNull(binaryUnlockedAt(states, BadgeCatalog.TOUR_COMPLET.id))
-    }
-
-    @Test fun `evaluate ignores out-of-Paris addresses for arrondissement count`() {
-        val captures = (1..10).map { capture(arbreId = it.toLong(), ts = it.toLong()) }
-        val arbres = (1..10).associate { it.toLong() to arbre(id = it.toLong(), adresse = "Bois de Vincennes") }
-        val states = eval(captures, arbres, emptySpeciesInfo())
-        assertNull(binaryUnlockedAt(states, BadgeCatalog.TOURNEUR_DE_PARIS.id))
+        assertNull(binaryUnlockedAt(states, BadgeCatalog.ESPECE_UNIQUE.id))
     }
 
     // ---------- helpers ----------
