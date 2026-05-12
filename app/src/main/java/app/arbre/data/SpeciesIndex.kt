@@ -171,8 +171,8 @@ class SpeciesIndex(entries: List<SpeciesEntry>) {
         if (index in capturedSks) return true
         val entry = byIndex[index] ?: return false
         if (!entry.unknownSpecies) return false
-        val frères = sksByGenre[entry.genre] ?: return false
-        return frères.any { it != index && it in capturedSks }
+        val freres = sksByGenre[entry.genre] ?: return false
+        return freres.any { it != index && it in capturedSks }
     }
 
     companion object {

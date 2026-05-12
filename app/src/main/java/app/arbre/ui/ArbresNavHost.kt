@@ -182,7 +182,6 @@ fun ArbresNavHost() {
                         popUpTo(Routes.MAP) { inclusive = false }
                     }
                 },
-                onSpeciesClick = { other -> nav.navigate(Routes.species(other)) },
                 onRemarquableClick = { id -> nav.navigate(Routes.remarquableDetail(id)) },
                 onUnlockLost = { nav.popBackStack(Routes.MAP, inclusive = false) },
                 onRedirectToGenre = { genre ->

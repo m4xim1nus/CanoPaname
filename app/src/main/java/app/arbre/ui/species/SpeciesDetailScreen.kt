@@ -89,7 +89,6 @@ fun SpeciesDetailScreen(
      */
     onShowOnMap: (Set<Int>) -> Unit = {},
     onShowArbreOnMap: (Long) -> Unit = {},
-    onSpeciesClick: (Int) -> Unit = {},
     onRemarquableClick: (Long) -> Unit = {},
     onUnlockLost: () -> Unit = {},
     /**
@@ -141,8 +140,6 @@ fun SpeciesDetailScreen(
     // Toutes saisons confondues : décide ligne par ligne entre adresse
     // dévoilée + cliquable et silhouette « ??? + arrondissement ».
     val capturedRemarquables by captureRepo.capturedRemarquableIds()
-        .collectAsState(initial = emptySet())
-    val capturedSpecies by captureRepo.capturedSpeciesIndices()
         .collectAsState(initial = emptySet())
 
     var lightboxIndex by remember(speciesIndex) { mutableStateOf<Int?>(null) }

@@ -13,6 +13,7 @@ plugins {
 // null-safety, wildcard imports.
 detekt {
     config.setFrom(files("$rootDir/detekt.yml"))
+    baseline = file("$projectDir/detekt-baseline.xml")
     buildUponDefaultConfig = true
     autoCorrect = false
     parallel = true
