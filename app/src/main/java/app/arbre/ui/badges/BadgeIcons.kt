@@ -21,13 +21,9 @@ import app.arbre.data.BadgeDef
 /**
  * Mapping id → icône. Outlined partout. `EmojiEvents` en fallback générique.
  *
- * Les familles dynamiques « Familier » partagent une icône :
- * - « Familier des … » (genre) → `Forest` (un grand arbre + des petits — l'idée
- *   « bosquet », tout le genre capturé). Placeholder commun ; un visuel dédié
- *   par genre n'est pas prévu.
- * - « Familier du … » (arrondissement) → `Place` en **placeholder S3** ; le
- *   logo final est le chiffre romain (I…XX) / « Boulogne »·« Vincennes » rendu
- *   en texte dans le cercle — tâche S5 côté `BadgesScreen` (cf. ROADMAP).
+ * Note : les badges « Familier d'arrondissement » remontent ici `Place` mais
+ * `BadgeDef.visual()` (cf. `BadgeVisual.kt`) les rend en **texte** (chiffre
+ * romain / nom de bois) dans le cercle — `Place` n'est qu'un repli théorique.
  */
 fun BadgeDef.icon(): ImageVector = when {
     id == BadgeCatalog.PREMIERE_CAPTURE.id -> Icons.Outlined.PhotoCamera

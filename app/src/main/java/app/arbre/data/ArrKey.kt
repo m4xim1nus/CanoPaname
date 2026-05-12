@@ -66,6 +66,14 @@ fun ArrKey.idSlug(): String = when (this) {
     ArrKey.Other -> "other"
 }
 
+/** Inverse de [idSlug] : reconstruit l'ArrKey depuis un slug de badge « Familier du … ». */
+fun arrKeyFromSlug(slug: String): ArrKey? = when (slug) {
+    "vincennes" -> ArrKey.BoisVincennes
+    "boulogne" -> ArrKey.BoisBoulogne
+    "other" -> ArrKey.Other
+    else -> slug.toIntOrNull()?.takeIf { it in 1..20 }?.let { ArrKey.Paris(it) }
+}
+
 private val ROMAN_1_20: List<String> = listOf(
     "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X",
     "XI", "XII", "XIII", "XIV", "XV", "XVI", "XVII", "XVIII", "XIX", "XX",

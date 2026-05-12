@@ -13,7 +13,9 @@ import app.arbre.R
  * OFL) sur les niveaux Display/Headline/TitleLarge ; sans-serif système
  * (M3 default) ailleurs — la lisibilité du corps prime sur le caractère.
  */
-private val Fraunces = FontFamily(
+/** Famille Fraunces SemiBold — exposée pour les usages « display » ponctuels
+ *  hors pile typo (logos texte des badges d'arrondissement, par ex.). */
+val ArbresFraunces = FontFamily(
     Font(R.font.fraunces_semibold, FontWeight.SemiBold),
 )
 
@@ -21,34 +23,34 @@ private val DefaultTypography = Typography()
 
 val ArbresTypography: Typography = DefaultTypography.copy(
     displayLarge = DefaultTypography.displayLarge.copy(
-        fontFamily = Fraunces,
+        fontFamily = ArbresFraunces,
         fontWeight = FontWeight.SemiBold,
         letterSpacing = (-0.5).sp,
     ),
     displayMedium = DefaultTypography.displayMedium.copy(
-        fontFamily = Fraunces,
+        fontFamily = ArbresFraunces,
         fontWeight = FontWeight.SemiBold,
         letterSpacing = (-0.5).sp,
     ),
     displaySmall = DefaultTypography.displaySmall.copy(
-        fontFamily = Fraunces,
+        fontFamily = ArbresFraunces,
         fontWeight = FontWeight.SemiBold,
     ),
     headlineLarge = DefaultTypography.headlineLarge.copy(
-        fontFamily = Fraunces,
+        fontFamily = ArbresFraunces,
         fontWeight = FontWeight.SemiBold,
     ),
     headlineMedium = DefaultTypography.headlineMedium.copy(
-        fontFamily = Fraunces,
+        fontFamily = ArbresFraunces,
         fontWeight = FontWeight.SemiBold,
     ),
     headlineSmall = DefaultTypography.headlineSmall.copy(
-        fontFamily = Fraunces,
+        fontFamily = ArbresFraunces,
         fontWeight = FontWeight.SemiBold,
         fontSize = 22.sp,
     ),
     titleLarge = DefaultTypography.titleLarge.copy(
-        fontFamily = Fraunces,
+        fontFamily = ArbresFraunces,
         fontWeight = FontWeight.SemiBold,
         fontSize = 20.sp,
     ),

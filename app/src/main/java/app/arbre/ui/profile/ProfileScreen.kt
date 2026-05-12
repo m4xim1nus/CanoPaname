@@ -2,10 +2,8 @@ package app.arbre.ui.profile
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -13,12 +11,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
@@ -49,7 +45,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -60,6 +55,7 @@ import app.arbre.backup.defaultExportFilename
 import app.arbre.data.ArrKey
 import app.arbre.data.BadgeCatalog
 import app.arbre.data.BadgeDef
+import app.arbre.data.BadgeState
 import app.arbre.data.parseArrKey
 import app.arbre.data.rememberArbreRepository
 import app.arbre.data.rememberArrSpeciesIndex
@@ -70,7 +66,7 @@ import app.arbre.data.rememberCaptureRepository
 import app.arbre.data.rememberDatasetStats
 import app.arbre.data.rememberSpeciesIndex
 import app.arbre.R
-import app.arbre.ui.badges.icon
+import app.arbre.ui.badges.BadgeIconCircle
 import app.arbre.ui.common.EmptyState
 import androidx.compose.foundation.Image
 import androidx.compose.ui.res.painterResource
@@ -297,6 +293,12 @@ fun ProfileScreen(
             }
             item {
                 AllBadgesEntry(onClick = onBadgesClick)
+            }
+            item {
+                Text(
+                    "Infos",
+                    style = MaterialTheme.typography.titleLarge,
+                )
             }
             item {
                 HowToPlayEntry(onClick = onHowToPlayClick)
@@ -599,19 +601,7 @@ private fun BadgeCell(unlock: BadgeUnlock) {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
-            Box(
-                modifier = Modifier
-                    .size(48.dp)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.tertiary),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    imageVector = unlock.def.icon(),
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onTertiary,
-                )
-            }
+            BadgeIconCircle(state = BadgeState(def = unlock.def, unlockedAt = unlock.unlockedAt))
             Text(
                 unlock.displayLabel,
                 style = MaterialTheme.typography.labelMedium,
