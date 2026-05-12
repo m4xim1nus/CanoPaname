@@ -31,7 +31,7 @@ RELEASE_KEY_PASSWORD=...
 ## Checklist release
 
 1. [ ] Vérifier `main` propre, CI `build.yml` verte sur le dernier commit.
-2. [ ] Bump `versionCode` et `versionName` dans `app/build.gradle.kts`. Scheme : `versionCode = major*10000 + minor*100 + patch` (ex: v1.0.0 → 10000, v1.0.1 → 10001, v1.1.0 → 10100, v2.0.0 → 20000).
+2. [ ] Bump `versionCode` et `versionName` dans `app/build.gradle.kts`. Scheme : `versionCode = major*10000 + minor*1000 + patch` (ex: v1.0.0 → 10000, v1.0.1 → 10001, v1.1.0 → 11000, v1.2.0 → 12000, v2.0.0 → 20000).
 3. [ ] Mettre à jour `CHANGELOG.md` (nouvelle section `[X.Y.Z] - YYYY-MM-DD`).
 4. [ ] Smoke test local APK signé prod : `./gradlew assembleRelease` puis `adb install -r app/build/outputs/apk/release/canopaname-v*-release.apk`. Vérifier carte, capture, redémarrage app, export+import ZIP.
 5. [ ] Commit `chore: release vX.Y.Z`, push.

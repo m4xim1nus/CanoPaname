@@ -21,11 +21,11 @@ Triage en lot au début de chaque cycle. Process complet dans `CLAUDE.md` (*Work
 - [→Variantes] `MIGRATION_4_5` + backup `schemaVersion = 3` (user:moi, 2026-05-07)
 - [→Variantes] Badges variantes émergent du nouveau modèle (user:moi, 2026-05-07)
 
-## Cycle Progression (en cours)
+## Cycle Progression (livré — `1.2.0`, 2026-05-12)
 
-Détail complet dans `ROADMAP.md` (*Cycle en cours*). Item absorbé du BACKLOG (laissé en trace) :
+Résumé dans `ROADMAP.md` (*Cycles livrés post-1.0*), détail dans `CHANGELOG.md` `[1.2.0]`. Item du BACKLOG absorbé (laissé en trace barrée) :
 
-- [→Progression] Maîtrise par arrondissement : badge « Maître du Xe » (audit V2#5, 2026-05-06 ; rebasculé depuis Endgame 2026-05-12 — la composante « carte chromatique » est partie en Refusé, le seuil de granularité — 22 arr., dont 2 bois — est fixé)
+- ~~[→Progression] Maîtrise par arrondissement : badge « Maître du Xe » (audit V2#5, 2026-05-06)~~ → livré sous forme de famille de badges binaires `familier_arr_*` (22 badges = 20 arr. + 2 bois ; renommé « Maître » → « Familier » ; carte chromatique restée en Refusé)
 
 ## À creuser
 

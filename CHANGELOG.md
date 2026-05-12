@@ -2,6 +2,37 @@
 
 Format basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions [SemVer](https://semver.org/lang/fr/).
 
+## [1.2.0] — 2026-05-12
+
+Refonte de l'expression de la progression sous le codename *Progression*. Six sprints : le FAB ★ devient un mode chasse persistant ; Profil et Badges sont séparés conceptuellement (progression chiffrée en barres sur le Profil, badges désormais tous binaires) ; deux familles de badges dynamiques « Familier » émergent du dataset (un genre avec ≥ 7 espèces identifiées, les 20 arrondissements + 2 bois). En corollaire, le cycle « Endgame » disparaît comme cycle nommé — sa pièce maîtresse (maîtrise par arrondissement) est absorbée ici.
+
+### Ajouté
+
+- Map : **mode chasse Étoile** (`HuntPanel.kt`). Le tap ★ ouvre un panneau bas pleine largeur — radar animé, nom + qualification glosée du remarquable non découvert le plus proche, distance live rafraîchie toutes les 5 s en phase avec le balayage du radar (pulse au refresh), ✕ au même emplacement que le FAB ★. Cible **dynamique** recalculée à chaque tick ; fermeture auto à la sortie de l'écran ; FAB GPS / snackbars décalés au-dessus du panneau ; cas « tous découverts » dédié. Radar + pulse pilotés par `withFrameNanos` (insensibles à l'échelle d'animation système). Plus de snackbar éphémère « remarquable proche ».
+- Badges : famille **« Familier des … »** — capturer toutes les espèces identifiées d'un genre. Un genre a un badge ssi il a ≥ `GENRE_FAMILIER_MIN_SPECIES` (= 7) espèces identifiées → **26 badges** (libellés au nom vernaculaire pluriel via `GenreInfo.nomFr`, jamais le binôme latin).
+- Badges : famille **« Familier du … »** — capturer toutes les espèces recensées dans l'arrondissement (volontairement aspirationnel) → **22 badges** (20 arr. + 2 bois). Dénominateurs précalculés au build dans `assets/arr-species.json` (slug `ArrKey` → liste de `speciesIndex`, miroir Python `arr_key_slug` ↔ Kotlin `parseArrKey`) ; loader `ArrSpeciesIndex` ; couverture propagée par `effectivelyCapturedSpecies` (capturer un chêne couvre `Quercus sp.`).
+- Profil : ligne **« X jours depuis ta première capture »** en tête (Fraunces, masquée à 0 capture) + carte **Progression** = jusqu'à **7 barres** Material 3 (`LinearProgressIndicator` + `X / Y · Z %`) : arbres déverrouillés, remarquables capturés, espèces capturées (sous-texte « + N indéterminées »), genres découverts, genres complétés, arrondissements visités (`/22`), arrondissements complétés. Une barre à `0 / N` est entièrement masquée — la liste se densifie avec la progression.
+- Badges binaires neufs : `PREMIERE_CAPTURE` (lance la section Badges du Profil dès la 1re capture) ; symétriques démesure `BONSAI` (< 2 m) et `JEUNE_POUSSE` (< 10 cm de circonférence), seuils calés sur la distribution dataset ; `ESPECE_RARE` éclaté en 5 badges de rareté exacte — `Unique` (1 ind.), `Couple` (2), `Trinité` (3), `Quatuor` (4), `Quintette` (5).
+- Badges : logos d'arrondissement = **chiffre romain** (I…XX) rendu en texte Fraunces dans le cercle (« Boulogne » / « Vincennes » pour les 2 bois) ; badges de genre = icône partagée `Icons.Outlined.Forest`. `BadgeDef.visual()` (`BadgeVisual.Vector` / `.Label`), cercle `BadgeIconCircle` extrait en composable partagé (`BadgesScreen` ↔ rangée « Derniers badges » du Profil).
+
+### Modifié
+
+- Badges : `BadgeState` aplati en `data class(def, unlockedAt)` — démantèlement de `BadgeState.Progressive`, `TierDef`, `BadgeTier`, `unlockProgressive`, `ProgressiveBadgeCard`. `BadgeEvaluator.evaluate(...)` ne fait plus que des `unlockBinaryOnce` et renvoie `Map<String, Long>` (id → ts de déblocage) ; `BadgeRepository` assemble le catalogue complet via `BadgeCatalog.full(speciesIndex, genreInfo, arrSpecies)` puis zippe. `unlockedAt` figé sur la capture déclenchante (balayage chronologique unique). Aucune migration Room (badges dérivés à la volée).
+- `BadgeCatalog.ALL` = 10 binaires statiques ; le compteur du `BadgesScreen` se base sur `badgeRepo.catalog.size` (10 + 26 + 22 selon le dataset).
+- Profil : `StatsCard` (tableau plat) remplacée par la ligne « X jours » + la carte Progression. Ligne « Captures totales » supprimée. Titre de section « Infos » (style `titleLarge`) inséré entre « Voir tous les badges » et « Comment jouer ».
+- Map : icône / comportement du FAB ★ — popup éphémère → mode chasse persistant (`huntActive` en `remember` côté `MapScreen`).
+- Build : `detekt {}` de `app/build.gradle.kts` câble enfin `baseline = file("$projectDir/detekt-baseline.xml")` (le fichier était committé mais ignoré) ; baseline régénérée post-S5. `./gradlew detekt` repasse au vert.
+
+### Retiré
+
+- Badges progressifs `Marcheur` / `Botaniste` / `Chasseur` + `MOSAIQUE_QUERCUS` (l'identité Quercus revient sous forme de badge binaire « Familier des chênes ») ; `TOURNEUR_DE_PARIS` / `TOUR_COMPLET` (redondants avec la barre arrondissements du Profil + les badges « Familier du Xe »).
+- `BadgeEvaluator` : param `speciesIndex` sans consommateur, retiré (idem côté `BadgeRepository` avant réintroduction pour `BadgeCatalog.full`).
+- `SpeciesDetailScreen` : param `onSpeciesClick` + val `capturedSpecies` morts depuis le déménagement des fiches `(G, sp.)` vers `GenreDetailScreen` (cycle Catalogue), supprimés + call site `ArbresNavHost`.
+
+### Corrigé
+
+- Detekt : les 3 findings réellement neufs corrigés plutôt que figés dans la baseline — vals/params morts de `SpeciesDetailScreen`, `frères` → `freres` dans `SpeciesIndex` (`VariableNaming`).
+
 ## [1.1.0] — 2026-05-11
 
 Refonte du catalogue d'espèces sous le codename *Catalogue*. Dix sprints : nettoyage data amont (drops `Non spécifié`, normalisation `sp.`, fixups latins), cascade de noms vernaculaires français (Wikidata P1843 → Wikipedia frTitle filtré → redirects API → overrides éditoriaux → construction), fiches genre dédiées, Arboretum à 2 niveaux *Catalogue* / *Historique*, badge progressif *Mosaïque de chênes*. Refresh OpenData absorbé en passant (217 042 arbres, 183 remarquables). Fil rouge en clôture : 11 fixups de typos / synonymes désuets supplémentaires côté `SPECIES_FIXUPS` + marqueurs Prunus cultivars basculés en `sp.`.
