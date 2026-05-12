@@ -119,6 +119,29 @@ démarrage et réutilise les ids existants ; les nouveaux `(g, e)` héritent de
 `max(sk) + 1`. Une corruption du fichier (`SpeciesIndexCorrupt`) avec une DB
 asset présente fait `sys.exit(1)`.
 
+## `build_tips_preview.py`
+
+Génère `docs/tips/index.html` : page HTML autonome de **revue éditoriale** des
+splash tips (ce n'est pas un artefact consommé par l'app, juste un outil de
+relecture).
+
+```bash
+python3 tools/build_tips_preview.py
+```
+
+Lit `app/src/main/assets/splash-tips.json` (la banque fusionnée static + dataset).
+La page liste tous les tips groupés par catégorie — `intro` dans l'ordre figé du
+1er lancement, puis `dataset` (généré, on relit la chute pas les chiffres),
+`history`, `popculture`, `player` (placeholders rendus avec des valeurs
+d'exemple + gabarit brut affiché). Pour chaque tip : un verdict `RAS` / `à tuer` /
+`formulation à revoir` / `chute à réécrire` + un commentaire libre, persistés en
+`localStorage` (la revue
+se fait en plusieurs fois). Le bouton « Exporter mon avis » produit un bloc texte
+copiable des tips à traiter — à recoller dans le sprint qui intègre les retours.
+
+À régénérer après chaque `python3 tools/build_dataset.py` (les chiffres dataset
+changent). `docs/tips/index.html` est committé.
+
 ## Tests
 
 Helpers purs testés offline (pas de réseau, pas de CSV) :

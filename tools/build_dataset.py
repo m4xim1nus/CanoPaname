@@ -2169,7 +2169,7 @@ def write_splash_tips(
         push(
             "dataset.top10_share",
             f"10 espèces représentent {top10_pct:.0f} % des arbres parisiens. "
-            f"Les 897 autres se partagent le reste."
+            f"Les {len(sorted_sk) - 10} autres se partagent le reste."
         )
 
     # 3. Espèces rares — orphelines, doublons, presque-rien.
@@ -2321,7 +2321,7 @@ def write_splash_tips(
         push(
             "dataset.club_100",
             f"{n_above_100} espèces parviennent à 100 individus ou plus. "
-            f"Sur 907. Les autres sont rares à divers degrés."
+            f"Sur {len(species_index)}. Les autres sont rares à divers degrés."
         )
     if n_under_10:
         push(

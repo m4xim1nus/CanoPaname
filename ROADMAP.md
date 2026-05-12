@@ -28,12 +28,17 @@ qui le mentionne est périmée → à retirer en clôture.*
 
 Sprints :
 
-- **S1 — Tips : refresh valeurs + outil HTML de revue.** Régénérer `assets/splash-tips.json`
-  via `python3 tools/build_dataset.py` (chiffres dataset à jour). Créer `tools/build_tips_preview.py`
-  → `docs/tips/index.html` (patron : `build_report.py` → `docs/dataset/index.html`) : tous les
-  tips groupés par catégorie, placeholders rendus, et pour chaque tip un verdict `RAS` / `à tuer`
-  / `chute à réécrire` + commentaire libre + bouton « Exporter mon avis » → bloc texte copiable.
-  Tout client-side. Livré tôt → débloque la revue async pendant S2-S5.
+- ✅ **S1 — Tips : refresh valeurs + outil HTML de revue** (livré). Délittéralisé 2 nombres figés
+  dans `write_splash_tips()` de `tools/build_dataset.py` (`dataset.top10_share` « Les 897 autres »
+  → `len(sorted_sk)-10`, `dataset.club_100` « Sur 907. » → `len(species_index)`) ; rafraîchi les
+  littéraux dataset périmés de `tools/splash-tips-static.json` (210 000 → 217 000, 907 → 930, 247
+  → 237 singletons, pareto 10 → 11 espèces) ; régénéré `assets/splash-tips.json` via
+  `python3 tools/build_dataset.py`. Créé `tools/build_tips_preview.py` → `docs/tips/index.html`
+  (patron `build_report.py`, autonome, zéro CDN) : tips groupés par catégorie (`intro` dans l'ordre
+  figé puis `dataset`/`history`/`popculture`/`player`), placeholders rendus + gabarit brut affiché,
+  verdict `RAS` / `à tuer` / `formulation à revoir` / `chute à réécrire` + commentaire libre
+  persistés en `localStorage`, filtre texte, bouton « Exporter mon avis » → bloc texte copiable.
+  Doc dans `tools/README.md`. Débloque la revue async pendant S2-S5.
 - **S2 — Bug : intro tips non jouée au 1er lancement.** Instrumentation `Log.d` temporaire
   (`SplashTipsController`, flip `arbresPrets`), build debug, séance logcat avec moi sur un fresh
   install, diagnostic (course `markDone()`↔nav, mount transient du fallback `MAP` du `NavHost`,

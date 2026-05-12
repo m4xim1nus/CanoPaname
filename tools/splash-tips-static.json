@@ -10,12 +10,12 @@
     {
       "id": "intro.dataset_size",
       "category": "intro",
-      "text": "Plus de 210 000 arbres parisiens t'attendent. Tu n'es pas obligé de tous les capturer."
+      "text": "Plus de 217 000 arbres parisiens t'attendent. Tu n'es pas obligé de tous les capturer."
     },
     {
       "id": "intro.species_count",
       "category": "intro",
-      "text": "907 espèces différentes vivent à Paris. Plus que dans certains pays."
+      "text": "930 espèces différentes vivent à Paris. Plus que dans certains pays."
     },
     {
       "id": "intro.tutorial_capture",
@@ -25,7 +25,7 @@
     {
       "id": "intro.dataset_singletons",
       "category": "intro",
-      "text": "247 espèces n'ont qu'un seul représentant à Paris. Solitude statistique."
+      "text": "237 espèces n'ont qu'un seul représentant à Paris. Solitude statistique."
     },
     {
       "id": "intro.remarquables_intro",
@@ -50,7 +50,7 @@
     {
       "id": "intro.dataset_pareto",
       "category": "intro",
-      "text": "Connaître 10 espèces, c'est connaître la moitié des arbres parisiens. Excellent retour sur effort."
+      "text": "Connaître 11 espèces, c'est connaître la moitié des arbres parisiens. Excellent retour sur effort."
     }
   ],
   "tips": [
@@ -59,7 +59,7 @@
     { "id": "history.luxembourg", "category": "history", "text": "Marie de Médicis a fait planter le Luxembourg en 1612. Bien lui en a pris." },
     { "id": "history.jardin_plantes", "category": "history", "text": "Le Jardin des Plantes existe depuis 1635. Quelques arbres sont encore là." },
     { "id": "history.cedre_jussieu", "category": "history", "text": "Le cèdre du Liban du Jardin des Plantes a été planté en 1734. Il préfère qu'on ne lui demande pas son âge." },
-    { "id": "history.haussmann_count", "category": "history", "text": "Haussmann a planté ~80 000 arbres en 17 ans. Aujourd'hui, Paris en compte ~210 000." },
+    { "id": "history.haussmann_count", "category": "history", "text": "Haussmann a planté ~80 000 arbres en 17 ans. Aujourd'hui, Paris en compte ~217 000." },
     { "id": "history.napoleon3", "category": "history", "text": "Napoléon III voulait des Champs-Élysées arborés. Le projet a tenu. Le reste, moins." },
     { "id": "history.bois_boulogne", "category": "history", "text": "Le Bois de Boulogne a été redessiné en 1853. Il s'en remet doucement." },
     { "id": "history.canicule_2003", "category": "history", "text": "La canicule de 2003 a tué des milliers d'arbres parisiens. On n'en parle pas assez." },
@@ -188,12 +188,12 @@
     { "id": "popculture.tableau_corot", "category": "popculture", "text": "Corot peignait des arbres parisiens en flou doux. Ta photo n'est pas obligée de l'être." },
     { "id": "popculture.monet_jardin", "category": "popculture", "text": "Monet a son jardin à Giverny, pas à Paris. Mais il y a passé du temps à observer la lumière sur les feuillages." },
 
-    { "id": "player.captures_count", "category": "player", "text": "Tu as capturé {captureCount} arbres. Sur plus de 210 000. Pas de pression.", "requires": ["captureCount"] },
+    { "id": "player.captures_count", "category": "player", "text": "Tu as capturé {captureCount} arbres. Sur plus de 217 000. Pas de pression.", "requires": ["captureCount"] },
     { "id": "player.species_count", "category": "player", "text": "Tu as croisé {speciesCount} espèces. Le platane est jaloux.", "requires": ["speciesCount"] },
-    { "id": "player.species_progression", "category": "player", "text": "{speciesCount} espèces capturées sur 907. C'est un échantillon honnête.", "requires": ["speciesCount"] },
+    { "id": "player.species_progression", "category": "player", "text": "{speciesCount} espèces capturées sur 930. C'est un échantillon honnête.", "requires": ["speciesCount"] },
     { "id": "player.remarquable_count", "category": "player", "text": "Tu as trouvé {remarquableCount} arbres remarquables. Les autres patientent.", "requires": ["remarquableCount"] },
     { "id": "player.days_since", "category": "player", "text": "Ta plus vieille capture date d'il y a {daysSinceFirst} jours. Le temps passe, l'écorce se fissure.", "requires": ["daysSinceFirst"] },
-    { "id": "player.first_step", "category": "player", "text": "Tu as commencé. C'est un début. Sur 210 000, ça reste un début.", "requires": ["captureCount"] },
+    { "id": "player.first_step", "category": "player", "text": "Tu as commencé. C'est un début. Sur 217 000, ça reste un début.", "requires": ["captureCount"] },
     { "id": "player.daily", "category": "player", "text": "{captureCount} captures en {daysSinceFirst} jours. Les statisticiens te regardent.", "requires": ["captureCount", "daysSinceFirst"] },
     { "id": "player.dossier", "category": "player", "text": "Ton dossier compte {captureCount} arbres. Bien classé, espérons.", "requires": ["captureCount"] },
     { "id": "player.species_one", "category": "player", "text": "Au moins une espèce capturée. Le reste suivra. Ou pas.", "requires": ["speciesCount"] },
@@ -222,7 +222,7 @@
     { "id": "player.elapsed_time", "category": "player", "text": "{daysSinceFirst} jours plus tard. Le platane n'a pas changé. Toi un peu.", "requires": ["daysSinceFirst"] },
     { "id": "player.tree_walker", "category": "player", "text": "Tu marches dans Paris pour {captureCount} arbres. Drôle d'objectif.", "requires": ["captureCount"] },
     { "id": "player.collector_label", "category": "player", "text": "Le terme « collectionneur d'arbres » te va bien. {captureCount} de capturés.", "requires": ["captureCount"] },
-    { "id": "player.species_share", "category": "player", "text": "Tu détiens {speciesCount} espèces sur 907. Même Linné aurait souri.", "requires": ["speciesCount"] },
+    { "id": "player.species_share", "category": "player", "text": "Tu détiens {speciesCount} espèces sur 930. Même Linné aurait souri.", "requires": ["speciesCount"] },
     { "id": "player.remarquables_share", "category": "player", "text": "{remarquableCount} sur 183 arbres remarquables. Tu finiras par tous les saluer.", "requires": ["remarquableCount"] },
     { "id": "player.average", "category": "player", "text": "À ta fréquence, tu auras visité tous les arbres parisiens dans... une éternité. Qui veut de la limite ?", "requires": ["captureCount"] },
     { "id": "player.species_modest", "category": "player", "text": "Les {speciesCount} espèces de ton catalogue valent bien quelques étagères de naturaliste.", "requires": ["speciesCount"] },
