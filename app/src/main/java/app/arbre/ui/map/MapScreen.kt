@@ -73,6 +73,7 @@ import app.arbre.data.rememberArbreRepository
 import app.arbre.data.rememberCaptureRepository
 import app.arbre.data.rememberSpeciesIndex
 import app.arbre.data.rememberRemarquableInfoRepository
+import app.arbre.data.rememberGenreInfoRepository
 import app.arbre.data.rememberSpeciesInfoRepository
 import app.arbre.data.resolvedFile
 import app.arbre.ui.common.DeleteCaptureDialog
@@ -168,6 +169,7 @@ fun MapScreen(
     val captureRepo = rememberCaptureRepository()
     val speciesIndex = rememberSpeciesIndex()
     val speciesInfoRepo = rememberSpeciesInfoRepository()
+    val genreInfoRepo = rememberGenreInfoRepository()
     val remarquableInfoRepo = rememberRemarquableInfoRepository()
     val viewModel: MapViewModel = viewModel(
         factory = viewModelFactory {
@@ -197,6 +199,17 @@ fun MapScreen(
     // espèces capturées + sp. » — donne du grain quand l'utilisateur visualise
     // un filtre de plusieurs espèces du même genre.
     val isGenreFilter = filterSpecies.size > 1
+    // Nom (singulier) affiché par le `FilterSplash` : pour un filtre genre /
+    // fiche `(G, sp.)` on prend le nom vernaculaire du genre (« Prunier »)
+    // plutôt que le nv de l'entry `(G, sp.)` (« Prunier (Prunus sp.) ») ;
+    // sinon le nv de l'espèce (`displayNomCommun` : nv → nomCommun → binôme).
+    val splashSpeciesLabel = filteredEntry?.let { entry ->
+        if (entry.unknownSpecies) {
+            genreInfoRepo.get(entry.genre)?.nomFr ?: entry.displayNomCommun.substringBefore(" (")
+        } else {
+            entry.displayNomCommun
+        }
+    }
 
     val capturedSpecies by captureRepo.capturedSpeciesIndices()
         .collectAsState(initial = emptySet())
@@ -812,8 +825,8 @@ fun MapScreen(
             exit = fadeOut(animationSpec = tween(durationMillis = MaterialTheme.arbresMotion.short)),
             modifier = Modifier.fillMaxSize(),
         ) {
-            if (filteredEntry != null) {
-                FilterSplash(speciesLabel = filteredEntry.displayNomCommun)
+            if (splashSpeciesLabel != null) {
+                FilterSplash(speciesLabel = splashSpeciesLabel)
             } else {
                 ColdStartSplash()
             }

@@ -92,10 +92,23 @@ Sprints :
   distance, `AnimatedContent` de rotation des tips (snap de texte acceptable) ; `FilterSplash` → S5 ;
   `SeasonAmbience` → BACKLOG (`[ ]`, faible priorité). `assembleDebug` + `:app:testDebugUnitTest` +
   `detekt` OK. Reste : vérif device GrapheneOS avec l'échelle d'animation des animateurs désactivée.
-- **S5 — `FilterSplash` : texte au ton « Réveil des … ».** Remplacer « Filtrage de X… » + gros
-  spinner par « Réveil des {count} {label} » (count via `DatasetStats`/`SpeciesInfo` quand dispo ;
-  mode genre / fallback : sans nombre), petit indicateur de progression discret conservé, couleurs
-  et typo alignées sur le `ColdStartSplash`. Pas d'anim platanes.
+- ✅ **S5 — `FilterSplash` au look du `ColdStartSplash`** (livré). Décision révisée avec moi
+  (l'option « pas d'anim platanes » envisagée au cadrage est tombée) : le `FilterSplash` doit
+  *ressembler* au splash principal — même disposition, même hero platane qui se balance + couronne
+  de 7 mini-platanes flottants. `MapOverlays.kt` : extrait un `SplashScaffold` privé (fond vert
+  `colorScheme.primary`, hero `ic_launcher_foreground` 168 dp `scale`+`rotationZ=sway`, fondu
+  d'entrée, `MiniArbreCrown` par-dessus — tout le pilotage `withFrameNanos` mutualisé, donc le
+  `FilterSplash` hérite gratuitement de la résistance à animation-scale=0 du S4) ; `ColdStartSplash`
+  et `FilterSplash` réécrits par-dessus. À la place de « Réveil des {count} arbres parisiens », le
+  `FilterSplash` affiche « Réveil des **{nv pluriel}** parisiens » (un seul `Text`/`AnnotatedString`,
+  le nom vernaculaire dans un span 20 sp SemiBold — « un peu plus gros et gras que le reste ») +
+  un petit `CircularProgressIndicator` discret (20 dp), **sans zone de tips**. Pluriel = +s sur le
+  1er mot du nv (`pluralizeHead` : `-eau`/`-eu`→`-eaux`/`-eux`, invariant en s/x/z ; accord
+  d'adjectif non géré — « Chêne vert » → « Chênes vert », assumé, le bandeau qui suit donne le nom
+  exact). `MapScreen.kt` : `splashSpeciesLabel` résolu depuis `filteredEntry` — filtre genre /
+  fiche `(G, sp.)` → `GenreInfo.nomFr` (« Prunier », pas « Prunier (Prunus sp.) ») ; filtre espèce
+  → `displayNomCommun`. `FilterBanner` inchangé. `FILTER_SPLASH_MIN_MS = 1000` conservé.
+  `:app:testDebugUnitTest` + `detekt` + `assembleDebug` OK. Reste : vérif device GrapheneOS.
 - **S6 — Tips : intégration des retours + nouveaux tips.** Appliquer les verdicts de l'HTML (tuer
   / réécrire / commentaires) sur `splash-tips-static.json` et les générateurs de `write_splash_tips()`.
   Ajouter des tips post-1.0 (saisons calendaires, badges binaires + familles « Familier des/du … »,

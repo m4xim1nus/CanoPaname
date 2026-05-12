@@ -1,7 +1,6 @@
 package app.arbre.ui.map
 
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Easing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -11,6 +10,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -30,7 +30,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.State
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -42,10 +41,15 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import app.arbre.R
 import app.arbre.data.SpeciesEntry
 import app.arbre.data.rememberCaptureRepository
@@ -136,43 +140,31 @@ internal fun FilterBanner(
 }
 
 /**
- * Splash overlay du cold start, superposé tant que `arbresPrets == false`.
- * Couleur de fond synchronisée avec `@color/ic_launcher_background` du splash
- * natif (themes.xml) — sans cela la transition flashe.
+ * Squelette commun aux deux splash plein écran (cold start global + mode filtré) :
+ * fond vert `colorScheme.primary` (à garder en sync avec `@color/ic_launcher_background`,
+ * sans quoi la transition depuis le splash natif flashe), hero platane qui se balance,
+ * fondu d'entrée, couronne décorative de mini-platanes flottants par-dessus.
+ *
+ * Pilotage `withFrameNanos` (cf. `ui/common/FrameClock.kt`) : ces animations doivent rester
+ * vivantes même si l'échelle d'animation système est à 0 — le splash est le seul retour
+ * visuel pendant le chargement DB + GeoJSON (cold start) ou le pré-filtre + setStyle MapLibre
+ * (mode filtré).
+ *
+ * `content` reçoit `introDone` (le fondu d'entrée est terminé) : le `ColdStartSplash` s'en
+ * sert pour n'autoriser la rotation des tips qu'après le fade-in.
  */
 @Composable
-internal fun ColdStartSplash() {
-    // Doit rester en sync avec @color/ic_launcher_background.
+private fun SplashScaffold(content: @Composable ColumnScope.(introDone: Boolean) -> Unit) {
     val splashGreen = MaterialTheme.colorScheme.primary
     val motion = MaterialTheme.arbresMotion
 
-    // Pilotage `withFrameNanos` (cf. `ui/common/FrameClock.kt`) : ces animations doivent rester
-    // vivantes même si l'échelle d'animation système est à 0 — le splash est le seul retour visuel
-    // pendant le chargement DB + GeoJSON.
     val swayP by rememberFramePingPong(periodMs = motion.sway * 2, easing = motion.swayEasing)
     val sway = -3f + swayP * 6f   // -3° → +3° → -3°
     val introState = rememberFrameProgress(durationMs = motion.medium, easing = motion.swayEasing)
     val introValue by introState
     // `derivedStateOf` pour ne déclencher qu'au passage 0.99 → 1f — sinon la
     // rotation des tips redémarrerait à chaque frame du fade-in.
-    val canRotateTips by remember { derivedStateOf { introState.value >= 1f } }
-
-    val splashTips = rememberSplashTipsRepository()
-    val captureRepo = rememberCaptureRepository()
-    val onboardingStore = rememberOnboardingStore()
-    val tipText by rememberSplashTipText(
-        repository = splashTips,
-        captureRepository = captureRepo,
-        onboardingStore = onboardingStore,
-        canRotate = canRotateTips,
-    )
-
-    // DOIT matcher le `point_count` du cluster MapLibre dezoomé à fond — sinon
-    // l'utilisateur croit qu'on lui survend quelques milliers d'arbres.
-    val datasetStats = rememberDatasetStats()
-    val totalFormatted = remember(datasetStats.totalArbres) {
-        NumberFormat.getInstance(Locale.FRANCE).format(datasetStats.totalArbres)
-    }
+    val introDone by remember { derivedStateOf { introState.value >= 1f } }
 
     Box(
         modifier = Modifier
@@ -193,53 +185,80 @@ internal fun ColdStartSplash() {
                     .graphicsLayer { rotationZ = sway },
             )
             Spacer(Modifier.height(20.dp))
-            Text(
-                text = "CanoPaname",
-                color = Color.White,
-                style = MaterialTheme.typography.displayMedium,
-            )
-            Spacer(Modifier.height(8.dp))
-            Text(
-                text = "Réveil des $totalFormatted arbres parisiens",
-                color = Color.White.copy(alpha = 0.85f),
-                style = MaterialTheme.typography.bodyMedium,
-            )
-            // Hauteur fixe pour éviter les sauts de layout entre une phrase
-            // courte et une longue.
-            Spacer(Modifier.height(32.dp))
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(84.dp)
-                    .padding(horizontal = 28.dp),
-                contentAlignment = Alignment.Center,
-            ) {
-                // Laissé en `AnimatedContent` (≠ frame-clock) : à échelle d'animation = 0 le
-                // tip change sec, ce qui est acceptable — un crossfade manuel devrait tenir les
-                // deux textes en parallèle pour un gain quasi nul.
-                AnimatedContent(
-                    targetState = tipText,
-                    transitionSpec = {
-                        fadeIn(tween(220)) togetherWith fadeOut(tween(220))
-                    },
-                    label = "splash-tip",
-                ) { text ->
-                    if (text != null) {
-                        Text(
-                            text = text,
-                            color = Color.White.copy(alpha = 0.85f),
-                            style = MaterialTheme.typography.bodyMedium,
-                            textAlign = TextAlign.Center,
-                            maxLines = 4,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                    }
-                }
-            }
+            content(introDone)
         }
         // Posée après la Column pour que les platanes passent au-dessus
         // du hero (z-order).
         MiniArbreCrown(motion = motion, cream = Color(0xFFF5F1E6))
+    }
+}
+
+/**
+ * Splash overlay du cold start, superposé tant que `arbresPrets == false`.
+ */
+@Composable
+internal fun ColdStartSplash() {
+    val splashTips = rememberSplashTipsRepository()
+    val captureRepo = rememberCaptureRepository()
+    val onboardingStore = rememberOnboardingStore()
+
+    // DOIT matcher le `point_count` du cluster MapLibre dezoomé à fond — sinon
+    // l'utilisateur croit qu'on lui survend quelques milliers d'arbres.
+    val datasetStats = rememberDatasetStats()
+    val totalFormatted = remember(datasetStats.totalArbres) {
+        NumberFormat.getInstance(Locale.FRANCE).format(datasetStats.totalArbres)
+    }
+
+    SplashScaffold { introDone ->
+        val tipText by rememberSplashTipText(
+            repository = splashTips,
+            captureRepository = captureRepo,
+            onboardingStore = onboardingStore,
+            canRotate = introDone,
+        )
+        Text(
+            text = "CanoPaname",
+            color = Color.White,
+            style = MaterialTheme.typography.displayMedium,
+        )
+        Spacer(Modifier.height(8.dp))
+        Text(
+            text = "Réveil des $totalFormatted arbres parisiens",
+            color = Color.White.copy(alpha = 0.85f),
+            style = MaterialTheme.typography.bodyMedium,
+        )
+        // Hauteur fixe pour éviter les sauts de layout entre une phrase
+        // courte et une longue.
+        Spacer(Modifier.height(32.dp))
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(84.dp)
+                .padding(horizontal = 28.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            // Laissé en `AnimatedContent` (≠ frame-clock) : à échelle d'animation = 0 le
+            // tip change sec, ce qui est acceptable — un crossfade manuel devrait tenir les
+            // deux textes en parallèle pour un gain quasi nul.
+            AnimatedContent(
+                targetState = tipText,
+                transitionSpec = {
+                    fadeIn(tween(220)) togetherWith fadeOut(tween(220))
+                },
+                label = "splash-tip",
+            ) { text ->
+                if (text != null) {
+                    Text(
+                        text = text,
+                        color = Color.White.copy(alpha = 0.85f),
+                        style = MaterialTheme.typography.bodyMedium,
+                        textAlign = TextAlign.Center,
+                        maxLines = 4,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
+        }
     }
 }
 
@@ -362,45 +381,57 @@ private fun MiniArbreItem(
     )
 }
 
-/** Splash bref du mode `MAP_FILTERED` (pré-filtre Kotlin < 1 s + setStyle
- *  MapLibre 1-3 s). Pas un boot global, pas de silhouette ni d'animation
- *  infinie — juste un voile pour masquer le flash de carte vide.
+/**
+ * Splash du mode `MAP_FILTERED` (pré-filtre Kotlin < 1 s + setStyle MapLibre 1-3 s).
+ * Même disposition / mêmes animations que le `ColdStartSplash` (hero platane qui se balance
+ * + couronne de mini-platanes, via `SplashScaffold`), mais sans zone de tips : à la place du
+ * sous-titre compteur, « Réveil des <nv> parisiens » avec le nom vernaculaire mis en avant
+ * (plus gros + gras). `speciesLabel` est le nv au singulier — la mise au pluriel se fait ici.
  */
 @Composable
 internal fun FilterSplash(speciesLabel: String) {
-    val splashGreen = MaterialTheme.colorScheme.primary
-    val motion = MaterialTheme.arbresMotion
-    val intro = remember { Animatable(0f) }
-    LaunchedEffect(Unit) {
-        intro.animateTo(
-            targetValue = 1f,
-            animationSpec = tween(durationMillis = motion.short, easing = motion.swayEasing),
+    SplashScaffold {
+        val phrase = buildAnnotatedString {
+            withStyle(SpanStyle(color = Color.White.copy(alpha = 0.85f))) {
+                append("Réveil des ")
+            }
+            withStyle(
+                SpanStyle(color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.SemiBold),
+            ) {
+                append(pluralizeHead(speciesLabel))
+            }
+            withStyle(SpanStyle(color = Color.White.copy(alpha = 0.85f))) {
+                append(" parisiens")
+            }
+        }
+        Text(
+            text = phrase,
+            style = MaterialTheme.typography.bodyMedium,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.padding(horizontal = 32.dp),
+        )
+        Spacer(Modifier.height(20.dp))
+        CircularProgressIndicator(
+            color = Color.White.copy(alpha = 0.7f),
+            strokeWidth = 2.dp,
+            modifier = Modifier.size(20.dp),
         )
     }
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(splashGreen),
-        contentAlignment = Alignment.Center,
-    ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier
-                .padding(horizontal = 48.dp)
-                .graphicsLayer { alpha = intro.value },
-        ) {
-            Text(
-                text = "Filtrage de $speciesLabel…",
-                color = Color.White,
-                style = MaterialTheme.typography.titleMedium,
-                textAlign = TextAlign.Center,
-            )
-            Spacer(Modifier.height(20.dp))
-            CircularProgressIndicator(
-                color = Color.White,
-                strokeWidth = 2.5.dp,
-                modifier = Modifier.size(28.dp),
-            )
-        }
+}
+
+/** Pluralise le 1er mot d'un nom vernaculaire : « Platane » → « Platanes », « Bouleau » →
+ *  « Bouleaux », « Cyprès » → « Cyprès » (invariant), « Tilleul à petites feuilles » →
+ *  « Tilleuls à petites feuilles ». L'accord d'adjectif n'est pas géré (« Chêne vert » →
+ *  « Chênes vert ») — assumé, le bandeau qui suit donne le nom exact. */
+private fun pluralizeHead(label: String): String {
+    val space = label.indexOf(' ')
+    val head = if (space == -1) label else label.substring(0, space)
+    val rest = if (space == -1) "" else label.substring(space)
+    val lower = head.lowercase(Locale.FRANCE)
+    val pluralHead = when {
+        lower.endsWith("s") || lower.endsWith("x") || lower.endsWith("z") -> head
+        lower.endsWith("eau") || lower.endsWith("eu") -> head + "x"
+        else -> head + "s"
     }
+    return pluralHead + rest
 }
