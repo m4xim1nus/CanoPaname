@@ -13,6 +13,7 @@ import app.arbre.data.CaptureRepository
 import app.arbre.data.DatasetStats
 import app.arbre.data.GenreInfoRepository
 import app.arbre.data.OnboardingStore
+import app.arbre.data.RadarObscureStore
 import app.arbre.data.RemarquableInfoRepository
 import app.arbre.data.SeasonStore
 import app.arbre.data.SpeciesIndex
@@ -62,6 +63,8 @@ class ArbresApp : Application() {
     val seasonStore: SeasonStore = SeasonStore()
 
     val onboardingStore: OnboardingStore by lazy { OnboardingStore(this) }
+
+    val radarObscureStore: RadarObscureStore by lazy { RadarObscureStore(this) }
 
     val backupExporter: BackupExporter by lazy {
         BackupExporter(this, database.captureDao())

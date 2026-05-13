@@ -71,6 +71,12 @@ fun rememberOnboardingStore(): OnboardingStore {
 }
 
 @Composable
+fun rememberRadarObscureStore(): RadarObscureStore {
+    val ctx = LocalContext.current
+    return remember(ctx) { ctx.app().radarObscureStore }
+}
+
+@Composable
 fun rememberSplashTipsRepository(): SplashTipsRepository {
     val ctx = LocalContext.current
     return remember(ctx) { ctx.app().splashTipsRepository }
@@ -104,5 +110,6 @@ fun Context.genreInfoRepository(): GenreInfoRepository = app().genreInfoReposito
 fun Context.arrSpeciesIndex(): ArrSpeciesIndex = app().arrSpeciesIndex
 fun Context.seasonStore(): SeasonStore = app().seasonStore
 fun Context.onboardingStore(): OnboardingStore = app().onboardingStore
+fun Context.radarObscureStore(): RadarObscureStore = app().radarObscureStore
 fun Context.splashTipsRepository(): SplashTipsRepository = app().splashTipsRepository
 fun Context.badgeRepository(): BadgeRepository = app().badgeRepository

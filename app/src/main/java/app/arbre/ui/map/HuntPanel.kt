@@ -1,15 +1,18 @@
 package app.arbre.ui.map
 
 import android.location.Location
+import android.os.SystemClock
 import androidx.compose.animation.core.animateIntAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -26,10 +29,12 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
@@ -38,14 +43,17 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.arbre.data.Arbre
+import app.arbre.data.rememberRadarObscureStore
 import app.arbre.ui.theme.arbresColors
 import app.arbre.util.LocationProvider
+import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
 /**
@@ -222,12 +230,15 @@ private fun HuntTargetText(
     resolveQualification: (Arbre) -> String?,
     modifier: Modifier = Modifier,
 ) {
+    val obscured by rememberRadarObscureStore().obscured.collectAsState(initial = false)
     val (title, subtitle) = when (readout) {
         HuntReadout.Loading -> "Chasse aux remarquables" to "Chargement…"
         HuntReadout.AllDiscovered -> "Tous les remarquables découverts" to "Bravo 🎉"
-        is HuntReadout.NoFix -> resolveName(readout.target) to "Localisation en cours…"
+        is HuntReadout.NoFix ->
+            (if (obscured) "???" else resolveName(readout.target)) to "Localisation en cours…"
         is HuntReadout.Locked ->
-            resolveName(readout.target) to glossQualification(resolveQualification(readout.target))
+            if (obscured) "???" to "???"
+            else resolveName(readout.target) to glossQualification(resolveQualification(readout.target))
     }
     Column(modifier = modifier) {
         Text(title, style = MaterialTheme.typography.titleMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
@@ -282,44 +293,67 @@ private fun HuntDistanceLabel(distanceM: Float) {
 @Composable
 private fun RadarGlyph(sweep: Float, pulse: Float, modifier: Modifier = Modifier) {
     val accent = MaterialTheme.arbresColors.remarquableOrange
-    Canvas(modifier = modifier.graphicsLayer { rotationZ = sweep }) {
-        val r = size.minDimension / 2f
-        val baseLineW = 1.6.dp.toPx()
-        listOf(1f to 0.45f, 0.66f to 0.3f, 0.33f to 0.2f).forEach { (frac, alpha) ->
-            drawCircle(accent.copy(alpha = alpha), r * frac, center, style = Stroke(1.2.dp.toPx()))
-        }
-        drawCircle(accent, 2.dp.toPx(), center)
-        // Comète : pie-slice de 70° côté anti-horaire de la ligne (= derrière,
-        // puisque la rotation est horaire). La ligne pointe vers le haut = midi
-        // à rotationZ = 0.
-        drawArc(
-            color = accent.copy(alpha = 0.16f),
-            startAngle = -160f,
-            sweepAngle = 70f,
-            useCenter = true,
-            topLeft = Offset(center.x - r, center.y - r),
-            size = Size(r * 2f, r * 2f),
-        )
-        // Anneau « ping » : jaillit du centre (rayon r·(1−pulse)) en s'estompant.
-        if (pulse > 0.01f) {
-            drawCircle(
-                accent.copy(alpha = pulse * 0.5f),
-                radius = r * (1f - pulse),
-                center = center,
-                style = Stroke(1.4.dp.toPx()),
+    val store = rememberRadarObscureStore()
+    val scope = rememberCoroutineScope()
+    // Triple-tap easter egg : 3 taps avec < 600 ms entre chaque → bascule
+    // l'obscurcissement. `pointerInput` posé sur le `Box` parent (statique)
+    // plutôt que sur le Canvas pour que le hit-test ne tourne pas avec le
+    // balayage (`graphicsLayer { rotationZ = sweep }` côté Canvas).
+    var tapState by remember { mutableStateOf(0 to 0L) }
+    Box(
+        modifier = modifier.pointerInput(Unit) {
+            detectTapGestures(onTap = {
+                val now = SystemClock.uptimeMillis()
+                val (count, lastMs) = tapState
+                val nextCount = if (now - lastMs > 600L) 1 else count + 1
+                if (nextCount >= 3) {
+                    scope.launch { store.toggle() }
+                    tapState = 0 to 0L
+                } else {
+                    tapState = nextCount to now
+                }
+            })
+        },
+    ) {
+        Canvas(modifier = Modifier.fillMaxSize().graphicsLayer { rotationZ = sweep }) {
+            val r = size.minDimension / 2f
+            val baseLineW = 1.6.dp.toPx()
+            listOf(1f to 0.45f, 0.66f to 0.3f, 0.33f to 0.2f).forEach { (frac, alpha) ->
+                drawCircle(accent.copy(alpha = alpha), r * frac, center, style = Stroke(1.2.dp.toPx()))
+            }
+            drawCircle(accent, 2.dp.toPx(), center)
+            // Comète : pie-slice de 70° côté anti-horaire de la ligne (= derrière,
+            // puisque la rotation est horaire). La ligne pointe vers le haut = midi
+            // à rotationZ = 0.
+            drawArc(
+                color = accent.copy(alpha = 0.16f),
+                startAngle = -160f,
+                sweepAngle = 70f,
+                useCenter = true,
+                topLeft = Offset(center.x - r, center.y - r),
+                size = Size(r * 2f, r * 2f),
             )
+            // Anneau « ping » : jaillit du centre (rayon r·(1−pulse)) en s'estompant.
+            if (pulse > 0.01f) {
+                drawCircle(
+                    accent.copy(alpha = pulse * 0.5f),
+                    radius = r * (1f - pulse),
+                    center = center,
+                    style = Stroke(1.4.dp.toPx()),
+                )
+            }
+            // Flash du trait : front-loaded (pulse²) → snap épais puis ré-affine.
+            val flash = pulse * pulse
+            val lineW = baseLineW * (1f + flash * 2.5f)
+            if (flash > 0.01f) {
+                drawLine(
+                    accent.copy(alpha = flash * 0.35f),
+                    center,
+                    Offset(center.x, center.y - r),
+                    strokeWidth = lineW * 2.2f,
+                )
+            }
+            drawLine(accent, center, Offset(center.x, center.y - r), strokeWidth = lineW)
         }
-        // Flash du trait : front-loaded (pulse²) → snap épais puis ré-affine.
-        val flash = pulse * pulse
-        val lineW = baseLineW * (1f + flash * 2.5f)
-        if (flash > 0.01f) {
-            drawLine(
-                accent.copy(alpha = flash * 0.35f),
-                center,
-                Offset(center.x, center.y - r),
-                strokeWidth = lineW * 2.2f,
-            )
-        }
-        drawLine(accent, center, Offset(center.x, center.y - r), strokeWidth = lineW)
     }
 }
