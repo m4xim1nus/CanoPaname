@@ -4,7 +4,20 @@ App perso, pas de calendrier engageant. Single-player, stockage local strict —
 
 ## Cycle en cours
 
-_Aucun cycle ouvert._ Prochain cycle à cadrer — candidats dans « Prochains cycles » ci-dessous et dans `BACKLOG.md` (items `[→Codename]` / `[ ]` / `[creuser]`). Le triage du backlog se fait à l'ouverture du cycle suivant (procédure dans `CLAUDE.md`, *Workflow & docs*).
+### Polissage
+
+Cycle court de correctifs (retours utilisateurs accumulés depuis `v1.3.0`) + passe de nettoyage des `.md` et des commentaires datés du code. Objectif latent : faciliter une future transcription iOS en rendant la codebase lisible sans contexte interne (« S9 Lot B », « livré cycle Catalogue »…). Aucune casse de schéma, aucun changement d'architecture. Cible release `1.3.1`.
+
+Six sprints :
+
+- **S1 — Retours UX textes + alignement RemarquablesScreen** : libellé HuntPanel `"Arbre remarquable non capturé le plus proche"`, RemarquablesScreen aligné sur ArboretumScreen (enum `LISTE/CATALOGUE` → `CATALOGUE/HISTORIQUE`, ordre des segmented inversé, default Catalogue), retrait du tip `app.season_tint` obsolète, dédoublonnage `dataset.rank_5` ↔ `dataset.iconic.acer_platanoides`.
+- **S2 — Easter egg radar** : triple-tap sur `RadarGlyph` → toggle persisté (nouveau `RadarObscureStore`, DataStore Preferences) qui remplace titre + qualification du `HuntTargetText` par `???`. Caché, non communiqué, distance live conservée.
+- **S3 — Bug zombies Arboretum + majuscule `nv`** : filtre `pokedexNumber != null` dans `CataloguePokedexView` et `CatalogueView` (16 fiches `—` disparaissent), `tools/build_dataset.py` invoque `_capitalize_fr()` au write de `nv`, rebuild complet du dataset.
+- **S4 — Placeholder retours additionnels** : tampon explicite pour tout retour qui arrive en cours de cycle (à supprimer si rien ne vient).
+- **S5 — Nettoyage `.md` + commentaires datés** : passe critique sur `CLAUDE.md`, `README.md` (`CHANGELOG.md` reste intact) et sur les commentaires des fichiers Kotlin / `tools/build_dataset.py` qui pointent vers des sprints internes. Critères : supprimer les références chronologiques (« S9 Lot B »), reformuler en gardant l'invariant brut, conserver les gotchas non triviaux.
+- **S6 — Clôture `v1.3.1`** : bump version, tests + lint + detekt + suite Python verts, smoke test device GrapheneOS, APK release signé, entrée `CHANGELOG.md [1.3.1]`, tag git, rotation de cycle dans ce fichier.
+
+Items absorbés / introduits listés dans `BACKLOG.md` sous *Cycle Polissage (en cours)*.
 
 ## Prochains cycles
 
