@@ -156,7 +156,7 @@ fun HuntPanel(
 
     val contentMinHeight = (LocalConfiguration.current.screenHeightDp * PANEL_HEIGHT_FRACTION).dp
     val topLabel = when (readout) {
-        is HuntReadout.Locked, is HuntReadout.NoFix -> "Arbre remarquable le plus proche"
+        is HuntReadout.Locked, is HuntReadout.NoFix -> "Arbre remarquable non capturé le plus proche"
         else -> null
     }
 

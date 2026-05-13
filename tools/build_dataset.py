@@ -2313,6 +2313,7 @@ def write_splash_tips(
         ("Ginkgo", "biloba", "ginkgo"),
         ("Cedrus", "libani", "cèdre du Liban"),
     ]
+    iconic_sk: set[int] = set()
     for genre, espece, label in iconic_named:
         sk = species_index.get((genre, espece))
         if sk is None:
@@ -2320,6 +2321,7 @@ def write_splash_tips(
         c = count_by_sk.get(sk, 0)
         if c <= 0:
             continue
+        iconic_sk.add(sk)
         push(
             f"dataset.iconic.{genre.lower()}_{espece.lower()}",
             f"{_le_or_l(label)}{label} a {_format_int_fr(c)} représentants à Paris. "
@@ -2581,6 +2583,10 @@ def write_splash_tips(
         if idx >= len(sorted_sk):
             break
         sk, c = sorted_sk[idx]
+        if sk in iconic_sk:
+            # Déjà couvert par dataset.iconic.* — éviter le doublon perçu
+            # (mêmes chiffres, mêmes espèces, deux phrasés).
+            continue
         g, e = sk_to_pair[sk]
         nom = species_label(sk, g, e)
         # Si le nom commun est déjà utilisé pour un autre rang, ajoute le

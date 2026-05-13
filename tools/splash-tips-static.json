@@ -176,8 +176,6 @@
     {"id": "popculture.before_sunset", "category": "popculture", "text": "« Before Sunset » se balade dans le Paris des quais et de la Coulée verte. Les arbres y tiennent un rôle de figuration permanente."},
     {"id": "popculture.la_haine", "category": "popculture", "text": "« La Haine » se passe surtout en banlieue bétonnée. Les rares arbres du film sont là pour souligner qu'il en manque."},
 
-    {"id": "app.season_tint", "category": "app", "text": "L'app change discrètement de couleur selon la saison. En hiver, elle tire vers le gris — comme à peu près tout le reste."},
-    {"id": "app.season_scope", "category": "app", "text": "Tes captures sont rangées par saison. Un arbre vu en juillet ne compte pas dans ton hiver. Recommence."},
     {"id": "app.badges_binary", "category": "app", "text": "Les badges de l'app sont binaires : décrochés une fois, décrochés pour toujours. Aucune barre ne redescend. Le contraire de la vraie vie."},
     {"id": "app.familier", "category": "app", "text": "Toutes les espèces d'un genre capturées ? « Familier des chênes ». Toutes celles d'un arrondissement ? « Familier du 12e ». Une bonne quarantaine de titres dorment quelque part."},
     {"id": "app.backup_export", "category": "app", "text": "Tu peux exporter tout ton herbier dans un fichier ZIP, photos comprises. À ranger ailleurs que sur le téléphone, idéalement."},

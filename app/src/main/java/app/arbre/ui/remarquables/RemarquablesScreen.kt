@@ -99,7 +99,7 @@ fun RemarquablesScreen(
     val nbDecouverts = tousRemarquables.count { it.id in capturedIds }
 
     // `rememberSaveable` : conserver le mode au retour de la fiche-arbre.
-    var viewMode by rememberSaveable { mutableStateOf(RemarquablesViewMode.LISTE) }
+    var viewMode by rememberSaveable { mutableStateOf(RemarquablesViewMode.CATALOGUE) }
 
     Scaffold(
         topBar = {
@@ -131,17 +131,17 @@ fun RemarquablesScreen(
                     .padding(horizontal = 16.dp, vertical = 12.dp),
             )
             when (viewMode) {
-                RemarquablesViewMode.LISTE -> ListeView(
-                    tousRemarquables = tousRemarquables,
-                    capturedIds = capturedIds,
-                    firstPhotoByArbreId = firstPhotoByArbreId,
-                    lastCaptureTsByArbreId = lastCaptureTsByArbreId,
-                    onRemarquableClick = onRemarquableClick,
-                )
                 RemarquablesViewMode.CATALOGUE -> CatalogueView(
                     tousRemarquables = tousRemarquables,
                     capturedIds = capturedIds,
                     firstPhotoByArbreId = firstPhotoByArbreId,
+                    onRemarquableClick = onRemarquableClick,
+                )
+                RemarquablesViewMode.HISTORIQUE -> HistoriqueView(
+                    tousRemarquables = tousRemarquables,
+                    capturedIds = capturedIds,
+                    firstPhotoByArbreId = firstPhotoByArbreId,
+                    lastCaptureTsByArbreId = lastCaptureTsByArbreId,
                     onRemarquableClick = onRemarquableClick,
                 )
             }
@@ -149,7 +149,7 @@ fun RemarquablesScreen(
     }
 }
 
-private enum class RemarquablesViewMode { LISTE, CATALOGUE }
+private enum class RemarquablesViewMode { CATALOGUE, HISTORIQUE }
 
 @Composable
 private fun ViewModeSelector(
@@ -159,20 +159,20 @@ private fun ViewModeSelector(
 ) {
     SingleChoiceSegmentedButtonRow(modifier = modifier) {
         SegmentedButton(
-            selected = current == RemarquablesViewMode.LISTE,
-            onClick = { onSelect(RemarquablesViewMode.LISTE) },
-            shape = SegmentedButtonDefaults.itemShape(0, 2),
-        ) { Text(stringResource(R.string.segment_liste)) }
-        SegmentedButton(
             selected = current == RemarquablesViewMode.CATALOGUE,
             onClick = { onSelect(RemarquablesViewMode.CATALOGUE) },
-            shape = SegmentedButtonDefaults.itemShape(1, 2),
+            shape = SegmentedButtonDefaults.itemShape(0, 2),
         ) { Text(stringResource(R.string.segment_catalogue)) }
+        SegmentedButton(
+            selected = current == RemarquablesViewMode.HISTORIQUE,
+            onClick = { onSelect(RemarquablesViewMode.HISTORIQUE) },
+            shape = SegmentedButtonDefaults.itemShape(1, 2),
+        ) { Text(stringResource(R.string.segment_historique)) }
     }
 }
 
 @Composable
-private fun ListeView(
+private fun HistoriqueView(
     tousRemarquables: List<Arbre>,
     capturedIds: Set<Long>,
     firstPhotoByArbreId: Map<Long, File>,

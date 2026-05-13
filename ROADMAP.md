@@ -10,7 +10,7 @@ Cycle court de correctifs (retours utilisateurs accumulés depuis `v1.3.0`) + pa
 
 Six sprints :
 
-- **S1 — Retours UX textes + alignement RemarquablesScreen** : libellé HuntPanel `"Arbre remarquable non capturé le plus proche"`, RemarquablesScreen aligné sur ArboretumScreen (enum `LISTE/CATALOGUE` → `CATALOGUE/HISTORIQUE`, ordre des segmented inversé, default Catalogue), retrait du tip `app.season_tint` obsolète, dédoublonnage `dataset.rank_5` ↔ `dataset.iconic.acer_platanoides`.
+- **S1 — Retours UX textes + alignement RemarquablesScreen** *(livré)* : libellé HuntPanel `"Arbre remarquable non capturé le plus proche"`, RemarquablesScreen aligné sur ArboretumScreen (enum `LISTE/CATALOGUE` → `CATALOGUE/HISTORIQUE`, ordre des segmented inversé, default Catalogue, composable interne `ListeView` → `HistoriqueView`), retrait des tips `app.season_tint` **et** `app.season_scope` (aucune saisonnalité live à date), dédoublonnage `dataset.rank_5` ↔ `dataset.iconic.acer_platanoides` via garde `iconic_sk` dans la boucle rank de `tools/build_dataset.py`.
 - **S2 — Easter egg radar** : triple-tap sur `RadarGlyph` → toggle persisté (nouveau `RadarObscureStore`, DataStore Preferences) qui remplace titre + qualification du `HuntTargetText` par `???`. Caché, non communiqué, distance live conservée.
 - **S3 — Bug zombies Arboretum + majuscule `nv`** : filtre `pokedexNumber != null` dans `CataloguePokedexView` et `CatalogueView` (16 fiches `—` disparaissent), `tools/build_dataset.py` invoque `_capitalize_fr()` au write de `nv`, rebuild complet du dataset.
 - **S4 — Placeholder retours additionnels** : tampon explicite pour tout retour qui arrive en cours de cycle (à supprimer si rien ne vient).
