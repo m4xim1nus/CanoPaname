@@ -80,25 +80,15 @@ import androidx.compose.runtime.rememberCoroutineScope
 @Composable
 fun SpeciesDetailScreen(
     speciesIndex: Int,
-    onBack: () -> Unit,
-    /**
-     * `Set<Int>` à filtrer sur la carte. Toujours singleton `setOf(entry.index)`
-     * pour une fiche espèce — la fiche genre héberge le set polymorphe (sp. +
-     * sks identifiés capturés du genre).
-     */
-    onShowOnMap: (Set<Int>) -> Unit = {},
-    onShowArbreOnMap: (Long) -> Unit = {},
-    onRemarquableClick: (Long) -> Unit = {},
-    onUnlockLost: () -> Unit = {},
-    /**
-     * Les fiches `(G, sp.)` ne sont pas exposées comme fiches espèce — c'est
-     * `GenreDetailScreen` qui les absorbe. Ce callback est invoqué quand un
-     * deep link historique (`Routes.species(sk)` sur un `unknownSpecies`)
-     * atterrit ici — on redirige immédiatement vers la fiche genre.
-     */
-    onRedirectToGenre: (String) -> Unit = {},
+    actions: SpeciesActions,
     celebrate: Boolean = false,
 ) {
+    val onBack = actions.onBack
+    val onShowOnMap = actions.onShowOnMap
+    val onShowArbreOnMap = actions.onShowArbreOnMap
+    val onRemarquableClick = actions.onRemarquableClick
+    val onUnlockLost = actions.onUnlockLost
+    val onRedirectToGenre = actions.onRedirectToGenre
     val speciesIndexRepo = rememberSpeciesIndex()
     val arbreRepo = rememberArbreRepository()
     val captureRepo = rememberCaptureRepository()

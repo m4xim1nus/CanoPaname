@@ -15,49 +15,16 @@ import app.arbre.data.rememberOnboardingStore
 import app.arbre.ui.about.AboutScreen
 import app.arbre.ui.arboretum.ArboretumScreen
 import app.arbre.ui.badges.BadgesScreen
+import app.arbre.ui.genre.GenreActions
 import app.arbre.ui.genre.GenreDetailScreen
 import app.arbre.ui.map.MapScreen
 import app.arbre.ui.onboarding.WelcomeScreen
 import app.arbre.ui.profile.ProfileScreen
 import app.arbre.ui.remarquables.RemarquableDetailScreen
 import app.arbre.ui.remarquables.RemarquablesScreen
+import app.arbre.ui.species.SpeciesActions
 import app.arbre.ui.species.SpeciesDetailScreen
 import kotlinx.coroutines.launch
-
-object Routes {
-    const val WELCOME = "welcome"
-    const val WELCOME_REPLAY = "welcome_replay"
-    // `pulseArbreId` en query param optionnel — depuis fiche-remarquable ou
-    // PhotoLightbox on saute à un arbre exact (fly-to + pulse + sheet).
-    const val MAP = "map?pulseArbreId={pulseArbreId}"
-    const val ARBORETUM = "arboretum"
-    const val PROFILE = "profile"
-    const val BADGES = "badges"
-    const val REMARQUABLES = "remarquables"
-    const val REMARQUABLE_DETAIL = "remarquable_detail/{arbreId}"
-    // `celebrate` en query param — compose-navigation n'autorise les
-    // optionnels qu'après `?`.
-    const val SPECIES = "species/{speciesIndex}?celebrate={celebrate}"
-    // Destination distincte de MAP : MapViewModel propre + caméra Paris z11
-    // + entrée séparée du backstack. `speciesIndices` = set CSV de sks
-    // (1 sk = filtre fiche-espèce normale ; N sks = filtre genre depuis la
-    // fiche genre).
-    const val MAP_FILTERED = "map_filtered/{speciesIndices}"
-    // Fiche genre dédiée. `genre` est URL-encodé (peut contenir espace pour
-    // les hybrides type « x Cupressocyparis »).
-    const val GENRE = "genre/{genre}"
-    const val ABOUT = "about"
-
-    fun species(speciesIndex: Int, celebrate: Boolean = false): String =
-        "species/$speciesIndex?celebrate=$celebrate"
-    fun mapFiltered(speciesIndex: Int): String = mapFiltered(setOf(speciesIndex))
-    fun mapFiltered(speciesIndices: Set<Int>): String =
-        "map_filtered/${speciesIndices.sorted().joinToString(",")}"
-    fun remarquableDetail(arbreId: Long): String = "remarquable_detail/$arbreId"
-    fun map(pulseArbreId: Long? = null): String =
-        if (pulseArbreId != null) "map?pulseArbreId=$pulseArbreId" else "map"
-    fun genre(genre: String): String = "genre/${Uri.encode(genre)}"
-}
 
 @Composable
 fun ArbresNavHost() {
@@ -182,20 +149,22 @@ fun ArbresNavHost() {
             val celebrate = entry.arguments?.getBoolean("celebrate") ?: false
             SpeciesDetailScreen(
                 speciesIndex = sk,
-                onBack = { nav.popBackStack() },
-                onShowOnMap = { sks -> nav.navigate(Routes.mapFiltered(sks)) },
-                onShowArbreOnMap = { id ->
-                    nav.navigate(Routes.map(id)) {
-                        popUpTo(Routes.MAP) { inclusive = false }
-                    }
-                },
-                onRemarquableClick = { id -> nav.navigate(Routes.remarquableDetail(id)) },
-                onUnlockLost = { nav.popBackStack(Routes.MAP, inclusive = false) },
-                onRedirectToGenre = { genre ->
-                    nav.navigate(Routes.genre(genre)) {
-                        popUpTo(Routes.SPECIES) { inclusive = true }
-                    }
-                },
+                actions = SpeciesActions(
+                    onBack = { nav.popBackStack() },
+                    onShowOnMap = { sks -> nav.navigate(Routes.mapFiltered(sks)) },
+                    onShowArbreOnMap = { id ->
+                        nav.navigate(Routes.map(id)) {
+                            popUpTo(Routes.MAP) { inclusive = false }
+                        }
+                    },
+                    onRemarquableClick = { id -> nav.navigate(Routes.remarquableDetail(id)) },
+                    onUnlockLost = { nav.popBackStack(Routes.MAP, inclusive = false) },
+                    onRedirectToGenre = { genre ->
+                        nav.navigate(Routes.genre(genre)) {
+                            popUpTo(Routes.SPECIES) { inclusive = true }
+                        }
+                    },
+                ),
                 celebrate = celebrate,
             )
         }
@@ -231,15 +200,17 @@ fun ArbresNavHost() {
             if (genre == null) return@composable
             GenreDetailScreen(
                 genre = genre,
-                onBack = { nav.popBackStack() },
-                onSpeciesClick = { sk -> nav.navigate(Routes.species(sk)) },
-                onShowOnMap = { sks -> nav.navigate(Routes.mapFiltered(sks)) },
-                onShowArbreOnMap = { id ->
-                    nav.navigate(Routes.map(id)) {
-                        popUpTo(Routes.MAP) { inclusive = false }
-                    }
-                },
-                onUnlockLost = { nav.popBackStack(Routes.MAP, inclusive = false) },
+                actions = GenreActions(
+                    onBack = { nav.popBackStack() },
+                    onSpeciesClick = { sk -> nav.navigate(Routes.species(sk)) },
+                    onShowOnMap = { sks -> nav.navigate(Routes.mapFiltered(sks)) },
+                    onShowArbreOnMap = { id ->
+                        nav.navigate(Routes.map(id)) {
+                            popUpTo(Routes.MAP) { inclusive = false }
+                        }
+                    },
+                    onUnlockLost = { nav.popBackStack(Routes.MAP, inclusive = false) },
+                ),
             )
         }
     }

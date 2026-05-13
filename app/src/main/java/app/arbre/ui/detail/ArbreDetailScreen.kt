@@ -30,10 +30,41 @@ import androidx.compose.ui.unit.dp
 import app.arbre.R
 import app.arbre.data.Arbre
 import app.arbre.data.RemarquableInfo
+import app.arbre.data.isEmpty
 import app.arbre.ui.common.PhotoGallery
 import app.arbre.ui.map.CaptureAvailability
 import app.arbre.ui.theme.arbresColors
 import java.io.File
+
+/**
+ * Données affichées par le sheet/fiche. Le `displayName` est précalculé côté
+ * caller (préférence pour `displayNomCommun` du species-index, sinon fallback
+ * `arbre.nomAffichage`). `captureAvailability` est en state : c'est le résultat
+ * d'une évaluation GPS / distance, pas une action.
+ */
+data class ArbreDetailState(
+    val arbre: Arbre,
+    val isDiscovered: Boolean,
+    val displayName: String,
+    val photoFiles: List<File> = emptyList(),
+    val medianHeightM: Int? = null,
+    val medianCircCm: Int? = null,
+    val remarquableInfo: RemarquableInfo? = null,
+    val captureAvailability: CaptureAvailability? = null,
+)
+
+/**
+ * Callbacks utilisateur. Tous nullables sauf `onPhotoClick` (le default `{}`
+ * sert au mode lecture seule — fiche remarquable plein-écran qui rend la
+ * gallery hors du composable).
+ */
+data class ArbreDetailActions(
+    val onPhotoClick: (Int) -> Unit = {},
+    val onPhotoLongClick: ((Int) -> Unit)? = null,
+    val onCapturer: (() -> Unit)? = null,
+    val onSpeciesClick: (() -> Unit)? = null,
+    val onRemarquableClick: (() -> Unit)? = null,
+)
 
 /**
  * Rendu du sheet selon l'état de découverte. Un remarquable non capturé
@@ -42,25 +73,8 @@ import java.io.File
  */
 @Composable
 fun ArbreDetailContent(
-    arbre: Arbre,
-    isDiscovered: Boolean,
-    /**
-     * Nom à afficher en titre. Le caller pré-calcule via le `displayNomCommun`
-     * de l'entrée `SpeciesIndex` (préfère `nv`). Default = `arbre.nomAffichage`
-     * (fallback `nomCommun ?: binôme`) — sûr pour les arbres absents du
-     * species-index.
-     */
-    displayName: String = arbre.nomAffichage,
-    photoFiles: List<File> = emptyList(),
-    onPhotoClick: (Int) -> Unit = {},
-    onPhotoLongClick: ((Int) -> Unit)? = null,
-    onCapturer: (() -> Unit)? = null,
-    captureAvailability: CaptureAvailability? = null,
-    onSpeciesClick: (() -> Unit)? = null,
-    onRemarquableClick: (() -> Unit)? = null,
-    medianHeightM: Int? = null,
-    medianCircCm: Int? = null,
-    remarquableInfo: RemarquableInfo? = null,
+    state: ArbreDetailState,
+    actions: ArbreDetailActions = ArbreDetailActions(),
 ) {
     Column(
         modifier = Modifier
@@ -69,44 +83,22 @@ fun ArbreDetailContent(
             .padding(bottom = 24.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        if (isDiscovered) {
-            DiscoveredContent(
-                arbre = arbre,
-                displayName = displayName,
-                photoFiles = photoFiles,
-                onPhotoClick = onPhotoClick,
-                onPhotoLongClick = onPhotoLongClick,
-                medianHeightM = medianHeightM,
-                medianCircCm = medianCircCm,
-                onSpeciesClick = onSpeciesClick,
-                onRemarquableClick = onRemarquableClick,
-                remarquableInfo = remarquableInfo,
-                onCapturer = onCapturer,
-                captureAvailability = captureAvailability,
-            )
+        if (state.isDiscovered) {
+            DiscoveredContent(state, actions)
         } else {
-            UnknownContent(arbre, onCapturer, captureAvailability)
+            UnknownContent(state.arbre, actions.onCapturer, state.captureAvailability)
         }
     }
 }
 
 @Composable
 private fun DiscoveredContent(
-    arbre: Arbre,
-    displayName: String,
-    photoFiles: List<File>,
-    onPhotoClick: (Int) -> Unit,
-    onPhotoLongClick: ((Int) -> Unit)?,
-    medianHeightM: Int?,
-    medianCircCm: Int?,
-    onSpeciesClick: (() -> Unit)?,
-    onRemarquableClick: (() -> Unit)?,
-    remarquableInfo: RemarquableInfo?,
-    onCapturer: (() -> Unit)?,
-    captureAvailability: CaptureAvailability?,
+    state: ArbreDetailState,
+    actions: ArbreDetailActions,
 ) {
+    val arbre = state.arbre
     Text(
-        displayName,
+        state.displayName,
         style = MaterialTheme.typography.headlineSmall,
     )
 
@@ -126,7 +118,7 @@ private fun DiscoveredContent(
                 color = MaterialTheme.arbresColors.remarquableOrange,
             )
         }
-        remarquableInfo?.let { RemarquableBlock(it) }
+        state.remarquableInfo?.let { RemarquableBlock(it) }
     }
 
     val taxonomie = listOfNotNull(arbre.genre, arbre.espece, arbre.varieteCultivar)
@@ -141,22 +133,24 @@ private fun DiscoveredContent(
     }
 
     arbre.hauteurM?.let { h ->
-        Text("Hauteur : $h m" + medianComparison(h, medianHeightM))
+        Text("Hauteur : $h m" + medianComparison(h, state.medianHeightM))
     }
     arbre.circonferenceCm?.let { c ->
-        Text("Circonférence : $c cm" + medianComparison(c, medianCircCm))
+        Text("Circonférence : $c cm" + medianComparison(c, state.medianCircCm))
     }
     arbre.adresse?.let { Text("Adresse : $it") }
-    if (photoFiles.isNotEmpty()) {
+    if (state.photoFiles.isNotEmpty()) {
         Spacer(Modifier.height(4.dp))
         PhotoGallery(
-            photoFiles = photoFiles,
-            onPhotoClick = onPhotoClick,
-            onPhotoLongClick = onPhotoLongClick,
+            photoFiles = state.photoFiles,
+            onPhotoClick = actions.onPhotoClick,
+            onPhotoLongClick = actions.onPhotoLongClick,
         )
     }
     Text("ID OpenData : ${arbre.id}", style = MaterialTheme.typography.bodySmall)
 
+    val onRemarquableClick = actions.onRemarquableClick
+    val onSpeciesClick = actions.onSpeciesClick
     if (onRemarquableClick != null || onSpeciesClick != null) {
         Spacer(Modifier.height(8.dp))
     }
@@ -194,12 +188,12 @@ private fun DiscoveredContent(
             )
         }
     }
-    if (onCapturer != null) {
+    actions.onCapturer?.let { capturer ->
         Spacer(Modifier.height(8.dp))
         CaptureButton(
             defaultLabel = "Recapturer",
-            onCapturer = onCapturer,
-            availability = captureAvailability,
+            onCapturer = capturer,
+            availability = state.captureAvailability,
         )
     }
 }
@@ -220,8 +214,7 @@ private fun medianComparison(value: Int, median: Int?): String {
 
 @Composable
 private fun RemarquableBlock(info: RemarquableInfo) {
-    if (info.qualification == null && info.resume == null && info.description == null &&
-        info.datePlantation == null && info.cultivar == null) return
+    if (info.isEmpty()) return
     val title = info.qualification?.let { "Classement : $it" } ?: "Pourquoi cet arbre est remarquable"
     val gold = MaterialTheme.arbresColors.or
     OutlinedCard(

@@ -39,7 +39,9 @@ import app.arbre.ui.common.DeleteCaptureDialog
 import app.arbre.ui.common.PhotoGallery
 import app.arbre.ui.common.PhotoLightbox
 import app.arbre.ui.common.ShowOnMapButton
+import app.arbre.ui.detail.ArbreDetailActions
 import app.arbre.ui.detail.ArbreDetailContent
+import app.arbre.ui.detail.ArbreDetailState
 import kotlinx.coroutines.launch
 
 /**
@@ -130,16 +132,19 @@ fun RemarquableDetailScreen(
                 val displayName = sk?.let { speciesIndex.get(it)?.displayNomCommun }
                     ?: current.nomAffichage
                 ArbreDetailContent(
-                    arbre = current,
-                    isDiscovered = true,
-                    displayName = displayName,
-                    // photoFiles laissé vide : la PhotoGallery est déjà rendue
-                    // juste au-dessus dans cet écran plein-écran.
-                    onSpeciesClick = if (sk != null && sk in capturedSpecies) {
-                        { onSpeciesClick(sk) }
-                    } else null,
-                    onRemarquableClick = null,
-                    remarquableInfo = info,
+                    state = ArbreDetailState(
+                        arbre = current,
+                        isDiscovered = true,
+                        displayName = displayName,
+                        // photoFiles laissé vide : la PhotoGallery est déjà rendue
+                        // juste au-dessus dans cet écran plein-écran.
+                        remarquableInfo = info,
+                    ),
+                    actions = ArbreDetailActions(
+                        onSpeciesClick = if (sk != null && sk in capturedSpecies) {
+                            { onSpeciesClick(sk) }
+                        } else null,
+                    ),
                 )
                 Spacer(Modifier.height(16.dp))
                 ShowOnMapButton(

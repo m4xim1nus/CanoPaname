@@ -79,7 +79,9 @@ import app.arbre.data.resolvedFile
 import app.arbre.ui.common.DeleteCaptureDialog
 import app.arbre.ui.common.PhotoLightbox
 import app.arbre.ui.common.showSnackbarFor
+import app.arbre.ui.detail.ArbreDetailActions
 import app.arbre.ui.detail.ArbreDetailContent
+import app.arbre.ui.detail.ArbreDetailState
 import app.arbre.ui.theme.arbresColors
 import app.arbre.ui.theme.arbresMotion
 import app.arbre.util.LocationProvider
@@ -896,31 +898,35 @@ fun MapScreen(
                 val displayName = sk?.let { speciesIndex.get(it)?.displayNomCommun }
                     ?: openedArbre.nomAffichage
                 ArbreDetailContent(
-                    arbre = openedArbre,
-                    isDiscovered = isDiscovered,
-                    displayName = displayName,
-                    photoFiles = photoFiles,
-                    onPhotoClick = { idx -> lightboxIndex = idx },
-                    onPhotoLongClick = { idx -> pendingDeleteIndex = idx },
-                    onCapturer = { capturer(openedArbre) },
-                    captureAvailability = availability,
-                    onSpeciesClick = if (sk != null && speciesIndex.isDiscovered(sk, capturedSpecies)) {
-                        {
-                            viewModel.closeDetail()
-                            onSpeciesClick(sk)
-                        }
-                    } else null,
-                    onRemarquableClick = if (openedArbre.remarquable &&
-                        openedArbre.id in capturedRemarquables
-                    ) {
-                        {
-                            viewModel.closeDetail()
-                            onRemarquableDetail(openedArbre.id)
-                        }
-                    } else null,
-                    medianHeightM = info?.stats?.medianHeightM,
-                    medianCircCm = info?.stats?.medianCircCm,
-                    remarquableInfo = remarquableInfo,
+                    state = ArbreDetailState(
+                        arbre = openedArbre,
+                        isDiscovered = isDiscovered,
+                        displayName = displayName,
+                        photoFiles = photoFiles,
+                        medianHeightM = info?.stats?.medianHeightM,
+                        medianCircCm = info?.stats?.medianCircCm,
+                        remarquableInfo = remarquableInfo,
+                        captureAvailability = availability,
+                    ),
+                    actions = ArbreDetailActions(
+                        onPhotoClick = { idx -> lightboxIndex = idx },
+                        onPhotoLongClick = { idx -> pendingDeleteIndex = idx },
+                        onCapturer = { capturer(openedArbre) },
+                        onSpeciesClick = if (sk != null && speciesIndex.isDiscovered(sk, capturedSpecies)) {
+                            {
+                                viewModel.closeDetail()
+                                onSpeciesClick(sk)
+                            }
+                        } else null,
+                        onRemarquableClick = if (openedArbre.remarquable &&
+                            openedArbre.id in capturedRemarquables
+                        ) {
+                            {
+                                viewModel.closeDetail()
+                                onRemarquableDetail(openedArbre.id)
+                            }
+                        } else null,
+                    ),
                 )
             }
 

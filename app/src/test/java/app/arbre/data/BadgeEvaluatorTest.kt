@@ -242,7 +242,7 @@ class BadgeEvaluatorTest {
     /** SpeciesIndex de test : un genre `Testus` à 7 espèces identifiées
      *  (sk 0..6) — donc éligible — + son `(Testus, sp.)` (sk 7, unknown). */
     private fun speciesIndexWithTestus(): SpeciesIndex = SpeciesIndex(
-        (0..6).map { i -> SpeciesEntry(index = i, genre = "Testus", espece = "sp$i") } +
+        (0..6).map { i -> SpeciesEntry(index = i, genre = "Testus", espece = "sp$i", pokedexNumber = i + 1) } +
             SpeciesEntry(index = 7, genre = "Testus", espece = "sp.", unknownSpecies = true),
     )
 

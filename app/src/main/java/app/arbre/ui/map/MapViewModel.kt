@@ -69,22 +69,27 @@ class MapViewModel(
     }
 
     fun consumePending(): PendingCapture? {
-        val arbreId = state.get<Long>(K_ARBRE_ID) ?: return null
+        val arbreId = state.get<Long>(K_ARBRE_ID)
         // Garde legacy : si l'utilisateur a upgradé entre l'intent caméra
         // ouvert et son résultat, l'ancienne clé `K_PHOTO_PATH_LEGACY`
-        // (chemin absolu pré-v3) est encore en `SavedStateHandle`. À
-        // retirer en v1.0.1+ (probabilité d'occurrence ≈ 0).
+        // (chemin absolu pré-v3) est encore en `SavedStateHandle`.
         val basename = state.get<String>(K_PHOTO_BASENAME)
             ?: state.get<String>(K_PHOTO_PATH_LEGACY)?.let { File(it).name }
-            ?: return null
+        val speciesIndex = state.get<Int>(K_SPECIES_INDEX)
+        val remarquable = state.get<Boolean>(K_REMARQUABLE)
+        val lat = state.get<Double>(K_LAT)
+        val lon = state.get<Double>(K_LON)
+        val ts = state.get<Long>(K_TIMESTAMP)
+        if (arbreId == null || basename == null || speciesIndex == null) return null
+        if (remarquable == null || lat == null || lon == null || ts == null) return null
         val pending = PendingCapture(
             arbreId = arbreId,
-            speciesIndex = state.get<Int>(K_SPECIES_INDEX) ?: return null,
-            remarquable = state.get<Boolean>(K_REMARQUABLE) ?: return null,
+            speciesIndex = speciesIndex,
+            remarquable = remarquable,
             photoBasename = basename,
-            captureLatitude = state.get<Double>(K_LAT) ?: return null,
-            captureLongitude = state.get<Double>(K_LON) ?: return null,
-            captureTimestamp = state.get<Long>(K_TIMESTAMP) ?: return null,
+            captureLatitude = lat,
+            captureLongitude = lon,
+            captureTimestamp = ts,
         )
         state.remove<Long>(K_ARBRE_ID)
         state.remove<Int>(K_SPECIES_INDEX)

@@ -222,8 +222,8 @@ class SpeciesIndexTest {
 
     @Test fun `genreCount excludes sp entries`() {
         val idx = SpeciesIndex(listOf(
-            entry(0, "Quercus", "robur"),
-            entry(1, "Quercus", "petraea"),
+            entry(0, "Quercus", "robur", pokedexNumber = 1),
+            entry(1, "Quercus", "petraea", pokedexNumber = 2),
             entry(98, "Quercus", "sp.", unknownSpecies = true),
         ))
         assertEquals(2, idx.genreCount("Quercus"))
@@ -233,8 +233,8 @@ class SpeciesIndexTest {
     @Test fun `capturedCountInGenre returns identified-only intersection`() {
         // 2 identifiées + 1 sp. ; on capture 1 identifiée + le sp. → 1.
         val idx = SpeciesIndex(listOf(
-            entry(0, "Quercus", "robur"),
-            entry(1, "Quercus", "petraea"),
+            entry(0, "Quercus", "robur", pokedexNumber = 1),
+            entry(1, "Quercus", "petraea", pokedexNumber = 2),
             entry(98, "Quercus", "sp.", unknownSpecies = true),
         ))
         assertEquals(1, idx.capturedCountInGenre("Quercus", setOf(0, 98)))

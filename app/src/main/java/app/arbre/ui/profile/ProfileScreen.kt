@@ -264,19 +264,13 @@ fun ProfileScreen(
                 }
                 item {
                     ProgressionCard(
-                        arbresDecouverts = arbresDecouverts,
-                        totalArbres = datasetStats.totalArbres,
-                        nbRemarquables = nbRemarquables,
-                        totalRemarquables = datasetStats.totalRemarquables,
-                        nbIdentifiees = nbIdentifiees,
-                        totalEspecesIdentifiees = datasetStats.totalEspecesIdentifiees,
-                        genresDecouverts = genresDecouverts,
-                        totalGenres = totalGenres,
-                        genresComplets = genresComplets,
-                        totalGenresMajeurs = totalGenresMajeurs,
-                        arrVisites = arrVisites,
-                        arrComplets = arrComplets,
-                        totalArr = totalArr,
+                        arbres = ProgressionState(arbresDecouverts, datasetStats.totalArbres),
+                        remarquables = ProgressionState(nbRemarquables, datasetStats.totalRemarquables),
+                        especes = ProgressionState(nbIdentifiees, datasetStats.totalEspecesIdentifiees),
+                        genresDecouverts = ProgressionState(genresDecouverts, totalGenres),
+                        genresComplets = ProgressionState(genresComplets, totalGenresMajeurs),
+                        arrVisites = ProgressionState(arrVisites, totalArr),
+                        arrComplets = ProgressionState(arrComplets, totalArr),
                     )
                 }
             }
@@ -469,21 +463,22 @@ private fun DaysSinceLine(firstCaptureTs: Long) {
     )
 }
 
+/**
+ * `numerator` nullable = chargement en cours (n'affiche pas la barre tant que
+ * `null` ou `0`). `denominator` toujours connu (vient de `DatasetStats` /
+ * `SpeciesIndex`).
+ */
+internal data class ProgressionState(val numerator: Int?, val denominator: Int)
+
 @Composable
 private fun ProgressionCard(
-    arbresDecouverts: Int?,
-    totalArbres: Int,
-    nbRemarquables: Int,
-    totalRemarquables: Int,
-    nbIdentifiees: Int,
-    totalEspecesIdentifiees: Int,
-    genresDecouverts: Int,
-    totalGenres: Int,
-    genresComplets: Int,
-    totalGenresMajeurs: Int,
-    arrVisites: Int?,
-    arrComplets: Int,
-    totalArr: Int,
+    arbres: ProgressionState,
+    remarquables: ProgressionState,
+    especes: ProgressionState,
+    genresDecouverts: ProgressionState,
+    genresComplets: ProgressionState,
+    arrVisites: ProgressionState,
+    arrComplets: ProgressionState,
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -495,13 +490,13 @@ private fun ProgressionCard(
             modifier = Modifier.padding(20.dp),
             verticalArrangement = Arrangement.spacedBy(18.dp),
         ) {
-            ProgressBar("Arbres déverrouillés", arbresDecouverts ?: 0, totalArbres)
-            ProgressBar("Remarquables capturés", nbRemarquables, totalRemarquables)
-            ProgressBar("Espèces capturées", nbIdentifiees, totalEspecesIdentifiees)
-            ProgressBar("Genres découverts", genresDecouverts, totalGenres)
-            ProgressBar("Genres complétés", genresComplets, totalGenresMajeurs)
-            ProgressBar("Arrondissements visités", arrVisites ?: 0, totalArr)
-            ProgressBar("Arrondissements complétés", arrComplets, totalArr)
+            ProgressBar("Arbres déverrouillés", arbres)
+            ProgressBar("Remarquables capturés", remarquables)
+            ProgressBar("Espèces capturées", especes)
+            ProgressBar("Genres découverts", genresDecouverts)
+            ProgressBar("Genres complétés", genresComplets)
+            ProgressBar("Arrondissements visités", arrVisites)
+            ProgressBar("Arrondissements complétés", arrComplets)
         }
     }
 }
@@ -512,11 +507,9 @@ private fun ProgressionCard(
  * compteurs tant que le joueur n'a rien marqué dessus.
  */
 @Composable
-private fun ProgressBar(
-    label: String,
-    value: Int,
-    total: Int,
-) {
+private fun ProgressBar(label: String, state: ProgressionState) {
+    val value = state.numerator ?: 0
+    val total = state.denominator
     if (value <= 0 || total <= 0) return
     val pct = (value.toLong() * 100 / total).toInt().coerceIn(0, 100)
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {

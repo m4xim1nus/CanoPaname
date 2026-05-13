@@ -18,6 +18,10 @@ data class RemarquableInfo(
     val cultivar: String?,
 )
 
+fun RemarquableInfo.isEmpty(): Boolean =
+    qualification == null && resume == null && description == null &&
+        datePlantation == null && cultivar == null
+
 class RemarquableInfoRepository(private val byId: Map<Long, RemarquableInfo>) {
 
     fun get(id: Long): RemarquableInfo? = byId[id]

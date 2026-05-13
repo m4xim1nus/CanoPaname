@@ -74,12 +74,13 @@ import kotlinx.coroutines.launch
 @Composable
 fun GenreDetailScreen(
     genre: String,
-    onBack: () -> Unit,
-    onSpeciesClick: (Int) -> Unit = {},
-    onShowOnMap: (Set<Int>) -> Unit = {},
-    onShowArbreOnMap: (Long) -> Unit = {},
-    onUnlockLost: () -> Unit = {},
+    actions: GenreActions,
 ) {
+    val onBack = actions.onBack
+    val onSpeciesClick = actions.onSpeciesClick
+    val onShowOnMap = actions.onShowOnMap
+    val onShowArbreOnMap = actions.onShowArbreOnMap
+    val onUnlockLost = actions.onUnlockLost
     val speciesIndexRepo = rememberSpeciesIndex()
     val speciesInfoRepo = rememberSpeciesInfoRepository()
     val genreInfoRepo = rememberGenreInfoRepository()
