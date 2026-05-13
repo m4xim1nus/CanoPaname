@@ -4,7 +4,7 @@
 
 App Android pour partir à la chasse aux arbres remarquables de Paris, collectionner les espèces, et redécouvrir la ville par sa canopée. Inspirée de Pokémon GO et Space Invaders, mais avec de **vrais** arbres : ceux du dataset [OpenData Paris « les-arbres »](https://opendata.paris.fr/explore/dataset/les-arbres/) (217 042 arbres géolocalisés, dont 183 « remarquables »).
 
-> **Statut** : v1.3 (cycle *Réveil* livré). Usage personnel + family & friends. Repo public pour transparence et Obtainium ; pas de PR externe acceptée à ce stade.
+> **Statut** : v1.3.1 (cycle *Polissage* livré). Usage personnel + family & friends. Repo public pour transparence et Obtainium ; pas de PR externe acceptée à ce stade.
 
 <p align="center">
   <img src="docs/screenshots/01-onboarding.png" width="240" alt="Écran d'accueil"/>

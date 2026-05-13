@@ -2,6 +2,37 @@
 
 Format basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions [SemVer](https://semver.org/lang/fr/).
 
+## [1.3.1] — 2026-05-13
+
+Cycle court *Polissage* : retours utilisateurs accumulés depuis `v1.3.0` + passe de nettoyage des `.md` et des commentaires datés du code, pour que le code et la prose se relisent sans contexte interne. Six sprints, aucune casse de schéma, aucun changement d'architecture.
+
+### Ajouté
+
+- Easter egg radar (`ui/map/HuntPanel.kt`) : triple-tap sur le `RadarGlyph` toggle un mode persisté (nouveau `RadarObscureStore`, DataStore Preferences) qui remplace titre + qualification du `HuntTargetText` par « ??? ». Caché, non communiqué, distance live conservée.
+- `SpeciesEntry.isActive` (`!unknownSpecies && pokedexNumber != null`) : filtre canonique pour Arboretum / fiche-espèce / fiche-genre (propagé à `SpeciesIndex.genreCount` / `capturedCountInGenre`, `ArboretumScreen`, `GenreDetailScreen`).
+- Refactors quickfix detekt sans changement de comportement : extension `RemarquableInfo.isEmpty()` (`ComplexCondition` à 5 nullités → 1 appel), `object Routes` extrait dans `ui/Routes.kt` (`MatchingDeclarationName`), `ArbreDetailState` + `ArbreDetailActions` regroupant les 13 params de `ArbreDetailContent` + son jumeau privé `DiscoveredContent`, `GenreActions` (fichier dédié pour les 6 callbacks de `GenreDetailScreen`), `SpeciesActions` (fichier dédié pour les 6 callbacks de `SpeciesDetailScreen`, `celebrate` reste param direct), `ProgressionState(numerator, denominator)` (13 scalaires → 7 sur `ProfileScreen.ProgressionCard`).
+
+### Modifié
+
+- HuntPanel libellé : « Arbre remarquable **non capturé** le plus proche » (la cible filtre déjà les non-capturés, le texte rattrape la sémantique).
+- `RemarquablesScreen` aligné sur `ArboretumScreen` : enum `LISTE/CATALOGUE` → `CATALOGUE/HISTORIQUE`, ordre des segmented inversé (Catalogue à gauche), default `CATALOGUE`, composable interne `ListeView` → `HistoriqueView`.
+- Banque de splash tips : retrait `app.season_tint` + `app.season_scope` (aucune saisonnalité live à date), dédoublonnage `dataset.rank_5` ↔ `dataset.iconic.acer_platanoides` via garde `iconic_sk` dans la boucle rank de `tools/build_dataset.py`.
+- `tools/build_dataset.py` capitalise `nv` à la source via `_capitalize_nv` (préfixe `x ` botanique préservé, ex. `x Chitalpa` intact) — `Quercus canariensis = "Chêne zéen"`, 0 nv à initiale minuscule hors préfixe.
+- `SpeciesDetailScreen.catalogueTotal` migré sur `DatasetStats.totalEspecesIdentifiees` (source unique pour le compteur 782).
+- `CLAUDE.md` 169 → 149 lignes : refonte ciblée des sections Architecture + Conventions avec anti-charte intro (squelette de packages au lieu d'inventaire file-par-file, 17 invariants 1-liner au lieu de 24 puces denses, détail dense renvoyé vers les commentaires de tête de fichier déjà en place).
+- ~50 références chronologiques retirées (« S9 Lot B », « cycle Catalogue », « sprint 4bis »…) dans 14 fichiers Kotlin + `tools/build_dataset.py`. `CHANGELOG.md` intact.
+- `MapViewModel.consumePending()` refactorée (8 returns → 3 via val nullables + double `if`). Baseline detekt 16 → 9 issues figées (effet de bord du nettoyage des KDoc denses + des refactors A/B).
+- Profil : barre *Genres découverts* `X / 200` → `X / 203`, alignée sur le compteur Arboretum. `ProfileScreen` migré du couple `genres()` + `mapNotNull(genreOf)` vers le couple `allGenres()` + `genreHasAnyCapture` qu'utilise déjà `ArboretumScreen`. Effet de bord corrigé : une capture `(Genista|Vitex|Ziziphus) sp.` fait désormais monter le compteur (sémantique « touché le genre »). KDoc de `SpeciesIndex.genres()` / `allGenres()` clarifiée pour figer la sémantique.
+
+### Corrigé
+
+- Arboretum : 16 fiches `—` zombies (espèces identifiées sans `pokedexNumber`, count = 0 dans l'OpenData courant — `Eriolobus trilobata`, `Malus communis`, `Styphnolobium japonica`…) disparues entièrement via filtre canonique `SpeciesEntry.isActive`. Aucun user n'avait de capture en zombie ; le dénominateur backend `totalEspecesIdentifiees = 782` les excluait déjà.
+- 4 tests JVM pré-existants réparés (`BadgeEvaluatorTest` × 2 + `SpeciesIndexTest` × 2) — fixtures `SpeciesEntry` pourvues d'un `pokedexNumber` pour passer le nouveau filtre `isActive`. Suite JVM entièrement verte, suite Python 87/87.
+
+### Privacy
+
+- Inchangé : 100 % local, aucune télémétrie, aucun service tiers au runtime.
+
 ## [1.3.0] — 2026-05-12
 
 Cycle de polish *Réveil* : écrans de chargement et animations Compose. Six sprints — refresh + outil de revue des splash tips, fix du bug d'intro tips, fix d'un cold-start bloquant ~30 s, splash cold-start qui reste opaque jusqu'au rendu effectif des pins, animations clés rendues insensibles à l'échelle d'animation système, `FilterSplash` réécrit au look du splash principal. Aucune casse de schéma.

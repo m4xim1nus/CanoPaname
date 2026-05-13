@@ -4,21 +4,9 @@ App perso, pas de calendrier engageant. Single-player, stockage local strict —
 
 ## Cycle en cours
 
-### Polissage
+_(aucun cycle ouvert)_
 
-Cycle court de correctifs (retours utilisateurs accumulés depuis `v1.3.0`) + passe de nettoyage des `.md` et des commentaires datés du code (« S9 Lot B », « livré cycle Catalogue »…), pour que le code et la prose se relisent sans contexte interne. Aucune casse de schéma, aucun changement d'architecture. Cible release `1.3.1`.
-
-Sept sprints :
-
-- **S1 — Retours UX textes + alignement RemarquablesScreen** *(livré)* : libellé HuntPanel `"Arbre remarquable non capturé le plus proche"`, RemarquablesScreen aligné sur ArboretumScreen (enum `LISTE/CATALOGUE` → `CATALOGUE/HISTORIQUE`, ordre des segmented inversé, default Catalogue, composable interne `ListeView` → `HistoriqueView`), retrait des tips `app.season_tint` **et** `app.season_scope` (aucune saisonnalité live à date), dédoublonnage `dataset.rank_5` ↔ `dataset.iconic.acer_platanoides` via garde `iconic_sk` dans la boucle rank de `tools/build_dataset.py`.
-- **S2 — Easter egg radar** *(livré)* : triple-tap sur `RadarGlyph` → toggle persisté (nouveau `RadarObscureStore`, DataStore Preferences) qui remplace titre + qualification du `HuntTargetText` par `???`. Caché, non communiqué, distance live conservée.
-- **S3 — Bug zombies Arboretum + majuscule `nv` + certification compteur** *(livré)* : `SpeciesEntry.isActive` (`!unknownSpecies && pokedexNumber != null`) devient le filtre canonique Arboretum / fiche-espèce / fiche-genre — les 16 fiches `—` disparaissent. `SpeciesDetailScreen` bascule sur `DatasetStats.totalEspecesIdentifiees` (source unique). `tools/build_dataset.py` capitalise `nv` à la source via `_capitalize_nv` (préfixe `x ` botanique préservé) — `Quercus canariensis = "Chêne zéen"`. Rebuild complet : 930 entrées, 782 identifiées (1..782 sans trou), confirmé partout (README + tips déjà alignés).
-- **S4 — Nettoyage `.md` + commentaires datés** *(livré)* : refonte ciblée de `CLAUDE.md` (Architecture + Conventions trop denses, anti-charte intro, 169 → 149 lignes, gain visuel ×2 sur les puces ramassées), nettoyage des références chronologiques (« S9 Lot B », « cycle Catalogue », « sprint 4bis »…) dans 14 fichiers Kotlin + `tools/build_dataset.py`. `CHANGELOG.md` intact. Baseline detekt régénérée (17 → 16 issues, une `LongMethod` disparue par effet de bord de la simplification des KDoc).
-- **S5 — Hygiène pré-release** *(livré)* : (a) 4 tests JVM réparés (`BadgeEvaluatorTest` × 2 + `SpeciesIndexTest` × 2 — `pokedexNumber` ajouté aux fixtures `SpeciesEntry`, le filtre `isActive` issu de S3 redonne ses entries). (b) 4 quickfixes detekt A : extension `RemarquableInfo.isEmpty()` (`ComplexCondition` à 5 nullités → 1 appel), `object Routes` extrait dans `ui/Routes.kt` (`MatchingDeclarationName`), `MapViewModel.consumePending()` refactorée à 3 returns via val nullables + double `if` (`ReturnCount` 8 → 3), `ProfileScreen.ProgressionCard` ramené de 13 scalaires à 7 `ProgressionState(numerator, denominator)`. (c) refactor B + 3 sous-radar : `ArbreDetailContent` + jumeau privé `DiscoveredContent` migrés sur `ArbreDetailState` + `ArbreDetailActions` (sites d'appel `MapScreen.kt` + `RemarquableDetailScreen.kt` adaptés), `GenreDetailScreen` (6 callbacks) → `GenreActions` (fichier dédié), `SpeciesDetailScreen` (6 callbacks + `celebrate`) → `SpeciesActions` (fichier dédié, `celebrate` reste param direct). Baseline detekt régénérée : 16 → 9 issues figées. Suite JVM verte (`BadgeEvaluatorTest`, `SpeciesIndexTest`, `BackupImporter`), lint OK, suite Python 87/87. Aucun changement de comportement.
-- **S6 — Unification dénominateur « genres »** : barre Profil *Genres découverts* passe de `X / 200` à `X / 203`, alignée sur le compteur Arboretum. `ProfileScreen` migre du couple `genres()` + `mapNotNull(genreOf)` vers le couple `allGenres()` + `genreHasAnyCapture` qu'utilise déjà `ArboretumScreen`. Effet de bord corrigé au passage : une capture `(Genista|Vitex|Ziziphus) sp.` fait désormais monter le compteur du Profil (sémantique « touché le genre »). `SpeciesIndex.genres()` conservée mais KDoc clarifiée : ne sert qu'aux chapitres alphabétiques du mode Catalogue, pas aux dénominateurs. Aucune migration.
-- **S7 — Clôture `v1.3.1`** : bump version, tests + lint + detekt + suite Python verts, smoke test device GrapheneOS, APK release signé, entrée `CHANGELOG.md [1.3.1]`, tag git, rotation de cycle dans ce fichier.
-
-Items absorbés / introduits listés dans `BACKLOG.md` sous *Cycle Polissage (en cours)*.
+Prochain candidat : voir *Prochains cycles* ci-dessous.
 
 ## Prochains cycles
 
@@ -29,6 +17,10 @@ Refonte Arboretum « états/variants ». La colonne `season` (devenue inerte par
 Inspiration : Dave the Diver / Pokédex enrichi. Re-capture du même arbre dans un état nouveau = upgrade visible de l'élément Arboretum, sans inflation artificielle. Migration `MIGRATION_4_5`, backup `schemaVersion = 3`. Badges variantes émergent naturellement. Items détaillés dans `BACKLOG.md`.
 
 ## Cycles livrés post-1.0
+
+### Polissage — `1.3.1` (2026-05-13)
+
+Cycle court de correctifs (retours utilisateurs depuis `v1.3.0`) + passe de nettoyage des `.md` et commentaires datés. Six sprints, aucune casse de schéma : alignement `RemarquablesScreen` ↔ `ArboretumScreen` + libellés HuntPanel + tips dédoublonnés ; easter egg radar persisté (triple-tap → masquage `???`) ; filtre canonique `SpeciesEntry.isActive` qui purge les 16 fiches zombies + capitalisation `nv` à la source (`Quercus canariensis = "Chêne zéen"`) ; refonte `CLAUDE.md` 169 → 149 lignes + retrait ~50 références chronologiques dans 14 fichiers ; hygiène pré-release (4 tests JVM réparés + 7 refactors detekt, baseline 16 → 9) ; unification dénominateur genres Profil `200 → 203`. Détails dans `CHANGELOG.md` `[1.3.1]`.
 
 ### Réveil — `1.3.0` (2026-05-12)
 
