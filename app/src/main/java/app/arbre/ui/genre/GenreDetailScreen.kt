@@ -132,12 +132,14 @@ fun GenreDetailScreen(
         androidx.compose.runtime.LaunchedEffect(genre) { onUnlockLost() }
         return
     }
+    // S3 Polissage : filtre `isActive` (exclut `unknownSpecies` et zombies
+    // count=0) — cohérent avec ArboretumScreen et avec le build qui calcule
+    // `genre-info.json:stats.speciesIdentified` sur la même définition.
     val identifiedEntries: List<SpeciesEntry> = remember(allEntriesOfGenre, speciesInfoRepo) {
         allEntriesOfGenre
-            .filter { !it.unknownSpecies }
+            .filter { it.isActive }
             .sortedWith(
-                compareBy<SpeciesEntry> { it.pokedexNumber == null }
-                    .thenBy { it.pokedexNumber ?: Int.MAX_VALUE }
+                compareBy<SpeciesEntry> { it.pokedexNumber!! }
                     .thenByDescending { speciesInfoRepo.get(it.index)?.stats?.count ?: 0 }
                     .thenBy { it.espece.lowercase() }
             )

@@ -61,6 +61,7 @@ import app.arbre.data.label
 import app.arbre.data.parseArrKey
 import app.arbre.data.rememberArbreRepository
 import app.arbre.data.rememberCaptureRepository
+import app.arbre.data.rememberDatasetStats
 import app.arbre.data.rememberSpeciesIndex
 import app.arbre.data.rememberSpeciesInfoRepository
 import app.arbre.data.resolvedFile
@@ -103,6 +104,7 @@ fun SpeciesDetailScreen(
     val arbreRepo = rememberArbreRepository()
     val captureRepo = rememberCaptureRepository()
     val speciesInfoRepo = rememberSpeciesInfoRepository()
+    val datasetStats = rememberDatasetStats()
 
     val entry = speciesIndexRepo.get(speciesIndex)
     if (entry == null) {
@@ -155,12 +157,10 @@ fun SpeciesDetailScreen(
     val rank = remember(speciesIndex, speciesIndexRepo, speciesInfoRepo) {
         catalogueRank(speciesIndex, speciesIndexRepo, speciesInfoRepo)
     }
-    val catalogueTotal = remember(speciesIndexRepo) {
-        // Total identifié pour parallélisme avec ArboretumScreen ; fallback
-        // total si l'asset legacy ne porte pas le flag `u`.
-        val identifiedCount = speciesIndexRepo.entries().count { !it.unknownSpecies }
-        if (identifiedCount > 0) identifiedCount else speciesIndexRepo.total
-    }
+    // Dénominateur Pokédex = totalEspecesIdentifiees certifié backend
+    // (exclut `unknownSpecies` et zombies count=0). Source unique alignée
+    // avec ArboretumScreen + ProfileScreen.
+    val catalogueTotal = datasetStats.totalEspecesIdentifiees
     Scaffold(
         topBar = {
             SpeciesDetailTopBar(

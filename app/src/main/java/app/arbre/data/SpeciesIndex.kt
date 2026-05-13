@@ -39,6 +39,15 @@ data class SpeciesEntry(
      * a été régénéré ; sinon comportement historique préservé.
      */
     val displayNomCommun: String get() = nv ?: nomCommun ?: displayName
+
+    /**
+     * Entrée active du Pokédex : identifiée (non `(G, sp.)`) ET ayant des
+     * arbres vivants dans le dataset courant (donc `pokedexNumber != null`).
+     * Filtre canonique des affichages Arboretum / fiche-espèce / genre : une
+     * entrée non-active est cachée de l'UI, mais conserve son `index` stable
+     * dans le JSON pour que les captures historiques ne perdent jamais leur sk.
+     */
+    val isActive: Boolean get() = !unknownSpecies && pokedexNumber != null
 }
 
 class SpeciesIndex(entries: List<SpeciesEntry>) {
@@ -114,22 +123,24 @@ class SpeciesIndex(entries: List<SpeciesEntry>) {
     fun allGenres(): List<String> = genresAllUseful
 
     /**
-     * Nombre d'espèces **identifiées** du genre (exclut `unknownSpecies`).
-     * Sert au compteur `X / Y` du header de chapitre en mode Catalogue.
+     * Nombre d'espèces **actives** du genre (exclut `unknownSpecies` et
+     * zombies sans `pokedexNumber`). Sert au compteur `X / Y` du header de
+     * chapitre en mode Catalogue.
      */
     fun genreCount(genre: String): Int {
         val sks = sksByGenre[genre] ?: return 0
-        return sks.count { sk -> byIndex[sk]?.unknownSpecies == false }
+        return sks.count { sk -> byIndex[sk]?.isActive == true }
     }
 
     /**
-     * Nombre d'espèces **identifiées** du genre intersectées avec `capturedSks`.
+     * Nombre d'espèces **actives** du genre intersectées avec `capturedSks`.
      * Sert au numérateur du compteur `X / Y` du header de chapitre. Les `sp.`
-     * capturés ne comptent pas — la sémantique est « progression Pokédex ».
+     * capturés et les zombies ne comptent pas — sémantique « progression
+     * Pokédex ».
      */
     fun capturedCountInGenre(genre: String, capturedSks: Set<Int>): Int {
         val sks = sksByGenre[genre] ?: return 0
-        return sks.count { sk -> sk in capturedSks && byIndex[sk]?.unknownSpecies == false }
+        return sks.count { sk -> sk in capturedSks && byIndex[sk]?.isActive == true }
     }
 
     /**

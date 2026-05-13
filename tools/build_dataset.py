@@ -1288,7 +1288,7 @@ def compute_vernacular_and_pokedex(
             entry["nc"] = nc
         if is_unk:
             entry["u"] = True
-        entry["nv"] = nv
+        entry["nv"] = _capitalize_nv(nv)
         entries.append(entry)
         trace["source"] = source
         trace_by_sk[sk] = trace
@@ -2002,6 +2002,23 @@ def _format_int_fr(n: int) -> str:
 
 def _capitalize_fr(s: str) -> str:
     return s[:1].upper() + s[1:] if s else s
+
+
+def _capitalize_nv(s: str) -> str:
+    """Capitalise la première lettre du **premier vrai mot**.
+
+    Cas particulier botanique : si la chaîne commence par `"x "` (préfixe
+    hybride, ex. `"x Chitalpa"`), on saute ce préfixe et on capitalise la
+    lettre qui suit — le `x` reste minuscule par convention.
+    Sinon, équivaut à `_capitalize_fr` (majuscule sur la 1re lettre, reste
+    intact). Le `nv` est livré tel quel par la cascade (override / P1843 /
+    Wikipedia / construit) : cette fonction le canonicalise à l'écriture.
+    """
+    if not s:
+        return s
+    if s.startswith("x ") and len(s) >= 3:
+        return "x " + s[2:3].upper() + s[3:]
+    return s[:1].upper() + s[1:]
 
 
 def _percent(num: int, denom: int) -> float:

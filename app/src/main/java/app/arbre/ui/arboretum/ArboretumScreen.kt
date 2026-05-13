@@ -91,11 +91,11 @@ fun ArboretumScreen(
         }
         .sortedByDescending { it.captures.first().timestamp }
 
-    // Cycle Catalogue : sépare les sks identifiés (compteur principal) des
-    // sks `unknownSpecies`. `capturedSks` alimente l'auto-débloquage
+    // Cycle Catalogue : sépare les sks actifs (compteur principal) des
+    // sks `unknownSpecies` et zombies. `capturedSks` alimente l'auto-débloquage
     // genre-based des cards Catalogue + le compteur de genres découverts.
     val capturedSks: Set<Int> = speciesGroups.map { it.entry.index }.toSet()
-    val nbIdentifiees = speciesGroups.count { !it.entry.unknownSpecies }
+    val nbIdentifiees = speciesGroups.count { it.entry.isActive }
     val nbGenresDecouverts = remember(speciesIndex, capturedSks) {
         speciesIndex.allGenres().count { g -> speciesIndex.genreHasAnyCapture(g, capturedSks) }
     }
@@ -150,9 +150,11 @@ fun ArboretumScreen(
             }
             // S8 : les captures `(G, sp.)` n'apparaissent dans aucun mode du
             // Catalogue. Elles restent accessibles via la fiche genre (qui
-            // héberge la galerie photos sp.). Filtrer ici, pas dans
-            // `speciesGroups` direct, pour préserver les compteurs.
-            val speciesGroupsIdentifiees = speciesGroups.filter { !it.entry.unknownSpecies }
+            // héberge la galerie photos sp.). S3 Polissage : les captures
+            // sur espèces zombies (légalement orphelines suite à un import
+            // ou une régénération de dataset) sont aussi cachées pour
+            // cohérence avec le dénominateur certifié.
+            val speciesGroupsIdentifiees = speciesGroups.filter { it.entry.isActive }
             when (tab) {
                 ArboretumTab.HISTORIQUE -> DecouverteView(
                     speciesGroups = speciesGroupsIdentifiees,
@@ -267,11 +269,12 @@ private fun DecouverteView(
 
 /**
  * Vue Fréquence (cycle Catalogue, sprint 7) : annuaire exhaustif des espèces
- * identifiées (~800 entrées), tri par `pokedexNumber` backend croissant (=
- * count Paris décroissant figé au build). `#NNN` affiché = le `pokedexNumber`
- * lui-même. Les non-capturées apparaissent en silhouette `???` via le rendu
- * `discovered = false` de `CatalogueCell`. Les `unknownSpecies` ne sont pas
- * listées ici — elles n'ont pas de rang de fréquence.
+ * actives (`SpeciesEntry.isActive` : identifiées + au moins un arbre vivant),
+ * tri par `pokedexNumber` backend croissant (= count Paris décroissant figé au
+ * build). `#NNN` affiché = le `pokedexNumber` lui-même. Les non-capturées
+ * apparaissent en silhouette `???` via le rendu `discovered = false` de
+ * `CatalogueCell`. Les `unknownSpecies` n'ont pas de rang de fréquence ; les
+ * zombies (`count=0`) sont également cachés (S3 cycle Polissage).
  */
 @Composable
 private fun FrequenceView(
@@ -284,16 +287,10 @@ private fun FrequenceView(
     val firstPhotoBySk: Map<Int, File> = remember(speciesGroups, ctx) {
         speciesGroups.associate { it.entry.index to it.captures.first().resolvedFile(ctx) }
     }
-    // Tri stable par pokedexNumber croissant. Les rares entrées identifiées
-    // sans pokedexNumber (zombies count=0 ou asset legacy) tombent en queue.
     val ordered = remember(speciesIndex) {
         speciesIndex.entries()
-            .filter { !it.unknownSpecies }
-            .sortedWith(
-                compareBy<SpeciesEntry> { it.pokedexNumber == null }
-                    .thenBy { it.pokedexNumber ?: Int.MAX_VALUE }
-                    .thenBy { it.index }
-            )
+            .filter { it.isActive }
+            .sortedBy { it.pokedexNumber!! }
     }
     LazyVerticalGrid(
         columns = GridCells.Fixed(3),
@@ -306,7 +303,7 @@ private fun FrequenceView(
             val discovered = entry.index in capturedSks
             val photoFile = if (discovered) firstPhotoBySk[entry.index] else null
             CatalogueCell(
-                displayLabel = entry.pokedexNumber?.let { "#%03d".format(it) } ?: "—",
+                displayLabel = "#%03d".format(entry.pokedexNumber!!),
                 entry = entry,
                 photoFile = photoFile,
                 discovered = discovered,
@@ -348,16 +345,13 @@ private fun CatalogueView(
         speciesGroups.associate { it.entry.index to it.captures.first().resolvedFile(ctx) }
     }
     // Pré-calcul des chapitres. Memoisé sur (speciesIndex, capturedSks) :
-    // recompute uniquement à la capture.
+    // recompute uniquement à la capture. Le filtre `isActive` masque
+    // `unknownSpecies` et zombies (S3 cycle Polissage).
     val chapters = remember(speciesIndex, capturedSks) {
         speciesIndex.genres().map { genre ->
             val identifiedSorted = speciesIndex.entriesOfGenre(genre)
-                .filter { !it.unknownSpecies }
-                .sortedWith(
-                    compareBy<SpeciesEntry> { it.pokedexNumber == null }
-                        .thenBy { it.pokedexNumber ?: Int.MAX_VALUE }
-                        .thenBy { it.index }
-                )
+                .filter { it.isActive }
+                .sortedBy { it.pokedexNumber!! }
             GenreChapter(
                 genre = genre,
                 identified = identifiedSorted,
@@ -395,7 +389,7 @@ private fun CatalogueView(
                 val discovered = entry.index in capturedSks
                 val photoFile = if (discovered) firstPhotoBySk[entry.index] else null
                 CatalogueCell(
-                    displayLabel = entry.pokedexNumber?.let { "#%03d".format(it) } ?: "—",
+                    displayLabel = "#%03d".format(entry.pokedexNumber!!),
                     entry = entry,
                     photoFile = photoFile,
                     discovered = discovered,
