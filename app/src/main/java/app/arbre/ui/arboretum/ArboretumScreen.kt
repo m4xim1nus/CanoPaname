@@ -101,10 +101,10 @@ fun ArboretumScreen(
     }
     val totalGenres = remember(speciesIndex) { speciesIndex.allGenres().size }
 
-    // S9 Lot A : 2 niveaux de navigation. Niveau 1 = Catalogue (annuaire) vs
-    // Historique (timeline des captures). Niveau 2 sous Catalogue = tri par
-    // fréquence (Pokédex stable) ou par genre. Deux `rememberSaveable`
-    // distincts pour que le sous-tri persiste indépendamment du toggle haut.
+    // 2 niveaux de navigation. Niveau 1 = Catalogue (annuaire) vs Historique
+    // (timeline des captures). Niveau 2 sous Catalogue = tri par fréquence
+    // (Pokédex stable) ou par genre. Deux `rememberSaveable` distincts pour
+    // que le sous-tri persiste indépendamment du toggle haut.
     var tab by rememberSaveable { mutableStateOf(ArboretumTab.CATALOGUE) }
     var catalogueSort by rememberSaveable { mutableStateOf(CatalogueSort.PAR_FREQUENCE) }
 
@@ -148,12 +148,12 @@ fun ArboretumScreen(
                         .padding(horizontal = 16.dp, vertical = 4.dp),
                 )
             }
-            // S8 : les captures `(G, sp.)` n'apparaissent dans aucun mode du
-            // Catalogue. Elles restent accessibles via la fiche genre (qui
-            // héberge la galerie photos sp.). S3 Polissage : les captures
-            // sur espèces zombies (légalement orphelines suite à un import
-            // ou une régénération de dataset) sont aussi cachées pour
-            // cohérence avec le dénominateur certifié.
+            // Les captures `(G, sp.)` n'apparaissent dans aucun mode du
+            // Catalogue : elles restent accessibles via la fiche genre (qui
+            // héberge la galerie photos sp.). Les captures sur espèces
+            // zombies (légalement orphelines suite à un import ou une
+            // régénération de dataset) sont aussi cachées, pour cohérence
+            // avec le dénominateur certifié.
             val speciesGroupsIdentifiees = speciesGroups.filter { it.entry.isActive }
             when (tab) {
                 ArboretumTab.HISTORIQUE -> DecouverteView(
@@ -268,13 +268,13 @@ private fun DecouverteView(
 }
 
 /**
- * Vue Fréquence (cycle Catalogue, sprint 7) : annuaire exhaustif des espèces
- * actives (`SpeciesEntry.isActive` : identifiées + au moins un arbre vivant),
- * tri par `pokedexNumber` backend croissant (= count Paris décroissant figé au
- * build). `#NNN` affiché = le `pokedexNumber` lui-même. Les non-capturées
- * apparaissent en silhouette `???` via le rendu `discovered = false` de
- * `CatalogueCell`. Les `unknownSpecies` n'ont pas de rang de fréquence ; les
- * zombies (`count=0`) sont également cachés (S3 cycle Polissage).
+ * Vue Fréquence : annuaire exhaustif des espèces actives
+ * (`SpeciesEntry.isActive` : identifiées + au moins un arbre vivant), tri par
+ * `pokedexNumber` backend croissant (= count Paris décroissant figé au build).
+ * `#NNN` affiché = le `pokedexNumber` lui-même. Les non-capturées apparaissent
+ * en silhouette `???` via le rendu `discovered = false` de `CatalogueCell`.
+ * Les `unknownSpecies` n'ont pas de rang de fréquence ; les zombies
+ * (`count=0`) sont également cachés.
  */
 @Composable
 private fun FrequenceView(
@@ -316,20 +316,18 @@ private fun FrequenceView(
 }
 
 /**
- * Vue Catalogue par genre (cycle Catalogue, sprint 7 ; refondue S9 Lot B) :
- * annuaire exhaustif groupé par genre. Chapitres en **ordre alphabétique**,
- * en-tête `Nom FR (latin) · X / Y` (X = espèces capturées du genre, Y =
- * espèces identifiées du genre — `sp.` exclus). Intra-genre, tri par
- * `pokedexNumber` croissant. Le `#NNN` affiché est désormais le
- * `pokedexNumber` backend **stable** — cohérent avec la vue Par fréquence
- * et la fiche espèce (bug S8 corrigé S9 Lot A).
+ * Vue Catalogue par genre : annuaire exhaustif groupé par genre. Chapitres en
+ * **ordre alphabétique**, en-tête `Nom FR (latin) · X / Y` (X = espèces
+ * capturées du genre, Y = espèces identifiées du genre — `sp.` exclus).
+ * Intra-genre, tri par `pokedexNumber` croissant (= le `#NNN` affiché,
+ * cohérent avec la vue Par fréquence et la fiche espèce).
  *
- * S9 Lot B : les genres sans capture (sp. ou identifiée) sont rendus en
- * silhouette « ??? » non cliquable. Les espèces non capturées restent
- * affichées en silhouette `???` individuelle via `CatalogueCell`.
+ * Les genres sans capture (sp. ou identifiée) sont rendus en silhouette
+ * « ??? » non cliquable. Les espèces non capturées restent affichées en
+ * silhouette `???` individuelle via `CatalogueCell`.
  *
- * S8 : plus de cards `(G, sp.)` — l'entrée est entièrement absorbée par la
- * fiche genre. Le tap sur un header découvert ouvre cette fiche.
+ * Pas de cards `(G, sp.)` — l'entrée est entièrement absorbée par la fiche
+ * genre. Le tap sur un header découvert ouvre cette fiche.
  */
 @Composable
 private fun CatalogueView(
@@ -346,7 +344,7 @@ private fun CatalogueView(
     }
     // Pré-calcul des chapitres. Memoisé sur (speciesIndex, capturedSks) :
     // recompute uniquement à la capture. Le filtre `isActive` masque
-    // `unknownSpecies` et zombies (S3 cycle Polissage).
+    // `unknownSpecies` et zombies count=0.
     val chapters = remember(speciesIndex, capturedSks) {
         speciesIndex.genres().map { genre ->
             val identifiedSorted = speciesIndex.entriesOfGenre(genre)
@@ -428,10 +426,10 @@ private fun GenreChapterHeader(
             modifier = Modifier.weight(1f),
             verticalArrangement = Arrangement.spacedBy(2.dp),
         ) {
-            // S9 Lot B : genre découvert → titre = nom FR (fallback latin),
-            // sous-titre latin italique si nomFr présent. Genre non découvert
-            // → silhouette « ??? » seule (titre ET latin masqués), pas de
-            // chevron (le `onClick == null` neutralise le tap).
+            // Genre découvert → titre = nom FR (fallback latin), sous-titre
+            // latin italique si nomFr présent. Genre non découvert → silhouette
+            // « ??? » seule (titre ET latin masqués), pas de chevron (le
+            // `onClick == null` neutralise le tap).
             if (!chapter.discovered) {
                 Text(
                     "???",
@@ -546,7 +544,7 @@ private fun SpeciesCard(
                     style = MaterialTheme.typography.titleMedium,
                 )
                 // Sous-titre binôme italique : présent dès que `nv` ou `nc`
-                // apportent un nom différent du binôme (cycle Catalogue).
+                // apportent un nom différent du binôme latin.
                 if (group.entry.nv != null || group.entry.nomCommun != null) {
                     Text(
                         group.entry.displayName,

@@ -32,10 +32,9 @@ import java.io.File
  *
  * Réutilisé par :
  * - `ArboretumScreen.CatalogueView` : grille 3 colonnes, partition
- *   identifiées / `unknownSpecies` (sprint 4).
- * - `SpeciesDetailScreen` mini-catalogue genre : section « espèces du
- *   genre » sur la fiche `(G, sp.)` — donne la vue « j'ai 3/55 chênes »
- *   sans quitter l'écran (sprint 4bis, BACKLOG cycle Catalogue).
+ *   identifiées / `unknownSpecies`.
+ * - `GenreDetailScreen` mini-catalogue genre : section « espèces du genre »
+ *   — donne la vue « j'ai 3/55 chênes » sans quitter l'écran.
  *
  * Le param `count` (count Paris) est optionnel : `null` côté Arboretum
  * (tri Pokédex/count décide déjà du contexte), affiché côté mini-catalogue

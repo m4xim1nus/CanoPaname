@@ -9,15 +9,15 @@ import org.json.JSONObject
  * regénérations du dataset par `tools/build_dataset.py` — sinon les rows
  * `Capture.speciesIndex` deviendraient invalides après une mise à jour.
  *
- * Champs étendus par le cycle Catalogue (sprint 4) :
+ * Champs dérivés du build dataset :
  * - `nv` : nom vernaculaire **unique** post-désambiguation. Cascade côté
  *   script : VERNACULAR_OVERRIDES → Wikidata P1843 → Wikipedia frTitle →
- *   construit. `null` ssi l'asset legacy (pré-régénération sprint 5) est lu.
- * - `pokedexNumber` : numéro Pokédex stable (séquence par `index` croissant
+ *   construit. `null` ssi l'asset legacy ne porte pas le champ.
+ * - `pokedexNumber` : numéro Pokédex stable (séquence par count décroissant
  *   sur les seules espèces identifiées avec count > 0). `null` pour les
  *   `unknownSpecies`, les zombies count=0, et tout l'asset legacy.
- * - `unknownSpecies` : `true` ssi entrée `(G, sp.)` issue de la normalisation
- *   sprint 1 (espèce non identifiée). Section dédiée en fin de catalogue.
+ * - `unknownSpecies` : `true` ssi entrée `(G, sp.)` (espèce non identifiée).
+ *   Section dédiée en fin de catalogue.
  */
 data class SpeciesEntry(
     val index: Int,
@@ -25,7 +25,7 @@ data class SpeciesEntry(
     val espece: String,
     /** Nom commun le plus fréquent dans OpenData ; null si jamais renseigné. */
     val nomCommun: String? = null,
-    /** Nom vernaculaire unique du cycle Catalogue ; null sur asset legacy. */
+    /** Nom vernaculaire unique post-désambiguation ; null sur asset legacy. */
     val nv: String? = null,
     /** Numéro Pokédex stable ; null pour `unknownSpecies` et asset legacy. */
     val pokedexNumber: Int? = null,
@@ -61,8 +61,8 @@ class SpeciesIndex(entries: List<SpeciesEntry>) {
 
     /**
      * `genre → set des sks de ce genre`. Pré-calculé une fois, sert au calcul
-     * d'auto-débloquage des fiches `(G, sp.)` (cycle Catalogue) : capturer
-     * n'importe quel sk du genre marque la fiche `unknownSpecies` débloquée.
+     * d'auto-débloquage des fiches `(G, sp.)` : capturer n'importe quel sk du
+     * genre marque la fiche `unknownSpecies` débloquée.
      */
     private val sksByGenre: Map<String, Set<Int>> =
         entries.groupBy { it.genre }.mapValues { (_, list) -> list.map { it.index }.toSet() }
@@ -85,8 +85,7 @@ class SpeciesIndex(entries: List<SpeciesEntry>) {
 
     /**
      * Toutes les entrées d'un genre donné, ordonnées par `index` croissant.
-     * Cycle Catalogue (sprint 4bis) : alimente le mini-catalogue affiché sur
-     * la fiche `(G, sp.)` (« j'ai 3/55 chênes »).
+     * Alimente le mini-catalogue de la fiche genre (« j'ai 3/55 chênes »).
      */
     fun entriesOfGenre(genre: String): List<SpeciesEntry> {
         val sks = sksByGenre[genre] ?: return emptyList()
@@ -97,9 +96,9 @@ class SpeciesIndex(entries: List<SpeciesEntry>) {
      * Liste alphabétique des genres ayant **au moins une espèce identifiée**
      * (i.e. non `unknownSpecies`). Les genres only-unknown (genres dont toutes
      * les entrées sont `(G, sp.)`, e.g. `Genista`, `Vitex`, `Ziziphus`) sont
-     * exclus — ils seront couverts par les fiches genre du S8 (cf. ROADMAP).
+     * exclus — ils sont couverts par les fiches genre dédiées.
      *
-     * Source du mode Catalogue par chapitres (cycle Catalogue, sprint 7).
+     * Source du mode Catalogue par chapitres.
      */
     private val genresWithIdentified: List<String> = sksByGenre
         .filter { (_, sks) -> sks.any { sk -> byIndex[sk]?.unknownSpecies == false } }
@@ -112,7 +111,7 @@ class SpeciesIndex(entries: List<SpeciesEntry>) {
      * Liste alphabétique de **tous les genres** présents dans l'index, sauf le
      * cas dégénéré « Non spécifié ». Inclut les genres only-unknown (`Genista`,
      * `Vitex`, `Ziziphus`) — contrairement à `genres()` qui ne renvoie que ceux
-     * avec ≥ 1 espèce identifiée. Pilote le routage des fiches genre (S8).
+     * avec ≥ 1 espèce identifiée. Pilote le routage des fiches genre.
      */
     private val genresAllUseful: List<String> = sksByGenre.keys
         .asSequence()
@@ -145,8 +144,8 @@ class SpeciesIndex(entries: List<SpeciesEntry>) {
 
     /**
      * `true` ssi au moins un sk du genre (identifié OU `unknownSpecies`) est
-     * dans `capturedSks`. Sert au verrouillage des fiches genre (S9 Lot B) :
-     * une fiche genre n'est accessible que si l'utilisateur a touché le genre,
+     * dans `capturedSks`. Sert au verrouillage des fiches genre : une fiche
+     * genre n'est accessible que si l'utilisateur a touché le genre,
      * directement (capture sp.) ou indirectement (capture identifiée).
      */
     fun genreHasAnyCapture(genre: String, capturedSks: Set<Int>): Boolean {
@@ -156,10 +155,10 @@ class SpeciesIndex(entries: List<SpeciesEntry>) {
 
     /**
      * Étend `captured` avec les sks `unknownSpecies` dont le genre contient au
-     * moins une capture (sp. ou identifiée). Sert à la coloration de la carte
-     * (S9 Lot C) : si l'utilisateur a capturé `Tilia cordata`, tous les pins
-     * `Tilia sp.` doivent passer au vert — alignement avec l'auto-débloquage
-     * genre-based déjà en place dans `isDiscovered`.
+     * moins une capture (sp. ou identifiée). Sert à la coloration de la carte :
+     * si l'utilisateur a capturé `Tilia cordata`, tous les pins `Tilia sp.`
+     * doivent passer au vert — alignement avec l'auto-débloquage genre-based
+     * déjà en place dans `isDiscovered`.
      */
     fun effectivelyCapturedSpecies(captured: Set<Int>): Set<Int> {
         if (captured.isEmpty()) return captured
@@ -222,9 +221,9 @@ data class DatasetStats(
     val totalEspeces: Int,
     val totalRemarquables: Int,
     /**
-     * Nombre d'espèces identifiées (exclut les `unknownSpecies` et les zombies
-     * count=0). Cycle Catalogue, sprint 2. Fallback sur `totalEspeces` si le
-     * champ est absent (asset legacy).
+     * Nombre d'espèces identifiées (exclut les `unknownSpecies` et les
+     * zombies count=0). Fallback sur `totalEspeces` si le champ est absent
+     * (asset legacy).
      */
     val totalEspecesIdentifiees: Int,
 ) {

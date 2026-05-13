@@ -111,10 +111,10 @@ private fun glossQualification(q: String?): String = when {
 }
 
 /**
- * Panneau bas persistant du mode chasse aux remarquables (sprint S1 cycle
- * Progression). Affiche en continu le remarquable non découvert le plus proche,
- * sa qualification glosée, et la distance — rafraîchie toutes les 5 s, en phase
- * avec un balayage radar. Recalcule la cible à chaque tick (cible dynamique).
+ * Panneau bas persistant du mode chasse aux remarquables. Affiche en continu
+ * le remarquable non découvert le plus proche, sa qualification glosée, et la
+ * distance — rafraîchie toutes les 5 s, en phase avec un balayage radar.
+ * Recalcule la cible à chaque tick (cible dynamique).
  */
 @Composable
 fun HuntPanel(

@@ -3,10 +3,10 @@ package app.arbre.data
 /**
  * Ordre d'affichage du Catalogue.
  *
- * Cycle Catalogue (sprint 4) : si l'asset porte des `pokedexNumber` (champ `n`
- * de `species-index.json` post-régénération), trier par `n` croissant — c'est
- * le numéro Pokédex stable, partagé entre Catalogue et fiche-espèce. Sinon
- * fallback count Paris décroissant (logique pré-cycle, asset legacy).
+ * Si l'asset porte des `pokedexNumber` (champ `n` de `species-index.json`),
+ * trier par `n` croissant — c'est le numéro Pokédex stable, partagé entre
+ * Catalogue et fiche-espèce. Sinon fallback count Paris décroissant (asset
+ * legacy sans `pokedexNumber`).
  *
  * Les `unknownSpecies` (entrées `(G, sp.)`) sont **toujours en queue**, sans
  * `#`, triés alphabétiquement par genre. Section dédiée côté UI Arboretum.

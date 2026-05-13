@@ -203,10 +203,9 @@ internal fun filterGeoJsonBySpecies(
 ): String {
     if (sks.isEmpty()) return EMPTY_GEOJSON
     val featureSeparator = ",{\"type\":\"Feature\""
-    // Pré-calcule les suffixes `"sk":N}}` pour chaque sk du set. Sprint 4bis
-    // (cycle Catalogue) : la fiche `(G, sp.)` passe un set genre = `{sk_sp.}
-    // ∪ {sks_du_genre_capturés}` ; les fiches-espèces normales passent toujours
-    // un singleton.
+    // Pré-calcule les suffixes `"sk":N}}` pour chaque sk du set. La fiche
+    // genre passe un set polymorphe `{sk_sp.} ∪ {sks_du_genre_capturés}` ;
+    // les fiches-espèces normales passent toujours un singleton.
     val skSuffixes = sks.map { "\"sk\":$it}}" }
     val featuresMarker = "\"features\":["
     val idMarker = "\"id\":"
@@ -408,8 +407,8 @@ private fun buildDiscoveryExpression(
 
 /**
  * Halo "pulse" autour d'un arbre cible, déclenché après un fly-to depuis la
- * fiche-remarquable ou la `PhotoLightbox` (cf. sprint « Photos et progressivité »
- * sprint 4). On pose une source GeoJSON à 1 feature centrée sur l'arbre, puis
+ * fiche-remarquable ou la `PhotoLightbox`. On pose une source GeoJSON à 1
+ * feature centrée sur l'arbre, puis
  * une `CircleLayer` au-dessus de `POINTS_LAYER_ID` (anneau visible par-dessus
  * le pin). L'animation `circleRadius` + `circleOpacity` est portée par un
  * `ValueAnimator` JVM standard, repeats configurable.

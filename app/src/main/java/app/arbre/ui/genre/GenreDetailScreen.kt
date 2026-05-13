@@ -58,10 +58,10 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
 /**
- * Fiche genre dédiée (S8). Remplace l'ancienne fiche `(G, sp.)` enrichie du
- * S5 : la mécanique de mini-catalogue + carte filtrée + galerie photos sp.
- * habite désormais ici, et l'entrée `(G, sp.)` n'est plus exposée comme card
- * d'espèce dans le Catalogue.
+ * Fiche genre dédiée : mini-catalogue des espèces identifiées du genre, carte
+ * filtrée sur le genre, galerie des captures à espèce indéterminée (`G sp.`).
+ * L'entrée `(G, sp.)` n'est pas exposée comme card d'espèce dans le Catalogue
+ * — c'est cette fiche qui l'absorbe.
  *
  * Couvre les 202 genres utiles (199 avec espèces identifiées + 3 only-unknown
  * Genista/Vitex/Ziziphus, exclut « Non spécifié »). Les sections optionnelles
@@ -118,22 +118,24 @@ fun GenreDetailScreen(
         return
     }
 
-    // S9 Lot B : verrou genre. La fiche n'est accessible qu'à partir de la 1re
-    // capture du genre (sp. ou identifiée). Cohérent avec la silhouette « ??? »
-    // posée côté Arboretum sur les chapter headers non découverts.
+    // Verrou genre : la fiche n'est accessible qu'à partir de la 1re capture
+    // du genre (sp. ou identifiée). Cohérent avec la silhouette « ??? » posée
+    // côté Arboretum sur les chapter headers non découverts.
     //
-    // S10 fix : pop vers MAP via `onUnlockLost`, pas juste 1 cran via `onBack`.
-    // Sert deux cas : (1) deep link cassé vers un genre jamais capturé (rare),
-    // (2) suppression de la dernière capture du genre depuis la galerie sp.
-    // ci-dessous. Sans cette unification, le dialog appelait son propre
-    // `onUnlockLost()` après la suspend `deleteCapture` et la garde réactive
-    // appelait `onBack()` pendant la recompo — double pop → écran blanc terminal.
+    // La sortie de fiche genre passe par `onUnlockLost` (pop vers MAP), pas
+    // par `onBack` (pop d'un cran). Sert deux cas : (1) deep link cassé vers
+    // un genre jamais capturé (rare), (2) suppression de la dernière capture
+    // du genre depuis la galerie sp. ci-dessous. Unifier les deux chemins
+    // évite une double pop concurrente : si le dialog appelait son propre
+    // `onUnlockLost()` après la suspend `deleteCapture` et que la garde
+    // réactive appelait `onBack()` pendant la recompo, on se retrouverait
+    // avec un écran blanc terminal.
     if (!speciesIndexRepo.genreHasAnyCapture(genre, capturedSpecies)) {
         androidx.compose.runtime.LaunchedEffect(genre) { onUnlockLost() }
         return
     }
-    // S3 Polissage : filtre `isActive` (exclut `unknownSpecies` et zombies
-    // count=0) — cohérent avec ArboretumScreen et avec le build qui calcule
+    // Filtre `isActive` (exclut `unknownSpecies` et zombies count=0) —
+    // cohérent avec ArboretumScreen et avec le build qui calcule
     // `genre-info.json:stats.speciesIdentified` sur la même définition.
     val identifiedEntries: List<SpeciesEntry> = remember(allEntriesOfGenre, speciesInfoRepo) {
         allEntriesOfGenre
@@ -177,8 +179,8 @@ fun GenreDetailScreen(
     val spPhotoFiles = capturesSp.map { it.resolvedFile(ctx) }
 
     // Set sk pour la carte filtrée : sp. (s'il existe) + chaque espèce
-    // identifiée du genre **capturée**. Sémantique inchangée vs S5 : focus
-    // « ce que j'ai à résoudre + mes trophées du genre ».
+    // identifiée du genre **capturée**. Focus « ce que j'ai à résoudre +
+    // mes trophées du genre ».
     val genreFilterSet: Set<Int> = remember(genre, capturedSpecies, identifiedEntries, spEntry) {
         val capturedSiblings = identifiedEntries
             .map { it.index }
@@ -210,9 +212,9 @@ fun GenreDetailScreen(
         ) {
             item { IdentityBlock(genre, info, identifiedEntries.size) }
 
-            // S9 ajustement post-smoke : « À propos » + « À Paris » contextualisent
-            // le genre — on les place avant le mini-catalogue qui, lui, est plus
-            // long et plus opérationnel (navigation espèces).
+            // « À propos » + « À Paris » contextualisent le genre — placés
+            // avant le mini-catalogue qui, lui, est plus long et plus
+            // opérationnel (navigation espèces).
             if (info?.summary != null) {
                 item {
                     WikipediaBlock(
@@ -295,7 +297,7 @@ fun GenreDetailScreen(
                     pendingDeleteIndex = null
                     lightboxIndex = null
                     scope.launch { captureRepo.deleteCapture(capture, file) }
-                    // S10 fix : pas d'appel direct à `onUnlockLost`. La garde
+                    // Pas d'appel direct à `onUnlockLost` ici : la garde
                     // réactive `genreHasAnyCapture` au-dessus se charge de
                     // pop vers MAP si c'était la dernière capture du genre.
                     // Évite la double pop avec la recompo concurrente.
@@ -440,8 +442,8 @@ private fun StatsBlock(stats: app.arbre.data.GenreStats) {
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Text("À Paris", style = MaterialTheme.typography.titleMedium)
-            // S9 Lot D : résumé global (count + proportion) sur le modèle de la
-            // fiche espèce. `proportion` nullable → asset legacy retombe sur le
+            // Résumé global (count + proportion) sur le modèle de la fiche
+            // espèce. `proportion` nullable → asset legacy retombe sur le
             // simple count, intentionnellement sans % entre parenthèses.
             Text(
                 buildString {

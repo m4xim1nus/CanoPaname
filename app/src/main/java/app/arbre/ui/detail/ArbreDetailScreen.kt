@@ -46,9 +46,9 @@ fun ArbreDetailContent(
     isDiscovered: Boolean,
     /**
      * Nom à afficher en titre. Le caller pré-calcule via le `displayNomCommun`
-     * de l'entrée `SpeciesIndex` (cycle Catalogue : préfère `nv`). Default =
-     * `arbre.nomAffichage` qui est le fallback `nomCommun ?: binôme` historique
-     * — sûr pour les arbres absents du species-index.
+     * de l'entrée `SpeciesIndex` (préfère `nv`). Default = `arbre.nomAffichage`
+     * (fallback `nomCommun ?: binôme`) — sûr pour les arbres absents du
+     * species-index.
      */
     displayName: String = arbre.nomAffichage,
     photoFiles: List<File> = emptyList(),

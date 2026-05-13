@@ -5,7 +5,7 @@ import org.json.JSONArray
 import org.json.JSONObject
 
 /**
- * Fiche pré-cuite par genre (S8) : résumé Wikipedia FR du genre + stats Paris
+ * Fiche pré-cuite par genre : résumé Wikipedia FR du genre + stats Paris
  * agrégées (count, top espèces du genre, top arrondissements). Pendant
  * fiche genre du `SpeciesInfo` (pour les fiches espèce).
  *
@@ -31,8 +31,8 @@ data class GenreStats(
     val topSpecies: List<TopSpecies>,
     /** Top 3 arrondissements Paris pour ce genre, ordre count décroissant. */
     val topArr: List<ArrCount>,
-    // S9 Lot D : alignement avec `SpeciesStats`. Tous nullables / vides →
-    // rétrocompat asset legacy garantie (un asset pré-S9 charge sans crash).
+    // Champs optionnels, alignés avec `SpeciesStats`. Tous nullables / vides →
+    // rétrocompat asset legacy garantie (un asset minimal charge sans crash).
     /** Proportion du dataset Paris (ex. 0.0123 pour 1,23 %). */
     val proportion: Double? = null,
     /** Hauteur médiane des arbres du genre (m). `null` si pas de mesures. */
@@ -57,9 +57,9 @@ class GenreInfoRepository(private val byGenre: Map<String, GenreInfo>) {
 
     companion object {
         /**
-         * Asset absent (legacy / build pas encore régénéré post-S8) → repo vide.
-         * `GenreDetailScreen` reste fonctionnel via fallback Kotlin (mini-catalogue
-         * + carte filtrée OK, juste pas de sections Wikipedia/stats).
+         * Asset absent → repo vide. `GenreDetailScreen` reste fonctionnel via
+         * fallback Kotlin (mini-catalogue + carte filtrée OK, juste pas de
+         * sections Wikipedia/stats).
          */
         fun load(context: Context, asset: String = "genre-info.json"): GenreInfoRepository {
             val text = try {
@@ -84,8 +84,8 @@ class GenreInfoRepository(private val byGenre: Map<String, GenreInfo>) {
                 speciesIdentified = statsObj.getInt("speciesIdentified"),
                 topSpecies = parseTopSpecies(statsObj.optJSONArray("topSpecies")),
                 topArr = parseArrList(statsObj.optJSONArray("topArr")),
-                // S9 Lot D : champs optionnels — asset legacy (pré-S9) renvoie
-                // `null` / vide partout, fiche genre fonctionne sans ces stats.
+                // Champs optionnels — asset legacy renvoie `null` / vide partout,
+                // fiche genre fonctionne sans ces stats.
                 proportion = statsObj.optDoubleOrNull("proportion"),
                 medianHeightM = statsObj.optIntOrNull("medianHm"),
                 medianCircCm = statsObj.optIntOrNull("medianCircCm"),

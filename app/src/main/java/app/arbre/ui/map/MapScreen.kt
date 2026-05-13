@@ -156,8 +156,7 @@ fun MapScreen(
     /**
      * Set de sks à filtrer. `emptySet()` = mode normal (toute la carte).
      * Singleton = filtre fiche-espèce classique. Plusieurs sks = filtre genre
-     * depuis la fiche `(G, sp.)` (sprint 4bis du cycle Catalogue) : `{sk_sp.}
-     * ∪ {sks_du_genre_capturés}`.
+     * depuis la fiche genre : `{sk_sp.} ∪ {sks_du_genre_capturés}`.
      */
     filterSpecies: Set<Int> = emptySet(),
     pulseArbreId: Long? = null,
@@ -216,8 +215,8 @@ fun MapScreen(
     val capturedRemarquables by captureRepo.capturedRemarquableIds()
         .collectAsState(initial = emptySet())
 
-    // Mode chasse (S1 cycle Progression). `huntActive` est `remember`-é ici (pas
-    // dans le VM) pour que le mode se ferme tout seul quand on quitte l'écran.
+    // Mode chasse. `huntActive` est `remember`-é ici (pas dans le VM) pour
+    // que le mode se ferme tout seul quand on quitte l'écran.
     // La liste des remarquables est chargée paresseusement au 1er passage en
     // mode chasse et mémorisée dans le VM (évite un re-query aux remounts).
     var huntActive by remember { mutableStateOf(false) }
@@ -298,9 +297,9 @@ fun MapScreen(
             captureRepo.capturedRemarquableIds(),
         ) { species, remarquables -> species to remarquables }
             .collect { (species, remarquables) ->
-                // S9 Lot C : capturer une espèce identifiée d'un genre déverrouille
-                // les pins (G, sp.) du même genre (verts). Cohérent avec
-                // l'auto-débloquage genre-based déjà appliqué côté Arboretum.
+                // Capturer une espèce identifiée d'un genre déverrouille les
+                // pins (G, sp.) du même genre (verts). Cohérent avec
+                // l'auto-débloquage genre-based appliqué côté Arboretum.
                 applyDiscoveryColor(
                     style,
                     speciesIndex.effectivelyCapturedSpecies(species),
@@ -332,9 +331,9 @@ fun MapScreen(
                 }
                 val tStart = android.os.SystemClock.elapsedRealtime()
                 val rawJson = app.arbresGeoJsonAsync.await()
-                // Wrap S9 Lot C : ajoute les sp. genre-débloqués au set passé
-                // à l'enrichment, pour que les clusters propagent l'état de
-                // découverte sur les (G, sp.).
+                // Ajoute les sp. genre-débloqués au set passé à l'enrichment,
+                // pour que les clusters propagent l'état de découverte sur
+                // les (G, sp.) — symétrique de `applyDiscoveryColor`.
                 val effectiveSpecies = speciesIndex.effectivelyCapturedSpecies(species)
                 val enriched = withContext(Dispatchers.Default) {
                     enrichGeoJsonWithDiscovery(rawJson, effectiveSpecies, remarquables)
@@ -432,13 +431,12 @@ fun MapScreen(
         }
     }
 
-    // Saut vers un arbre exact (sprint 4 « Photos et progressivité ») : depuis
-    // la fiche-remarquable ou la `PhotoLightbox`, on navigue vers
-    // `Routes.map(arbreId)`. Au mount, on attend que la map ET les layers
-    // soient prêtes, puis fly-to ~600 ms à zoom élevé (z20) pour qu'aucun
-    // doute ne subsiste sur le pin ciblé, et au callback `onFinish` on
-    // déclenche le pulse — pas d'ouverture du sheet, l'utilisateur tape
-    // l'arbre lui-même s'il veut la fiche.
+    // Saut vers un arbre exact : depuis la fiche-remarquable ou la
+    // `PhotoLightbox`, on navigue vers `Routes.map(arbreId)`. Au mount, on
+    // attend que la map ET les layers soient prêtes, puis fly-to ~600 ms à
+    // zoom élevé (z20) pour qu'aucun doute ne subsiste sur le pin ciblé, et
+    // au callback `onFinish` on déclenche le pulse — pas d'ouverture du
+    // sheet, l'utilisateur tape l'arbre lui-même s'il veut la fiche.
     LaunchedEffect(pulseArbreId, mapRef, styleRef, arbresPrets) {
         val id = pulseArbreId ?: return@LaunchedEffect
         val map = mapRef ?: return@LaunchedEffect
@@ -537,9 +535,9 @@ fun MapScreen(
                                     captureRepo.capturedRemarquableIds(),
                                 ) { s, r -> s to r }.first()
                             } ?: (emptySet<Int>() to emptySet<Long>())
-                            // Wrap S9 Lot C : étend le set de captures aux sp.
-                            // genre-débloqués pour la coloration (les pins (G, sp.)
-                            // de la fiche genre apparaissent verts).
+                            // Étend le set de captures aux sp. genre-débloqués
+                            // pour la coloration (les pins (G, sp.) de la
+                            // fiche genre apparaissent verts).
                             val effectiveSpecies =
                                 speciesIndex.effectivelyCapturedSpecies(initialCaptures.first)
                             val json = withContext(Dispatchers.Default) {
@@ -580,10 +578,10 @@ fun MapScreen(
                             // parse + cluster en background et ne bloque pas le
                             // UI thread. Le voile reste PLEINEMENT OPAQUE jusqu'à
                             // ce que les pins/clusters soient réellement rendus
-                            // (`awaitArbresRendered` plus bas) — sinon il
-                            // s'effacerait sur une « carte vide » 1-3 s, le temps
-                            // que le parse async aboutisse (bug repéré au S3 du
-                            // cycle Réveil : « flip avant load » faisait ça).
+                            // (`awaitArbresRendered` plus bas). Si on flippait
+                            // `arbresPrets` avant que `setGeoJson` n'ait fini
+                            // de parser, le voile s'effacerait sur une carte
+                            // vide pendant 1-3 s, le temps du parse async.
                             addArbresLayers(style, EMPTY_GEOJSON)
                             styleRef = style
                             val tEmpty = android.os.SystemClock.elapsedRealtime()
@@ -692,9 +690,9 @@ fun MapScreen(
             speciesIndex = speciesIndex,
         )
         if (filteredEntry != null && onBack != null) {
-            // Sprint 4bis : sous-titre additionnel en mode genre (set > 1
-            // sks) pour donner du grain — combien d'espèces du genre sont
-            // capturées sur le total identifié.
+            // Sous-titre additionnel en mode genre (set > 1 sks) pour donner
+            // du grain — combien d'espèces du genre sont capturées sur le
+            // total identifié.
             val genreSubtitle = if (isGenreFilter) {
                 val genreEntries = speciesIndex.entriesOfGenre(filteredEntry.genre)
                 val totalGenre = genreEntries.count { !it.unknownSpecies }
@@ -855,11 +853,11 @@ fun MapScreen(
                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
             }
             val sk = speciesIndex.indexOf(openedArbre)
-            // S10 fix : aligner avec la coloration des pins, qui utilise
+            // Aligné avec la coloration des pins qui utilise
             // `effectivelyCapturedSpecies` (auto-débloquage genre-based).
-            // Sans `isDiscovered`, un pin (G, sp.) débloqué indirectement
-            // (capture d'une identifiée du genre) est vert sur la carte mais
-            // le sheet affiche UnknownContent — incohérent.
+            // Sinon, un pin (G, sp.) débloqué indirectement (capture d'une
+            // identifiée du genre) serait vert sur la carte mais le sheet
+            // afficherait UnknownContent — incohérent.
             val isDiscovered = if (openedArbre.remarquable) {
                 openedArbre.id in capturedRemarquables
             } else {

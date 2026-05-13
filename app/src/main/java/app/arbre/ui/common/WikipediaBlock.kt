@@ -22,7 +22,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 
 /**
- * Card « À propos » réutilisée par les fiches espèce et fiches genre (S8).
+ * Card « À propos » réutilisée par les fiches espèce et fiches genre.
  *
  * Rend le `summary` Wikipedia FR + lien sortant vers l'article + mention
  * licence CC BY-SA. Si `summary` est blank, affiche le placeholder

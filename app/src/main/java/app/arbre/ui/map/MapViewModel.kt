@@ -37,10 +37,10 @@ class MapViewModel(
         private set
 
     /**
-     * Cache de `arbresRemarquables()` pour le mode chasse (sprint S1 cycle
-     * Progression) — peuplé au 1er passage en mode chasse, survit aux remounts.
-     * Le flag `huntActive` lui vit côté `MapScreen` (`remember`) : le mode se
-     * ferme automatiquement quand on quitte l'écran.
+     * Cache de `arbresRemarquables()` pour le mode chasse — peuplé au 1er
+     * passage en mode chasse, survit aux remounts. Le flag `huntActive` vit
+     * côté `MapScreen` (`remember`) : le mode se ferme automatiquement quand
+     * on quitte l'écran.
      */
     var remarquablesCache: List<Arbre>? = null
 

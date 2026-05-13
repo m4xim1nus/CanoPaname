@@ -41,10 +41,10 @@ object Routes {
     // Destination distincte de MAP : MapViewModel propre + caméra Paris z11
     // + entrée séparée du backstack. `speciesIndices` = set CSV de sks
     // (1 sk = filtre fiche-espèce normale ; N sks = filtre genre depuis la
-    // fiche `(G, sp.)`, sprint 4bis du cycle Catalogue).
+    // fiche genre).
     const val MAP_FILTERED = "map_filtered/{speciesIndices}"
-    // Sprint 8 : fiche genre dédiée. `genre` est URL-encodé (peut contenir
-    // espace pour les hybrides type « x Cupressocyparis »).
+    // Fiche genre dédiée. `genre` est URL-encodé (peut contenir espace pour
+    // les hybrides type « x Cupressocyparis »).
     const val GENRE = "genre/{genre}"
     const val ABOUT = "about"
 
@@ -75,8 +75,8 @@ fun ArbresNavHost() {
     // MapScreen 3× : une instance transiente (créée par `onContinue`, tuée 200 ms
     // plus tard par la reconstruction `true → map`) jouerait et « consommerait »
     // l'intro tips (`markSplashIntroSeen()`) avant que l'instance stable ne lise
-    // le flag → l'intro ne joue jamais. Cf. Réveil S2. La redirection vers le
-    // WelcomeScreen passe donc par un `LaunchedEffect` (en fin de fonction), pas
+    // le flag → l'intro ne joue jamais. La redirection vers le WelcomeScreen
+    // passe donc par un `LaunchedEffect` (en fin de fonction), pas
     // par le `startDestination` ; le splash overlay du MapScreen couvre la
     // transition, donc pas de flicker.
     NavHost(navController = nav, startDestination = Routes.map()) {

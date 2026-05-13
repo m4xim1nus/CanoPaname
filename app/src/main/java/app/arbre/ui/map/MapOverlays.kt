@@ -76,7 +76,7 @@ internal fun FilterBanner(
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
     /**
-     * Sous-titre additionnel pour le mode genre (sprint 4bis cycle Catalogue) :
+     * Sous-titre additionnel pour le mode genre :
      * « 3 / 12 espèces du genre ». `null` en mode normal singleton.
      */
     genreSubtitle: String? = null,
@@ -109,7 +109,7 @@ internal fun FilterBanner(
                     maxLines = 1,
                 )
                 // Sous-titre binôme italique uniquement si `nv`/`nc` ont
-                // apporté un nom différent du binôme (cycle Catalogue).
+                // apporté un nom différent du binôme latin.
                 if (entry.nv != null || entry.nomCommun != null) {
                     Text(
                         entry.displayName,

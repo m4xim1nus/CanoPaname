@@ -82,20 +82,19 @@ fun SpeciesDetailScreen(
     speciesIndex: Int,
     onBack: () -> Unit,
     /**
-     * `Set<Int>` à filtrer sur la carte. S5 du cycle Catalogue passait un set
-     * polymorphe (sp. + sks identifiés capturés du genre) ; S8 a déménagé ce
-     * comportement vers `GenreDetailScreen`. Côté fiche espèce, le set est
-     * désormais toujours singleton `setOf(entry.index)`.
+     * `Set<Int>` à filtrer sur la carte. Toujours singleton `setOf(entry.index)`
+     * pour une fiche espèce — la fiche genre héberge le set polymorphe (sp. +
+     * sks identifiés capturés du genre).
      */
     onShowOnMap: (Set<Int>) -> Unit = {},
     onShowArbreOnMap: (Long) -> Unit = {},
     onRemarquableClick: (Long) -> Unit = {},
     onUnlockLost: () -> Unit = {},
     /**
-     * S8 : la fiche `(G, sp.)` est remplacée par `GenreDetailScreen`. Ce
-     * callback est invoqué quand un deep link historique (`Routes.species(sk)`
-     * sur un `unknownSpecies`) atterrit ici — on redirige immédiatement vers
-     * la fiche genre correspondante.
+     * Les fiches `(G, sp.)` ne sont pas exposées comme fiches espèce — c'est
+     * `GenreDetailScreen` qui les absorbe. Ce callback est invoqué quand un
+     * deep link historique (`Routes.species(sk)` sur un `unknownSpecies`)
+     * atterrit ici — on redirige immédiatement vers la fiche genre.
      */
     onRedirectToGenre: (String) -> Unit = {},
     celebrate: Boolean = false,
@@ -221,9 +220,8 @@ fun SpeciesDetailScreen(
             }
 
             item {
-                // S8 : la fiche `(G, sp.)` a déménagé vers GenreDetailScreen,
-                // qui porte désormais la logique de set polymorphe. Ici on
-                // filtre sur le sk de l'espèce identifiée seul.
+                // La logique de set polymorphe vit dans GenreDetailScreen ;
+                // ici on filtre sur le sk de l'espèce identifiée seul.
                 ShowOnMapButton(onClick = { onShowOnMap(setOf(entry.index)) })
             }
         }
