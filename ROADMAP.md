@@ -18,6 +18,10 @@ Inspiration : Dave the Diver / Pokédex enrichi. Re-capture du même arbre dans 
 
 ## Cycles livrés post-1.0
 
+### Reproductibilité — `1.3.2` (2026-05-13)
+
+Hotfix sorti dans les heures qui ont suivi `1.3.1`. La CI Release re-téléchargeait le CSV OpenData live à chaque tag (via `tools/build_dataset.py` invoqué dans `release.yml`), faisant diverger l'APK release du repo committé — `v1.3.1` téléchargée depuis GitHub affichait `217 264 / 784` quand un build local du même commit affichait `217 042 / 782` (snapshot CSV figé au 28 avril). Contrat repensé : « l'APK release = ce qui est committé au tag ». Les binaires `arbres-paris.db` (~31 Mo) et `arbres-paris.geojson` (~33 Mo) sont désormais committés, le workflow CI ne fait plus que `assembleRelease`. Refresh dataset en passant (217 264 arbres, 784 espèces identifiées, 934 catalogue, 204 genres, 183 remarquables) + fixup `Z. alatum → Z. armatum` + overrides éditoriaux « Poivrier du Timut » et genre « Faux-poivrier ». Indices `species-index.json` strictement préservés. Détails dans `CHANGELOG.md` `[1.3.2]`.
+
 ### Polissage — `1.3.1` (2026-05-13)
 
 Cycle court de correctifs (retours utilisateurs depuis `v1.3.0`) + passe de nettoyage des `.md` et commentaires datés. Six sprints, aucune casse de schéma : alignement `RemarquablesScreen` ↔ `ArboretumScreen` + libellés HuntPanel + tips dédoublonnés ; easter egg radar persisté (triple-tap → masquage `???`) ; filtre canonique `SpeciesEntry.isActive` qui purge les 16 fiches zombies + capitalisation `nv` à la source (`Quercus canariensis = "Chêne zéen"`) ; refonte `CLAUDE.md` 169 → 149 lignes + retrait ~50 références chronologiques dans 14 fichiers ; hygiène pré-release (4 tests JVM réparés + 7 refactors detekt, baseline 16 → 9) ; unification dénominateur genres Profil `200 → 203`. Détails dans `CHANGELOG.md` `[1.3.1]`.

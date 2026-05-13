@@ -99,7 +99,7 @@ class SpeciesIndex(entries: List<SpeciesEntry>) {
      * d'espèces, leurs `(G, sp.)` étant traités séparément.
      *
      * ⚠ Ne PAS utiliser comme dénominateur de progression de découverte
-     * (utiliser [allGenres] qui couvre les 203 genres réellement capturables).
+     * (utiliser [allGenres] qui couvre les 204 genres réellement capturables).
      * Source du mode Catalogue par chapitres.
      */
     private val genresWithIdentified: List<String> = sksByGenre
@@ -113,7 +113,7 @@ class SpeciesIndex(entries: List<SpeciesEntry>) {
      * Univers complet des genres : tous ceux présents dans l'index sauf le
      * cas dégénéré « Non spécifié ». Inclut les genres only-unknown
      * (`Genista`, `Vitex`, `Ziziphus`) — un `Genista sp.` capturé compte ici.
-     * **Source de vérité pour les compteurs de progression** (`X / 203 genres
+     * **Source de vérité pour les compteurs de progression** (`X / 204 genres
      * découverts` en Arboretum et Profil). Pilote aussi le routage des fiches
      * genre.
      */

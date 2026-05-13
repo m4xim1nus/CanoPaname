@@ -174,7 +174,7 @@ fun ProfileScreen(
 
     // Genres « croisés » : un genre compte dès qu'une espèce capturée en relève
     // (y compris une capture `(G, sp.)`). Dénominateur = univers `allGenres()`
-    // (203), aligné sur le compteur Arboretum — un `Genista|Vitex|Ziziphus sp.`
+    // (204), aligné sur le compteur Arboretum — un `Genista|Vitex|Ziziphus sp.`
     // capturé fait monter le compteur.
     val genresDecouverts = remember(capturedSpecies, speciesIndex) {
         speciesIndex.allGenres().count { g -> speciesIndex.genreHasAnyCapture(g, capturedSpecies) }

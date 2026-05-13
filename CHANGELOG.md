@@ -2,6 +2,30 @@
 
 Format basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions [SemVer](https://semver.org/lang/fr/).
 
+## [1.3.2] — 2026-05-13
+
+Hotfix de reproductibilité du build release, sorti dans les heures qui ont suivi `v1.3.1`. La CI Release ré-exécutait `tools/build_dataset.py` avant `assembleRelease`, ce qui re-téléchargeait le CSV OpenData Paris **live** à chaque tag — l'APK publié reflétait alors l'OpenData du jour, pas le contenu du repo committé. Symptôme : `v1.3.1` téléchargé depuis GitHub Releases affichait `217 264 arbres / 784 espèces` alors qu'un build Android Studio local du même commit affichait `217 042 / 782` (snapshot CSV figé au 28 avril). Cause racine : `download()` du script skip si le CSV existe localement (gitignored en CI ⇒ toujours re-téléchargé là-bas, jamais en local). Le contrat passe à « l'APK release = ce qui est committé au tag », plus aucune dépendance OpenData live au runtime du build. Refresh dataset embarqué en passant pour aligner sur la version vue par les users de la 1.3.1.
+
+### Corrigé
+
+- `.github/workflows/release.yml` ne ré-exécute plus `build_dataset.py` ni n'installe Python (steps `setup-python`, `Cache Wikipedia dataset cache`, `Build dataset assets` retirés). La CI consomme désormais exactement les assets committés au tag.
+
+### Ajouté
+
+- `app/src/main/assets/databases/arbres-paris.db` (~31 Mo) et `app/src/main/assets/arbres-paris.geojson` (~33 Mo) sont désormais **committés au repo** (retirés du `.gitignore`). Pré-condition pour que le build CI marche sans régénération dynamique. Toute future mise à jour du dataset OpenData = run local de `tools/build_dataset.py` + commit explicite des assets régénérés.
+- `SPECIES_FIXUPS["Zanthoxylum alatum"] → "Zanthoxylum armatum"` (`tools/build_dataset.py`) : `Z. alatum` est l'ancien nom du *Poivrier du Timut*, Wikipedia FR ne porte que la forme `armatum` (Q6170892). Le fixup permet de récupérer la fiche Wikipedia + applique l'override nv « Poivrier du Timut ».
+- `GENRE_FR["Schinus"] = "Faux-poivrier"` (`tools/build_dataset.py`) : genre apparu avec le refresh dataset, nom français francophone usuel.
+
+### Modifié
+
+- Refresh dataset OpenData (snapshot 28 avril → 13 mai 2026) : **217 264 arbres** (vs 217 042, +222), **784 espèces identifiées** (vs 782, +2 ; Pokédex `#784` Faux-poivrier odorant *Schinus molle*, `#567` Poivrier du Timut *Zanthoxylum armatum*), **934 entrées catalogue** (vs 930, +4 ; ajout des `sp.` génériques `Aria` et `Mespilus` côtoyant les 2 identifiées), **204 genres** (vs 203, +1 *Schinus*). 183 remarquables stable, indices `species-index.json` strictement préservés (compatible toute capture user antérieure). Compteurs Profil / Arboretum / splash mis à jour automatiquement par le pipeline.
+- `README.md`, `CLAUDE.md` et trois commentaires Kotlin (`SpeciesIndex.kt`, `ProfileScreen.kt`) ré-alignés sur les nouveaux compteurs `217 264 / 784 / 204`. Commentaire pédagogique `tools/build_dataset.py` `≈ 782` → `≈ 784`. Historique CHANGELOG / ROADMAP figé, intact.
+- Workflow CI release plus rapide (~1-2 min gagnées) : retrait des deux steps Python (setup + cache) et du step de régénération des assets.
+
+### Privacy
+
+- Inchangé : 100 % local, aucune télémétrie, aucun service tiers au runtime.
+
 ## [1.3.1] — 2026-05-13
 
 Cycle court *Polissage* : retours utilisateurs accumulés depuis `v1.3.0` + passe de nettoyage des `.md` et des commentaires datés du code, pour que le code et la prose se relisent sans contexte interne. Six sprints, aucune casse de schéma, aucun changement d'architecture.

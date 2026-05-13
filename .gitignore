@@ -40,10 +40,6 @@ Thumbs.db
 *.geojson.gz
 les-arbres*.csv
 
-# Base SQLite + GeoJSON pré-cuits — régénérés par tools/build_dataset.py
-/app/src/main/assets/databases/*.db
-/app/src/main/assets/arbres-paris.geojson
-
 # Caches du pipeline build_dataset (Wikidata SPARQL + Wikipedia REST + redirects)
 tools/.wikidata-cache/
 tools/.wikipedia-cache/

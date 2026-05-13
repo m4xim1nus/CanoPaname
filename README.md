@@ -2,9 +2,9 @@
 
 > Pokédex botanique des arbres de Paris. App Android, single-player, 100 % local.
 
-App Android pour partir à la chasse aux arbres remarquables de Paris, collectionner les espèces, et redécouvrir la ville par sa canopée. Inspirée de Pokémon GO et Space Invaders, mais avec de **vrais** arbres : ceux du dataset [OpenData Paris « les-arbres »](https://opendata.paris.fr/explore/dataset/les-arbres/) (217 042 arbres géolocalisés, dont 183 « remarquables »).
+App Android pour partir à la chasse aux arbres remarquables de Paris, collectionner les espèces, et redécouvrir la ville par sa canopée. Inspirée de Pokémon GO et Space Invaders, mais avec de **vrais** arbres : ceux du dataset [OpenData Paris « les-arbres »](https://opendata.paris.fr/explore/dataset/les-arbres/) (217 264 arbres géolocalisés, dont 183 « remarquables »).
 
-> **Statut** : v1.3.1 (cycle *Polissage* livré). Usage personnel + family & friends. Repo public pour transparence et Obtainium ; pas de PR externe acceptée à ce stade.
+> **Statut** : v1.3.2 (hotfix reproductibilité du build release + refresh dataset). Usage personnel + family & friends. Repo public pour transparence et Obtainium ; pas de PR externe acceptée à ce stade.
 
 <p align="center">
   <img src="docs/screenshots/01-onboarding.png" width="240" alt="Écran d'accueil"/>
@@ -14,7 +14,7 @@ App Android pour partir à la chasse aux arbres remarquables de Paris, collectio
 
 ## Ce que c'est
 
-217 042 arbres parisiens géolocalisés sur une carte plein écran, 782 espèces identifiées, 203 genres, 183 arbres remarquables à dénicher. Capture par proximité (< 30 m) avec une photo prise depuis l'app. La carte se colore au fil de tes découvertes. Mode chasse ★ pour pister le remarquable le plus proche, Catalogue à 2 niveaux *Catalogue* / *Historique*, fiches genre, badges (dont familles « Familier » par genre et par arrondissement), suivi de progression sur le Profil, export ZIP. Pensé family & friends, pas de classement, pas de social.
+217 264 arbres parisiens géolocalisés sur une carte plein écran, 784 espèces identifiées, 204 genres, 183 arbres remarquables à dénicher. Capture par proximité (< 30 m) avec une photo prise depuis l'app. La carte se colore au fil de tes découvertes. Mode chasse ★ pour pister le remarquable le plus proche, Catalogue à 2 niveaux *Catalogue* / *Historique*, fiches genre, badges (dont familles « Familier » par genre et par arrondissement), suivi de progression sur le Profil, export ZIP. Pensé family & friends, pas de classement, pas de social.
 
 ## Pourquoi
 

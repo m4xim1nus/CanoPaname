@@ -170,6 +170,9 @@ SPECIES_FIXUPS: dict[tuple[str, str], tuple[str, str]] = {
     # Cultivars rebindés sur l'espèce principale :
     ("Fagus", "purpurea"): ("Fagus", "sylvatica"),
     ("Malus", "communis"): ("Malus", "domestica"),
+    # `Z. alatum` est l'ancien nom de `Z. armatum` (Poivrier du Timut) ; la
+    # page Wikipédia FR existe sous le nom actuel, pas sous le synonyme.
+    ("Zanthoxylum", "alatum"): ("Zanthoxylum", "armatum"),
 }
 
 # Formes d'épithète signalant une espèce non identifiée (genre connu, espèce
@@ -252,6 +255,9 @@ VERNACULAR_OVERRIDES: dict[tuple[str, str], str] = {
     # « Red cedar » → « Thuya géant » (Thuja plicata) : retour à un nom
     # francophone, « red cedar » étant un anglicisme.
     ("Thuja", "plicata"): "Thuya géant",
+    # Page WP FR « Zanthoxylum armatum » ne porte pas de titre vernaculaire ;
+    # le nom usuel francophone est « Poivrier du Timut » (épice himalayenne).
+    ("Zanthoxylum", "armatum"): "Poivrier du Timut",
 }
 
 
@@ -395,6 +401,7 @@ GENRE_FR: dict[str, str] = {
     "Sambucus": "Sureau",
     "Sapindus": "Savonnier des Indes",
     "Sassafras": "Sassafras",
+    "Schinus": "Faux-poivrier",
     "Sequoia": "Séquoia",
     "Sequoiadendron": "Séquoia géant",
     "Sophora": "Sophora",
@@ -2128,7 +2135,7 @@ def write_splash_tips(
     # `sk_to_pair` et `sorted_sk` *filtré sur les espèces identifiées* (count > 0
     # et pas un bucket « Genre sp. ») : tous les chiffres « X espèces » des tips
     # ci-dessous restent cohérents avec `dataset-stats.totalEspecesIdentifiees`
-    # (≈ 782) et avec le compteur du Profil. Le top ~50 est inchangé (les têtes
+    # (≈ 784) et avec le compteur du Profil. Le top ~50 est inchangé (les têtes
     # de liste sont toutes identifiées) ; seuls les buckets `sp.` sortent.
     sk_to_pair = {sk: pair for pair, sk in species_index.items()}
     sorted_sk = sorted(

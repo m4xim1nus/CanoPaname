@@ -82,7 +82,7 @@ Projet mono-module `:app`, package racine `app.arbre`. Squelette :
 - `util/LocationProvider` — wrapper `LocationManager` natif (sans Google Play Services).
 - `tools/build_dataset.py` — génère tous les assets (`arbres-paris.db` Room, `arbres-paris.geojson` MapLibre, et les JSON lookup) depuis le CSV OpenData. **Préserve les `speciesIndex` entre runs** (les `capture.speciesIndex` y réfèrent par int — toujours commiter le `species-index.json` régénéré). Schéma SQL aligné pile-poil avec ce que Room génère pour `ArbreEntity`. Cache Wikipedia REST sous `tools/.wikipedia-cache/{sk}.json` pour des builds suivants instantanés.
 
-Données : OpenData Paris [`les-arbres`](https://opendata.paris.fr/explore/dataset/les-arbres/) (217 042 arbres) + [`arbresremarquablesparis`](https://opendata.paris.fr/explore/dataset/arbresremarquablesparis/) (183 remarquables). Tout embarqué dans l'APK à build-time.
+Données : OpenData Paris [`les-arbres`](https://opendata.paris.fr/explore/dataset/les-arbres/) (217 264 arbres) + [`arbresremarquablesparis`](https://opendata.paris.fr/explore/dataset/arbresremarquablesparis/) (183 remarquables). Tout embarqué dans l'APK à build-time. Binaires `arbres-paris.db` (~31 Mo) et `arbres-paris.geojson` (~33 Mo) sont **committés** dans le repo (cycle *Reproductibilité*, v1.3.2) — la CI ne régénère plus le dataset à la volée. Toute mise à jour du dataset passe par un run local de `tools/build_dataset.py` + un commit explicite des assets régénérés.
 
 Conventions :
 - **MapView via `AndroidView` + `DisposableEffect`** pour relayer le lifecycle (`onCreate/onStart/onResume/onPause/onStop/onDestroy`) — sans ça, fuites mémoire ou crashes en navigation.

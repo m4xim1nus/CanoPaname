@@ -21,22 +21,6 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v6
 
-      - uses: actions/setup-python@v6
-        with:
-          python-version: '3.12'
-
-      # Le cache invalide quand build_dataset.py ou species-index.json change.
-      # restore-keys permet à un build "froid" de partir d'un cache stale ; le
-      # script skip naturellement les fichiers déjà en cache et ne re-fetch que
-      # les nouveaux sk.
-      - name: Cache Wikipedia dataset cache
-        uses: actions/cache@v5
-        with:
-          path: tools/.wikipedia-cache
-          key: wiki-cache-${{ hashFiles('tools/build_dataset.py', 'app/src/main/assets/species-index.json') }}
-          restore-keys: |
-            wiki-cache-
-
       - name: Decode keystore
         env:
           RELEASE_KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
@@ -56,11 +40,6 @@ jobs:
             echo "RELEASE_KEY_ALIAS=$KEY_ALIAS"
             echo "RELEASE_KEY_PASSWORD=$KEY_PWD"
           } > local.properties
-
-      - name: Build dataset assets
-        run: |
-          python3 -m pip install --user requests
-          python3 tools/build_dataset.py
 
       - run: ./gradlew assembleRelease --stacktrace
 

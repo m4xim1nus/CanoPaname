@@ -54,8 +54,8 @@ android {
         applicationId = "app.arbre"
         minSdk = 26
         targetSdk = 35
-        versionCode = 13001
-        versionName = "1.3.1"
+        versionCode = 13002
+        versionName = "1.3.2"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables { useSupportLibrary = true }
     }
