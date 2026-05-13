@@ -93,11 +93,13 @@ class SpeciesIndex(entries: List<SpeciesEntry>) {
     }
 
     /**
-     * Liste alphabétique des genres ayant **au moins une espèce identifiée**
-     * (i.e. non `unknownSpecies`). Les genres only-unknown (genres dont toutes
-     * les entrées sont `(G, sp.)`, e.g. `Genista`, `Vitex`, `Ziziphus`) sont
-     * exclus — ils sont couverts par les fiches genre dédiées.
+     * Liste alphabétique des genres **catalogables comme chapitres d'espèces
+     * identifiées**. Exclut « Non spécifié » et les genres only-unknown
+     * (`Genista`, `Vitex`, `Ziziphus`) — leurs chapitres seraient vides
+     * d'espèces, leurs `(G, sp.)` étant traités séparément.
      *
+     * ⚠ Ne PAS utiliser comme dénominateur de progression de découverte
+     * (utiliser [allGenres] qui couvre les 203 genres réellement capturables).
      * Source du mode Catalogue par chapitres.
      */
     private val genresWithIdentified: List<String> = sksByGenre
@@ -108,10 +110,12 @@ class SpeciesIndex(entries: List<SpeciesEntry>) {
     fun genres(): List<String> = genresWithIdentified
 
     /**
-     * Liste alphabétique de **tous les genres** présents dans l'index, sauf le
-     * cas dégénéré « Non spécifié ». Inclut les genres only-unknown (`Genista`,
-     * `Vitex`, `Ziziphus`) — contrairement à `genres()` qui ne renvoie que ceux
-     * avec ≥ 1 espèce identifiée. Pilote le routage des fiches genre.
+     * Univers complet des genres : tous ceux présents dans l'index sauf le
+     * cas dégénéré « Non spécifié ». Inclut les genres only-unknown
+     * (`Genista`, `Vitex`, `Ziziphus`) — un `Genista sp.` capturé compte ici.
+     * **Source de vérité pour les compteurs de progression** (`X / 203 genres
+     * découverts` en Arboretum et Profil). Pilote aussi le routage des fiches
+     * genre.
      */
     private val genresAllUseful: List<String> = sksByGenre.keys
         .asSequence()

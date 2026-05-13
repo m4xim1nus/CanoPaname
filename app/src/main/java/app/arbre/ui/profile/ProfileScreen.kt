@@ -173,12 +173,13 @@ fun ProfileScreen(
     }
 
     // Genres « croisés » : un genre compte dès qu'une espèce capturée en relève
-    // (y compris une capture `(G, sp.)`). Dénominateur = univers Catalogue.
+    // (y compris une capture `(G, sp.)`). Dénominateur = univers `allGenres()`
+    // (203), aligné sur le compteur Arboretum — un `Genista|Vitex|Ziziphus sp.`
+    // capturé fait monter le compteur.
     val genresDecouverts = remember(capturedSpecies, speciesIndex) {
-        val capturedGenres = capturedSpecies.mapNotNull { speciesIndex.genreOf(it) }.toSet()
-        speciesIndex.genres().count { it in capturedGenres }
+        speciesIndex.allGenres().count { g -> speciesIndex.genreHasAnyCapture(g, capturedSpecies) }
     }
-    val totalGenres = speciesIndex.genres().size
+    val totalGenres = remember(speciesIndex) { speciesIndex.allGenres().size }
 
     // Familles « Familier » : on lit l'état des badges plutôt que de recalculer.
     val genresComplets = allBadges.count {
