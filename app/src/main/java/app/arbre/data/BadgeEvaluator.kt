@@ -75,9 +75,11 @@ object BadgeEvaluator {
         }
     }
 
-    /** Familier d'un arrondissement : couverture de toutes les espèces recensées
-     *  dans l'arrondissement de l'arbre. La propagation genre→`sp.` via
-     *  `effectivelyCapturedSpecies` est appliquée. */
+    /** Familier d'un arrondissement : couverture de toutes les espèces d'arbres
+     *  **remarquables** de l'arrondissement de l'arbre. La propagation
+     *  genre→`sp.` via `effectivelyCapturedSpecies` reste appliquée (un
+     *  remarquable libellé `(Quercus, sp.)` est satisfait par n'importe quel
+     *  chêne identifié). Les arr sans aucun remarquable sont court-circuités. */
     private fun evaluateFamilierArr(
         unlocks: MutableMap<String, Long>,
         speciesIndex: SpeciesIndex,
@@ -88,7 +90,7 @@ object BadgeEvaluator {
         ts: Long,
     ) {
         val arr = parseArrKey(arbre.adresse)
-        val arrTarget = arrSpecies.speciesOf(arr)
+        val arrTarget = arrSpecies.remarquablesOf(arr)
         if (arrTarget.isEmpty()) return
         val seen = capturedSksByArr.getOrPut(arr) { HashSet() }
         seen.add(sk)

@@ -166,17 +166,18 @@ object BadgeCatalog {
             )
         }
 
-    /** Badges « Familier du … » (un par ArrKey couvert par l'asset). */
+    /** Badges « Familier du … » (un par ArrKey ayant au moins un arbre
+     *  remarquable). Les arr sans remarquable sont absents du catalogue. */
     fun arrBadges(arrSpecies: ArrSpeciesIndex): List<BadgeDef> =
-        arrSpecies.keys.map { key ->
+        arrSpecies.keysWithRemarquables.map { key ->
             val where = when (key) {
-                is ArrKey.Paris -> "le ${key.label()} arrondissement"
-                else -> "le ${key.label()}"
+                is ArrKey.Paris -> "du ${key.label()} arrondissement"
+                else -> "du ${key.label()}"
             }
             BadgeDef(
                 id = arrBadgeId(key),
                 label = "Familier du ${key.label()}",
-                description = "Toutes les espèces d'arbres recensées dans $where, capturées.",
+                description = "Tous les arbres remarquables $where, capturés.",
                 category = BadgeCategory.GEOGRAPHIE,
             )
         }

@@ -191,7 +191,11 @@ fun ProfileScreen(
     val arrComplets = allBadges.count {
         it.def.id.startsWith(BadgeCatalog.FAMILIER_ARR_PREFIX) && it.unlocked
     }
-    val totalArr = arrSpecies.keys.size
+    // « Visités » : 22 arr (20 + 2 bois) — ≥ 1 capture quelconque suffit.
+    // « Complétés » : exclut les arr sans remarquable (deux concrets) — leur
+    // badge « Familier du Xe » n'existe pas, on les sort donc du dénominateur.
+    val totalArrVisites = arrSpecies.keys.size
+    val totalArrComplets = arrSpecies.keysWithRemarquables.size
 
     var arrVisites by remember { mutableStateOf<Int?>(null) }
     LaunchedEffect(toutesCaptures) {
@@ -270,8 +274,8 @@ fun ProfileScreen(
                         especes = ProgressionState(nbIdentifiees, datasetStats.totalEspecesIdentifiees),
                         genresDecouverts = ProgressionState(genresDecouverts, totalGenres),
                         genresComplets = ProgressionState(genresComplets, totalGenresMajeurs),
-                        arrVisites = ProgressionState(arrVisites, totalArr),
-                        arrComplets = ProgressionState(arrComplets, totalArr),
+                        arrVisites = ProgressionState(arrVisites, totalArrVisites),
+                        arrComplets = ProgressionState(arrComplets, totalArrComplets),
                     )
                 }
             }
