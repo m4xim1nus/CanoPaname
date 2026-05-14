@@ -15,7 +15,20 @@ Triage en lot au début de chaque cycle. Process complet dans `CLAUDE.md` (*Work
 
 ## À trier
 
-_(vide)_
+_(vide — items absorbés par le cycle Boussole le 2026-05-14)_
+
+## Cycle Boussole
+
+- [→Boussole] Pivoter barre « Arrondissements complétés » + badges `familier_arr_*` sur le dénominateur remarquables de l'arr (plus toutes les espèces). « Arrondissements visités » inchangé (n'importe quel capture). (user:moi, 2026-05-14)
+- [→Boussole] Recherche universelle, FAB loupe top-start → sheet 3 sections : espèces capturées (FR/latin), genres découverts, arrondissements (parseur `"1"`/`"01"`/`"1er"`/`"75001"`/`"premier"`). Tap → fly-to centroid pour arr / fiche pour espèce/genre. Hors périmètre : adresse précise, OpenData id, sheet récap arr. Centroids arr pré-calculés côté Python. (pwa:livraison-dev-externe, 2026-05-13 ; cadré 2026-05-14)
+- [→Boussole] Réorg FAB Map : top-start 🔍 Recherche, top-end ⊙ Localiser, bottom-end pile [Remarquables, Arboretum, Profil] (bas-en-haut), bottom-start ★ Chasse inchangé. (pwa:livraison-dev-externe, 2026-05-13 ; cadré 2026-05-14)
+- [→Boussole] Bar chart Profile : Card additionnelle sous `ProgressionCard` (pas en remplacement des 7 barres). Penchant à confirmer au démarrage : 2 graphes séparés hebdo, fenêtre 12 sem — captures totales + nouvelles découvertes d'espèces. (pwa:livraison-dev-externe, 2026-05-13 ; cadré 2026-05-14 ; à rediscuter en début de sprint)
+- [→Boussole] 6 badges Pokédex binaires `pokedex_{10,20,50,100,200,500}` : avoir capturé toutes les espèces ayant `pokedexNumber ∈ [1..N]`. (user:moi, 2026-05-14)
+- [→Boussole] Texte fixe « arrondissement » dans titres de chapitres Remarquables/Catalogue (1er-20ème, pas pour les Bois). (user:pote, 2026-05-14)
+- [→Boussole] Compteur N/M à côté des titres de chapitres Remarquables/Catalogue (cohérence Arboretum par genre). (user:pote, 2026-05-14)
+- [→Boussole] Fix tip splash citant « 930 espèces » — chiffre obsolète vs dataset actuel (784 identifiées / 934 catalogue / 204 genres / 217 264 arbres / 183 remarquables). Vérifier le périmètre exact à citer. (user:moi, 2026-05-14)
+- [→Boussole] Revérifier le besoin d'un texte fallback pour fiches espèces sans Wiki post-Catalogue 1.1.0. Si ≤ 5% des espèces capturables manquent → fermer `[refusé]`. (audit-B, 2026-05-06 ; rapatrié 2026-05-14)
+- [→Boussole] Étendre screenshots README de 3 à 6 (nouveau layout Map, sheet Recherche, Profile avec bar charts). (audit#17, 2026-05-06 ; rapatrié 2026-05-14)
 
 ## Cycle Variantes
 
@@ -28,23 +41,19 @@ _(vide)_
 ## À creuser
 
 - [creuser] Quêtes hebdomadaires locales, opt-in, sans push (audit V2#3, 2026-05-06 ; déplacé depuis Endgame 2026-05-12 quand le cycle a été dissous)
-- [creuser] Texte de fallback minimal pour les fiches espèces sans page Wikipedia — pertinence à revérifier après que le cycle Catalogue 1.1.0 a élargi le périmètre couvert (le manque peut s'être réduit suffisamment pour rendre ce filet caduc) (audit-B, 2026-05-06 ; reformulé + déplacé depuis Endgame 2026-05-12)
 - [creuser] Résidu post-cycle Catalogue : 11 entrées résiduelles avec `nv == binôme nu` et count ≤ 2 (post-fil-rouge S10), botaniquement douteuses — `Ehretia macrophylla`, `Sophora flavescens`, `Betula occidentalis`, `Crataegus japonicum`, `Crataegus baccata`, `Celtis cerasifera`, `Carpinus carpinifolia`, `Phellodendron japonicum`, `Zanthoxylum bungei`, `Alnus formosana`, `Brucea javanica`. Peut-être réelles mais rares à Paris, peut-être saisies erronées. Demandent une recherche botanique pour trancher keep / rebinder (claude:audit-S6, 2026-05-11 ; réduit de 29→11 au S10)
 - [creuser] WelcomeScreen pas lu, intro depuis la carte (user:F&F + user:moi 2026-05-07 : pas prio mais à reconsidérer post-Photos)
 - [creuser] Unifier espace lexical Arboretum / Catalogue / Pokédex (audit-E2 : recommande Arboretum pour l'UI)
 - [creuser] Refonte modèle remarquables : espèce-boss vs vraie quête (audit V2#2 : décision structurelle)
 - [creuser] Notifications push : digest mensuel opt-in vs rien (audit-tension#1)
 - [creuser] Phénologie réelle (dates floraison/feuillage par espèce) — décision structurante v2 (audit V2#1)
-- [creuser] Étendre screenshots README de 3 à 6 (audit#17 : à faire après Photos pour avoir les nouveaux écrans)
 - [creuser] Script `tools/scout_other_cities.py` qui interroge OpenData de villes du Grand Paris et produit un md de faisabilité (user:moi, 2026-05-07)
 - [creuser] Mini-quiz ou capacité d'identification entre espèces partageant le même `nc` (Quercus robur vs petraea, Tilia cordata vs platyphyllos) (claude:analyse, 2026-05-08 ; refusé du cycle Catalogue 2026-05-10 — scope dédié, UX du quiz + génération de paires + scoring trop coûteux à empiler)
 - [creuser] Aide à l'indentification des genres/espèces
 - [creuser] Leaderboard optionnel et minimaliste ?
-- [creuser] **Écran Comparaison d'espèces** : long-press 600 ms sur une card Arboretum (cancel si déplacement > 8 px, iOS contextmenu fallback) ouvre un bottom-sheet picker des autres espèces capturées, puis route `#/compare/{skA}/{skB}` qui affiche les deux fiches en side-by-side — empilées verticalement sur téléphone, deux colonnes parallèles à scroll indépendant sur tablette. Utile pour distinguer espèces proches (Quercus robur vs petraea, Tilia cordata vs platyphyllos). Implémenté côté PWA, à reconsidérer pour Android si le besoin se confirme. (pwa:livraison-dev-externe, 2026-05-13)
-- [creuser] **Planificateur d'itinéraire greedy nearest-neighbour** : depuis position GPS courante, génère une boucle de marche qui passe par N arbres jamais capturés, presets 1/2/3/5 km. CTA "🚶 Itinéraire" depuis fiche espèce. Carte : 3 layers MapLibre (polyligne du trajet + numbered stops + labels), bandeau supérieur progression + bouton « Quitter ». Implémenté côté PWA, gameplay « parcours » qui complète bien la chasse passive ; à arbitrer pour Android — possible chevauchement avec le mode chasse Étoile actuel. (pwa:livraison-dev-externe, 2026-05-13)
-- [creuser] **Carte « prochaine espèce à découvrir »** sur la map : carte flottante en bas qui suggère la closest never-captured species (fallback : closest single-capture-species "variety tree" si tout est déjà découvert dans un rayon raisonnable). Refresh à chaque fix GPS. Tap → fly-to + ouvre sheet. Implémenté côté PWA. Esprit proche du mode chasse Étoile mais ciblé « espèce » plutôt que « remarquable », donc peut coexister. (pwa:livraison-dev-externe, 2026-05-13)
-- [creuser] **Bar chart mensuel sur Profile** : graphique SVG hand-rolled (zero dépendance), fenêtre 18 mois glissants, barres colorées par saison, badges « +N » pour discoveries d'espèces nouvelles par mois. Visualise la cadence de capture dans le temps. Implémenté côté PWA. Côté Android, à mettre en balance avec les 7 barres de progression actuelles du Profil v1.2.0. (pwa:livraison-dev-externe, 2026-05-13)
-- [creuser] **Recherche universelle (FAB loupe → sheet 3 sections)** : recherche par espèce (nom français/latin), par arrondissement (1er-20e + variantes « 01 », « 75001 »), par arbre OpenData id. Tap → fly-to + ouvre sheet. Implémenté côté PWA, sans équivalent direct sur Android v1.3.2. Utile dès qu'on cherche une espèce précise dans la liste 784 espèces. (pwa:livraison-dev-externe, 2026-05-13)
+- [creuser] **Écran Comparaison d'espèces** : long-press 600 ms sur une card Arboretum (cancel si déplacement > 8 px, iOS contextmenu fallback) ouvre un bottom-sheet picker des autres espèces capturées, puis route `#/compare/{skA}/{skB}` qui affiche les deux fiches en side-by-side — empilées verticalement sur téléphone, deux colonnes parallèles à scroll indépendant sur tablette. Utile pour distinguer espèces proches (Quercus robur vs petraea, Tilia cordata vs platyphyllos). Implémenté côté PWA, à reconsidérer pour Android si le besoin se confirme. (pwa:livraison-dev-externe, 2026-05-13 ; passé en revue pour Boussole 2026-05-14 — non retenu, garder pour cycle ultérieur)
+- [creuser] **Planificateur d'itinéraire greedy nearest-neighbour** : depuis position GPS courante, génère une boucle de marche qui passe par N arbres jamais capturés, presets 1/2/3/5 km. CTA "🚶 Itinéraire" depuis fiche espèce. Carte : 3 layers MapLibre (polyligne du trajet + numbered stops + labels), bandeau supérieur progression + bouton « Quitter ». Implémenté côté PWA, gameplay « parcours » qui complète bien la chasse passive ; à arbitrer pour Android — possible chevauchement avec le mode chasse Étoile actuel. (pwa:livraison-dev-externe, 2026-05-13 ; passé en revue pour Boussole 2026-05-14 — non retenu, garder pour cycle ultérieur)
+- [creuser] **Carte « prochaine espèce à découvrir »** sur la map : carte flottante en bas qui suggère la closest never-captured species (fallback : closest single-capture-species "variety tree" si tout est déjà découvert dans un rayon raisonnable). Refresh à chaque fix GPS. Tap → fly-to + ouvre sheet. Implémenté côté PWA. Esprit proche du mode chasse Étoile mais ciblé « espèce » plutôt que « remarquable », donc peut coexister. (pwa:livraison-dev-externe, 2026-05-13 ; passé en revue pour Boussole 2026-05-14 — non retenu, garder pour cycle ultérieur)
 - [ ] CI : `release.yml` — échec transitoire de restauration du cache Gradle (`Failed to restore gradle-home-… : Cache service responded with 400`), sans effet sur le build. À surveiller : si ça récidive, vérifier la conf de `gradle/actions/setup-gradle` (clé de cache / quota) (ci:release.yml run v1.2.0, 2026-05-12)
 
 ## Refusé
