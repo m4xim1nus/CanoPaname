@@ -19,6 +19,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
@@ -30,6 +31,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.MenuBook
 import androidx.compose.material.icons.outlined.MyLocation
 import androidx.compose.material.icons.outlined.Person
+import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
@@ -714,21 +716,27 @@ fun MapScreen(
                     .padding(16.dp),
             )
         } else {
-            FloatingActionButton(
-                onClick = onProfileClick,
+            // 🔍 Recherche (top-start, discret). Stub S2 — wiring sheet en S3.
+            UtilityFab(
+                onClick = {
+                    scope.launch { snackbar.showSnackbar("Recherche : bientôt") }
+                },
                 modifier = Modifier
                     .align(Alignment.TopStart)
                     .windowInsetsPadding(WindowInsets.statusBars)
                     .padding(16.dp),
             ) {
-                Icon(Icons.Outlined.Person, contentDescription = "Profil")
+                Icon(Icons.Outlined.Search, contentDescription = "Recherche")
             }
-            Row(
+            // Pile bottom-end (haut → bas) : Remarquables, Arboretum, Profil.
+            // Le shift `bottomShiftForHunt` la fait grimper au-dessus du HuntPanel.
+            Column(
                 modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .windowInsetsPadding(WindowInsets.statusBars)
-                    .padding(16.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    .align(Alignment.BottomEnd)
+                    .windowInsetsPadding(WindowInsets.navigationBars)
+                    .padding(16.dp)
+                    .padding(bottom = bottomShiftForHunt),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 FloatingActionButton(onClick = onRemarquablesClick) {
                     // Tint Unspecified pour préserver la bichromie orange/crème
@@ -745,6 +753,9 @@ fun MapScreen(
                         contentDescription = "Arboretum",
                         tint = MaterialTheme.arbresColors.feuilleSombre,
                     )
+                }
+                FloatingActionButton(onClick = onProfileClick) {
+                    Icon(Icons.Outlined.Person, contentDescription = "Profil")
                 }
             }
             if (!huntActive) {
@@ -775,7 +786,7 @@ fun MapScreen(
             ),
             label = "gpsFabPulseScale",
         )
-        FloatingActionButton(
+        UtilityFab(
             onClick = {
                 if (LocationProvider.hasFineLocationPermission(ctx)) {
                     scope.launch { centerOnUser() }
@@ -784,10 +795,9 @@ fun MapScreen(
                 }
             },
             modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .windowInsetsPadding(WindowInsets.navigationBars)
+                .align(Alignment.TopEnd)
+                .windowInsetsPadding(WindowInsets.statusBars)
                 .padding(16.dp)
-                .padding(bottom = bottomShiftForHunt)
                 .scale(pulseScale),
         ) {
             Icon(Icons.Outlined.MyLocation, contentDescription = "Me localiser")
@@ -1024,4 +1034,24 @@ private fun computeDeleteContext(
             arbre.nomCommun ?: arbre.nomAffichage,
         )
     }
+}
+
+// FAB « utilitaire » discret (Recherche, Localiser) : même taille que les FAB
+// gameplay (56 dp, touch target intact), mais palette neutre alignée sur
+// `HuntPanel` (`surfaceContainerHigh` + `onSurfaceVariant`). Distinction par
+// canal de couleur, pas par taille — l'icône grise reste lisible sur tout fond
+// de carte (vert boisé, gris asphalte, label de rue qui passe dessous).
+@Composable
+private fun UtilityFab(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit,
+) {
+    FloatingActionButton(
+        onClick = onClick,
+        modifier = modifier,
+        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+        contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+        content = { content() },
+    )
 }

@@ -12,9 +12,7 @@ Items détaillés dans `BACKLOG.md` (section « Cycle Boussole »).
 
 **S1 — Modèle « arrondissement complété » sur remarquables (structurel)** — Le dénominateur actuel = *toutes* les espèces de l'arr (incluant `sp.`) rend la complétion quasi-impossible. On bascule sur les *arbres remarquables* de l'arr. Conserver « Arrondissements visités » = n'importe quel capture. Touche `tools/build_dataset.py` (ajouter `remarquables` dans `arr-species.json`), `ArrSpeciesIndex.remarquablesOf(arr)`, `BadgeEvaluator.evaluateFamilierArr` (l.78-98), description badge « Familier du Xe » (`Badge.kt` l.169-182), barre `ProgressionCard` (`ProfileScreen.kt` l.494-500), `BadgeEvaluatorTest`. À faire en premier : les sprints S2/S5 dépendent du dataset régénéré.
 
-**S2 — Recherche universelle** — FAB loupe top-start → bottom-sheet 3 sections, **périmètre minimal** : espèces capturées (FR/latin), genres découverts, arrondissements (parseur `"1"`/`"01"`/`"1er"`/`"75001"`/`"premier"`). Tap espèce → `Routes.species(sk)` ; tap genre → `Routes.genre(...)` ; tap arrondissement → fly-to centroid + close. **Hors périmètre v1.4** : adresse précise, OpenData id, sheet récap arr. Pré-calculer les centroids arr côté Python ; étendre `Routes.MAP` avec query param `flyToArr` (analogue à `pulseArbreId`). Précharger le sheet content (cf. memo `feedback_compose_sheet`). Nouveau composable `ui/map/UniversalSearchSheet.kt`.
-
-**S3 — Réorganisation des FAB Map** — Layout validé :
+**S2 — Réorganisation des FAB Map** — Layout validé :
 
 ```
 ┌──────────────────────┐
@@ -29,7 +27,9 @@ Items détaillés dans `BACKLOG.md` (section « Cycle Boussole »).
   ★=Chasse        ●=HuntPanel
 ```
 
-`MapScreen.kt:717-794`. Conserver `bottomShiftForHunt` et `awaitingFirstFix` pulse (déplacés avec Localiser top-end). Vérifier non-chevauchement pile bottom-end / HuntPanel bottom-center.
+`MapScreen.kt:717-794`. Conserver `bottomShiftForHunt` et `awaitingFirstFix` pulse (déplacés avec Localiser top-end). Vérifier non-chevauchement pile bottom-end / HuntPanel bottom-center. **🔍 Recherche** et **⊙ Localiser** rendus discrets (`containerColor = surfaceContainerHigh`, `contentColor = onSurfaceVariant`, taille 56 dp conservée — alignés sur la palette utilitaire de `HuntPanel`). Le FAB 🔍 est posé en stub (snackbar « Recherche : bientôt »), le wiring de la sheet arrive en S3.
+
+**S3 — Recherche universelle** — FAB loupe top-start (déjà posé en S2) → bottom-sheet 3 sections, **périmètre minimal** : espèces capturées (FR/latin), genres découverts, arrondissements (parseur `"1"`/`"01"`/`"1er"`/`"75001"`/`"premier"`). Tap espèce → `Routes.species(sk)` ; tap genre → `Routes.genre(...)` ; tap arrondissement → fly-to centroid + close. **Hors périmètre v1.4** : adresse précise, OpenData id, sheet récap arr. Pré-calculer les centroids arr côté Python ; étendre `Routes.MAP` avec query param `flyToArr` (analogue à `pulseArbreId`). Précharger le sheet content (cf. memo `feedback_compose_sheet`). Nouveau composable `ui/map/UniversalSearchSheet.kt`.
 
 **S4 — Bar chart Profile** — Card additionnelle **sous** `ProgressionCard` (ne pas remplacer les 7 barres). **Pencher** : 2 graphes séparés, hebdomadaires, fenêtre 12 semaines glissantes — graphe 1 = captures totales par semaine, graphe 2 = nouvelles découvertes d'espèces par semaine. Compose `Canvas` hand-rolled, zéro dépendance. Bucket par semaine ISO (`WeekFields.ISO`) depuis `CaptureDao.allCaptures()`. **À rediscuter au démarrage du sprint** : fenêtre exacte (8 / 12 / 16 sem), empilés ou tabs, condition de masquage si historique < 2 semaines, couleurs (or vs feuilleClaire).
 
