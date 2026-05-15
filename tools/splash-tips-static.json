@@ -186,6 +186,7 @@
     {"id": "app.species_photos", "category": "app", "text": "Sur la fiche d'une espèce, l'illustration, c'est ta photo. Pas une image de banque. La pression est sur l'objectif."},
     {"id": "app.genre_sheet", "category": "app", "text": "Au-dessus des espèces, il y a les genres : une fiche par genre, son résumé, ses chiffres parisiens. Chêne, érable, tilleul — la grande famille au complet."},
     {"id": "app.progress_bars", "category": "app", "text": "Le Profil aligne jusqu'à sept barres de progression : arbres, espèces, genres, arrondissements. Certaines sont remplissables. D'autres beaucoup moins."},
+    {"id": "app.progress_history", "category": "app", "text": "Appuie longuement sur une barre du Profil. Son histoire hebdomadaire s'ouvre par-dessus. Pour voir si tu accélères."},
     {"id": "app.arr_logos", "category": "app", "text": "Les badges « Familier du… » portent le chiffre romain de l'arrondissement : XII, XVI… ou « Boulogne » et « Vincennes » pour les bois. Héraldique de poche."},
     {"id": "app.catalogue", "category": "app", "text": "L'Arboretum liste les 930 espèces parisiennes — dont 782 vraiment identifiées, le reste classé au seul nom de genre. Bonne chance pour le tableau de chasse complet."},
     {"id": "app.map_pulse", "category": "app", "text": "Depuis une fiche remarquable, l'app te renvoie sur la carte, zoomée pile sur l'arbre — il clignote deux secondes. Après, c'est à toi de marcher jusqu'à lui."},

@@ -2,7 +2,9 @@ package app.arbre.ui.profile
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -52,10 +54,15 @@ import app.arbre.backup.ExportResult
 import app.arbre.backup.ImportError
 import app.arbre.backup.ImportResult
 import app.arbre.backup.defaultExportFilename
+import app.arbre.data.Arbre
 import app.arbre.data.ArrKey
 import app.arbre.data.BadgeCatalog
 import app.arbre.data.BadgeDef
 import app.arbre.data.BadgeState
+import app.arbre.data.ProgressionMetric
+import app.arbre.data.SeriesContext
+import app.arbre.data.WeeklySeries
+import app.arbre.data.computeSeries
 import app.arbre.data.parseArrKey
 import app.arbre.data.rememberArbreRepository
 import app.arbre.data.rememberArrSpeciesIndex
@@ -197,15 +204,23 @@ fun ProfileScreen(
     val totalArrVisites = arrSpecies.keys.size
     val totalArrComplets = arrSpecies.keysWithRemarquables.size
 
+    // `arbresById` est partagé : (a) compteur « Arrondissements visités »,
+    // (b) jointure capture→arbre pour les graphiques hebdo (Genres découverts,
+    // Arrondissements visités) déclenchés au long-press sur une barre.
+    var arbresById by remember { mutableStateOf<Map<Long, Arbre>>(emptyMap()) }
     var arrVisites by remember { mutableStateOf<Int?>(null) }
     LaunchedEffect(toutesCaptures) {
-        val arbres = arbreRepo.arbresParIds(toutesCaptures.map { it.arbreId }.toSet())
-        arrVisites = arbres.values
+        val byId = arbreRepo.arbresParIds(toutesCaptures.map { it.arbreId }.toSet())
+        arbresById = byId
+        arrVisites = byId.values
             .map { parseArrKey(it.adresse) }
             .filter { it != ArrKey.Other }
             .distinct()
             .size
     }
+
+    var openedMetric by remember { mutableStateOf<ProgressionMetric?>(null) }
+    var openedSeries by remember { mutableStateOf<WeeklySeries?>(null) }
 
     val recentUnlocks = remember(allBadges) {
         allBadges.mapNotNull { state ->
@@ -269,13 +284,35 @@ fun ProfileScreen(
                 }
                 item {
                     ProgressionCard(
-                        arbres = ProgressionState(arbresDecouverts, datasetStats.totalArbres),
-                        remarquables = ProgressionState(nbRemarquables, datasetStats.totalRemarquables),
-                        especes = ProgressionState(nbIdentifiees, datasetStats.totalEspecesIdentifiees),
-                        genresDecouverts = ProgressionState(genresDecouverts, totalGenres),
-                        genresComplets = ProgressionState(genresComplets, totalGenresMajeurs),
-                        arrVisites = ProgressionState(arrVisites, totalArrVisites),
-                        arrComplets = ProgressionState(arrComplets, totalArrComplets),
+                        counts = ProgressionCounts(
+                            arbres = ProgressionState(arbresDecouverts, datasetStats.totalArbres),
+                            remarquables = ProgressionState(nbRemarquables, datasetStats.totalRemarquables),
+                            especes = ProgressionState(nbIdentifiees, datasetStats.totalEspecesIdentifiees),
+                            genresDecouverts = ProgressionState(genresDecouverts, totalGenres),
+                            genresComplets = ProgressionState(genresComplets, totalGenresMajeurs),
+                            arrVisites = ProgressionState(arrVisites, totalArrVisites),
+                            arrComplets = ProgressionState(arrComplets, totalArrComplets),
+                        ),
+                        onMetricLongPress = { metric ->
+                            // Précharge AVANT d'ouvrir le sheet — la 2e ouverture
+                            // tronquerait la hauteur si le contenu était async
+                            // (cf. memo `feedback_compose_sheet`).
+                            openedMetric = metric
+                            openedSeries = null
+                            launchHistoryFetch(
+                                metric = metric,
+                                deps = HistoryFetchDeps(
+                                    captures = toutesCaptures,
+                                    arbresById = arbresById,
+                                    speciesIndex = speciesIndex,
+                                    badges = allBadges,
+                                    firstCaptureTs = firstCaptureTs,
+                                    arbreRepo = arbreRepo,
+                                ),
+                                scope = coScope,
+                                onSeriesReady = { openedSeries = it },
+                            )
+                        },
                     )
                 }
             }
@@ -335,6 +372,19 @@ fun ProfileScreen(
             }
         }
     }
+
+    // Précharge respectée (memo `feedback_compose_sheet`) : le sheet n'est monté
+    // qu'avec `openedSeries` déjà résolu — un long-press déclenche la coroutine,
+    // et le sheet apparaît à completion. Pour les 6 métriques triviales : < 50 ms,
+    // ouverture quasi-instantanée. « Arbres déverrouillés » peut prendre 200-500 ms.
+    HistoryOverlay(
+        metric = openedMetric,
+        series = openedSeries,
+        onDismiss = {
+            openedMetric = null
+            openedSeries = null
+        },
+    )
 }
 
 @Composable
@@ -475,15 +525,20 @@ private fun DaysSinceLine(firstCaptureTs: Long) {
  */
 internal data class ProgressionState(val numerator: Int?, val denominator: Int)
 
+internal data class ProgressionCounts(
+    val arbres: ProgressionState,
+    val remarquables: ProgressionState,
+    val especes: ProgressionState,
+    val genresDecouverts: ProgressionState,
+    val genresComplets: ProgressionState,
+    val arrVisites: ProgressionState,
+    val arrComplets: ProgressionState,
+)
+
 @Composable
 private fun ProgressionCard(
-    arbres: ProgressionState,
-    remarquables: ProgressionState,
-    especes: ProgressionState,
-    genresDecouverts: ProgressionState,
-    genresComplets: ProgressionState,
-    arrVisites: ProgressionState,
-    arrComplets: ProgressionState,
+    counts: ProgressionCounts,
+    onMetricLongPress: (ProgressionMetric) -> Unit,
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -495,13 +550,13 @@ private fun ProgressionCard(
             modifier = Modifier.padding(20.dp),
             verticalArrangement = Arrangement.spacedBy(18.dp),
         ) {
-            ProgressBar("Arbres déverrouillés", arbres)
-            ProgressBar("Remarquables capturés", remarquables)
-            ProgressBar("Espèces capturées", especes)
-            ProgressBar("Genres découverts", genresDecouverts)
-            ProgressBar("Genres complétés", genresComplets)
-            ProgressBar("Arrondissements visités", arrVisites)
-            ProgressBar("Arrondissements complétés", arrComplets)
+            ProgressBar("Arbres déverrouillés", counts.arbres, ProgressionMetric.ARBRES, onMetricLongPress)
+            ProgressBar("Remarquables capturés", counts.remarquables, ProgressionMetric.REMARQUABLES, onMetricLongPress)
+            ProgressBar("Espèces capturées", counts.especes, ProgressionMetric.ESPECES, onMetricLongPress)
+            ProgressBar("Genres découverts", counts.genresDecouverts, ProgressionMetric.GENRES_DEC, onMetricLongPress)
+            ProgressBar("Genres complétés", counts.genresComplets, ProgressionMetric.GENRES_COMPL, onMetricLongPress)
+            ProgressBar("Arrondissements visités", counts.arrVisites, ProgressionMetric.ARR_VIS, onMetricLongPress)
+            ProgressBar("Arrondissements complétés", counts.arrComplets, ProgressionMetric.ARR_COMPL, onMetricLongPress)
         }
     }
 }
@@ -509,15 +564,30 @@ private fun ProgressionCard(
 /**
  * Barre de progression Material 3 : titre, `X / Y · Z %`, barre pleine largeur
  * épaisse. **Masquée intégralement si `value <= 0`** — on n'expose pas les
- * compteurs tant que le joueur n'a rien marqué dessus.
+ * compteurs tant que le joueur n'a rien marqué dessus. Long-press → graphique
+ * hebdo dans un sheet (cf. `ProgressionHistorySheet`).
  */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun ProgressBar(label: String, state: ProgressionState) {
+private fun ProgressBar(
+    label: String,
+    state: ProgressionState,
+    metric: ProgressionMetric,
+    onLongPress: (ProgressionMetric) -> Unit,
+) {
     val value = state.numerator ?: 0
     val total = state.denominator
     if (value <= 0 || total <= 0) return
     val pct = (value.toLong() * 100 / total).toInt().coerceIn(0, 100)
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .combinedClickable(
+                onClick = {},
+                onLongClick = { onLongPress(metric) },
+            ),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -641,6 +711,58 @@ private fun AllBadgesEntry(onClick: () -> Unit) {
                 contentDescription = null,
             )
         }
+    }
+}
+
+internal data class HistoryFetchDeps(
+    val captures: List<app.arbre.data.Capture>,
+    val arbresById: Map<Long, Arbre>,
+    val speciesIndex: app.arbre.data.SpeciesIndex,
+    val badges: List<BadgeState>,
+    val firstCaptureTs: Long?,
+    val arbreRepo: app.arbre.data.ArbreRepository,
+)
+
+/**
+ * Préchargement asynchrone de la série hebdo. Le callback `onSeriesReady`
+ * est appelé une fois la série calculée — le sheet ne s'affiche qu'à ce
+ * moment-là (cf. memo `feedback_compose_sheet`).
+ */
+private fun launchHistoryFetch(
+    metric: ProgressionMetric,
+    deps: HistoryFetchDeps,
+    scope: kotlinx.coroutines.CoroutineScope,
+    onSeriesReady: (app.arbre.data.WeeklySeries) -> Unit,
+) {
+    val firstTs = deps.firstCaptureTs ?: return
+    val ctx = SeriesContext(
+        captures = deps.captures,
+        arbresById = deps.arbresById,
+        speciesIndex = deps.speciesIndex,
+        badges = deps.badges,
+        nowMs = System.currentTimeMillis(),
+        firstMs = firstTs,
+    )
+    scope.launch {
+        val series = computeSeries(
+            metric = metric,
+            ctx = ctx,
+            arbresDecouvertsAt = { sk, rem ->
+                deps.arbreRepo.nombreArbresDecouverts(sk, rem, deps.speciesIndex)
+            },
+        )
+        onSeriesReady(series)
+    }
+}
+
+@Composable
+private fun HistoryOverlay(
+    metric: ProgressionMetric?,
+    series: WeeklySeries?,
+    onDismiss: () -> Unit,
+) {
+    if (metric != null && series != null) {
+        ProgressionHistorySheet(metric = metric, series = series, onDismiss = onDismiss)
     }
 }
 
