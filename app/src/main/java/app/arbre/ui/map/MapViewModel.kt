@@ -8,7 +8,14 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.arbre.data.Arbre
 import app.arbre.data.ArbreRepository
+import app.arbre.data.ArrSpeciesIndex
+import app.arbre.data.CaptureRepository
+import app.arbre.data.GenreInfoRepository
+import app.arbre.data.SpeciesIndex
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.maplibre.android.camera.CameraPosition
 import java.io.File
 
@@ -37,6 +44,27 @@ class MapViewModel(
         private set
 
     /**
+     * Sheet de recherche universelle. `null` = fermé. Mêmes raisons que
+     * `openedArbre` : on ne monte le `ModalBottomSheet` qu'avec un contenu
+     * réel, sinon la 2e ouverture mesure une hauteur tronquée (cf. memo
+     * `feedback_compose_sheet`). Les 3 listes (espèces capturées, genres
+     * découverts, 22 arrondissements) sont pré-cuites côté `SearchData.build`.
+     */
+    var searchData: SearchData? by mutableStateOf(null)
+        private set
+
+    /**
+     * Demande de fly-to vers le centroïde d'un arrondissement (lon, lat).
+     * Posté par `flyToArr(...)`, consommé par un `LaunchedEffect` côté
+     * `MapScreen` qui anime la caméra puis appelle `consumeArrFlyTo()`.
+     * On reste donc sur l'écran Map — pas de query param `flyToArr` : un
+     * `navigate(Routes.map(...))` remonterait MapScreen et rejouerait le
+     * splash, en perdant `lastCamera`.
+     */
+    var pendingArrFlyTo: Pair<Double, Double>? by mutableStateOf(null)
+        private set
+
+    /**
      * Cache de `arbresRemarquables()` pour le mode chasse — peuplé au 1er
      * passage en mode chasse, survit aux remounts. Le flag `huntActive` vit
      * côté `MapScreen` (`remember`) : le mode se ferme automatiquement quand
@@ -56,6 +84,33 @@ class MapViewModel(
 
     fun closeDetail() {
         openedArbre = null
+    }
+
+    fun openSearch(
+        speciesIndex: SpeciesIndex,
+        genreInfo: GenreInfoRepository,
+        arrIndex: ArrSpeciesIndex,
+        captureRepo: CaptureRepository,
+    ) {
+        viewModelScope.launch {
+            val captured = captureRepo.capturedSpeciesIndices().first()
+            searchData = withContext(Dispatchers.Default) {
+                SearchData.build(speciesIndex, genreInfo, arrIndex, captured)
+            }
+        }
+    }
+
+    fun closeSearch() {
+        searchData = null
+    }
+
+    fun flyToArr(lon: Double, lat: Double) {
+        pendingArrFlyTo = lon to lat
+        searchData = null
+    }
+
+    fun consumeArrFlyTo() {
+        pendingArrFlyTo = null
     }
 
     fun savePending(p: PendingCapture) {

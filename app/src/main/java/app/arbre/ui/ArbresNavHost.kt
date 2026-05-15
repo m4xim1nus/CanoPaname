@@ -84,6 +84,7 @@ fun ArbresNavHost() {
                 onRemarquablesClick = { nav.navigate(Routes.REMARQUABLES) },
                 onProfileClick = { nav.navigate(Routes.PROFILE) },
                 onSpeciesClick = { sk -> nav.navigate(Routes.species(sk)) },
+                onGenreClick = { genre -> nav.navigate(Routes.genre(genre)) },
                 onRemarquableDetail = { id -> nav.navigate(Routes.remarquableDetail(id)) },
                 onFirstSpeciesCapture = { sk ->
                     nav.navigate(Routes.species(sk, celebrate = true))

@@ -72,6 +72,7 @@ import app.arbre.R
 import app.arbre.data.Arbre
 import app.arbre.data.Capture
 import app.arbre.data.rememberArbreRepository
+import app.arbre.data.rememberArrSpeciesIndex
 import app.arbre.data.rememberCaptureRepository
 import app.arbre.data.rememberSpeciesIndex
 import app.arbre.data.rememberRemarquableInfoRepository
@@ -154,6 +155,7 @@ fun MapScreen(
     onRemarquablesClick: () -> Unit = {},
     onProfileClick: () -> Unit = {},
     onSpeciesClick: (Int) -> Unit = {},
+    onGenreClick: (String) -> Unit = {},
     onRemarquableDetail: (Long) -> Unit = {},
     onFirstSpeciesCapture: (Int) -> Unit = {},
     onBack: (() -> Unit)? = null,
@@ -173,6 +175,7 @@ fun MapScreen(
     val speciesIndex = rememberSpeciesIndex()
     val speciesInfoRepo = rememberSpeciesInfoRepository()
     val genreInfoRepo = rememberGenreInfoRepository()
+    val arrSpeciesIndex = rememberArrSpeciesIndex()
     val remarquableInfoRepo = rememberRemarquableInfoRepository()
     val viewModel: MapViewModel = viewModel(
         factory = viewModelFactory {
@@ -461,6 +464,21 @@ fun MapScreen(
         )
     }
 
+    // Fly-to centroïde d'arrondissement depuis la Recherche universelle.
+    // Animé à z13 (l'arr entier rentre dans le viewport) sans halo : un pulse
+    // à 1 km de diamètre visuel n'aurait pas de cible ponctuelle à marquer.
+    LaunchedEffect(viewModel.pendingArrFlyTo, mapRef) {
+        val target = viewModel.pendingArrFlyTo ?: return@LaunchedEffect
+        val map = mapRef ?: return@LaunchedEffect
+        val (lon, lat) = target
+        map.animateCamera(
+            CameraUpdateFactory.newLatLngZoom(LatLng(lat, lon), 13.0),
+            700,
+            null,
+        )
+        viewModel.consumeArrFlyTo()
+    }
+
     // Recadrage GPS auto au 1er fix. `computeInitialCamera` étant non-bloquant,
     // sur un install frais (ou GPS froid en intérieur) la carte démarre sur Paris ;
     // dès qu'un fix arrive on recentre dessus à zoom 16 — sauf si : mode filtré,
@@ -716,10 +734,15 @@ fun MapScreen(
                     .padding(16.dp),
             )
         } else {
-            // 🔍 Recherche (top-start, discret). Stub S2 — wiring sheet en S3.
+            // 🔍 Recherche universelle (top-start, discret).
             UtilityFab(
                 onClick = {
-                    scope.launch { snackbar.showSnackbar("Recherche : bientôt") }
+                    viewModel.openSearch(
+                        speciesIndex = speciesIndex,
+                        genreInfo = genreInfoRepo,
+                        arrIndex = arrSpeciesIndex,
+                        captureRepo = captureRepo,
+                    )
                 },
                 modifier = Modifier
                     .align(Alignment.TopStart)
@@ -976,6 +999,22 @@ fun MapScreen(
                     onDismiss = { pendingDeleteIndex = null },
                 )
             }
+        }
+
+        viewModel.searchData?.let { data ->
+            UniversalSearchSheet(
+                data = data,
+                onSpeciesTap = { sk ->
+                    viewModel.closeSearch()
+                    onSpeciesClick(sk)
+                },
+                onGenreTap = { g ->
+                    viewModel.closeSearch()
+                    onGenreClick(g)
+                },
+                onArrTap = { item -> viewModel.flyToArr(item.lon, item.lat) },
+                onDismiss = { viewModel.closeSearch() },
+            )
         }
     }
 }
