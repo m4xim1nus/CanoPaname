@@ -38,9 +38,17 @@ fun parseArrKey(adresse: String?): ArrKey {
     }
 }
 
-/** Libellé court pour sticky header / sous-texte (« 1er », « 5e », « Bois… »). */
+/** Libellé court pour sous-texte de carte (« 1er », « 5e », « Bois… »). */
 fun ArrKey.label(): String = when (this) {
     is ArrKey.Paris -> if (num == 1) "1er" else "${num}e"
+    ArrKey.BoisVincennes -> "Bois de Vincennes"
+    ArrKey.BoisBoulogne -> "Bois de Boulogne"
+    ArrKey.Other -> "Hors Paris"
+}
+
+/** Libellé long pour sticky header de chapitre par arrondissement. */
+fun ArrKey.headerLabel(): String = when (this) {
+    is ArrKey.Paris -> if (num == 1) "1er arrondissement" else "${num}e arrondissement"
     ArrKey.BoisVincennes -> "Bois de Vincennes"
     ArrKey.BoisBoulogne -> "Bois de Boulogne"
     ArrKey.Other -> "Hors Paris"

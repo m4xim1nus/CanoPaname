@@ -46,7 +46,7 @@ import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.unit.dp
 import app.arbre.data.Arbre
 import app.arbre.data.ArrKey
-import app.arbre.data.label
+import app.arbre.data.headerLabel
 import app.arbre.data.parseArrKey
 import app.arbre.data.sortKey
 import app.arbre.data.rememberArbreRepository
@@ -247,7 +247,11 @@ private fun CatalogueView(
         // LazyListScope, qu'une lambda de `forEach` masquerait.
         for (section in sections) {
             stickyHeader(key = "header-${section.key.sortKey()}") {
-                ArrondissementHeader(section.key.label())
+                ArrondissementHeader(
+                    label = section.key.headerLabel(),
+                    captured = section.arbres.count { it.id in capturedIds },
+                    total = section.arbres.size,
+                )
             }
             items(section.arbres, key = { it.id }) { arbre ->
                 val discovered = arbre.id in capturedIds
@@ -275,17 +279,27 @@ private data class ArrSection(
 )
 
 @Composable
-private fun ArrondissementHeader(label: String) {
+private fun ArrondissementHeader(label: String, captured: Int, total: Int) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
         tonalElevation = 2.dp,
         color = MaterialTheme.colorScheme.surface,
     ) {
-        Text(
-            label,
-            style = MaterialTheme.typography.titleLarge,
+        Row(
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-        )
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                label,
+                style = MaterialTheme.typography.titleLarge,
+                modifier = Modifier.weight(1f),
+            )
+            Text(
+                "$captured / $total",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
     }
 }
 
