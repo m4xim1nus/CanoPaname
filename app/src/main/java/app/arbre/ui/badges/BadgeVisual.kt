@@ -18,13 +18,17 @@ import app.arbre.data.romanNumeral
 sealed interface BadgeVisual {
     data class Vector(val image: ImageVector) : BadgeVisual
     data class Label(val text: String) : BadgeVisual
+    /** Icône + petit nombre/texte rendu sous l'icône, dans le même cercle. */
+    data class VectorWithBadge(val image: ImageVector, val badge: String) : BadgeVisual
 }
 
 /**
  * Visuel du badge. Les badges « Familier d'arrondissement » (`familier_arr_*`)
  * sont des textes : chiffre romain I…XX pour les 20 arrondissements, nom court
- * pour les 2 bois. Tout le reste — y compris la famille « Familier de genre »
- * (`familier_genre_*` → `Forest`, l'idée « bosquet ») — passe par [icon].
+ * pour les 2 bois. Les paliers Pokédex (`pokedex_*`) cumulent une icône
+ * « herbier » et le seuil chiffré rendu sous l'icône. Tout le reste — y compris
+ * la famille « Familier de genre » (`familier_genre_*` → `Forest`, l'idée
+ * « bosquet ») — passe par [icon].
  */
 fun BadgeDef.visual(): BadgeVisual = when {
     id.startsWith(BadgeCatalog.FAMILIER_ARR_PREFIX) -> {
@@ -34,6 +38,10 @@ fun BadgeDef.visual(): BadgeVisual = when {
             ArrKey.BoisBoulogne -> BadgeVisual.Label("Boulogne")
             else -> BadgeVisual.Vector(Icons.Outlined.Place)
         }
+    }
+    id.startsWith(BadgeCatalog.POKEDEX_PREFIX) -> {
+        val threshold = id.removePrefix(BadgeCatalog.POKEDEX_PREFIX)
+        BadgeVisual.VectorWithBadge(icon(), threshold)
     }
     else -> BadgeVisual.Vector(icon())
 }

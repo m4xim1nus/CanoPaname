@@ -390,6 +390,77 @@ class BadgeEvaluatorTest {
         assertTrue(states.none { it.def.id == arr5Id })
     }
 
+    // ---------- pokédex (binaires, paliers cumulatifs) ----------
+
+    @Test fun `evaluate locks all pokedex badges when no captures`() {
+        val states = eval(
+            captures = emptyList(),
+            arbresById = emptyMap(),
+            speciesIndex = pokedexSpeciesIndex(500),
+        )
+        BadgeCatalog.POKEDEX_THRESHOLDS.forEach { n ->
+            assertNull(binaryUnlockedAt(states, BadgeCatalog.pokedexBadgeId(n)))
+        }
+    }
+
+    @Test fun `evaluate unlocks pokedex_10 when the 10 lowest pokedex species are all captured`() {
+        val ts0 = parisTs("2025-04-01T10:00:00Z")
+        val idx = pokedexSpeciesIndex(20)
+        val arbres = (1..10).associate { i ->
+            i.toLong() to arbre(id = i.toLong(), genre = "Genus$i", espece = "species$i")
+        }
+        val captures = (1..10).map { i ->
+            capture(arbreId = i.toLong(), speciesIndex = i - 1, ts = ts0 + i)
+        }
+        val states = eval(captures = captures, arbresById = arbres, speciesIndex = idx)
+        assertNotNull(binaryUnlockedAt(states, BadgeCatalog.pokedexBadgeId(10)))
+        assertNull(binaryUnlockedAt(states, BadgeCatalog.pokedexBadgeId(20)))
+    }
+
+    @Test fun `evaluate unlocks lower pokedex tiers in cascade when reaching pokedex_50`() {
+        val ts0 = parisTs("2025-04-01T10:00:00Z")
+        val idx = pokedexSpeciesIndex(100)
+        val arbres = (1..50).associate { i ->
+            i.toLong() to arbre(id = i.toLong(), genre = "Genus$i", espece = "species$i")
+        }
+        val captures = (1..50).map { i ->
+            capture(arbreId = i.toLong(), speciesIndex = i - 1, ts = ts0 + i)
+        }
+        val states = eval(captures = captures, arbresById = arbres, speciesIndex = idx)
+        assertNotNull(binaryUnlockedAt(states, BadgeCatalog.pokedexBadgeId(10)))
+        assertNotNull(binaryUnlockedAt(states, BadgeCatalog.pokedexBadgeId(20)))
+        assertNotNull(binaryUnlockedAt(states, BadgeCatalog.pokedexBadgeId(50)))
+        assertNull(binaryUnlockedAt(states, BadgeCatalog.pokedexBadgeId(100)))
+    }
+
+    @Test fun `evaluate freezes pokedex_10 ts on the completing capture`() {
+        val ts0 = parisTs("2025-04-01T10:00:00Z")
+        val tsLast = parisTs("2025-04-10T10:00:00Z")
+        val idx = pokedexSpeciesIndex(10)
+        val arbres = (1..10).associate { i ->
+            i.toLong() to arbre(id = i.toLong(), genre = "Genus$i", espece = "species$i")
+        }
+        val captures = (1..9).map { i ->
+            capture(arbreId = i.toLong(), speciesIndex = i - 1, ts = ts0 + i)
+        } + capture(arbreId = 10L, speciesIndex = 9, ts = tsLast)
+        val states = eval(captures = captures, arbresById = arbres, speciesIndex = idx)
+        assertEquals(tsLast, binaryUnlockedAt(states, BadgeCatalog.pokedexBadgeId(10)))
+    }
+
+    @Test fun `evaluate ignores remarquable captures for pokedex`() {
+        val ts0 = parisTs("2025-04-01T10:00:00Z")
+        val idx = pokedexSpeciesIndex(10)
+        val arbres = (1..10).associate { i ->
+            i.toLong() to arbre(id = i.toLong(), genre = "Genus$i", espece = "species$i")
+        }
+        // Toutes remarquables → aucun palier Pokédex ne doit se débloquer.
+        val captures = (1..10).map { i ->
+            capture(arbreId = i.toLong(), speciesIndex = i - 1, remarquable = true, ts = ts0 + i)
+        }
+        val states = eval(captures = captures, arbresById = arbres, speciesIndex = idx)
+        assertNull(binaryUnlockedAt(states, BadgeCatalog.pokedexBadgeId(10)))
+    }
+
     // ---------- helpers ----------
 
     private fun parisTs(iso: String): Long = Instant.parse(iso).toEpochMilli()
@@ -443,6 +514,19 @@ class BadgeEvaluatorTest {
     private val emptySpeciesIndex = SpeciesIndex(emptyList())
     private val emptyArrSpecies = ArrSpeciesIndex(emptyMap())
     private val emptyGenreInfo = GenreInfoRepository(emptyMap())
+
+    /** SpeciesIndex avec `n` entrées actives, sk = i-1, pokedexNumber = i. */
+    private fun pokedexSpeciesIndex(n: Int): SpeciesIndex =
+        SpeciesIndex(
+            (1..n).map { i ->
+                SpeciesEntry(
+                    index = i - 1,
+                    genre = "Genus$i",
+                    espece = "species$i",
+                    pokedexNumber = i,
+                )
+            }
+        )
 
     /**
      * Lance l'évaluateur et reconstitue la liste `BadgeState` (catalogue complet

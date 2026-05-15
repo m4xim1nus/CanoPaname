@@ -1,6 +1,7 @@
 package app.arbre.ui.badges
 
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.MenuBook
 import androidx.compose.material.icons.outlined.Eco
 import androidx.compose.material.icons.outlined.EmojiEvents
 import androidx.compose.material.icons.outlined.Forest
@@ -36,6 +37,7 @@ fun BadgeDef.icon(): ImageVector = when {
     id == BadgeCatalog.BONSAI.id -> Icons.Outlined.Grass
     id == BadgeCatalog.VIEUX_SAGE.id -> Icons.Outlined.Park
     id == BadgeCatalog.JEUNE_POUSSE.id -> Icons.Outlined.Eco
+    id.startsWith(BadgeCatalog.POKEDEX_PREFIX) -> Icons.AutoMirrored.Outlined.MenuBook
     id.startsWith(BadgeCatalog.FAMILIER_GENRE_PREFIX) -> Icons.Outlined.Forest
     id.startsWith(BadgeCatalog.FAMILIER_ARR_PREFIX) -> Icons.Outlined.Place
     else -> Icons.Outlined.EmojiEvents

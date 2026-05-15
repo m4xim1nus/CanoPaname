@@ -122,6 +122,33 @@ object BadgeCatalog {
         category = BadgeCategory.DEMESURE,
     )
 
+    const val POKEDEX_PREFIX = "pokedex_"
+
+    /** Paliers Pokédex (binaires). Couvrir 1..N pour débloquer pokedex_N. */
+    val POKEDEX_THRESHOLDS: List<Int> = listOf(10, 20, 50, 100, 200, 500)
+
+    fun pokedexBadgeId(threshold: Int): String = POKEDEX_PREFIX + threshold
+
+    private val POKEDEX_LABELS: Map<Int, Pair<String, String>> = mapOf(
+        10 to ("Promeneur curieux" to "Les 10 espèces les plus communes de Paris, capturées."),
+        20 to ("Apprenti botaniste" to "Les 20 espèces les plus communes de Paris, capturées."),
+        50 to ("Botaniste" to "Les 50 espèces les plus communes de Paris, capturées."),
+        100 to ("Herboriste" to "Les 100 espèces les plus communes de Paris, capturées."),
+        200 to ("Naturaliste" to "Les 200 espèces les plus communes de Paris, capturées."),
+        500 to ("Dendrologue" to "Les 500 espèces les plus communes de Paris, capturées."),
+    )
+
+    /** Palier Pokédex → BadgeDef. */
+    val POKEDEX: Map<Int, BadgeDef> = POKEDEX_THRESHOLDS.associateWith { n ->
+        val (label, desc) = POKEDEX_LABELS.getValue(n)
+        BadgeDef(
+            id = pokedexBadgeId(n),
+            label = label,
+            description = desc,
+            category = BadgeCategory.DECOUVERTE,
+        )
+    }
+
     /** Les badges statiques. Les familles « Familier » s'y ajoutent dans [full]. */
     val ALL: List<BadgeDef> = listOf(
         PREMIERE_CAPTURE,
@@ -134,7 +161,7 @@ object BadgeCatalog {
         BONSAI,
         VIEUX_SAGE,
         JEUNE_POUSSE,
-    )
+    ) + POKEDEX_THRESHOLDS.map(POKEDEX::getValue)
 
     /** Id stable d'un badge « Familier des … » à partir du genre latin. */
     fun genreBadgeId(genre: String): String =

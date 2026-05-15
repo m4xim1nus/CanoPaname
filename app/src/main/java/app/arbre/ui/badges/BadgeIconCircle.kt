@@ -1,7 +1,9 @@
 package app.arbre.ui.badges
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
@@ -56,6 +58,25 @@ fun BadgeIconCircle(state: BadgeState, size: Dp = 48.dp) {
                 textAlign = TextAlign.Center,
                 modifier = Modifier.padding(horizontal = 2.dp),
             )
+            is BadgeVisual.VectorWithBadge -> Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(0.dp),
+            ) {
+                Icon(
+                    imageVector = visual.image,
+                    contentDescription = null,
+                    tint = contentTint,
+                    modifier = Modifier.size(size * 0.45f),
+                )
+                Text(
+                    text = visual.badge,
+                    fontFamily = ArbresFraunces,
+                    fontSize = pokedexBadgeFontSize(visual.badge.length, size),
+                    color = contentTint,
+                    maxLines = 1,
+                    textAlign = TextAlign.Center,
+                )
+            }
         }
     }
 }
@@ -67,4 +88,11 @@ private fun labelFontSize(length: Int) = when {
     length == 5 -> 13.sp   // XVIII
     length <= 8 -> 10.sp   // « Boulogne »
     else -> 9.sp           // « Vincennes »
+}
+
+/** Police du nombre overlay (10/20/50/100/200/500) sous l'icône MenuBook. */
+private fun pokedexBadgeFontSize(length: Int, size: Dp) = when {
+    size <= 32.dp -> if (length <= 2) 9.sp else 8.sp
+    length <= 2 -> 13.sp   // « 10 », « 20 », « 50 »
+    else -> 11.sp          // « 100 », « 200 », « 500 »
 }

@@ -23,6 +23,19 @@ object BadgeEvaluator {
         // Accumulateurs des familles « Familier ».
         val capturedSks = HashSet<Int>()
         val capturedSksByArr = HashMap<ArrKey, MutableSet<Int>>()
+        // Accumulateur Pokédex : exclut les captures remarquables (sémantique
+        // Catalogue/Arboretum, alignée sur les chapitres par fréquence).
+        val capturedSksNonRemarquable = HashSet<Int>()
+
+        // Pré-calcul une fois : palier N → set des sks d'espèces actives ayant
+        // pokedexNumber ∈ [1..N]. Coût négligeable (≈ 6 × 800 entrées au pire).
+        val pokedexTargets: Map<Int, Set<Int>> = BadgeCatalog.POKEDEX_THRESHOLDS
+            .associateWith { threshold ->
+                speciesIndex.entries()
+                    .filter { it.isActive && (it.pokedexNumber ?: 0) in 1..threshold }
+                    .map { it.index }
+                    .toSet()
+            }
 
         for (capture in sorted) {
             val ts = capture.timestamp
@@ -52,6 +65,10 @@ object BadgeEvaluator {
                 capturedSks.add(sk)
                 evaluateFamilierGenre(unlocks, speciesIndex, sk, capturedSks, ts)
                 evaluateFamilierArr(unlocks, speciesIndex, arrSpecies, capturedSksByArr, arbre, sk, ts)
+                if (!capture.remarquable) {
+                    capturedSksNonRemarquable.add(sk)
+                    evaluatePokedex(unlocks, pokedexTargets, capturedSksNonRemarquable, ts)
+                }
             }
         }
         return unlocks
@@ -96,6 +113,24 @@ object BadgeEvaluator {
         seen.add(sk)
         if (speciesIndex.effectivelyCapturedSpecies(seen).containsAll(arrTarget)) {
             unlockOnce(unlocks, BadgeCatalog.arrBadgeId(arr), true, ts)
+        }
+    }
+
+    /** Pokédex : palier N débloqué dès que toutes les espèces actives avec
+     *  pokedexNumber ∈ [1..N] ont été capturées (hors remarquables — sémantique
+     *  Catalogue par fréquence). 6 paliers indépendants, déclenchés en cascade. */
+    private fun evaluatePokedex(
+        unlocks: MutableMap<String, Long>,
+        pokedexTargets: Map<Int, Set<Int>>,
+        capturedNonRemarquable: Set<Int>,
+        ts: Long,
+    ) {
+        for ((threshold, target) in pokedexTargets) {
+            val id = BadgeCatalog.pokedexBadgeId(threshold)
+            val pending = target.isNotEmpty() && id !in unlocks
+            if (pending && capturedNonRemarquable.containsAll(target)) {
+                unlocks[id] = ts
+            }
         }
     }
 
