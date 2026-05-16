@@ -4,46 +4,7 @@ App perso, pas de calendrier engageant. Single-player, stockage local strict —
 
 ## Cycle en cours
 
-### Boussole — viseur `v1.4.0`
-
-Cycle ouvert le 2026-05-14. Thème : **navigation + lisibilité de la progression**. Un correctif structurel (le critère « arrondissement complété » est aujourd'hui injouable), trois apports inspirés du PWA livré par un admirateur (recherche universelle, réorg FAB, bar chart Profile), une extension du système de badges (paliers Pokédex), et du polish + side-tasks. Aucune migration Room, mais régénération `arr-species.json` (champ `remarquables` + centroids par arr).
-
-Items détaillés dans `BACKLOG.md` (section « Cycle Boussole »).
-
-**S1 — Modèle « arrondissement complété » sur remarquables (structurel)** — Le dénominateur actuel = *toutes* les espèces de l'arr (incluant `sp.`) rend la complétion quasi-impossible. On bascule sur les *arbres remarquables* de l'arr. Conserver « Arrondissements visités » = n'importe quel capture. Touche `tools/build_dataset.py` (ajouter `remarquables` dans `arr-species.json`), `ArrSpeciesIndex.remarquablesOf(arr)`, `BadgeEvaluator.evaluateFamilierArr` (l.78-98), description badge « Familier du Xe » (`Badge.kt` l.169-182), barre `ProgressionCard` (`ProfileScreen.kt` l.494-500), `BadgeEvaluatorTest`. À faire en premier : les sprints S2/S5 dépendent du dataset régénéré. **Voir aussi le bloc « Polish S1 affiné post-test device » plus bas.**
-
-**S2 — Réorganisation des FAB Map** — Layout validé :
-
-```
-┌──────────────────────┐
-│ 🔍              ⊙  │  top
-│                      │
-│         (carte)      │
-│                      │
-│                  🌳  │  bot-end
-│                  📖  │  pile [Remarq, Arbo, Profil]
-│ ★          ●     👤  │
-└──────────────────────┘
-  ★=Chasse        ●=HuntPanel
-```
-
-`MapScreen.kt:717-794`. Conserver `bottomShiftForHunt` et `awaitingFirstFix` pulse (déplacés avec Localiser top-end). Vérifier non-chevauchement pile bottom-end / HuntPanel bottom-center. **🔍 Recherche** et **⊙ Localiser** rendus discrets (`containerColor = surfaceContainerHigh`, `contentColor = onSurfaceVariant`, taille 56 dp conservée — alignés sur la palette utilitaire de `HuntPanel`). Le FAB 🔍 est posé en stub (snackbar « Recherche : bientôt »), le wiring de la sheet arrive en S3.
-
-**S3 — Recherche universelle** — FAB loupe top-start (déjà posé en S2) → bottom-sheet 3 sections, **périmètre minimal** : espèces capturées (FR/latin), genres découverts, arrondissements (parseur `"1"`/`"01"`/`"1er"`/`"75001"`/`"premier"`). Tap espèce → `Routes.species(sk)` ; tap genre → `Routes.genre(...)` ; tap arrondissement → fly-to centroid + close. **Hors périmètre v1.4** : adresse précise, OpenData id, sheet récap arr. Pré-calculer les centroids arr côté Python ; étendre `Routes.MAP` avec query param `flyToArr` (analogue à `pulseArbreId`). Précharger le sheet content (cf. memo `feedback_compose_sheet`). Nouveau composable `ui/map/UniversalSearchSheet.kt`.
-
-**S4 — Bar chart Profile** — Card additionnelle **sous** `ProgressionCard` (ne pas remplacer les 7 barres). **Pencher** : 2 graphes séparés, hebdomadaires, fenêtre 12 semaines glissantes — graphe 1 = captures totales par semaine, graphe 2 = nouvelles découvertes d'espèces par semaine. Compose `Canvas` hand-rolled, zéro dépendance. Bucket par semaine ISO (`WeekFields.ISO`) depuis `CaptureDao.allCaptures()`. **À rediscuter au démarrage du sprint** : fenêtre exacte (8 / 12 / 16 sem), empilés ou tabs, condition de masquage si historique < 2 semaines, couleurs (or vs feuilleClaire).
-
-**S5 — Badges Pokédex progression** — 6 badges statiques binaires : `pokedex_10`, `pokedex_20`, `pokedex_50`, `pokedex_100`, `pokedex_200`, `pokedex_500`. Critère : avoir capturé **toutes** les espèces ayant `pokedexNumber ∈ [1..N]`. Le `pokedexNumber` est déjà calculé côté `build_dataset.py` (ordre décroissant de count, stable entre regénérations) et exposé via `SpeciesEntry.pokedexNumber`. Ajouter à `BadgeCatalog.ALL` ; brancher `evaluatePokedexRange(...)` dans `BadgeEvaluator` (utiliser `effectivelyCapturedSpecies` pour la propagation `sp.`) ; 6 icônes dans `BadgeIcons.kt` (variantes médaille graduée). Pas de migration.
-
-**S6 — Polish chapitres + tip erroné** — (a) Texte fixe « arrondissement » dans titres de chapitres Remarquables/Catalogue (1er-20ème, pas pour les 2 Bois) ; (b) compteur N/M à côté de ces titres (cohérence avec Arboretum par genre) ; (c) tip splash citant « 930 espèces » à corriger — recompter le périmètre exact, ajuster ou retirer.
-
-**Polish UX post-test device** (intercalé entre S6 et S7) — Trois correctifs UX émergés du parcours de validation device : (1) `UtilityFab` (Recherche + Localiser, top de la carte) passe en verre dépoli `White.copy(alpha = 0.78)` + icône asphalte, avec **toutes les élévations à 0** pour neutraliser le tonal overlay Material 3 (sinon mini-carré clair au centre, visible sur container translucide). Palette figée hors thème système car ces FAB survolent toujours la carte claire. (2) `UniversalSearchSheet` content force `fillMaxSize()` + `weight(1f)` sur la `LazyColumn` (au lieu de `heightIn(max = 520.dp)`) — le sheet adopte désormais toujours la hauteur plein écran, indépendamment de la taille du contenu et de la présence de l'IME (avant : ouverture à ~75 % puis re-cadrage à pleine hauteur quand le clavier montait). (3) Source `tools/splash-tips-static.json` alignée sur les compteurs courants (`934 / 784`) + retrait des deux tips supprimés en S6, pour qu'une régénération `build_dataset.py` ne ré-introduise pas la régression. Compromis assumé : auto-focus du champ de recherche = IME visible = 2 back-press pour fermer le sheet (1 ferme l'IME, 1 ferme le sheet), comportement Android natif universel.
-
-**Polish S1 affiné post-test device** — Le pivot S1 portait sur les *espèces* d'arbres remarquables (couverture par sk). Divergent du compteur `N / M` de RemarquablesScreen qui compte les arbres individuels — un 19e à 10/12 arbres pouvait débloquer le badge « Familier du 19e » dès lors que les 9 espèces uniques étaient couvertes. Bascule définitive sur les **ids d'arbres remarquables** : `arr-species.json` émet `remarquable_ids: [...idbase...]` à la place de `remarquables: [...sk...]`, `ArrSpeciesIndex` expose `remarquableArbreIdsOf(key): Set<Long>`, `BadgeEvaluator.evaluateFamilierArr` compare directement des `Set<Long>` (plus de propagation `effectivelyCapturedSpecies`). Aucune migration utilisateur — les badges injustement débloqués se referment au prochain mount du Profil.
-
-**S7 — Side-tasks de clôture** — (a) Revérifier la pertinence d'un texte fallback pour fiches espèces sans Wiki post-Catalogue 1.1.0 : audit `assets/species-info.json`, si ≤ 5% des espèces réellement capturables manquent de texte → fermer `[refusé]`, sinon proposer un fallback ; (b) Screenshots README de 3 à 6, couvrir les nouveaux écrans v1.4 (Map avec FAB Recherche, sheet Recherche, Profile avec bar charts) ; (c) Dette detekt accumulée par S2/S3 : 6 issues à traiter (3× MapScreen suite à l'ajout de `onGenreClick` qui décale la signature des entries baseliné, 1× UniversalSearchSheet `LongMethod`, 2× SearchData `ReturnCount` + `LoopWithTooManyJumpStatements`). Choix à faire : refactorer pour rentrer dans les seuils, ou rebaseliner en assumant la dérive (DoD cycle = `baseline ≤ 9`, rebaseline brut amènerait à 12).
-
-**Definition of done** : tests JVM verts (`BadgeEvaluatorTest` couvre nouveau critère arr + 6 paliers Pokédex), detekt baseline ≤ 9, build release signé local OK, smoke test device GrapheneOS (S1 à S6 visuels), backup/restore sanity check, entrée `CHANGELOG.md [1.4.0]` rédigée, tag `v1.4.0` poussé, rotation cycle Boussole → *Cycles livrés post-1.0*.
+_(à ouvrir — voir « Prochains cycles » ci-dessous pour les candidats)_
 
 ## Prochains cycles
 
@@ -54,6 +15,10 @@ Refonte Arboretum « états/variants ». La colonne `season` (devenue inerte par
 Inspiration : Dave the Diver / Pokédex enrichi. Re-capture du même arbre dans un état nouveau = upgrade visible de l'élément Arboretum, sans inflation artificielle. Migration `MIGRATION_4_5`, backup `schemaVersion = 3`. Badges variantes émergent naturellement. Items détaillés dans `BACKLOG.md`.
 
 ## Cycles livrés post-1.0
+
+### Boussole — `1.4.0` (2026-05-16)
+
+Cycle thématique **navigation + lisibilité de la progression**. Sept sprints + deux passes de polish device. Apports majeurs : Recherche universelle (FAB 🔍 + sheet 3 sections espèces/genres/arrondissements avec parseur ordinaux/zipcodes), histogrammes hebdomadaires Profil au long-press d'une barre `ProgressionCard` (pipeline pur Kotlin, fenêtre ISO bornée 16 sem), 6 badges Pokédex paliers 10/20/50/100/200/500 (libellés gradués), réorganisation FAB Map (🔍 top-start, ⊙ top-end, pile bot-end, ★ Chasse bot-start) en verre dépoli. Correctif structurel : « Familier d'arrondissement » bascule du dénominateur *espèces de l'arr* (injouable) vers les **ids d'arbres remarquables physiques** (aligné sur le compteur `N / M` du Catalogue) — itération en deux temps post-test device. Polish chapitres Remarquables/Catalogue (headerLabel `Xe arrondissement` + compteur `N / M`), splash tips réalignés `934 / 784`, screenshots README portés à 6. Clôture detekt : extract `LazyListScope.searchSection(...)`, refacto `SearchData.build()` en chaînes `filter().map()`, `parseArrQuery` 7 → 2 returns. Baseline reste à 9. Détails dans `CHANGELOG.md` `[1.4.0]`.
 
 ### Reproductibilité — `1.3.2` (2026-05-13)
 

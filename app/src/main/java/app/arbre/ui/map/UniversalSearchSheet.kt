@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -112,32 +113,14 @@ fun UniversalSearchSheet(
                     .padding(top = 12.dp)
                     .weight(1f),
             ) {
-                if (filteredSpecies.isNotEmpty()) {
-                    stickyHeader { SectionHeader("Espèces", filteredSpecies.size) }
-                    items(
-                        items = filteredSpecies,
-                        key = { "sp-${it.sk}" },
-                    ) { item ->
-                        SpeciesRow(item, onClick = { onSpeciesTap(item.sk) })
-                    }
+                searchSection("Espèces", filteredSpecies, key = { "sp-${it.sk}" }) {
+                    SpeciesRow(it, onClick = { onSpeciesTap(it.sk) })
                 }
-                if (filteredGenres.isNotEmpty()) {
-                    stickyHeader { SectionHeader("Genres", filteredGenres.size) }
-                    items(
-                        items = filteredGenres,
-                        key = { "g-${it.genre}" },
-                    ) { item ->
-                        GenreRow(item, onClick = { onGenreTap(item.genre) })
-                    }
+                searchSection("Genres", filteredGenres, key = { "g-${it.genre}" }) {
+                    GenreRow(it, onClick = { onGenreTap(it.genre) })
                 }
-                if (filteredArrs.isNotEmpty()) {
-                    stickyHeader { SectionHeader("Arrondissements", filteredArrs.size) }
-                    items(
-                        items = filteredArrs,
-                        key = { "a-${it.label}" },
-                    ) { item ->
-                        ArrRow(item, onClick = { onArrTap(item) })
-                    }
+                searchSection("Arrondissements", filteredArrs, key = { "a-${it.label}" }) {
+                    ArrRow(it, onClick = { onArrTap(it) })
                 }
                 if (filteredSpecies.isEmpty() && filteredGenres.isEmpty() && filteredArrs.isEmpty()) {
                     item {
@@ -166,6 +149,18 @@ fun UniversalSearchSheet(
     LaunchedEffect(Unit) {
         focusRequester.requestFocus()
     }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+private fun <T : Any> LazyListScope.searchSection(
+    label: String,
+    items: List<T>,
+    key: (T) -> Any,
+    row: @Composable (T) -> Unit,
+) {
+    if (items.isEmpty()) return
+    stickyHeader { SectionHeader(label, items.size) }
+    items(items = items, key = key) { row(it) }
 }
 
 @Composable

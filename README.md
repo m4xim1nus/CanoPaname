@@ -9,7 +9,10 @@ App Android pour partir à la chasse aux arbres remarquables de Paris, collectio
 <p align="center">
   <img src="docs/screenshots/01-onboarding.png" width="240" alt="Écran d'accueil"/>
   <img src="docs/screenshots/02-carte.png" width="240" alt="Carte des arbres parisiens"/>
-  <img src="docs/screenshots/03-fiche-arbre.png" width="240" alt="Fiche d'un arbre capturé"/>
+  <img src="docs/screenshots/03-arboretum.png" width="240" alt="Catalogue Arboretum"/>
+  <img src="docs/screenshots/04-espece.png" width="240" alt="Fiche espèce"/>
+  <img src="docs/screenshots/05-remarquables.png" width="240" alt="Catalogue Remarquables"/>
+  <img src="docs/screenshots/06-profil.png" width="240" alt="Profil et progression"/>
 </p>
 
 ## Ce que c'est

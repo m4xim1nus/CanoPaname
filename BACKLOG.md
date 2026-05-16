@@ -15,20 +15,7 @@ Triage en lot au début de chaque cycle. Process complet dans `CLAUDE.md` (*Work
 
 ## À trier
 
-_(vide — items absorbés par le cycle Boussole le 2026-05-14)_
-
-## Cycle Boussole
-
-- [→Boussole] Pivoter barre « Arrondissements complétés » + badges `familier_arr_*` sur le dénominateur remarquables de l'arr (plus toutes les espèces). « Arrondissements visités » inchangé (n'importe quel capture). (user:moi, 2026-05-14)
-- [→Boussole] Recherche universelle, FAB loupe top-start → sheet 3 sections : espèces capturées (FR/latin), genres découverts, arrondissements (parseur `"1"`/`"01"`/`"1er"`/`"75001"`/`"premier"`). Tap → fly-to centroid pour arr / fiche pour espèce/genre. Hors périmètre : adresse précise, OpenData id, sheet récap arr. Centroids arr pré-calculés côté Python. (pwa:livraison-dev-externe, 2026-05-13 ; cadré 2026-05-14)
-- [→Boussole] Réorg FAB Map : top-start 🔍 Recherche, top-end ⊙ Localiser, bottom-end pile [Remarquables, Arboretum, Profil] (bas-en-haut), bottom-start ★ Chasse inchangé. (pwa:livraison-dev-externe, 2026-05-13 ; cadré 2026-05-14)
-- [→Boussole] Bar chart Profile : Card additionnelle sous `ProgressionCard` (pas en remplacement des 7 barres). Penchant à confirmer au démarrage : 2 graphes séparés hebdo, fenêtre 12 sem — captures totales + nouvelles découvertes d'espèces. (pwa:livraison-dev-externe, 2026-05-13 ; cadré 2026-05-14 ; à rediscuter en début de sprint)
-- [→Boussole] 6 badges Pokédex binaires `pokedex_{10,20,50,100,200,500}` : avoir capturé toutes les espèces ayant `pokedexNumber ∈ [1..N]`. (user:moi, 2026-05-14)
-- [→Boussole] Texte fixe « arrondissement » dans titres de chapitres Remarquables/Catalogue (1er-20ème, pas pour les Bois). (user:pote, 2026-05-14)
-- [→Boussole] Compteur N/M à côté des titres de chapitres Remarquables/Catalogue (cohérence Arboretum par genre). (user:pote, 2026-05-14)
-- [→Boussole] Fix tip splash citant « 930 espèces » — chiffre obsolète vs dataset actuel (784 identifiées / 934 catalogue / 204 genres / 217 264 arbres / 183 remarquables). Vérifier le périmètre exact à citer. (user:moi, 2026-05-14)
-- [→Boussole] Revérifier le besoin d'un texte fallback pour fiches espèces sans Wiki post-Catalogue 1.1.0. Si ≤ 5% des espèces capturables manquent → fermer `[refusé]`. (audit-B, 2026-05-06 ; rapatrié 2026-05-14)
-- [→Boussole] Étendre screenshots README de 3 à 6 (nouveau layout Map, sheet Recherche, Profile avec bar charts). (audit#17, 2026-05-06 ; rapatrié 2026-05-14)
+_(vide — cycle Boussole clos 2026-05-16, livré en v1.4.0)_
 
 ## Cycle Variantes
 
@@ -40,6 +27,7 @@ _(vide — items absorbés par le cycle Boussole le 2026-05-14)_
 
 ## À creuser
 
+- [creuser] Texte fallback pour fiches espèces sans Wikipedia. Audit S7 (2026-05-16) : **254/784 espèces identifiées (32 %) sans `summary`**, mais ne couvrent que **7 778/204 364 arbres (3.8 %)** — quasi exclusivement des hybrides/cultivars/sous-espèces (Tilia x europaea, Pinus nigra subsp. nigra, Gleditsia triacanthos f. Inermis, x Cupressocyparis leylandii…). Fallback gratuit dispo via `genre-info.json.summary` (texte Wikipedia du genre, déjà cuit). Lecture pondérée par arbres = sous le seuil ≤ 5 %, lecture par espèce = bien au-dessus — à trancher dans un cycle futur si la friction utilisateur devient sensible. (audit-B 2026-05-06 ; ré-audité 2026-05-16 hors-cycle Boussole)
 - [creuser] Quêtes hebdomadaires locales, opt-in, sans push (audit V2#3, 2026-05-06 ; déplacé depuis Endgame 2026-05-12 quand le cycle a été dissous)
 - [creuser] Résidu post-cycle Catalogue : 11 entrées résiduelles avec `nv == binôme nu` et count ≤ 2 (post-fil-rouge S10), botaniquement douteuses — `Ehretia macrophylla`, `Sophora flavescens`, `Betula occidentalis`, `Crataegus japonicum`, `Crataegus baccata`, `Celtis cerasifera`, `Carpinus carpinifolia`, `Phellodendron japonicum`, `Zanthoxylum bungei`, `Alnus formosana`, `Brucea javanica`. Peut-être réelles mais rares à Paris, peut-être saisies erronées. Demandent une recherche botanique pour trancher keep / rebinder (claude:audit-S6, 2026-05-11 ; réduit de 29→11 au S10)
 - [creuser] WelcomeScreen pas lu, intro depuis la carte (user:F&F + user:moi 2026-05-07 : pas prio mais à reconsidérer post-Photos)

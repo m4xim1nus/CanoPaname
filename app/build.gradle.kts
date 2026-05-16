@@ -54,8 +54,8 @@ android {
         applicationId = "app.arbre"
         minSdk = 26
         targetSdk = 35
-        versionCode = 13002
-        versionName = "1.3.2"
+        versionCode = 14000
+        versionName = "1.4.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables { useSupportLibrary = true }
     }
@@ -109,6 +109,12 @@ android {
         // Neutralise les exceptions android.util.Log dans les tests JVM purs
         // (BackupImporter logue erreurs sans qu'on veuille tirer Robolectric).
         unitTests.isReturnDefaultValues = true
+    }
+    lint {
+        // Bug AGP 8.x : NonNullableMutableLiveDataDetector crashe lintVital
+        // après un `clean` (NoClassDefFoundError). Le projet n'utilise pas
+        // LiveData (tout est Flow), le check est sans valeur ici.
+        disable += "NullSafeMutableLiveData"
     }
     packaging {
         resources.excludes += setOf(

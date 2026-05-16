@@ -51,53 +51,46 @@ fun SearchData.Companion.build(
     arrIndex: ArrSpeciesIndex,
     captured: Set<Int>,
 ): SearchData {
-    val species = buildList {
-        for (entry in speciesIndex.entries()) {
-            if (!entry.isActive) continue
-            if (entry.index !in captured) continue
+    val species = speciesIndex.entries()
+        .filter { it.isActive && it.index in captured }
+        .map { entry ->
             val display = entry.displayNomCommun
             val latin = entry.displayName
-            add(
-                SpeciesSearchItem(
-                    sk = entry.index,
-                    display = display,
-                    latin = latin,
-                    haystack = normalizeQuery("$display $latin"),
-                )
+            SpeciesSearchItem(
+                sk = entry.index,
+                display = display,
+                latin = latin,
+                haystack = normalizeQuery("$display $latin"),
             )
         }
-    }.sortedWith(compareBy({ it.display.lowercase() }, { it.sk }))
+        .sortedWith(compareBy({ it.display.lowercase() }, { it.sk }))
 
-    val genres = buildList {
-        for (g in speciesIndex.allGenres()) {
-            if (!speciesIndex.genreHasAnyCapture(g, captured)) continue
+    val genres = speciesIndex.allGenres()
+        .filter { speciesIndex.genreHasAnyCapture(it, captured) }
+        .map { g ->
             val nomFr = genreInfo.get(g)?.nomFr
             val display = if (nomFr != null) "$g — $nomFr" else g
-            add(
-                GenreSearchItem(
-                    genre = g,
-                    display = display,
-                    haystack = normalizeQuery("$g ${nomFr.orEmpty()}"),
-                )
+            GenreSearchItem(
+                genre = g,
+                display = display,
+                haystack = normalizeQuery("$g ${nomFr.orEmpty()}"),
             )
         }
-    }.sortedBy { it.display.lowercase() }
+        .sortedBy { it.display.lowercase() }
 
-    val arrs = buildList {
-        for (key in arrIndex.keys) {
-            val centroid = arrIndex.centroidOf(key) ?: continue
+    val arrs = arrIndex.keys
+        .mapNotNull { key ->
+            val centroid = arrIndex.centroidOf(key) ?: return@mapNotNull null
             val label = key.label()
-            add(
-                ArrSearchItem(
-                    key = key,
-                    label = label,
-                    lon = centroid.first,
-                    lat = centroid.second,
-                    haystack = normalizeQuery(label),
-                )
+            ArrSearchItem(
+                key = key,
+                label = label,
+                lon = centroid.first,
+                lat = centroid.second,
+                haystack = normalizeQuery(label),
             )
         }
-    }.sortedBy { it.key.sortKey() }
+        .sortedBy { it.key.sortKey() }
 
     return SearchData(species = species, genres = genres, arrs = arrs)
 }
@@ -136,17 +129,15 @@ private val ZIPCODE = Regex("^750(\\d{2})$")
 fun parseArrQuery(query: String): ArrKey? {
     val q = normalizeQuery(query)
     if (q.isEmpty()) return null
-
-    PARIS_NUM.matchEntire(q)?.let { m ->
-        val n = m.groupValues[1].toIntOrNull() ?: return@let
-        if (n in 1..20) return ArrKey.Paris(n)
-    }
-    ZIPCODE.matchEntire(q)?.let { m ->
-        val n = m.groupValues[1].toIntOrNull() ?: return@let
-        if (n in 1..20) return ArrKey.Paris(n)
-    }
-    ORDINALS_FR[q]?.let { return ArrKey.Paris(it) }
-    if ("vincennes" in q) return ArrKey.BoisVincennes
-    if ("boulogne" in q) return ArrKey.BoisBoulogne
-    return null
+    val numericArr = (PARIS_NUM.matchEntire(q) ?: ZIPCODE.matchEntire(q))
+        ?.groupValues?.get(1)
+        ?.toIntOrNull()
+        ?.takeIf { it in 1..20 }
+    return numericArr?.let { ArrKey.Paris(it) }
+        ?: ORDINALS_FR[q]?.let { ArrKey.Paris(it) }
+        ?: when {
+            "vincennes" in q -> ArrKey.BoisVincennes
+            "boulogne" in q -> ArrKey.BoisBoulogne
+            else -> null
+        }
 }
