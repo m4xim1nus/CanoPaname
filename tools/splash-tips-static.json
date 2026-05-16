@@ -15,7 +15,7 @@
     {
       "id": "intro.species_count",
       "category": "intro",
-      "text": "782 espèces d'arbres ont été identifiées à Paris. Plus que dans certains pays."
+      "text": "784 espèces d'arbres ont été identifiées à Paris. Plus que dans certains pays."
     },
     {
       "id": "intro.tutorial_capture",
@@ -188,11 +188,10 @@
     {"id": "app.progress_bars", "category": "app", "text": "Le Profil aligne jusqu'à sept barres de progression : arbres, espèces, genres, arrondissements. Certaines sont remplissables. D'autres beaucoup moins."},
     {"id": "app.progress_history", "category": "app", "text": "Appuie longuement sur une barre du Profil. Son histoire hebdomadaire s'ouvre par-dessus. Pour voir si tu accélères."},
     {"id": "app.arr_logos", "category": "app", "text": "Les badges « Familier du… » portent le chiffre romain de l'arrondissement : XII, XVI… ou « Boulogne » et « Vincennes » pour les bois. Héraldique de poche."},
-    {"id": "app.catalogue", "category": "app", "text": "L'Arboretum liste les 930 espèces parisiennes — dont 782 vraiment identifiées, le reste classé au seul nom de genre. Bonne chance pour le tableau de chasse complet."},
+    {"id": "app.catalogue", "category": "app", "text": "L'Arboretum liste les 934 espèces parisiennes — dont 784 vraiment identifiées, le reste classé au seul nom de genre. Bonne chance pour le tableau de chasse complet."},
     {"id": "app.map_pulse", "category": "app", "text": "Depuis une fiche remarquable, l'app te renvoie sur la carte, zoomée pile sur l'arbre — il clignote deux secondes. Après, c'est à toi de marcher jusqu'à lui."},
 
     {"id": "player.species_count", "category": "player", "text": "Tu as croisé {speciesCount} espèces. Le platane est jaloux.", "requires": ["speciesCount"]},
-    {"id": "player.species_progression", "category": "player", "text": "{speciesCount} espèces capturées sur 930. C'est un échantillon honnête.", "requires": ["speciesCount"]},
     {"id": "player.remarquable_count", "category": "player", "text": "Tu as trouvé {remarquableCount} arbres remarquables. Les autres patientent.", "requires": ["remarquableCount"]},
     {"id": "player.days_since", "category": "player", "text": "Ta plus vieille capture date d'il y a {daysSinceFirst} jours. Le temps passe, l'écorce se fissure.", "requires": ["daysSinceFirst"]},
     {"id": "player.species_one", "category": "player", "text": "Au moins une espèce capturée. Le reste suivra. Ou pas.", "requires": ["speciesCount"]},
@@ -210,7 +209,6 @@
     {"id": "player.completist", "category": "player", "text": "{speciesCount} espèces. Encore un effort, il en reste.", "requires": ["speciesCount"]},
     {"id": "player.notable", "category": "player", "text": "Tes {remarquableCount} remarquables sont notables. Sans suspense.", "requires": ["remarquableCount"]},
     {"id": "player.elapsed_time", "category": "player", "text": "{daysSinceFirst} jours plus tard. Le platane n'a pas changé. Toi un peu.", "requires": ["daysSinceFirst"]},
-    {"id": "player.species_share", "category": "player", "text": "Tu détiens {speciesCount} espèces sur 930. Même Linné aurait souri.", "requires": ["speciesCount"]},
     {"id": "player.remarquables_share", "category": "player", "text": "{remarquableCount} sur 183 arbres remarquables. Tu finiras par tous les saluer.", "requires": ["remarquableCount"]},
     {"id": "player.species_modest", "category": "player", "text": "Les {speciesCount} espèces de ton catalogue valent bien quelques étagères de naturaliste.", "requires": ["speciesCount"]},
     {"id": "player.recommendation", "category": "player", "text": "{speciesCount} espèces : tu recommanderais l'app à un cousin botaniste.", "requires": ["speciesCount"]},

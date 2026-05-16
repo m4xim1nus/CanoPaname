@@ -4,8 +4,8 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -30,7 +30,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
@@ -46,7 +45,6 @@ fun UniversalSearchSheet(
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val focusRequester = remember { FocusRequester() }
-    val keyboard = LocalSoftwareKeyboardController.current
 
     var q by remember { mutableStateOf("") }
 
@@ -83,9 +81,17 @@ fun UniversalSearchSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
     ) {
+        // `fillMaxSize()` sur le Column + `weight(1f)` sur la LazyColumn :
+        // sans contrainte, le `ModalBottomSheet` s'adapte à la taille de son
+        // contenu — qui était ici TextField + LazyColumn bornée à 520 dp =
+        // ~600 dp, soit ~75 % de l'écran sur un téléphone moderne. Le user
+        // voyait ce contenu compact comme une « ouverture à 3/4 », même avec
+        // `skipPartiallyExpanded = true` (qui ne touche qu'aux anchors, pas
+        // à la taille du contenu). En forçant le contenu à occuper toute la
+        // hauteur disponible, le sheet est toujours plein écran, IME ou pas.
         Column(
             modifier = Modifier
-                .fillMaxWidth()
+                .fillMaxSize()
                 .padding(horizontal = 16.dp)
                 .padding(bottom = 16.dp),
         ) {
@@ -104,7 +110,7 @@ fun UniversalSearchSheet(
             LazyColumn(
                 modifier = Modifier
                     .padding(top = 12.dp)
-                    .heightIn(max = 520.dp),
+                    .weight(1f),
             ) {
                 if (filteredSpecies.isNotEmpty()) {
                     stickyHeader { SectionHeader("Espèces", filteredSpecies.size) }
@@ -147,9 +153,18 @@ fun UniversalSearchSheet(
         }
     }
 
+    // Focus auto sur le champ de recherche au mount. `focusRequester.requestFocus()`
+    // déclenche automatiquement l'apparition de l'IME sur Android 14+
+    // (`showSoftInputOnFocus = true`, pas opt-out exposé en Material 3). Compromis
+    // accepté : quand l'IME est visible, Android route le 1er back-press vers
+    // `ImeBackAnimationController` (priorité système, on l'a vérifié via logcat),
+    // donc 2 back pour fermer (1 ferme l'IME, 1 ferme le sheet). C'est le
+    // comportement Android natif universel (Google Maps, Apple Plans, formulaires
+    // système…). Le bug visuel précédent — sheet « rabougri » à 3/4 quand l'IME
+    // se fermait — est neutralisé par le `fillMaxSize()` du Column conteneur :
+    // le sheet est toujours plein écran, IME ou pas.
     LaunchedEffect(Unit) {
         focusRequester.requestFocus()
-        keyboard?.show()
     }
 }
 

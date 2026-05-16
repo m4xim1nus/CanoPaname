@@ -8,7 +8,7 @@ Sorties :
 - ../app/src/main/assets/arbres-paris.geojson        (MapLibre, source clusterisée)
 - ../app/src/main/assets/species-index.json          (lookup int -> {genre, espece})
 - ../app/src/main/assets/dataset-stats.json          (totals affichés en Arboretum)
-- ../app/src/main/assets/arr-species.json            (slug ArrKey -> [speciesIndex] présents — dénominateur des badges « Familier d'arrondissement »)
+- ../app/src/main/assets/arr-species.json            (slug ArrKey -> ids d'arbres remarquables + centroïde — dénominateur des badges « Familier d'arrondissement »)
 
 Schéma SQLite identique à celui que Room générerait pour `ArbreEntity` —
 sans cela, `createFromAsset()` rejette la base au runtime.
@@ -656,25 +656,29 @@ def arr_key_slug(adresse: str | None) -> str | None:
 
 def write_arr_species(
     arr_species: dict[str, set[int]],
-    arr_remarquables: dict[str, set[int]],
+    arr_remarquable_ids: dict[str, set[int]],
     arr_lon_sum: dict[str, float],
     arr_lat_sum: dict[str, float],
     arr_count: dict[str, int],
-    all_sks: set[int],
+    all_arbre_ids: set[int],
 ) -> None:
-    """Écrit `arr-species.json` : `{slug ArrKey -> {species, remarquables, centroid}}`.
+    """Écrit `arr-species.json` : `{slug ArrKey -> {remarquable_ids, centroid}}`.
 
     Dénominateurs :
-    - `species` : ensemble des speciesIndex présents dans l'arr (≥ 1 arbre).
-      Sert à la barre « Arrondissements visités » (≥ 1 capture quelconque).
-    - `remarquables` : sous-ensemble des speciesIndex correspondant à au moins
-      un arbre **remarquable** dans l'arr (CSV `les-arbres` col `remarquable`).
-      Sert au badge « Familier du Xe » et à la barre « Arrondissements
-      complétés ». Peut être vide pour les arr sans remarquable (côté Kotlin,
-      ces arr sont exclus du dénominateur « Complétés » mais conservés dans
-      « Visités »).
+    - `remarquable_ids` : ids (`idbase`) des arbres **remarquables** physiques
+      de l'arrondissement (CSV `les-arbres` col `remarquable` = OUI). Sert
+      au critère badge « Familier du Xe » et à la barre « Arrondissements
+      complétés ». Comparaison directe d'ids d'arbres avec les ids des
+      captures `remarquable=true` faites dans cet arr (cf. `BadgeEvaluator`).
+      Peut être vide pour les arr sans remarquable (côté Kotlin, ces arr
+      sont exclus du dénominateur « Complétés » mais conservés dans la liste
+      `keys` pour « Visités »).
     - `centroid` : moyenne arithmétique [lon, lat] des arbres de l'arr.
-      Utilisé pour le fly-to depuis la Recherche universelle (sprint S2).
+      Utilisé pour le fly-to depuis la Recherche universelle (sprint S3).
+
+    Le set local `arr_species` n'est utilisé que pour valider la complétude
+    des 22 slugs ; il n'est plus émis (« Arrondissements visités » se base
+    sur la simple présence d'un slug dans le JSON).
 
     22 clés (20 arr. + 2 bois), exclaves exclues.
     """
@@ -684,18 +688,11 @@ def write_arr_species(
     rogue = set(arr_species) - set(ARR_KEY_SLUGS)
     if rogue:
         raise SystemExit(f"[err] arr-species : slugs inattendus : {sorted(rogue)}")
-    for s, sks in arr_species.items():
-        bad = [sk for sk in sks if sk not in all_sks]
+    for s, ids in arr_remarquable_ids.items():
+        bad = [i for i in ids if i not in all_arbre_ids]
         if bad:
-            raise SystemExit(f"[err] arr-species[{s}] : sk hors index : {bad[:5]}…")
-    for s, sks in arr_remarquables.items():
-        bad = [sk for sk in sks if sk not in all_sks]
-        if bad:
-            raise SystemExit(f"[err] arr-species[{s}].remarquables : sk hors index : {bad[:5]}…")
-        rogue_rem = sks - arr_species.get(s, set())
-        if rogue_rem:
             raise SystemExit(
-                f"[err] arr-species[{s}].remarquables ⊄ species : {sorted(rogue_rem)[:5]}…"
+                f"[err] arr-species[{s}].remarquable_ids : id hors CSV : {bad[:5]}…"
             )
 
     payload: dict[str, dict] = {}
@@ -709,24 +706,23 @@ def write_arr_species(
         else:
             centroid = None
         payload[s] = {
-            "species": sorted(arr_species[s]),
-            "remarquables": sorted(arr_remarquables.get(s, set())),
+            "remarquable_ids": sorted(arr_remarquable_ids.get(s, set())),
             "centroid": centroid,
         }
     with OUT_ARR_SPECIES.open("w", encoding="utf-8") as f:
         json.dump(payload, f, ensure_ascii=False, separators=(",", ":"))
     kb = OUT_ARR_SPECIES.stat().st_size // 1024
-    rem_with = sum(1 for s in ARR_KEY_SLUGS if payload[s]["remarquables"])
-    rem_total = sum(len(payload[s]["remarquables"]) for s in ARR_KEY_SLUGS)
-    rem_missing = [s for s in ARR_KEY_SLUGS if not payload[s]["remarquables"]]
+    rem_with = sum(1 for s in ARR_KEY_SLUGS if payload[s]["remarquable_ids"])
+    rem_total = sum(len(payload[s]["remarquable_ids"]) for s in ARR_KEY_SLUGS)
+    rem_missing = [s for s in ARR_KEY_SLUGS if not payload[s]["remarquable_ids"]]
     sizes = ", ".join(
-        f"{s}:{len(payload[s]['species'])}/{len(payload[s]['remarquables'])}r"
-        for s in ("2", "16", "vincennes")
+        f"{s}:{len(payload[s]['remarquable_ids'])}r"
+        for s in ("2", "16", "19", "vincennes")
     )
     print(
         f"       → {OUT_ARR_SPECIES.name} ({len(payload)} clés, {kb} Ko ; "
         f"{rem_with}/{len(ARR_KEY_SLUGS)} avec remarquables, "
-        f"{rem_total} sk remarquables au total ; {sizes})"
+        f"{rem_total} arbres remarquables au total ; {sizes})"
     )
     if rem_missing:
         print(f"       ⚠ arr sans remarquable : {rem_missing} → exclus du dénominateur « Complétés »")
@@ -3127,15 +3123,15 @@ def build(csv_path: Path, db_path: Path, geojson_path: Path) -> None:
     arr_by_sk: dict[int, dict[str, int]] = defaultdict(lambda: defaultdict(int))
     count_by_sk: dict[int, int] = defaultdict(int)
     arr_total: dict[str, int] = defaultdict(int)
-    # arr-species.json : ensemble des speciesIndex présents par ArrKey (slug),
-    # dérivé via `arr_key_slug(adresse)` — même règle que `parseArrKey` côté
-    # Kotlin, donc cohérent avec ce que l'évaluateur de badges accumulera.
-    # `arr_remarquables` filtre sur la colonne `remarquable=OUI` du CSV
-    # (dénominateur badge « Familier du Xe »). `arr_lon/lat_sum` + `arr_count`
-    # accumulent le centroïde moyen de l'arr (utilisé par S2 pour le fly-to
-    # depuis la Recherche universelle).
+    # arr-species.json : par ArrKey (slug) on collecte les ids des arbres
+    # **remarquables** (dénominateur badge « Familier du Xe » — comparaison
+    # directe d'ids d'arbres, sans propagation espèce) et le centroïde moyen
+    # de l'arr (utilisé par S3 pour le fly-to depuis la Recherche universelle).
+    # `arr_species` reste local pour la validation `keysWithRemarquables` et
+    # la vérification de complétude des 22 slugs ; il n'est plus émis dans
+    # l'asset depuis que `Familier d'arrondissement` raisonne en ids d'arbres.
     arr_species: dict[str, set[int]] = defaultdict(set)
-    arr_remarquables: dict[str, set[int]] = defaultdict(set)
+    arr_remarquable_ids: dict[str, set[int]] = defaultdict(set)
     arr_lon_sum: dict[str, float] = defaultdict(float)
     arr_lat_sum: dict[str, float] = defaultdict(float)
     arr_count: dict[str, int] = defaultdict(int)
@@ -3249,7 +3245,7 @@ def build(csv_path: Path, db_path: Path, geojson_path: Path) -> None:
                 if arr_slug:
                     arr_species[arr_slug].add(sk)
                     if remarquable:
-                        arr_remarquables[arr_slug].add(sk)
+                        arr_remarquable_ids[arr_slug].add(id_)
                     arr_lon_sum[arr_slug] += lon
                     arr_lat_sum[arr_slug] += lat
                     arr_count[arr_slug] += 1
@@ -3296,11 +3292,11 @@ def build(csv_path: Path, db_path: Path, geojson_path: Path) -> None:
 
     write_arr_species(
         dict(arr_species),
-        dict(arr_remarquables),
+        dict(arr_remarquable_ids),
         dict(arr_lon_sum),
         dict(arr_lat_sum),
         dict(arr_count),
-        set(species_index.values()),
+        seen_ids,
     )
 
     essences_records = fetch_essences()

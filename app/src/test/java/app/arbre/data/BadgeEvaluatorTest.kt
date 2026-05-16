@@ -286,89 +286,94 @@ class BadgeEvaluatorTest {
     }
 
     // ---------- Familier d'un arrondissement ----------
-    // Le dénominateur du badge est désormais l'ensemble des espèces d'arbres
-    // *remarquables* de l'arr (pas toutes les espèces recensées). Les arr sans
-    // aucun remarquable n'engendrent pas de badge.
+    // Le dénominateur du badge est l'ensemble des **ids d'arbres** remarquables
+    // physiques de l'arr — capture directe par id, pas de propagation espèce.
+    // Les arr sans aucun remarquable n'engendrent pas de badge.
 
     private val arr5Id = BadgeCatalog.arrBadgeId(ArrKey.Paris(5))
 
-    @Test fun `evaluate unlocks familier arrondissement when all its remarquables are covered`() {
-        // Le 5e recense 5 espèces, dont seulement 2 sont remarquables.
+    @Test fun `evaluate unlocks familier arrondissement when all remarquable ids captured`() {
+        // Le 5e a 3 arbres remarquables (ids 10, 11, 12). Capturer chaque
+        // arbre remarquable est nécessaire — couvrir l'espèce ne suffit pas.
         val idx = SpeciesIndex(
             listOf(
                 SpeciesEntry(index = 0, genre = "Quercus", espece = "robur"),
-                SpeciesEntry(index = 1, genre = "Quercus", espece = "ilex"),
-                SpeciesEntry(index = 2, genre = "Quercus", espece = "sp.", unknownSpecies = true),
-                SpeciesEntry(index = 3, genre = "Tilia", espece = "cordata"),
-                SpeciesEntry(index = 4, genre = "Tilia", espece = "platyphyllos"),
+                SpeciesEntry(index = 1, genre = "Tilia", espece = "cordata"),
             ),
         )
         val arrSpecies = ArrSpeciesIndex(
-            byKey = mapOf(ArrKey.Paris(5) to setOf(0, 1, 2, 3, 4)),
-            remarquablesByKey = mapOf(ArrKey.Paris(5) to setOf(0, 1)),
+            arrKeys = setOf(ArrKey.Paris(5)),
+            remarquableArbreIdsByKey = mapOf(ArrKey.Paris(5) to setOf(10L, 11L, 12L)),
+        )
+        val arbres = mapOf(
+            10L to arbre(id = 10L, genre = "Quercus", espece = "robur", adresse = "RUE A, 5e"),
+            11L to arbre(id = 11L, genre = "Quercus", espece = "robur", adresse = "RUE B, 5e"),
+            12L to arbre(id = 12L, genre = "Tilia", espece = "cordata", adresse = "RUE C, 5e"),
         )
 
-        // Capturer seulement robur dans le 5e : il reste ilex à trouver.
+        // Capturer 10 + 11 (deux Quercus robur remarquables, même espèce) :
+        // l'espèce Quercus robur est couverte, mais l'id 12 manque → pas de badge.
         val partial = eval(
-            captures = listOf(capture(arbreId = 1L, speciesIndex = 0, ts = 1L)),
-            arbresById = mapOf(1L to arbre(id = 1L, genre = "Quercus", espece = "robur", adresse = "RUE A, 5e")),
-            speciesInfo = emptySpeciesInfo(),
+            captures = listOf(
+                capture(arbreId = 10L, speciesIndex = 0, ts = 1L, remarquable = true),
+                capture(arbreId = 11L, speciesIndex = 0, ts = 2L, remarquable = true),
+            ),
+            arbresById = arbres,
             speciesIndex = idx,
             arrSpecies = arrSpecies,
         )
         assertNull(binaryUnlockedAt(partial, arr5Id))
 
-        // Puis ilex dans le 5e : couverture complète des remarquables → débloqué.
-        // Note : cordata et platyphyllos restent non capturées, sans effet sur le badge.
+        // Capture du dernier remarquable → badge unlocké au ts de cette capture.
         val full = eval(
             captures = listOf(
-                capture(arbreId = 1L, speciesIndex = 0, ts = 1L),
-                capture(arbreId = 2L, speciesIndex = 1, ts = 2L),
+                capture(arbreId = 10L, speciesIndex = 0, ts = 1L, remarquable = true),
+                capture(arbreId = 11L, speciesIndex = 0, ts = 2L, remarquable = true),
+                capture(arbreId = 12L, speciesIndex = 1, ts = 3L, remarquable = true),
+            ),
+            arbresById = arbres,
+            speciesIndex = idx,
+            arrSpecies = arrSpecies,
+        )
+        assertEquals(3L, binaryUnlockedAt(full, arr5Id))
+    }
+
+    @Test fun `evaluate ignores non-remarquable captures for familier arrondissement`() {
+        // Un arbre ordinaire (`remarquable = false`) du même id qu'une cible
+        // remarquable ne devrait pas se produire en prod, mais on vérifie que
+        // c'est bien le flag `capture.remarquable` qui gate la progression :
+        // capturer le robur ordinaire sk=0 dans le 5e ne complète pas la cible
+        // {10, 11} car les captures non-remarquables n'alimentent pas le set.
+        val idx = SpeciesIndex(listOf(SpeciesEntry(index = 0, genre = "Quercus", espece = "robur")))
+        val arrSpecies = ArrSpeciesIndex(
+            arrKeys = setOf(ArrKey.Paris(5)),
+            remarquableArbreIdsByKey = mapOf(ArrKey.Paris(5) to setOf(10L, 11L)),
+        )
+        val states = eval(
+            captures = listOf(
+                capture(arbreId = 1L, speciesIndex = 0, ts = 1L, remarquable = false),
+                capture(arbreId = 2L, speciesIndex = 0, ts = 2L, remarquable = false),
             ),
             arbresById = mapOf(
                 1L to arbre(id = 1L, genre = "Quercus", espece = "robur", adresse = "RUE A, 5e"),
-                2L to arbre(id = 2L, genre = "Quercus", espece = "ilex", adresse = "RUE B, 5e"),
+                2L to arbre(id = 2L, genre = "Quercus", espece = "robur", adresse = "RUE B, 5e"),
             ),
-            speciesInfo = emptySpeciesInfo(),
             speciesIndex = idx,
             arrSpecies = arrSpecies,
         )
-        assertEquals(2L, binaryUnlockedAt(full, arr5Id))
-    }
-
-    @Test fun `evaluate propagates sp_ on remarquable target`() {
-        // Le 5e a un unique remarquable libellé (Quercus, sp.) : capturer n'importe
-        // quel chêne identifié doit suffire via effectivelyCapturedSpecies.
-        val idx = SpeciesIndex(
-            listOf(
-                SpeciesEntry(index = 0, genre = "Quercus", espece = "robur"),
-                SpeciesEntry(index = 1, genre = "Quercus", espece = "sp.", unknownSpecies = true),
-            ),
-        )
-        val arrSpecies = ArrSpeciesIndex(
-            byKey = mapOf(ArrKey.Paris(5) to setOf(0, 1)),
-            remarquablesByKey = mapOf(ArrKey.Paris(5) to setOf(1)),
-        )
-        val states = eval(
-            captures = listOf(capture(arbreId = 1L, speciesIndex = 0, ts = 1L)),
-            arbresById = mapOf(1L to arbre(id = 1L, genre = "Quercus", espece = "robur", adresse = "RUE A, 5e")),
-            speciesInfo = emptySpeciesInfo(),
-            speciesIndex = idx,
-            arrSpecies = arrSpecies,
-        )
-        assertEquals(1L, binaryUnlockedAt(states, arr5Id))
+        assertNull(binaryUnlockedAt(states, arr5Id))
     }
 
     @Test fun `arrBadges omits arrondissements with no remarquables`() {
-        // Le 5e a des espèces recensées mais aucune remarquable : pas de badge.
+        // Le 5e est présent dans `keys` (au moins un arbre visité) mais sans
+        // aucun remarquable : pas de `BadgeDef` généré.
         val arrSpecies = ArrSpeciesIndex(
-            byKey = mapOf(ArrKey.Paris(5) to setOf(0, 1)),
-            remarquablesByKey = emptyMap(),
+            arrKeys = setOf(ArrKey.Paris(5)),
+            remarquableArbreIdsByKey = emptyMap(),
         )
         val states = eval(
             captures = emptyList(),
             arbresById = emptyMap(),
-            speciesInfo = emptySpeciesInfo(),
             speciesIndex = SpeciesIndex(
                 listOf(SpeciesEntry(index = 0, genre = "Quercus", espece = "robur")),
             ),
@@ -381,11 +386,10 @@ class BadgeEvaluatorTest {
         val idx = SpeciesIndex(listOf(SpeciesEntry(index = 0, genre = "Quercus", espece = "robur")))
         // Asset vide → aucun badge d'arrondissement dans le catalogue.
         val states = eval(
-            captures = listOf(capture(arbreId = 1L, speciesIndex = 0, ts = 1L)),
+            captures = listOf(capture(arbreId = 1L, speciesIndex = 0, ts = 1L, remarquable = true)),
             arbresById = mapOf(1L to arbre(id = 1L, genre = "Quercus", espece = "robur", adresse = "RUE A, 5e")),
-            speciesInfo = emptySpeciesInfo(),
             speciesIndex = idx,
-            arrSpecies = ArrSpeciesIndex(emptyMap()),
+            arrSpecies = ArrSpeciesIndex(emptySet()),
         )
         assertTrue(states.none { it.def.id == arr5Id })
     }
@@ -512,7 +516,7 @@ class BadgeEvaluatorTest {
         SpeciesInfoRepository(emptyMap())
 
     private val emptySpeciesIndex = SpeciesIndex(emptyList())
-    private val emptyArrSpecies = ArrSpeciesIndex(emptyMap())
+    private val emptyArrSpecies = ArrSpeciesIndex(emptySet())
     private val emptyGenreInfo = GenreInfoRepository(emptyMap())
 
     /** SpeciesIndex avec `n` entrées actives, sk = i-1, pokedexNumber = i. */

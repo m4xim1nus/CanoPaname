@@ -35,6 +35,7 @@ import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
@@ -54,6 +55,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
@@ -1076,10 +1078,21 @@ private fun computeDeleteContext(
 }
 
 // FAB « utilitaire » discret (Recherche, Localiser) : même taille que les FAB
-// gameplay (56 dp, touch target intact), mais palette neutre alignée sur
-// `HuntPanel` (`surfaceContainerHigh` + `onSurfaceVariant`). Distinction par
-// canal de couleur, pas par taille — l'icône grise reste lisible sur tout fond
-// de carte (vert boisé, gris asphalte, label de rue qui passe dessous).
+// gameplay (56 dp, touch target intact) mais palette **verre dépoli** figée
+// hors du thème système. Raison : ces FAB survolent toujours la carte
+// OpenFreeMap, qui n'a pas de variant dark — en thème dark, un
+// `surfaceContainerHigh` se résoudrait en gris quasi-noir et tomberait
+// comme un trou sur la chromie claire de la carte. On s'aligne donc sur le
+// repère carte (toujours clair), pas sur le repère app. Le HuntPanel garde
+// sa palette thème-aware : il est posé sur l'inset NavigationBar, un autre
+// repère visuel.
+//
+// `elevation` strictement à 0 sur tous les états : sinon le `Surface` interne
+// du FloatingActionButton applique un `surfaceColorAtElevation()` comme
+// overlay par-dessus le container, et avec notre container translucide cet
+// overlay clair devient visible — il dessine alors un mini-carré plus opaque
+// au centre du FAB. Pas d'ombre nécessaire, le contraste icône/fond suffit
+// à détacher le bouton de la carte.
 @Composable
 private fun UtilityFab(
     onClick: () -> Unit,
@@ -1089,8 +1102,14 @@ private fun UtilityFab(
     FloatingActionButton(
         onClick = onClick,
         modifier = modifier,
-        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-        contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+        containerColor = Color.White.copy(alpha = 0.78f),
+        contentColor = Color(0xFF3C4043),
+        elevation = FloatingActionButtonDefaults.elevation(
+            defaultElevation = 0.dp,
+            pressedElevation = 0.dp,
+            focusedElevation = 0.dp,
+            hoveredElevation = 0.dp,
+        ),
         content = { content() },
     )
 }

@@ -8,62 +8,60 @@ import org.json.JSONObject
  * Index par arrondissement (20 arr. + 2 bois), pré-calculé au build dans
  * `assets/arr-species.json` (clé = slug ArrKey).
  *
- * Trois agrégats par arr :
- * - `species` : espèces recensées dans l'arr (≥ 1 arbre). Sert au compte
- *   « Arrondissements visités » (≥ 1 capture quelconque).
- * - `remarquables` : sous-ensemble des espèces correspondant à au moins un
- *   arbre **remarquable** dans l'arr. Sert au badge « Familier du Xe » et à la
- *   barre « Arrondissements complétés ». Peut être vide (deux arr concrets
- *   sans remarquable) — ces arr sont exclus du dénominateur « Complétés » et
- *   n'engendrent pas de `BadgeDef`, mais restent dans `keys`.
+ * Deux agrégats par arr :
+ * - `remarquable_ids` : ids (`idbase`) des arbres **remarquables** physiques
+ *   de l'arrondissement. Dénominateur du badge « Familier du Xe » et de la
+ *   barre « Arrondissements complétés » — le critère exige la capture de
+ *   **chaque** arbre remarquable (pas seulement de chaque espèce ; cf.
+ *   `BadgeEvaluator.evaluateFamilierArr`). Peut être vide : deux arr concrets
+ *   sans remarquable (2e et 6e) sont alors exclus du dénominateur
+ *   « Complétés » et n'engendrent pas de `BadgeDef`, mais restent dans
+ *   `keys` (compteur « Visités »).
  * - `centroid` : moyenne arithmétique (lon, lat) des arbres de l'arr.
- *   Utilisé par la Recherche universelle (sprint S2) pour le fly-to.
+ *   Utilisé par la Recherche universelle (sprint S3) pour le fly-to.
  *
  * Asset absent (build pas encore régénéré) → repo vide : les badges
  * arrondissement sont alors simplement absents du catalogue, le reste marche.
  */
 class ArrSpeciesIndex(
-    private val byKey: Map<ArrKey, Set<Int>>,
-    private val remarquablesByKey: Map<ArrKey, Set<Int>> = emptyMap(),
+    private val arrKeys: Set<ArrKey>,
+    private val remarquableArbreIdsByKey: Map<ArrKey, Set<Long>> = emptyMap(),
     private val centroidsByKey: Map<ArrKey, Pair<Double, Double>> = emptyMap(),
 ) {
 
-    /** Les ArrKey couverts, triés par `sortKey()` (1..20, Vincennes, Boulogne). */
-    val keys: List<ArrKey> = byKey.keys.sortedBy { it.sortKey() }
+    /** Les ArrKey couverts par l'asset, triés par `sortKey()` (1..20, Vincennes, Boulogne). */
+    val keys: List<ArrKey> = arrKeys.sortedBy { it.sortKey() }
 
     /** Sous-ensemble de [keys] ayant au moins un arbre remarquable — dénominateur
      *  du badge « Familier du Xe » et de la barre « Arrondissements complétés ». */
     val keysWithRemarquables: List<ArrKey> =
-        keys.filter { remarquablesByKey[it]?.isNotEmpty() == true }
+        keys.filter { remarquableArbreIdsByKey[it]?.isNotEmpty() == true }
 
-    /** Espèces recensées dans cet arrondissement ; vide si inconnu. */
-    fun speciesOf(key: ArrKey): Set<Int> = byKey[key].orEmpty()
-
-    /** Espèces remarquables recensées dans cet arrondissement ; vide si aucune. */
-    fun remarquablesOf(key: ArrKey): Set<Int> = remarquablesByKey[key].orEmpty()
+    /** Ids d'arbres remarquables de l'arr ; vide si aucun. */
+    fun remarquableArbreIdsOf(key: ArrKey): Set<Long> = remarquableArbreIdsByKey[key].orEmpty()
 
     /** Centroïde (lon, lat) moyen des arbres de l'arr ; `null` si inconnu. */
     fun centroidOf(key: ArrKey): Pair<Double, Double>? = centroidsByKey[key]
 
-    val isEmpty: Boolean get() = byKey.isEmpty()
+    val isEmpty: Boolean get() = arrKeys.isEmpty()
 
     companion object {
         fun load(context: Context, asset: String = "arr-species.json"): ArrSpeciesIndex {
             val text = try {
                 context.assets.open(asset).bufferedReader().use { it.readText() }
             } catch (_: Throwable) {
-                return ArrSpeciesIndex(emptyMap())
+                return ArrSpeciesIndex(emptySet())
             }
             val obj = JSONObject(text)
-            val species = HashMap<ArrKey, Set<Int>>()
-            val remarquables = HashMap<ArrKey, Set<Int>>()
+            val keysSet = HashSet<ArrKey>()
+            val remarquableIds = HashMap<ArrKey, Set<Long>>()
             val centroids = HashMap<ArrKey, Pair<Double, Double>>()
             for (slug in obj.keys()) {
                 val key = slugToArrKey(slug) ?: continue
+                keysSet.add(key)
                 val entry = obj.getJSONObject(slug)
-                species[key] = readIntSet(entry.getJSONArray("species"))
-                if (entry.has("remarquables")) {
-                    remarquables[key] = readIntSet(entry.getJSONArray("remarquables"))
+                if (entry.has("remarquable_ids")) {
+                    remarquableIds[key] = readLongSet(entry.getJSONArray("remarquable_ids"))
                 }
                 if (!entry.isNull("centroid")) {
                     val arr = entry.getJSONArray("centroid")
@@ -72,12 +70,12 @@ class ArrSpeciesIndex(
                     }
                 }
             }
-            return ArrSpeciesIndex(species, remarquables, centroids)
+            return ArrSpeciesIndex(keysSet, remarquableIds, centroids)
         }
 
-        private fun readIntSet(arr: JSONArray): Set<Int> {
-            val out = HashSet<Int>(arr.length())
-            for (i in 0 until arr.length()) out.add(arr.getInt(i))
+        private fun readLongSet(arr: JSONArray): Set<Long> {
+            val out = HashSet<Long>(arr.length())
+            for (i in 0 until arr.length()) out.add(arr.getLong(i))
             return out
         }
 

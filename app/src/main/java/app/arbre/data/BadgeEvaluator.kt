@@ -22,7 +22,9 @@ object BadgeEvaluator {
 
         // Accumulateurs des familles « Familier ».
         val capturedSks = HashSet<Int>()
-        val capturedSksByArr = HashMap<ArrKey, MutableSet<Int>>()
+        // Ids d'arbres **remarquables** capturés, segmentés par arr de l'arbre.
+        // Familier d'arr = couverture de tous les ids `remarquable_ids` de l'arr.
+        val capturedRemarquableIdsByArr = HashMap<ArrKey, MutableSet<Long>>()
         // Accumulateur Pokédex : exclut les captures remarquables (sémantique
         // Catalogue/Arboretum, alignée sur les chapitres par fréquence).
         val capturedSksNonRemarquable = HashSet<Int>()
@@ -64,7 +66,9 @@ object BadgeEvaluator {
             if (arbre != null && sk != null) {
                 capturedSks.add(sk)
                 evaluateFamilierGenre(unlocks, speciesIndex, sk, capturedSks, ts)
-                evaluateFamilierArr(unlocks, speciesIndex, arrSpecies, capturedSksByArr, arbre, sk, ts)
+                if (capture.remarquable) {
+                    evaluateFamilierArr(unlocks, arrSpecies, capturedRemarquableIdsByArr, arbre, ts)
+                }
                 if (!capture.remarquable) {
                     capturedSksNonRemarquable.add(sk)
                     evaluatePokedex(unlocks, pokedexTargets, capturedSksNonRemarquable, ts)
@@ -92,26 +96,24 @@ object BadgeEvaluator {
         }
     }
 
-    /** Familier d'un arrondissement : couverture de toutes les espèces d'arbres
-     *  **remarquables** de l'arrondissement de l'arbre. La propagation
-     *  genre→`sp.` via `effectivelyCapturedSpecies` reste appliquée (un
-     *  remarquable libellé `(Quercus, sp.)` est satisfait par n'importe quel
-     *  chêne identifié). Les arr sans aucun remarquable sont court-circuités. */
+    /** Familier d'un arrondissement : capture de **chaque** arbre remarquable
+     *  individuel de l'arr. Comparaison directe d'ids — pas de propagation
+     *  espèce/genre. N'agit que sur les captures `remarquable == true`
+     *  (l'appelant le garantit) et sur l'arr de l'arbre. Les arr sans aucun
+     *  remarquable sont court-circuités. */
     private fun evaluateFamilierArr(
         unlocks: MutableMap<String, Long>,
-        speciesIndex: SpeciesIndex,
         arrSpecies: ArrSpeciesIndex,
-        capturedSksByArr: MutableMap<ArrKey, MutableSet<Int>>,
+        capturedRemarquableIdsByArr: MutableMap<ArrKey, MutableSet<Long>>,
         arbre: Arbre,
-        sk: Int,
         ts: Long,
     ) {
         val arr = parseArrKey(arbre.adresse)
-        val arrTarget = arrSpecies.remarquablesOf(arr)
+        val arrTarget = arrSpecies.remarquableArbreIdsOf(arr)
         if (arrTarget.isEmpty()) return
-        val seen = capturedSksByArr.getOrPut(arr) { HashSet() }
-        seen.add(sk)
-        if (speciesIndex.effectivelyCapturedSpecies(seen).containsAll(arrTarget)) {
+        val seen = capturedRemarquableIdsByArr.getOrPut(arr) { HashSet() }
+        seen.add(arbre.id)
+        if (seen.containsAll(arrTarget)) {
             unlockOnce(unlocks, BadgeCatalog.arrBadgeId(arr), true, ts)
         }
     }
