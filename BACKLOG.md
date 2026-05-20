@@ -44,11 +44,7 @@ Enrichissement des fiches espèces (saisonnalité, attributs, picto, photos de r
 
 ## À creuser
 
-- [creuser] Script `tools/scout_other_cities.py` qui interroge OpenData de villes du Grand Paris et produit un md de faisabilité (user:moi, 2026-05-07)
-- [creuser] Combler les vides du dataset sur les 4 jardins gérés hors Ville de Paris (Luxembourg/Sénat ~2 980 réels vs 243 en base, Plantes/MNHN ~2 000 vs 79, Tuileries/CMN, Villette/EPPGHV) — `les-arbres` ne couvre que la voirie municipale. MNHN et Sénat n'ont pas de dump open data exploitable ; OSM (`natural=tree` + `species=`) est la seule piste automatisable mais **verdict non rendu** (recherche incomplète : 4 requêtes Overpass à exécuter hors sandbox, critère = ratio `species=` ≥ ~70 %). Détails, arbitrages déjà pris (namespace `idbase`, qualité minimale lat/lon/genre/espèce) et requêtes dans `docs/audit-arbres-jardins-hors-ville.md`. (user:moi, 2026-05-20)
-- [creuser] Leaderboard optionnel et minimaliste ? (en tension avec l'invariant CLAUDE.md « pas de classement » ; gardé en creuser sur choix user:moi 2026-05-20)
-
-### Sous-famille — Aide à l'identification
+### Aide à l'identification
 
 _Aider à reconnaître / distinguer les espèces. Même logique, à arbitrer ensemble._
 
@@ -56,12 +52,20 @@ _Aider à reconnaître / distinguer les espèces. Même logique, à arbitrer ens
 - [creuser] Mini-quiz ou capacité d'identification entre espèces partageant le même `nc` (Quercus robur vs petraea, Tilia cordata vs platyphyllos) (claude:analyse, 2026-05-08 ; refusé du cycle Catalogue 2026-05-10 — scope dédié, UX du quiz + génération de paires + scoring trop coûteux à empiler)
 - [creuser] Aide à l'identification des genres/espèces — item parapluie de la sous-famille ; pourrait devenir creux si « Comparaison d'espèces » est livrée
 
-### Sous-famille — Engagement & rétention
+### Engagement & rétention
 
 _Mécaniques de ré-engagement, en tension avec le ton « compagnon de balade calme »._
 
 - [creuser] Notifications push : digest mensuel opt-in vs rien (audit-tension#1)
 - [creuser] Quêtes hebdomadaires locales, opt-in, sans push (audit V2#3, 2026-05-06 ; déplacé depuis Endgame 2026-05-12 quand le cycle a été dissous)
+- [creuser] Leaderboard optionnel et minimaliste ? (en tension avec l'invariant CLAUDE.md « pas de classement » ; gardé en creuser sur choix user:moi 2026-05-20)
+
+### Elargissement de l'app
+
+_Plus d'arbres, plus de fun_
+
+- [creuser] Combler les vides du dataset sur les 4 jardins gérés hors Ville de Paris (Luxembourg/Sénat ~2 980 réels vs 243 en base, Plantes/MNHN ~2 000 vs 79, Tuileries/CMN, Villette/EPPGHV) — `les-arbres` ne couvre que la voirie municipale. MNHN et Sénat n'ont pas de dump open data exploitable ; OSM (`natural=tree` + `species=`) est la seule piste automatisable mais **verdict non rendu** (recherche incomplète : 4 requêtes Overpass à exécuter hors sandbox, critère = ratio `species=` ≥ ~70 %). Détails, arbitrages déjà pris (namespace `idbase`, qualité minimale lat/lon/genre/espèce) et requêtes dans `docs/audit-arbres-jardins-hors-ville.md`. (user:moi, 2026-05-20)
+- [creuser] Script `tools/scout_other_cities.py` qui interroge OpenData de villes du Grand Paris et produit un md de faisabilité (user:moi, 2026-05-07)
 
 ## Refusé
 
