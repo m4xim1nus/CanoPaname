@@ -67,6 +67,12 @@ _Plus d'arbres, plus de fun_
 - [creuser] Combler les vides du dataset sur les 4 jardins gérés hors Ville de Paris (Luxembourg/Sénat ~2 980 réels vs 243 en base, Plantes/MNHN ~2 000 vs 79, Tuileries/CMN, Villette/EPPGHV) — `les-arbres` ne couvre que la voirie municipale. MNHN et Sénat n'ont pas de dump open data exploitable ; OSM (`natural=tree` + `species=`) est la seule piste automatisable mais **verdict non rendu** (recherche incomplète : 4 requêtes Overpass à exécuter hors sandbox, critère = ratio `species=` ≥ ~70 %). Détails, arbitrages déjà pris (namespace `idbase`, qualité minimale lat/lon/genre/espèce) et requêtes dans `docs/audit-arbres-jardins-hors-ville.md`. (user:moi, 2026-05-20)
 - [creuser] Script `tools/scout_other_cities.py` qui interroge OpenData de villes du Grand Paris et produit un md de faisabilité (user:moi, 2026-05-07)
 
+### Technique / Perf
+
+_Optimisations sous le capot, sans impact fonctionnel direct._
+
+- [creuser] **MapView persistante across navigation** : aujourd'hui `val mapView = remember { MapView(ctx) }` est scopé à `MapScreen` → la MapView part en `onDestroy` (DisposableEffect) dès qu'on navigue ailleurs, et au retour sur la carte elle est recréée : ré-init GL + rechargement du dataset + re-clustering = petit reload/splash perceptible. Hisser l'instance à un scope plus long (niveau `NavHost`, ou tenue par un ViewModel/Application) + réutilisation via `AndroidView` en detach/reattach → retour instantané sur la carte + baseline mémoire stable. Concept validé device côté PWA (`map/mapHost.ts`, Phase 11 it8 — une seule instance MapLibre déplacée à travers les wipes du routeur, au lieu de détruite/recréée). Caveat : contrainte « une View n'a qu'un seul parent à la fois » (même problème résolu en detach/reattach côté PWA) + cycle GL (`onPause`/`onResume`/`onStop`) à gérer hors du composable + découplage de l'état d'écran (`mapRef`, `styleRef`, cleanup location MapLibre) — refacto non trivial. (pwa:livraison-dev-externe, 2026-06-09)
+
 ## Refusé
 
 - [refusé] Bouton partage PNG sur fiche espèce (audit-C, tension single-player vs F&F à trancher - trop loin d'un intérêt)
