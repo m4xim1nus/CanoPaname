@@ -132,6 +132,14 @@ private const val FILTER_SPLASH_MIN_MS = 1_000L
 private fun parisCamera(zoom: Double = PARIS_ZOOM): CameraPosition =
     CameraPosition.Builder().target(PARIS).zoom(zoom).build()
 
+// Plancher de durée du splash : on garde le voile vert affiché au moins le
+// temps de lire un tip avant de flipper `arbresPrets`. Mesuré depuis le départ
+// du pipeline de contenu (= 1er mount en mode normal, mount en mode filtré).
+private suspend fun awaitSplashFloor(sinceMs: Long, minMs: Long) {
+    val elapsed = android.os.SystemClock.elapsedRealtime() - sinceMs
+    if (elapsed < minMs) delay(minMs - elapsed)
+}
+
 // Caméra de bootstrap, NON-BLOQUANTE : lecture pure du dernier fix connu de
 // `LocationProvider.currentLocation` (déjà amorcé par `LocationProvider.start`
 // avec un last-known si dispo), sinon Paris. Surtout PAS d'attente d'un
@@ -168,6 +176,12 @@ fun MapScreen(
      */
     filterSpecies: Set<Int> = emptySet(),
     pulseArbreId: Long? = null,
+    /**
+     * Holder Activity-scopé de la MapView persistante — requis en mode normal
+     * (fourni par `ArbresNavHost`), ignoré/absent en mode filtré qui garde sa
+     * MapView jetable locale. Cf. doc de tête de [MapHost].
+     */
+    mapHost: MapHost? = null,
 ) {
     val ctx = LocalContext.current
     val app = ctx.applicationContext as ArbresApp
@@ -246,7 +260,12 @@ fun MapScreen(
         label = "huntBottomShift",
     )
 
-    val mapView = remember {
+    // Mode normal : MapView persistante portée par le MapHost Activity-scopé.
+    // Mode filtré : MapView jetable locale, détruite au dispose.
+    val host = if (isFiltered) null else requireNotNull(mapHost) {
+        "MapScreen en mode normal requiert un MapHost (cf. ArbresNavHost)"
+    }
+    val mapView = if (host != null) host.mapView else remember {
         MapView(ctx).apply {
             layoutParams = ViewGroup.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
@@ -254,16 +273,17 @@ fun MapScreen(
             )
         }
     }
-    var mapRef by remember { mutableStateOf<MapLibreMap?>(null) }
-    var styleRef by remember { mutableStateOf<Style?>(null) }
-    var arbresPrets by remember { mutableStateOf(false) }
-    // Plancher de durée du splash : on garde le voile vert affiché au moins le
-    // temps de lire un tip avant de flipper `arbresPrets`. Mesuré depuis le mount.
-    val mountElapsedMs = remember { android.os.SystemClock.elapsedRealtime() }
-    suspend fun awaitSplashFloor(minMs: Long) {
-        val elapsed = android.os.SystemClock.elapsedRealtime() - mountElapsedMs
-        if (elapsed < minMs) delay(minMs - elapsed)
-    }
+    // Refs map/style/prêt : en mode normal l'état vit dans le holder (Compose
+    // state — il survit au démontage et un mount en cours de chargement voit
+    // le pipeline aboutir) ; en mode filtré il est local au mount.
+    var filteredMapRef by remember { mutableStateOf<MapLibreMap?>(null) }
+    var filteredStyleRef by remember { mutableStateOf<Style?>(null) }
+    var filteredArbresPrets by remember { mutableStateOf(false) }
+    val mapRef = host?.map ?: filteredMapRef
+    val styleRef = host?.style ?: filteredStyleRef
+    // Pilote le splash. Remount avec carte déjà rendue (`host.pinsRendered`)
+    // = zéro voile, retour instantané.
+    val arbresPrets = host?.pinsRendered ?: filteredArbresPrets
     // `GeoJsonSource.setGeoJson(String)` sur une source déjà attachée — et, dans
     // une moindre mesure, le parse + clustering du ctor sur un gros corpus —
     // traitent les features EN BACKGROUND : la pose des layers rend la main bien
@@ -271,17 +291,23 @@ fun MapScreen(
     // observé sur device pour les 217 k features). Tant que le splash est levé,
     // on attend donc que la source ait produit des features rendues à l'écran —
     // sinon le voile s'efface sur une « carte vide ». Timeout de sécurité au cas
-    // (improbable dans Paris) où le viewport ne couvre aucun arbre.
+    // (improbable dans Paris) où le viewport ne couvre aucun arbre. Le timeout
+    // ne court que quand la view est attachée et layoutée : détachée (pipeline
+    // qui continue pendant l'onboarding ou une nav), elle ne rend RIEN — un
+    // timeout qui courrait là flipperait `pinsRendered` sur une carte jamais
+    // rendue, et le remount lèverait le voile sur une carte vide.
     suspend fun awaitArbresRendered(map: MapLibreMap, timeoutMs: Long) {
-        withTimeoutOrNull(timeoutMs) {
-            val screen = RectF(0f, 0f, mapView.width.toFloat(), mapView.height.toFloat())
-            while (true) {
+        var visibleElapsedMs = 0L
+        while (visibleElapsedMs < timeoutMs) {
+            if (mapView.isAttachedToWindow && mapView.width > 0) {
+                val screen = RectF(0f, 0f, mapView.width.toFloat(), mapView.height.toFloat())
                 val rendered = map.queryRenderedFeatures(
                     screen, POINTS_LAYER_ID, CLUSTERS_LAYER_ID,
                 )
-                if (rendered.isNotEmpty()) break
-                delay(120)
+                if (rendered.isNotEmpty()) return
+                visibleElapsedMs += 120
             }
+            delay(120)
         }
     }
     // Vrai dès que l'utilisateur a bougé/redirigé la caméra (geste de carte ou
@@ -484,15 +510,15 @@ fun MapScreen(
     // Recadrage GPS auto au 1er fix. `computeInitialCamera` étant non-bloquant,
     // sur un install frais (ou GPS froid en intérieur) la carte démarre sur Paris ;
     // dès qu'un fix arrive on recentre dessus à zoom 16 — sauf si : mode filtré,
-    // saut vers un arbre (`pulseArbreId`), restauration d'une caméra mémorisée
-    // (retour d'un autre écran → `lastCamera` non-null au mount), ou l'utilisateur
-    // a déjà bougé la caméra. Ne tire qu'une fois (la 1re émission non-null).
-    val freshMount = remember {
-        viewModel.lastCamera == null && pulseArbreId == null && !isFiltered
-    }
+    // saut vers un arbre (`pulseArbreId`), ou l'utilisateur a déjà bougé la
+    // caméra. Ne tire qu'une fois par vie d'Activity (`host.autoRecenterDone`),
+    // jamais au remount — la caméra de l'utilisateur est sacrée. La tentative
+    // est consommée dès son départ : annulée par une nav avant le 1er fix, elle
+    // n'est pas rejouée au retour (même contrat que l'ancien `freshMount`).
     LaunchedEffect(mapRef) {
         val map = mapRef ?: return@LaunchedEffect
-        if (!freshMount) return@LaunchedEffect
+        if (host == null || host.autoRecenterDone || pulseArbreId != null) return@LaunchedEffect
+        host.autoRecenterDone = true
         val fix = LocationProvider.currentLocation.filterNotNull().first()
         if (userMovedCamera) return@LaunchedEffect
         map.animateCamera(
@@ -501,45 +527,238 @@ fun MapScreen(
         map.style?.let { enableLocationPin(map, it) }
     }
 
-    DisposableEffect(Unit) {
-        val tStart = android.os.SystemClock.elapsedRealtime()
-        val tProcess = app.processStartElapsedMs
-        android.util.Log.i(
-            "MapScreen",
-            "MapView init (process+${tStart - tProcess}ms)",
-        )
-        LocationProvider.start(ctx)
-        mapView.onCreate(null)
-        mapView.onStart()
-        mapView.onResume()
-        mapView.getMapAsync { map ->
-            mapRef = map
-            // Rotation bloquée : la boussole en edge-to-edge se retrouve sous
-            // l'inset status bar et devient intappable. Sans rotation libre,
-            // la boussole n'a plus de raison d'être — d'où `isCompassEnabled`.
-            map.uiSettings.isRotateGesturesEnabled = false
-            map.uiSettings.isCompassEnabled = false
-            map.cameraPosition = if (isFiltered) {
-                parisCamera(PARIS_OVERVIEW_ZOOM)
-            } else {
-                viewModel.lastCamera ?: computeInitialCamera(ctx)
-            }
+    // Hit-test partagé entre les deux modes : clusters d'abord (tap → zoom
+    // d'expansion), puis pins (tap → fiche). Closure sur l'état du mount
+    // courant (`userMovedCamera`, `viewModel`).
+    fun handleMapClick(map: MapLibreMap, latLng: LatLng): Boolean {
+        val pixel = map.projection.toScreenLocation(latLng)
+        val touch = RectF(pixel.x - 20f, pixel.y - 20f, pixel.x + 20f, pixel.y + 20f)
 
-            map.setStyle(Style.Builder().fromUri(styleUrl)) { style ->
-                val tStyle = android.os.SystemClock.elapsedRealtime()
-                android.util.Log.i(
-                    "MapScreen",
-                    "Style prêt (process+${tStyle - tProcess}ms)",
-                )
-                if (LocationProvider.hasFineLocationPermission(ctx)) {
-                    enableLocationPin(map, style)
+        val clusters = map.queryRenderedFeatures(touch, CLUSTERS_LAYER_ID)
+        if (clusters.isNotEmpty()) {
+            userMovedCamera = true
+            val source = map.style?.getSourceAs<GeoJsonSource>(ARBRES_SOURCE_ID)
+            val zoom = source?.getClusterExpansionZoom(clusters.first())?.toDouble()
+                ?: (map.cameraPosition.zoom + 2.0)
+            map.animateCamera(CameraUpdateFactory.newLatLngZoom(latLng, zoom))
+            return true
+        }
+
+        val points = map.queryRenderedFeatures(touch, POINTS_LAYER_ID)
+        val id = points.firstOrNull()?.getNumberProperty("id")?.toLong()
+        return if (id != null) {
+            viewModel.openDetail(id)
+            true
+        } else {
+            false
+        }
+    }
+
+    if (host != null) {
+        // ——— Mode normal : MapView persistante (cf. doc de tête de MapHost) ———
+        // Le cycle GL de la view est relayé depuis l'Activity par le holder ;
+        // ici on ne gère que ce qui est lié au mount de l'écran.
+
+        // GPS actif uniquement quand la carte est à l'écran ; le rendu de la
+        // view persistante est gelé pendant l'absence (cf. MapHost.screenAttached).
+        DisposableEffect(Unit) {
+            android.util.Log.i(
+                "MapScreen",
+                "mount normal (initStarted=${host.contentInitStarted}, " +
+                    "pinsRendered=${host.pinsRendered})",
+            )
+            host.screenAttached()
+            LocationProvider.start(ctx)
+            onDispose {
+                android.util.Log.i("MapScreen", "dispose normal")
+                LocationProvider.stop()
+                host.screenDetached()
+            }
+        }
+
+        // Init contenu one-shot (caméra initiale, style, layers, push GeoJSON),
+        // dans le scope du holder : survit à une nav pendant le chargement —
+        // le pipeline continue d'avancer pendant l'absence et les remounts se
+        // raccordent à `host.map` / `host.style` / `host.pinsRendered` au lieu
+        // de relancer. Aucune référence au ViewModel ni à l'état per-mount ici
+        // (le mount qui a lancé l'init peut être mort quand le style aboutit).
+        LaunchedEffect(Unit) {
+            if (host.contentInitStarted) return@LaunchedEffect
+            host.contentInitStarted = true
+            val tStart = android.os.SystemClock.elapsedRealtime()
+            val tProcess = app.processStartElapsedMs
+            android.util.Log.i(
+                "MapScreen",
+                "MapView init (process+${tStart - tProcess}ms)",
+            )
+            mapView.getMapAsync { map ->
+                host.map = map
+                // Rotation bloquée : la boussole en edge-to-edge se retrouve sous
+                // l'inset status bar et devient intappable. Sans rotation libre,
+                // la boussole n'a plus de raison d'être — d'où `isCompassEnabled`.
+                map.uiSettings.isRotateGesturesEnabled = false
+                map.uiSettings.isCompassEnabled = false
+                map.cameraPosition = host.lastCamera ?: computeInitialCamera(ctx)
+                map.addOnCameraIdleListener { host.lastCamera = map.cameraPosition }
+
+                map.setStyle(Style.Builder().fromUri(styleUrl)) { style ->
+                    val tStyle = android.os.SystemClock.elapsedRealtime()
+                    android.util.Log.i(
+                        "MapScreen",
+                        "Style prêt (process+${tStyle - tProcess}ms)",
+                    )
+                    host.scope.launch {
+                        try {
+                            // Cold-start global, 2-passes : on pose les layers
+                            // sur une source VIDE (instantané), puis on injecte
+                            // les 217 k features via `setArbresGeoJson` — qui
+                            // parse + cluster en background et ne bloque pas le
+                            // UI thread. Le voile reste PLEINEMENT OPAQUE jusqu'à
+                            // ce que les pins/clusters soient réellement rendus
+                            // (`awaitArbresRendered` plus bas). Si on flippait
+                            // `pinsRendered` avant que `setGeoJson` n'ait fini
+                            // de parser, le voile s'effacerait sur une carte
+                            // vide pendant 1-3 s, le temps du parse async.
+                            addArbresLayers(style, EMPTY_GEOJSON)
+                            host.style = style
+                            val tEmpty = android.os.SystemClock.elapsedRealtime()
+                            android.util.Log.i(
+                                "MapScreen",
+                                "Layers vides posées (process+${tEmpty - tProcess}ms)",
+                            )
+                            // Si on a déjà un GeoJSON enrichi cached (process
+                            // survivant à la mort du holder, ex. rotation), on
+                            // le pose direct — pins ET clusters bons d'un coup,
+                            // 1 seul freeze UI. Sinon (cold-start fresh), on
+                            // pose le rawJson nu pour que les pins apparaissent
+                            // ASAP (~700 ms) ; le LaunchedEffect mid-session
+                            // déboucera l'enrichment ~1 s plus tard et
+                            // re-poussera l'enrichi en 2e wave. Enrich des
+                            // 217 k features = ~5-15 s sur device, trop
+                            // coûteux pour bloquer le 1er paint.
+                            val cached = app.enrichedGeoJson.value
+                            val initialJson = cached ?: app.arbresGeoJsonAsync.await()
+                            val tJson = android.os.SystemClock.elapsedRealtime()
+                            android.util.Log.i(
+                                "MapScreen",
+                                "GeoJSON ${if (cached != null) "(cache enrichi)" else "(raw)"} disponible " +
+                                    "(process+${tJson - tProcess}ms, ${initialJson.length / 1_000_000}Mo)",
+                            )
+                            setArbresGeoJson(style, initialJson)
+                            val tLayers = android.os.SystemClock.elapsedRealtime()
+                            android.util.Log.i(
+                                "MapScreen",
+                                "GeoJSON poussé dans la source (process+${tLayers - tProcess}ms, parse async en cours)",
+                            )
+                            // Le setGeoJson ci-dessus parse + cluster en
+                            // background : on attend que les pins/clusters
+                            // soient effectivement rendus avant de baisser
+                            // le voile (sinon « carte vide » 1-3 s).
+                            awaitArbresRendered(map, 10_000)
+                            val tRendered = android.os.SystemClock.elapsedRealtime()
+                            android.util.Log.i(
+                                "MapScreen",
+                                "Arbres rendus à l'écran (process+${tRendered - tProcess}ms, total cold start)",
+                            )
+                            // Plancher : pleine durée uniquement en cold-start
+                            // fresh ; init sur cache enrichi → flip direct.
+                            if (cached == null) awaitSplashFloor(tStart, COLD_SPLASH_MIN_MS)
+                            host.pinsRendered = true
+                        } catch (e: Throwable) {
+                            android.util.Log.e("MapScreen", "Échec chargement arbres", e)
+                        } finally {
+                            // Ne jamais rester coincé sous le splash si une étape a
+                            // échoué (OOM possible au parse du GeoJSON). Idempotent
+                            // si le chemin nominal a déjà flippé.
+                            host.pinsRendered = true
+                        }
+                    }
                 }
-                scope.launch {
-                    try {
-                        if (isFiltered) {
-                            // Mode filtré : single-pass. GeoJSON filtré <
-                            // 1 Mo (~38 k features pour Platanus max), le
-                            // freeze d'`addArbresLayers` reste imperceptible.
+            }
+        }
+
+        // Listeners d'interaction per-mount — add au mount, remove au dispose
+        // (leurs closures capturent le ViewModel et l'état du mount courant).
+        DisposableEffect(mapRef) {
+            val map = mapRef
+            if (map == null) {
+                onDispose {}
+            } else {
+                val clickListener = MapLibreMap.OnMapClickListener { latLng ->
+                    handleMapClick(map, latLng)
+                }
+                // Geste utilisateur sur la carte → coupe le recadrage GPS auto.
+                val moveListener = MapLibreMap.OnCameraMoveStartedListener { reason ->
+                    if (reason == MapLibreMap.OnCameraMoveStartedListener.REASON_API_GESTURE) {
+                        userMovedCamera = true
+                    }
+                }
+                map.addOnMapClickListener(clickListener)
+                map.addOnCameraMoveStartedListener(moveListener)
+                onDispose {
+                    map.removeOnMapClickListener(clickListener)
+                    map.removeOnCameraMoveStartedListener(moveListener)
+                }
+            }
+        }
+
+        // Pin user + bridge GPS MapLibre re-attachés à chaque mount, détachés
+        // au dispose — pas de fix MapLibre consommé en arrière-plan sur les
+        // autres écrans. Le LocationComponent est aussi désactivé au dispose :
+        // son pulse (`pulseEnabled`) est un ValueAnimator infini main-thread
+        // qui continuerait d'invalider la carte gelée. `enableLocationPin` le
+        // réactive au mount suivant. Au 1er run le style n'est pas prêt au
+        // mount : l'effet re-tire quand `styleRef` se peuple.
+        DisposableEffect(mapRef, styleRef) {
+            val map = mapRef
+            val style = styleRef
+            if (map != null && style != null && LocationProvider.hasFineLocationPermission(ctx)) {
+                enableLocationPin(map, style)
+            }
+            onDispose {
+                maplibreLocationCleanup?.invoke()
+                maplibreLocationCleanup = null
+                map?.locationComponent
+                    ?.takeIf { it.isLocationComponentActivated }
+                    ?.isLocationComponentEnabled = false
+            }
+        }
+    } else {
+        // ——— Mode filtré : MapView jetable locale, pipeline single-pass ———
+        // Comportement pré-MapHost intact : cycle GL relayé depuis le mount,
+        // tout meurt au dispose.
+        DisposableEffect(Unit) {
+            val tStart = android.os.SystemClock.elapsedRealtime()
+            val tProcess = app.processStartElapsedMs
+            android.util.Log.i(
+                "MapScreen",
+                "MapView init (process+${tStart - tProcess}ms, filtered)",
+            )
+            LocationProvider.start(ctx)
+            mapView.onCreate(null)
+            mapView.onStart()
+            mapView.onResume()
+            mapView.getMapAsync { map ->
+                filteredMapRef = map
+                // Mêmes réglages UI que le mode normal (cf. commentaire là-bas).
+                map.uiSettings.isRotateGesturesEnabled = false
+                map.uiSettings.isCompassEnabled = false
+                map.cameraPosition = parisCamera(PARIS_OVERVIEW_ZOOM)
+
+                map.setStyle(Style.Builder().fromUri(styleUrl)) { style ->
+                    val tStyle = android.os.SystemClock.elapsedRealtime()
+                    android.util.Log.i(
+                        "MapScreen",
+                        "Style prêt (process+${tStyle - tProcess}ms)",
+                    )
+                    if (LocationProvider.hasFineLocationPermission(ctx)) {
+                        enableLocationPin(map, style)
+                    }
+                    scope.launch {
+                        try {
+                            // Single-pass : GeoJSON filtré < 1 Mo (~38 k
+                            // features pour Platanus max), le freeze
+                            // d'`addArbresLayers` reste imperceptible.
                             // En mode genre (set de N sks), le total reste
                             // largement < 1 Mo car limité aux espèces
                             // capturées du genre + le sp. — soit un sous-
@@ -582,7 +801,7 @@ fun MapScreen(
                                 )
                             }
                             addArbresLayers(style, json)
-                            styleRef = style
+                            filteredStyleRef = style
                             val tLayers = android.os.SystemClock.elapsedRealtime()
                             android.util.Log.i(
                                 "MapScreen",
@@ -593,121 +812,43 @@ fun MapScreen(
                             // plancher : pré-filtre + setStyle sont souvent
                             // < 1 s, le voile flasherait sinon.
                             awaitArbresRendered(map, 6_000)
-                            awaitSplashFloor(FILTER_SPLASH_MIN_MS)
-                            arbresPrets = true
-                        } else {
-                            // Cold-start global, 2-passes : on pose les layers
-                            // sur une source VIDE (instantané), puis on injecte
-                            // les 217 k features via `setArbresGeoJson` — qui
-                            // parse + cluster en background et ne bloque pas le
-                            // UI thread. Le voile reste PLEINEMENT OPAQUE jusqu'à
-                            // ce que les pins/clusters soient réellement rendus
-                            // (`awaitArbresRendered` plus bas). Si on flippait
-                            // `arbresPrets` avant que `setGeoJson` n'ait fini
-                            // de parser, le voile s'effacerait sur une carte
-                            // vide pendant 1-3 s, le temps du parse async.
-                            addArbresLayers(style, EMPTY_GEOJSON)
-                            styleRef = style
-                            val tEmpty = android.os.SystemClock.elapsedRealtime()
-                            android.util.Log.i(
-                                "MapScreen",
-                                "Layers vides posées (process+${tEmpty - tProcess}ms)",
-                            )
-                            // Si on a déjà un GeoJSON enrichi cached (mount
-                            // post retour Profil → Map), on le pose direct
-                            // — pins ET clusters bons d'un coup, 1 seul
-                            // freeze UI. Sinon (cold-start fresh), on pose
-                            // le rawJson nu pour que les pins apparaissent
-                            // ASAP (~700 ms) ; le LaunchedEffect mid-session
-                            // déboucera l'enrichment ~1 s plus tard et
-                            // re-poussera l'enrichi en 2e wave. Enrich des
-                            // 217 k features = ~5-15 s sur device, trop
-                            // coûteux pour bloquer le 1er paint.
-                            val cached = app.enrichedGeoJson.value
-                            val initialJson = cached ?: app.arbresGeoJsonAsync.await()
-                            val tJson = android.os.SystemClock.elapsedRealtime()
-                            android.util.Log.i(
-                                "MapScreen",
-                                "GeoJSON ${if (cached != null) "(cache enrichi)" else "(raw)"} disponible " +
-                                    "(process+${tJson - tProcess}ms, ${initialJson.length / 1_000_000}Mo)",
-                            )
-                            setArbresGeoJson(style, initialJson)
-                            val tLayers = android.os.SystemClock.elapsedRealtime()
-                            android.util.Log.i(
-                                "MapScreen",
-                                "GeoJSON poussé dans la source (process+${tLayers - tProcess}ms, parse async en cours)",
-                            )
-                            // Le setGeoJson ci-dessus parse + cluster en
-                            // background : on attend que les pins/clusters
-                            // soient effectivement rendus avant de baisser
-                            // le voile (sinon « carte vide » 1-3 s).
-                            awaitArbresRendered(map, 10_000)
-                            val tRendered = android.os.SystemClock.elapsedRealtime()
-                            android.util.Log.i(
-                                "MapScreen",
-                                "Arbres rendus à l'écran (process+${tRendered - tProcess}ms, total cold start)",
-                            )
-                            // Plancher : pleine durée uniquement en cold-start
-                            // fresh ; remount avec cache enrichi → flip direct
-                            // (inutile de ralentir une nav rapide).
-                            if (cached == null) awaitSplashFloor(COLD_SPLASH_MIN_MS)
-                            arbresPrets = true
+                            awaitSplashFloor(tStart, FILTER_SPLASH_MIN_MS)
+                            filteredArbresPrets = true
+                        } catch (e: Throwable) {
+                            android.util.Log.e("MapScreen", "Échec chargement arbres", e)
+                        } finally {
+                            // Ne jamais rester coincé sous le splash si une étape
+                            // a échoué. Idempotent si le chemin nominal a flippé.
+                            filteredArbresPrets = true
                         }
-                    } catch (e: Throwable) {
-                        android.util.Log.e("MapScreen", "Échec chargement arbres", e)
-                    } finally {
-                        // Ne jamais rester coincé sous le splash si une étape a
-                        // échoué (OOM possible au parse du GeoJSON). Idempotent
-                        // si le chemin nominal a déjà flippé.
-                        arbresPrets = true
                     }
                 }
-            }
 
-            map.addOnCameraIdleListener { viewModel.rememberCamera(map.cameraPosition) }
-            // Geste utilisateur sur la carte → on coupe le recadrage GPS auto.
-            map.addOnCameraMoveStartedListener { reason ->
-                if (reason == MapLibreMap.OnCameraMoveStartedListener.REASON_API_GESTURE) {
-                    userMovedCamera = true
+                map.addOnCameraIdleListener { viewModel.rememberCamera(map.cameraPosition) }
+                map.addOnCameraMoveStartedListener { reason ->
+                    if (reason == MapLibreMap.OnCameraMoveStartedListener.REASON_API_GESTURE) {
+                        userMovedCamera = true
+                    }
                 }
+                map.addOnMapClickListener { latLng -> handleMapClick(map, latLng) }
             }
-
-            map.addOnMapClickListener { latLng ->
-                val pixel = map.projection.toScreenLocation(latLng)
-                val touch = RectF(pixel.x - 20f, pixel.y - 20f, pixel.x + 20f, pixel.y + 20f)
-
-                val clusters = map.queryRenderedFeatures(touch, CLUSTERS_LAYER_ID)
-                if (clusters.isNotEmpty()) {
-                    userMovedCamera = true
-                    val source = map.style?.getSourceAs<GeoJsonSource>(ARBRES_SOURCE_ID)
-                    val zoom = source?.getClusterExpansionZoom(clusters.first())?.toDouble()
-                        ?: (map.cameraPosition.zoom + 2.0)
-                    map.animateCamera(CameraUpdateFactory.newLatLngZoom(latLng, zoom))
-                    return@addOnMapClickListener true
-                }
-
-                val points = map.queryRenderedFeatures(touch, POINTS_LAYER_ID)
-                val id = points.firstOrNull()?.getNumberProperty("id")?.toLong()
-                if (id != null) {
-                    viewModel.openDetail(id)
-                    true
-                } else {
-                    false
-                }
+            onDispose {
+                maplibreLocationCleanup?.invoke()
+                maplibreLocationCleanup = null
+                mapView.onPause()
+                mapView.onStop()
+                mapView.onDestroy()
+                LocationProvider.stop()
             }
-        }
-        onDispose {
-            maplibreLocationCleanup?.invoke()
-            maplibreLocationCleanup = null
-            mapView.onPause()
-            mapView.onStop()
-            mapView.onDestroy()
-            LocationProvider.stop()
         }
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
-        AndroidView(factory = { mapView })
+        // En mode normal la view persistante peut encore être accrochée à une
+        // autre entrée MAP (deux entrées composées pendant la crossfade d'une
+        // nav `pulseArbreId`) : l'entrante la vole — trou de ~300 ms côté
+        // sortante, assumé. Un View ne peut avoir qu'un parent.
+        AndroidView(factory = { mapView.also { v -> (v.parent as? ViewGroup)?.removeView(v) } })
         CaptureCelebrationOverlay(
             captureRepo = captureRepo,
             mapRef = mapRef,

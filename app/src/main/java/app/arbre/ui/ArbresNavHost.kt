@@ -2,10 +2,14 @@ package app.arbre.ui
 
 import android.net.Uri
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -17,6 +21,7 @@ import app.arbre.ui.arboretum.ArboretumScreen
 import app.arbre.ui.badges.BadgesScreen
 import app.arbre.ui.genre.GenreActions
 import app.arbre.ui.genre.GenreDetailScreen
+import app.arbre.ui.map.MapHost
 import app.arbre.ui.map.MapScreen
 import app.arbre.ui.onboarding.WelcomeScreen
 import app.arbre.ui.profile.ProfileScreen
@@ -34,6 +39,18 @@ fun ArbresNavHost() {
     // `null` tant que le round-trip DataStore initial n'a pas répondu (quelques
     // ms) ; `false` = onboarding pas fait ; `true` = fait.
     val onboardingDone by onboardingStore.onboardingDone.collectAsState(initial = null)
+
+    // MapView persistante : holder Activity-scopé partagé par toutes les entrées
+    // `Routes.MAP` (le mode filtré garde sa MapView jetable et ne le reçoit pas).
+    // Le cycle GL est relayé depuis le lifecycle de l'Activity — il ne dépend
+    // plus du mount de `MapScreen`. Cf. doc de tête de `MapHost`.
+    val ctx = LocalContext.current
+    val mapHost = remember { MapHost(ctx) }
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        mapHost.attachLifecycle(lifecycleOwner.lifecycle)
+        onDispose { mapHost.release(lifecycleOwner.lifecycle) }
+    }
 
     // `startDestination` est une CONSTANTE — surtout PAS dérivé de `onboardingDone`.
     // S'il l'était, chaque changement de valeur (sur un install frais :
@@ -80,6 +97,7 @@ fun ArbresNavHost() {
                 ?.getString("pulseArbreId")
                 ?.toLongOrNull()
             MapScreen(
+                mapHost = mapHost,
                 onArboretumClick = { nav.navigate(Routes.ARBORETUM) },
                 onRemarquablesClick = { nav.navigate(Routes.REMARQUABLES) },
                 onProfileClick = { nav.navigate(Routes.PROFILE) },
