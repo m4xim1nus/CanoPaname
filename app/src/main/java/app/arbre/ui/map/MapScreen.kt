@@ -73,6 +73,8 @@ import app.arbre.ArbresApp
 import app.arbre.R
 import app.arbre.data.Arbre
 import app.arbre.data.Capture
+import app.arbre.data.CaptureRepository
+import app.arbre.data.SpeciesIndex
 import app.arbre.data.rememberArbreRepository
 import app.arbre.data.rememberArrSpeciesIndex
 import app.arbre.data.rememberCaptureRepository
@@ -325,7 +327,13 @@ fun MapScreen(
     // user re-tap si besoin.
     var awaitingFirstFix by remember { mutableStateOf(false) }
 
+    // Coloration des pins, mode FILTRÉ seulement. En mode normal, cet observer
+    // et l'enrichment clusters sont holder-scoped (`launchDiscoveryObservers`,
+    // lancés une fois par le pipeline d'init) : ils continuent de tourner
+    // pendant que `MapScreen` est démonté — au retour d'une capture, la carte
+    // est le plus souvent déjà à jour.
     LaunchedEffect(styleRef) {
+        if (host != null) return@LaunchedEffect
         val style = styleRef ?: return@LaunchedEffect
         combine(
             captureRepo.capturedSpeciesIndices(),
@@ -339,52 +347,6 @@ fun MapScreen(
                     style,
                     speciesIndex.effectivelyCapturedSpecies(species),
                     remarquables,
-                )
-            }
-    }
-
-    // Mid-session : à chaque changement des captures (debounce 1 s), régénère
-    // le GeoJSON enrichi (flag `discovered` par feature) en background et le
-    // re-pousse via `setArbresGeoJson`. C'est aussi lui qui fait le 1er
-    // enrichment du cold-start fresh (le pipeline cold-start ne le fait pas,
-    // 217 k features = trop lourd pour bloquer le 1er paint des pins). Aux
-    // mounts suivants, `app.enrichedGeoJson` permet au cold-start de poser
-    // direct l'enrichi ; ici on skip le re-enrich si les sets sont identiques
-    // à `lastEnrichmentKey`. Skip total en mode filtré (déjà enrichi cold).
-    LaunchedEffect(styleRef, filterSpecies) {
-        if (isFiltered) return@LaunchedEffect
-        val style = styleRef ?: return@LaunchedEffect
-        combine(
-            captureRepo.capturedSpeciesIndices(),
-            captureRepo.capturedRemarquableIds(),
-        ) { species, remarquables -> species to remarquables }
-            .debounce(1000)
-            .collect { (species, remarquables) ->
-                val key = species to remarquables
-                if (key == app.lastEnrichmentKey && app.enrichedGeoJson.value != null) {
-                    return@collect
-                }
-                val tStart = android.os.SystemClock.elapsedRealtime()
-                val rawJson = app.arbresGeoJsonAsync.await()
-                // Ajoute les sp. genre-débloqués au set passé à l'enrichment,
-                // pour que les clusters propagent l'état de découverte sur
-                // les (G, sp.) — symétrique de `applyDiscoveryColor`.
-                val effectiveSpecies = speciesIndex.effectivelyCapturedSpecies(species)
-                val enriched = withContext(Dispatchers.Default) {
-                    enrichGeoJsonWithDiscovery(rawJson, effectiveSpecies, remarquables)
-                }
-                val tEnrich = android.os.SystemClock.elapsedRealtime()
-                android.util.Log.i(
-                    "MapScreen",
-                    "GeoJSON enrichi mid-session (${tEnrich - tStart}ms bg, ${enriched.length / 1_000_000}Mo)",
-                )
-                app.enrichedGeoJson.value = enriched
-                app.lastEnrichmentKey = key
-                setArbresGeoJson(style, enriched)
-                val tPushed = android.os.SystemClock.elapsedRealtime()
-                android.util.Log.i(
-                    "MapScreen",
-                    "Enrichi poussé mid-session (+${tPushed - tEnrich}ms UI)",
                 )
             }
     }
@@ -621,6 +583,7 @@ fun MapScreen(
                             // vide pendant 1-3 s, le temps du parse async.
                             addArbresLayers(style, EMPTY_GEOJSON)
                             host.style = style
+                            launchDiscoveryObservers(host, app, captureRepo, speciesIndex, style)
                             val tEmpty = android.os.SystemClock.elapsedRealtime()
                             android.util.Log.i(
                                 "MapScreen",
@@ -1159,6 +1122,87 @@ fun MapScreen(
                 onDismiss = { viewModel.closeSearch() },
             )
         }
+    }
+}
+
+/**
+ * Observers de découverte du mode normal, lancés UNE FOIS par le pipeline
+ * d'init dans `host.scope` : ils survivent au démontage de `MapScreen` et
+ * tiennent la carte à jour pendant l'absence. Aucune référence à du state
+ * per-mount ici — le mount qui a lancé l'init peut être mort quand ils tirent.
+ *
+ * 1) **Coloration pins** : swap d'expression paint à chaque changement des
+ *    captures (coût ∝ nb d'espèces capturées, pas au nb d'arbres) — sub-frame.
+ * 2) **Enrichment clusters** : à chaque changement (debounce 1 s), régénère le
+ *    GeoJSON enrichi (flag `discovered` par feature) en background et le
+ *    re-pousse via `setArbresGeoJson`. C'est aussi lui qui fait le 1er
+ *    enrichment du cold-start fresh (le pipeline d'init ne le fait pas :
+ *    217 k features = trop lourd pour bloquer le 1er paint des pins).
+ *    `app.enrichedGeoJson` / `app.lastEnrichmentKey` mémoïsent cross-holder
+ *    (survivent à une recréation d'Activity via `ArbresApp`) — skip du
+ *    re-enrich si les sets sont identiques.
+ *
+ * Le mode filtré garde ses effets inline côté composable (sa MapView et son
+ * style meurent avec l'écran).
+ */
+@OptIn(kotlinx.coroutines.FlowPreview::class)
+private fun launchDiscoveryObservers(
+    host: MapHost,
+    app: ArbresApp,
+    captureRepo: CaptureRepository,
+    speciesIndex: SpeciesIndex,
+    style: Style,
+) {
+    host.scope.launch {
+        combine(
+            captureRepo.capturedSpeciesIndices(),
+            captureRepo.capturedRemarquableIds(),
+        ) { species, remarquables -> species to remarquables }
+            .collect { (species, remarquables) ->
+                // Capturer une espèce identifiée d'un genre déverrouille les
+                // pins (G, sp.) du même genre (verts). Cohérent avec
+                // l'auto-débloquage genre-based appliqué côté Arboretum.
+                applyDiscoveryColor(
+                    style,
+                    speciesIndex.effectivelyCapturedSpecies(species),
+                    remarquables,
+                )
+            }
+    }
+    host.scope.launch {
+        combine(
+            captureRepo.capturedSpeciesIndices(),
+            captureRepo.capturedRemarquableIds(),
+        ) { species, remarquables -> species to remarquables }
+            .debounce(1000)
+            .collect { (species, remarquables) ->
+                val key = species to remarquables
+                if (key == app.lastEnrichmentKey && app.enrichedGeoJson.value != null) {
+                    return@collect
+                }
+                val tStart = android.os.SystemClock.elapsedRealtime()
+                val rawJson = app.arbresGeoJsonAsync.await()
+                // Ajoute les sp. genre-débloqués au set passé à l'enrichment,
+                // pour que les clusters propagent l'état de découverte sur
+                // les (G, sp.) — symétrique de `applyDiscoveryColor`.
+                val effectiveSpecies = speciesIndex.effectivelyCapturedSpecies(species)
+                val enriched = withContext(Dispatchers.Default) {
+                    enrichGeoJsonWithDiscovery(rawJson, effectiveSpecies, remarquables)
+                }
+                val tEnrich = android.os.SystemClock.elapsedRealtime()
+                android.util.Log.i(
+                    "MapScreen",
+                    "GeoJSON enrichi mid-session (${tEnrich - tStart}ms bg, ${enriched.length / 1_000_000}Mo)",
+                )
+                app.enrichedGeoJson.value = enriched
+                app.lastEnrichmentKey = key
+                setArbresGeoJson(style, enriched)
+                val tPushed = android.os.SystemClock.elapsedRealtime()
+                android.util.Log.i(
+                    "MapScreen",
+                    "Enrichi poussé mid-session (+${tPushed - tEnrich}ms UI)",
+                )
+            }
     }
 }
 
