@@ -19,8 +19,9 @@ _(vide — les 5 inputs du 2026-05-20 triés et calés le 2026-05-21)_
 
 ## Cycle Netteté
 
-Polish de la boucle carte + capture. Pressenti en premier des trois cycles à venir.
+Polish de la boucle carte + capture. **Cycle en cours depuis le 2026-06-11** — détail item par item dans `ROADMAP.md`.
 
+- [→Netteté] **MapView persistante across navigation** : aujourd'hui `val mapView = remember { MapView(ctx) }` est scopé à `MapScreen` → la MapView part en `onDestroy` (DisposableEffect) dès qu'on navigue ailleurs, et au retour sur la carte elle est recréée : ré-init GL + rechargement du dataset + re-clustering = petit reload/splash perceptible. Hisser l'instance à un scope plus long (niveau `NavHost`, ou tenue par un ViewModel/Application) + réutilisation via `AndroidView` en detach/reattach → retour instantané sur la carte + baseline mémoire stable. Concept validé device côté PWA (`map/mapHost.ts`, Phase 11 it8 — une seule instance MapLibre déplacée à travers les wipes du routeur, au lieu de détruite/recréée). Caveat : contrainte « une View n'a qu'un seul parent à la fois » (même problème résolu en detach/reattach côté PWA) + cycle GL (`onPause`/`onResume`/`onStop`) à gérer hors du composable + découplage de l'état d'écran (`mapRef`, `styleRef`, cleanup location MapLibre) — refacto non trivial. (pwa:livraison-dev-externe, 2026-06-09 ; promu de [creuser] en item 1 du cycle Netteté, design arbitré 2026-06-11)
 - [→Netteté] Cône de vision sur le pin Location : afficher un secteur orienté selon la boussole du téléphone (capteur d'orientation), façon Google Maps — indique vers où l'utilisateur regarde (user:moi, 2026-05-20)
 - [→Netteté] Filtres rapides depuis la sheet d'un arbre non remarquable : boutons « toute l'espèce » / « tout le genre » qui ne gardent sur la carte que les pins verts/orange concernés, avec défiltrage en un clic ; viser un re-rendu sans gros rechargement de la source GeoJSON (user:moi, 2026-05-20)
 - [→Netteté] Transition de capture sans flash carte : entre la validation de la photo et l'ouverture de la fiche espèce, la carte réapparaît brièvement — couvrir la bascule par un overlay pour ne jamais repasser visuellement par la carte (user:moi, 2026-05-20)
@@ -56,6 +57,8 @@ _Aider à reconnaître / distinguer les espèces. Même logique, à arbitrer ens
 
 _Mécaniques de ré-engagement, en tension avec le ton « compagnon de balade calme »._
 
+- [creuser] CTA « Aller sur la carte » — Boutons dans les empty states (Arboretum historique, Remarquables historique, Profil vide).
+- [creuser] Amélioration du SplashScreen de fin de capture (entre la validation de la photo et la découverte de la nouvelle fiche espèce, à date, le SplashScreen de base de chargement de la map)
 - [creuser] Notifications push : digest mensuel opt-in vs rien (audit-tension#1)
 - [creuser] Quêtes hebdomadaires locales, opt-in, sans push (audit V2#3, 2026-05-06 ; déplacé depuis Endgame 2026-05-12 quand le cycle a été dissous)
 - [creuser] Leaderboard optionnel et minimaliste ? (en tension avec l'invariant CLAUDE.md « pas de classement » ; gardé en creuser sur choix user:moi 2026-05-20)
@@ -71,7 +74,7 @@ _Plus d'arbres, plus de fun_
 
 _Optimisations sous le capot, sans impact fonctionnel direct._
 
-- [creuser] **MapView persistante across navigation** : aujourd'hui `val mapView = remember { MapView(ctx) }` est scopé à `MapScreen` → la MapView part en `onDestroy` (DisposableEffect) dès qu'on navigue ailleurs, et au retour sur la carte elle est recréée : ré-init GL + rechargement du dataset + re-clustering = petit reload/splash perceptible. Hisser l'instance à un scope plus long (niveau `NavHost`, ou tenue par un ViewModel/Application) + réutilisation via `AndroidView` en detach/reattach → retour instantané sur la carte + baseline mémoire stable. Concept validé device côté PWA (`map/mapHost.ts`, Phase 11 it8 — une seule instance MapLibre déplacée à travers les wipes du routeur, au lieu de détruite/recréée). Caveat : contrainte « une View n'a qu'un seul parent à la fois » (même problème résolu en detach/reattach côté PWA) + cycle GL (`onPause`/`onResume`/`onStop`) à gérer hors du composable + découplage de l'état d'écran (`mapRef`, `styleRef`, cleanup location MapLibre) — refacto non trivial. (pwa:livraison-dev-externe, 2026-06-09)
+_(vide — « MapView persistante » promu item 1 du cycle Netteté le 2026-06-11)_
 
 ## Refusé
 
