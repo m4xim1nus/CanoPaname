@@ -118,6 +118,30 @@ import org.maplibre.android.maps.MapView
 import org.maplibre.android.maps.Style
 import org.maplibre.android.style.sources.GeoJsonSource
 
+// ARCHITECTURE DU FICHIER — deux modes, deux cycles de vie :
+//
+// - Mode NORMAL (`filterSpecies` vide) : la MapView est PERSISTANTE, portée par
+//   le `MapHost` Activity-scopé (cf. doc de tête de MapHost.kt). Le pipeline
+//   d'init contenu (caméra → style → layers → push 217 k features →
+//   `awaitArbresRendered`) ne tourne qu'UNE FOIS par vie d'Activity, dans
+//   `host.scope`, et survit aux navigations ; les observers de découverte
+//   (coloration pins + enrichment clusters, cf. `launchDiscoveryObservers`)
+//   y tournent aussi en continu. `MapScreen` ne gère per-mount que : l'attache
+//   de la view (`AndroidView` + vol de parent), le gel/dégel du rendu
+//   (`screenAttached`/`screenDetached`), GPS + bridge MapLibre + pin user,
+//   les listeners d'interaction, et les effets caméra (pulse, fly-to arr,
+//   recadrage auto one-shot gated par `host.autoRecenterDone`).
+//   Splash : `host.pinsRendered` — remount avec carte rendue = zéro voile.
+//
+// - Mode FILTRÉ (fiche espèce/genre → « voir sur la carte ») : MapView JETABLE
+//   locale, pipeline single-pass enrichi d'emblée (< 1 Mo), cycle GL relayé
+//   par le mount, tout meurt au dispose. Partager l'instance persistante
+//   forcerait un re-push des 33 Mo au retour sur la carte principale.
+//
+// Géoloc (LocationManager natif, bridge LocationEngine MapLibre, caméra de
+// bootstrap non-bloquante) : voir `computeInitialCamera` et
+// `enableLocationPin` ci-dessous.
+
 private val PARIS = LatLng(48.8566, 2.3522)
 private const val PARIS_ZOOM = 13.0
 private const val PARIS_OVERVIEW_ZOOM = 11.5
@@ -787,7 +811,6 @@ fun MapScreen(
                     }
                 }
 
-                map.addOnCameraIdleListener { viewModel.rememberCamera(map.cameraPosition) }
                 map.addOnCameraMoveStartedListener { reason ->
                     if (reason == MapLibreMap.OnCameraMoveStartedListener.REASON_API_GESTURE) {
                         userMovedCamera = true

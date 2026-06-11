@@ -16,11 +16,12 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import org.maplibre.android.camera.CameraPosition
 import java.io.File
 
 /**
- * Survit à la nav stack : mémorise la caméra et l'arbre actuellement ouvert.
+ * Survit à la nav stack : mémorise l'arbre actuellement ouvert et l'état des
+ * sheets. (La caméra du mode normal, elle, vit dans `MapHost.lastCamera` —
+ * la view persistante la garde de toute façon entre deux mounts.)
  *
  * Le fetch de l'arbre est fait ici (pas dans le composable de la fiche) pour
  * que le sheet n'apparaisse qu'avec un contenu réel — sinon il est mesuré
@@ -36,9 +37,6 @@ class MapViewModel(
     private val repo: ArbreRepository,
     private val state: SavedStateHandle,
 ) : ViewModel() {
-
-    var lastCamera: CameraPosition? = null
-        private set
 
     var openedArbre: Arbre? by mutableStateOf(null)
         private set
@@ -58,8 +56,7 @@ class MapViewModel(
      * Posté par `flyToArr(...)`, consommé par un `LaunchedEffect` côté
      * `MapScreen` qui anime la caméra puis appelle `consumeArrFlyTo()`.
      * On reste donc sur l'écran Map — pas de query param `flyToArr` : un
-     * `navigate(Routes.map(...))` remonterait MapScreen et rejouerait le
-     * splash, en perdant `lastCamera`.
+     * `navigate(Routes.map(...))` empilerait une entrée MAP inutile.
      */
     var pendingArrFlyTo: Pair<Double, Double>? by mutableStateOf(null)
         private set
@@ -71,10 +68,6 @@ class MapViewModel(
      * on quitte l'écran.
      */
     var remarquablesCache: List<Arbre>? = null
-
-    fun rememberCamera(position: CameraPosition) {
-        lastCamera = position
-    }
 
     fun openDetail(id: Long) {
         viewModelScope.launch {
