@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Cône de vision du pin Location (bearingDrawable du LocationComponent,
+  RenderMode.COMPASS). Rendu sur la BEARING_LAYER — au-dessus du puck —
+  d'où le secteur ANNULAIRE : le trou central (rayon 11 > rayon du puck)
+  évite de teinter le point bleu. MapLibre fait tourner le bitmap autour
+  du centre du viewport = la position GPS ; le secteur pointe le nord au
+  repos, l'icon-rotate applique le bearing boussole.
+  Bleu #4A90E2 = maplibre_location_layer_blue (couleur du puck), fondu
+  radial vers transparent façon Google Maps. Pas de bearingTintColor côté
+  Kotlin : un tint aplatirait ce dégradé.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="88dp"
+    android:height="88dp"
+    android:viewportWidth="88"
+    android:viewportHeight="88">
+    <!-- Secteur annulaire ±30° autour du nord : rayons 11 → 42. -->
+    <path android:pathData="M38.5,34.47 L23,7.63 A42,42 0 0 1 65,7.63 L49.5,34.47 A11,11 0 0 0 38.5,34.47 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:type="radial"
+                android:centerX="44"
+                android:centerY="44"
+                android:gradientRadius="42">
+                <!-- 0.26 = bord intérieur (11/42) : alpha 0x73 ≈ 45 %. -->
+                <item android:offset="0.26" android:color="#734A90E2" />
+                <item android:offset="1.0" android:color="#004A90E2" />
+            </gradient>
+        </aapt:attr>
+    </path>
+</vector>

@@ -384,6 +384,16 @@ fun MapScreen(
                     .locationComponentOptions(
                         LocationComponentOptions.builder(ctx)
                             .pulseEnabled(true)
+                            // Cône de vision boussole (cf. doc du drawable).
+                            .bearingDrawable(R.drawable.ic_location_cone)
+                            // Z-order déterministe : la stack du puck est posée
+                            // juste au-dessus de la layer arbres la plus haute,
+                            // quel que soit le timing d'activation (défaut =
+                            // top-of-stack à l'activation, timing-dépendant).
+                            // Précondition : les layers arbres existent — tenu
+                            // sur les deux modes, l'activation passe toujours
+                            // par un style post-`addArbresLayers`.
+                            .layerAbove(CLUSTER_COUNT_LAYER_ID)
                             .build()
                     )
                     .useDefaultLocationEngine(true)
@@ -392,7 +402,11 @@ fun MapScreen(
         }
         component.isLocationComponentEnabled = true
         component.cameraMode = CameraMode.NONE
-        component.renderMode = RenderMode.NORMAL
+        // COMPASS : MapLibre instancie son CompassEngine interne (capteurs
+        // rotation-vector) et oriente le bearingDrawable. Listener capteur
+        // retiré avec `isLocationComponentEnabled = false` au dispose — pas
+        // de drain boussole hors-carte.
+        component.renderMode = RenderMode.COMPASS
         // Au 1er lancement post-onboarding, notre `LocationListener` propre
         // ne reçoit pas d'updates pendant ~10 s alors que le `LocationEngine`
         // de MapLibre reçoit des fix dès t≈1 s. On consomme SA source — élimine
