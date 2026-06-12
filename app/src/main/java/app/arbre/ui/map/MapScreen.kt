@@ -1075,10 +1075,27 @@ fun MapScreen(
             captureRepo = captureRepo,
             speciesIndex = speciesIndex,
             snackbar = snackbar,
-            onFirstSpeciesCapture = { sk ->
-                viewModel.closeDetail()
-                onFirstSpeciesCapture(sk)
-            },
+            callbacks = CaptureCallbacks(
+                onFirstSpeciesCapture = { sk ->
+                    viewModel.closeDetail()
+                    onFirstSpeciesCapture(sk)
+                },
+                onCelebrationTransitionStart = { sk ->
+                    // Jamais de voile en mode filtré (host == null) : pas de nav
+                    // vers la fiche espèce depuis MAP_FILTERED, on resterait
+                    // coincé sous le voile jusqu'au timeout.
+                    if (host != null) {
+                        // `closeDetail()` (sortie de composition) détruit la
+                        // fenêtre de la ModalBottomSheet instantanément, dans la
+                        // même frame que la levée du voile. Surtout pas
+                        // `sheetState.hide()` : la fenêtre dialog de la sheet vit
+                        // au-dessus de TOUT le contenu de l'Activity, voile compris.
+                        viewModel.closeDetail()
+                        host.captureTransitionSk = sk
+                    }
+                },
+                onCelebrationTransitionAbort = { host?.captureTransitionSk = null },
+            ),
         )
 
         val openedArbre = viewModel.openedArbre

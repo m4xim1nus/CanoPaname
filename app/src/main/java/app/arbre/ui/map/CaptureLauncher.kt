@@ -9,7 +9,6 @@ import android.graphics.Matrix
 import android.location.Location
 import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
@@ -85,6 +84,24 @@ fun captureAvailability(arbre: Arbre): CaptureAvailability {
 }
 
 /**
+ * Callbacks du pipeline de capture, groupés façon `SpeciesActions` /
+ * `GenreActions`.
+ */
+data class CaptureCallbacks(
+    val onCaptured: () -> Unit = {},
+    /** INSERT fait et `willCelebrate` : naviguer vers la fiche espèce. */
+    val onFirstSpeciesCapture: (Int) -> Unit = {},
+    /**
+     * Appelé SYNCHRONIQUEMENT au retour caméra si `success && willCelebrate`
+     * — avant la 1re frame de retour : lever le voile de transition et fermer
+     * la sheet sans animation (la carte n'est jamais rendue).
+     */
+    val onCelebrationTransitionStart: (Int) -> Unit = {},
+    /** Échec après levée du voile (fichier vide, compression) — le retirer. */
+    val onCelebrationTransitionAbort: () -> Unit = {},
+)
+
+/**
  * Pipeline de capture : permission caméra → GPS frais → proximité < 30 m →
  * fichier photo via FileProvider → état pendant en `SavedStateHandle` → intent
  * caméra système. Au retour (qui peut survenir après un process death),
@@ -100,8 +117,7 @@ fun rememberCaptureController(
     captureRepo: CaptureRepository,
     speciesIndex: SpeciesIndex,
     snackbar: SnackbarHostState,
-    onCaptured: () -> Unit = {},
-    onFirstSpeciesCapture: (Int) -> Unit = {},
+    callbacks: CaptureCallbacks = CaptureCallbacks(),
 ): (Arbre) -> Unit {
     val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -112,8 +128,19 @@ fun rememberCaptureController(
     val takePictureLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.TakePicture()
     ) { success ->
+        // SYNCHRONE — ce callback est dispatché avant `onResume`, donc avant
+        // la 1re frame de retour de l'app caméra : consommer le pending et
+        // lever le voile ICI garantit que la carte n'est jamais rendue entre
+        // la validation photo et la fiche espèce. Rien de bloquant avant le
+        // `scope.launch`.
+        val pending = viewModel.consumePending()
+            ?: return@rememberLauncherForActivityResult
+        // Pas de voile sur annulation (`success == false`) : on reste sur la
+        // carte, la snackbar du launch ci-dessous fait le feedback.
+        if (success && pending.willCelebrate) {
+            callbacks.onCelebrationTransitionStart(pending.speciesIndex)
+        }
         scope.launch {
-            val pending = viewModel.consumePending() ?: return@launch
             val file = File(File(ctx.getExternalFilesDir(null), "captures"), pending.photoBasename)
             if (!success) {
                 file.delete()
@@ -126,6 +153,7 @@ fun rememberCaptureController(
             }
             if (file.length() == 0L) {
                 file.delete()
+                if (pending.willCelebrate) callbacks.onCelebrationTransitionAbort()
                 snackbar.showSnackbar("Photo vide — caméra a échoué")
                 return@launch
             }
@@ -135,14 +163,10 @@ fun rememberCaptureController(
             val compressed = withContext(Dispatchers.IO) { compressCapture(file) }
             if (!compressed) {
                 file.delete()
+                if (pending.willCelebrate) callbacks.onCelebrationTransitionAbort()
                 snackbar.showSnackbar("Erreur traitement photo")
                 return@launch
             }
-            // Snapshot AVANT insert — sinon le set contient déjà la nouvelle
-            // espèce et on rate la transition « 1re capture ». Scopé sur la
-            // saison de la capture : la même espèce capturée 2 saisons compte 2 fois.
-            val captureSeason = Season.fromTimestamp(pending.captureTimestamp)
-            val previouslyCaptured = captureRepo.capturedSpeciesIndices(captureSeason).first()
             captureRepo.insertCapture(
                 arbreId = pending.arbreId,
                 speciesIndex = pending.speciesIndex,
@@ -155,15 +179,24 @@ fun rememberCaptureController(
             // Note : `captureHaptic()` a été déplacé en amont (juste avant
             // `launcher.launch`) — le retour kinesthésique mérite d'arriver au
             // tap sur « Capturer », pas à la fin du pipeline d'INSERT.
-            onCaptured()
-            // Célébration uniquement si l'espèce vient d'être débloquée. Les
-            // remarquables sont exclus : `capturedSpeciesIndices` filtre déjà
-            // `WHERE remarquable = 0`, donc on ne ferait pas la transition.
-            // L'utilisateur débloquera l'espèce à la prochaine capture normale.
-            if (!pending.remarquable && pending.speciesIndex !in previouslyCaptured) {
-                onFirstSpeciesCapture(pending.speciesIndex)
+            callbacks.onCaptured()
+            // Même valeur que le voile (figée avant le launch caméra, cf.
+            // `prepareCapture`) — la nav et le voile ne divergent jamais.
+            if (pending.willCelebrate) {
+                callbacks.onFirstSpeciesCapture(pending.speciesIndex)
             }
         }
+    }
+
+    // Préparation (checks, fichier, pending) puis déclenchement : le tic
+    // haptique arrive au moment où on lance l'intent caméra (après tous les
+    // checks) — auparavant joué post-INSERT, ce qui plaçait le retour
+    // kinesthésique ~3 s après le geste.
+    suspend fun startCapture(arbre: Arbre) {
+        val photoUri = prepareCapture(ctx, arbre, viewModel, captureRepo, speciesIndex, snackbar)
+            ?: return
+        captureHaptic()
+        takePictureLauncher.launch(photoUri)
     }
 
     val cameraPermissionLauncher = rememberLauncherForActivityResult(
@@ -172,9 +205,7 @@ fun rememberCaptureController(
         val arbre = pendingArbre.value
         pendingArbre.value = null
         if (granted && arbre != null) {
-            scope.launch {
-                runCapture(ctx, arbre, viewModel, speciesIndex, snackbar, takePictureLauncher, captureHaptic)
-            }
+            scope.launch { startCapture(arbre) }
         } else if (!granted) {
             scope.launch { snackbar.showSnackbar("Permission caméra requise") }
         }
@@ -184,9 +215,7 @@ fun rememberCaptureController(
         { arbre ->
             val perm = ContextCompat.checkSelfPermission(ctx, Manifest.permission.CAMERA)
             if (perm == PackageManager.PERMISSION_GRANTED) {
-                scope.launch {
-                    runCapture(ctx, arbre, viewModel, speciesIndex, snackbar, takePictureLauncher, captureHaptic)
-                }
+                scope.launch { startCapture(arbre) }
             } else {
                 pendingArbre.value = arbre
                 cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
@@ -195,19 +224,24 @@ fun rememberCaptureController(
     }
 }
 
-private suspend fun runCapture(
+/**
+ * Checks (espèce connue, GPS frais, proximité) + fichier photo + état pendant.
+ * Retourne l'URI à passer à l'intent caméra, ou `null` si un check a échoué
+ * (la snackbar a déjà fait le feedback) — le déclenchement (haptic + launch)
+ * appartient à l'appelant.
+ */
+private suspend fun prepareCapture(
     ctx: Context,
     arbre: Arbre,
     viewModel: MapViewModel,
+    captureRepo: CaptureRepository,
     speciesIndex: SpeciesIndex,
     snackbar: SnackbarHostState,
-    launcher: ActivityResultLauncher<android.net.Uri>,
-    captureHaptic: () -> Unit,
-) {
+): android.net.Uri? {
     val sk = speciesIndex.indexOf(arbre)
     if (sk == null) {
         snackbar.showSnackbar("Espèce inconnue, capture impossible")
-        return
+        return null
     }
 
     // Garde-fou : si une race condition entre la propagation de
@@ -216,7 +250,7 @@ private suspend fun runCapture(
     val loc = LocationProvider.currentLocation.value?.takeIf { it.ageMs() <= MAX_GPS_AGE_MS }
     if (loc == null) {
         snackbar.showSnackbar("Position indisponible (active le GPS)")
-        return
+        return null
     }
     val results = FloatArray(1)
     Location.distanceBetween(
@@ -227,10 +261,23 @@ private suspend fun runCapture(
     val distance = results[0]
     if (distance > MAX_DISTANCE_M) {
         snackbar.showSnackbar("Trop loin de l'arbre (${distance.toInt()} m, max ${MAX_DISTANCE_M.toInt()})")
-        return
+        return null
     }
 
     val timestamp = System.currentTimeMillis()
+    // Décision « célébration » (voile de transition + nav fiche espèce) figée
+    // AVANT le launch caméra : le snapshot précède strictement l'insert —
+    // sinon le set contiendrait déjà la nouvelle espèce et on raterait la
+    // transition « 1re capture » — et rien ne peut insérer une capture pendant
+    // l'intent caméra (modal, single-player, l'import backup vit sur Profil).
+    // Scopé sur la saison de la capture : la même espèce capturée 2 saisons
+    // compte 2 fois. Les remarquables sont exclus : `capturedSpeciesIndices`
+    // filtre déjà `WHERE remarquable = 0`, donc on ne ferait pas la
+    // transition ; l'utilisateur débloquera l'espèce à la prochaine capture
+    // normale. Coût : une query Room (~ms) avant l'ouverture de la caméra.
+    val captureSeason = Season.fromTimestamp(timestamp)
+    val willCelebrate = !arbre.remarquable &&
+        sk !in captureRepo.capturedSpeciesIndices(captureSeason).first()
     val capturesDir = File(ctx.getExternalFilesDir(null), "captures").apply { mkdirs() }
     val photoFile = File(capturesDir, "${UUID.randomUUID()}.jpg")
     photoFile.createNewFile()
@@ -249,13 +296,11 @@ private suspend fun runCapture(
             captureLatitude = loc.latitude,
             captureLongitude = loc.longitude,
             captureTimestamp = timestamp,
+            willCelebrate = willCelebrate,
         )
     )
 
-    // Tap → tic au moment où on lance l'intent caméra (après tous les checks).
-    // Auparavant joué post-INSERT, ce qui plaçait le retour ~3 s après le geste.
-    captureHaptic()
-    launcher.launch(photoUri)
+    return photoUri
 }
 
 /**

@@ -114,6 +114,7 @@ class MapViewModel(
         state[K_LAT] = p.captureLatitude
         state[K_LON] = p.captureLongitude
         state[K_TIMESTAMP] = p.captureTimestamp
+        state[K_WILL_CELEBRATE] = p.willCelebrate
     }
 
     fun consumePending(): PendingCapture? {
@@ -128,6 +129,9 @@ class MapViewModel(
         val lat = state.get<Double>(K_LAT)
         val lon = state.get<Double>(K_LON)
         val ts = state.get<Long>(K_TIMESTAMP)
+        // Hors du null-guard : clé absente (upgrade mid-intent, même esprit
+        // que `K_PHOTO_PATH_LEGACY`) → `false`, fallback halo carte sans nav.
+        val willCelebrate = state.get<Boolean>(K_WILL_CELEBRATE) ?: false
         if (arbreId == null || basename == null || speciesIndex == null) return null
         if (remarquable == null || lat == null || lon == null || ts == null) return null
         val pending = PendingCapture(
@@ -138,6 +142,7 @@ class MapViewModel(
             captureLatitude = lat,
             captureLongitude = lon,
             captureTimestamp = ts,
+            willCelebrate = willCelebrate,
         )
         state.remove<Long>(K_ARBRE_ID)
         state.remove<Int>(K_SPECIES_INDEX)
@@ -147,6 +152,7 @@ class MapViewModel(
         state.remove<Double>(K_LAT)
         state.remove<Double>(K_LON)
         state.remove<Long>(K_TIMESTAMP)
+        state.remove<Boolean>(K_WILL_CELEBRATE)
         return pending
     }
 
@@ -159,5 +165,6 @@ class MapViewModel(
         private const val K_LAT = "pending.lat"
         private const val K_LON = "pending.lon"
         private const val K_TIMESTAMP = "pending.timestamp"
+        private const val K_WILL_CELEBRATE = "pending.willCelebrate"
     }
 }

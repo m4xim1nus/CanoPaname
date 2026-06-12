@@ -98,6 +98,20 @@ class MapHost(private val context: Context) {
     var pendingPulseArbreId: Long? by mutableStateOf(null)
 
     /**
+     * Voile de transition « 1re capture d'espèce » : sk de l'espèce débloquée,
+     * `null` = pas de voile. Posé SYNCHRONIQUEMENT par le callback TakePicture
+     * de `CaptureLauncher` (dispatché avant la 1re frame de retour de l'app
+     * caméra — la carte n'est jamais rendue), rendu par `ArbresNavHost`
+     * AU-DESSUS du NavHost (dans `MapScreen` il fade-rait avec lui pendant la
+     * transition de nav). Consommé (remis à `null`) quand l'entrée SPECIES
+     * atteint RESUMED — fin de la transition d'entrée —, par le timeout filet
+     * d'`ArbresNavHost`, ou par les branches d'échec du pipeline de capture.
+     * Perdu en recréation d'Activity : le pipeline retour le repose depuis
+     * `PendingCapture.willCelebrate` (SavedStateHandle).
+     */
+    var captureTransitionSk: Int? by mutableStateOf(null)
+
+    /**
      * Filtre rapide actif (boutons sheet « Toute l'espèce » / « Tout le
      * genre »), `null` = carte entière. Survit aux navigations — cohérent
      * avec la source qui garde de toute façon le subset poussé — et meurt

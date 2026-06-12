@@ -17,4 +17,15 @@ data class PendingCapture(
     val captureLatitude: Double,
     val captureLongitude: Double,
     val captureTimestamp: Long,
+    /**
+     * Décision « 1re espèce de la saison » figée AVANT le launch de l'intent
+     * caméra : rien ne peut insérer une capture pendant l'intent (modal,
+     * single-player, l'import backup vit sur l'écran Profil), donc le snapshot
+     * précède strictement l'insert. Pilote à la fois le voile de transition
+     * ([app.arbre.ui.map.MapHost.captureTransitionSk]) et la nav vers la fiche
+     * espèce au retour — une seule source, jamais de divergence voile/nav.
+     * `false` par défaut : clé absente du `SavedStateHandle` (pending posé par
+     * une version antérieure) → fallback halo carte, pas de nav.
+     */
+    val willCelebrate: Boolean = false,
 )

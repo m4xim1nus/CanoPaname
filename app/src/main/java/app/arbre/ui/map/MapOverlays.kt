@@ -240,7 +240,7 @@ internal fun QuickFilterBanner(
  * sert pour n'autoriser la rotation des tips qu'après le fade-in.
  */
 @Composable
-private fun SplashScaffold(content: @Composable ColumnScope.(introDone: Boolean) -> Unit) {
+internal fun SplashScaffold(content: @Composable ColumnScope.(introDone: Boolean) -> Unit) {
     val splashGreen = MaterialTheme.colorScheme.primary
     val motion = MaterialTheme.arbresMotion
 
@@ -277,6 +277,21 @@ private fun SplashScaffold(content: @Composable ColumnScope.(introDone: Boolean)
         // du hero (z-order).
         MiniArbreCrown(motion = motion, cream = Color(0xFFF5F1E6))
     }
+}
+
+/**
+ * Voile de transition « 1re capture d'espèce » : couvre la bascule validation
+ * photo → fiche espèce pour ne jamais repasser visuellement par la carte.
+ * Rendu par `ArbresNavHost` AU-DESSUS du NavHost (piloté par
+ * `MapHost.captureTransitionSk`), levé synchroniquement au retour de l'intent
+ * caméra, éteint quand la fiche espèce a fini sa transition d'entrée.
+ * Volontairement muet (pas de texte) : la révélation de l'espèce est portée
+ * par le `CelebrationHero` de la fiche. Les animations du `SplashScaffold`
+ * sont frame-clock — vivantes même à échelle d'animation système 0.
+ */
+@Composable
+internal fun CaptureTransitionSplash() {
+    SplashScaffold { }
 }
 
 /**
