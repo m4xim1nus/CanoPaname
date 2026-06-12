@@ -43,7 +43,7 @@ Ensuite :
 ./gradlew assembleRelease            # APK release (signé prod si local.properties OK, sinon fallback debug)
 ```
 
-Pour pousser sur le téléphone GrapheneOS sans Studio : `adb install -r app/build/outputs/apk/debug/app-debug.apk`.
+Pour pousser sur le téléphone GrapheneOS sans Studio : `adb install -r app/build/outputs/apk/debug/canopaname-vX.Y.Z-debug.apk` (naming Obtainium, pas `app-debug.apk`).
 
 ### Build release signé
 

@@ -25,8 +25,7 @@ Polish de la boucle carte + capture. **Cycle en cours depuis le 2026-06-11** —
 - [→Netteté] Cône de vision sur le pin Location : afficher un secteur orienté selon la boussole du téléphone (capteur d'orientation), façon Google Maps — indique vers où l'utilisateur regarde (user:moi, 2026-05-20)
 - [→Netteté] Filtres rapides depuis la sheet d'un arbre non remarquable : boutons « toute l'espèce » / « tout le genre » qui ne gardent sur la carte que les pins verts/orange concernés, avec défiltrage en un clic ; viser un re-rendu sans gros rechargement de la source GeoJSON (user:moi, 2026-05-20)
 - [→Netteté] Transition de capture sans flash carte : entre la validation de la photo et l'ouverture de la fiche espèce, la carte réapparaît brièvement — couvrir la bascule par un overlay pour ne jamais repasser visuellement par la carte (user:moi, 2026-05-20)
-- [→Netteté] WelcomeScreen pas lu, intro depuis la carte — fold pressenti, inclusion dans le cycle encore à discuter/creuser (user:F&F + user:moi 2026-05-07 ; fold proposé 2026-05-21)
-- [→Netteté] Indication de la direction dans le mode Chasse : un point sur le radar indique "l'angle" / la direction de l'arbre remarquable. C'est à ce moment là que le radar "pulse" et que la distance se met à jour. A discuter en détail avant implémentation
+- ~~[→Netteté] Indication de la direction dans le mode Chasse : un point sur le radar indique "l'angle" / la direction de l'arbre remarquable. C'est à ce moment là que le radar "pulse" et que la distance se met à jour.~~ **Livré le 2026-06-12, validé device** : blip north-up (zéro capteur), rayon = distance (mapping log), pulse central sans direction sous 25 m (hystérésis 35 m), refresh théâtralisé au passage de la barre sur le blip — détail dans `ROADMAP.md` item 6 (user:moi, 2026-05-20 ; design arbitré 2026-06-12)
 
 ## Cycle Herbier
 
@@ -46,6 +45,13 @@ Enrichissement des fiches espèces (saisonnalité, attributs, picto, photos de r
 
 ## À creuser
 
+### Onboarding & premier lancement
+
+_Premier contact avec l'app : le WelcomeScreen n'est pas lu, la permission localisation n'est jamais demandée spontanément. Probablement à traiter ensemble._
+
+- [creuser] WelcomeScreen pas lu, intro depuis la carte — fold pressenti (user:F&F + user:moi 2026-05-07 ; fold proposé 2026-05-21 ; sorti du cycle Netteté 2026-06-12, à re-discuter avant arbitrage)
+- [creuser] Vrai install frais (permission localisation jamais accordée) : personne ne demande la permission spontanément, carte sur Paris jusqu'au tap FAB — demander au 1er affichage carte post-onboarding (one-shot, refus respecté) ? À intégrer à la réflexion fold WelcomeScreen (item ci-dessus) (device-test, 2026-06-12)
+
 ### Aide à l'identification
 
 _Aider à reconnaître / distinguer les espèces. Même logique, à arbitrer ensemble._
@@ -59,7 +65,6 @@ _Aider à reconnaître / distinguer les espèces. Même logique, à arbitrer ens
 _Mécaniques de ré-engagement, en tension avec le ton « compagnon de balade calme »._
 
 - [creuser] CTA « Aller sur la carte » — Boutons dans les empty states (Arboretum historique, Remarquables historique, Profil vide).
-- [creuser] Amélioration du SplashScreen de fin de capture (entre la validation de la photo et la découverte de la nouvelle fiche espèce, à date, le SplashScreen de base de chargement de la map)
 - [creuser] Notifications push : digest mensuel opt-in vs rien (audit-tension#1)
 - [creuser] Quêtes hebdomadaires locales, opt-in, sans push (audit V2#3, 2026-05-06 ; déplacé depuis Endgame 2026-05-12 quand le cycle a été dissous)
 - [creuser] Leaderboard optionnel et minimaliste ? (en tension avec l'invariant CLAUDE.md « pas de classement » ; gardé en creuser sur choix user:moi 2026-05-20)
@@ -91,4 +96,3 @@ _(vide — « MapView persistante » promu item 1 du cycle Netteté le 2026-06-1
 - [refusé] Mini-transition d'ambiance switch saison (audit-D2 ; user:moi 2026-05-07 : caduque, suppression saisons)
 - [refusé] Anticlimax du déblocage des 38 147 platanes (audit-tension#4 ; audit lui-même recommande de laisser tel quel — l'effet « wow » au J+3 vaut son anticlimax)
 - [refusé] Pré-affichage fiche remarquable enrichie même non capturée, bandeau « Pas encore découvert » (audit-B, 2026-05-06 ; déplacé depuis Endgame 2026-05-12 — c'est une chasse avec assez d'infos avec la distance)
-- [creuser] Vrai install frais (permission localisation jamais accordée) : personne ne demande la permission spontanément, carte sur Paris jusqu'au tap FAB — demander au 1er affichage carte post-onboarding (one-shot, refus respecté) ? À intégrer à la réflexion fold WelcomeScreen (item 6 Netteté) (device-test, 2026-06-12)
