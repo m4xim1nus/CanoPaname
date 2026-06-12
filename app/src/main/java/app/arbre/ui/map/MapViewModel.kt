@@ -20,8 +20,8 @@ import java.io.File
 
 /**
  * Survit à la nav stack : mémorise l'arbre actuellement ouvert et l'état des
- * sheets. (La caméra du mode normal, elle, vit dans `MapHost.lastCamera` —
- * la view persistante la garde de toute façon entre deux mounts.)
+ * sheets. (La caméra du mode normal, elle, persiste dans la view du `MapHost`
+ * entre deux mounts — rien à mémoriser ici.)
  *
  * Le fetch de l'arbre est fait ici (pas dans le composable de la fiche) pour
  * que le sheet n'apparaisse qu'avec un contenu réel — sinon il est mesuré

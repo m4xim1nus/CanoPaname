@@ -5,9 +5,11 @@ import android.net.Uri
 object Routes {
     const val WELCOME = "welcome"
     const val WELCOME_REPLAY = "welcome_replay"
-    // `pulseArbreId` en query param optionnel — depuis fiche-remarquable ou
-    // PhotoLightbox on saute à un arbre exact (fly-to + pulse + sheet).
-    const val MAP = "map?pulseArbreId={pulseArbreId}"
+    // Le saut « voir cet arbre » (fly-to + pulse depuis une fiche) ne passe
+    // pas par un param de route — il rejouerait à chaque retour sur l'entrée.
+    // C'est un intent one-shot : `MapHost.pendingPulseArbreId`, posé avant un
+    // `navigate(map())` en launchSingleTop (cf. ArbresNavHost).
+    const val MAP = "map"
     const val ARBORETUM = "arboretum"
     const val PROFILE = "profile"
     const val BADGES = "badges"
@@ -32,7 +34,6 @@ object Routes {
     fun mapFiltered(speciesIndices: Set<Int>): String =
         "map_filtered/${speciesIndices.sorted().joinToString(",")}"
     fun remarquableDetail(arbreId: Long): String = "remarquable_detail/$arbreId"
-    fun map(pulseArbreId: Long? = null): String =
-        if (pulseArbreId != null) "map?pulseArbreId=$pulseArbreId" else "map"
+    fun map(): String = MAP
     fun genre(genre: String): String = "genre/${Uri.encode(genre)}"
 }

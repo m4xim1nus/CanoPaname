@@ -14,22 +14,18 @@ import android.os.Build
 import android.os.CancellationSignal
 import android.os.SystemClock
 import androidx.core.content.ContextCompat
-import kotlin.coroutines.resume
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.suspendCancellableCoroutine
 
 /**
  * Géoloc native autour de `LocationManager` — pas de dépendance Google Play
  * Services (cible GrapheneOS sans GMS).
  *
- * Deux APIs :
- *  - [currentLocation] : `StateFlow` continu, à lire pour les calculs de
- *    distance temps réel (capture, FAB ★ remarquable proche). Souscription
- *    continue plutôt que one-shot pour suivre la position vivante.
- *  - [currentOrLastKnown] : one-shot pour le bootstrap cold-start
- *    (`computeInitialCamera`), avant le 1er fix de la souscription.
+ * API : [currentLocation], `StateFlow` continu — calculs de distance temps
+ * réel (capture, FAB ★ remarquable proche) comme bootstrap caméra. Amorcé au
+ * [start] par un last-known filtré sur fraîcheur ([isRecentFix]) puis un
+ * one-shot `getCurrentLocation` (API ≥ R).
  */
 object LocationProvider {
 
@@ -80,11 +76,15 @@ object LocationProvider {
             lm.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, MIN_INTERVAL_MS, MIN_DISTANCE_M, l)
         }
 
-        // Amorce le flow avec un last-known — sinon il reste à null pendant le TTFF.
+        // Amorce le flow avec un last-known — sinon il reste à null pendant le
+        // TTFF. Filtré sur fraîcheur : un last-known de la veille recadrerait
+        // la carte sur la position d'hier (`computeInitialCamera` + recadrage
+        // auto consommeraient ce fix périmé). Périmé → on laisse null, le
+        // one-shot `getCurrentLocation` ci-dessous fournit un frais en ~1 s.
         if (_currentLocation.value == null) {
             val seed = lm.getLastKnownLocation(LocationManager.GPS_PROVIDER)
                 ?: lm.getLastKnownLocation(LocationManager.NETWORK_PROVIDER)
-            if (seed != null) _currentLocation.value = seed
+            if (seed != null && seed.isRecentFix()) _currentLocation.value = seed
         }
 
         // API ≥ R : `getCurrentLocation` retourne un fix frais en < 1 s,
@@ -168,39 +168,10 @@ object LocationProvider {
         }
     }
 
-    /**
-     * One-shot pour le bootstrap (cold start). Pour les calculs de distance
-     * temps réel, lire [currentLocation] à la place.
-     */
-    @SuppressLint("MissingPermission")
-    suspend fun currentOrLastKnown(context: Context): Location? {
-        val lm = context.getSystemService(Context.LOCATION_SERVICE) as? LocationManager
-            ?: return null
-
-        val provider = pickProvider(lm) ?: return null
-
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            getCurrent(lm, provider) ?: lm.getLastKnownLocation(provider)
-        } else {
-            lm.getLastKnownLocation(provider)
-        }
-    }
-
     private fun pickProvider(lm: LocationManager): String? {
         val candidates = listOf(LocationManager.GPS_PROVIDER, LocationManager.NETWORK_PROVIDER)
         return candidates.firstOrNull { lm.isProviderEnabled(it) }
     }
-
-    @SuppressLint("MissingPermission")
-    @androidx.annotation.RequiresApi(Build.VERSION_CODES.R)
-    private suspend fun getCurrent(lm: LocationManager, provider: String): Location? =
-        suspendCancellableCoroutine { cont ->
-            val signal = CancellationSignal()
-            cont.invokeOnCancellation { signal.cancel() }
-            lm.getCurrentLocation(provider, signal, directExecutor) { loc ->
-                if (cont.isActive) cont.resume(loc)
-            }
-        }
 
     private val directExecutor = java.util.concurrent.Executor { it.run() }
 
@@ -208,6 +179,13 @@ object LocationProvider {
     // observe un drift ~100 m entre le pin MapLibre et notre flow.
     private const val MIN_INTERVAL_MS = 500L
     private const val MIN_DISTANCE_M = 0f
+
+    /**
+     * Âge maximal d'un fix utilisé pour cadrer la carte ([isRecentFix]) :
+     * relance pendant la même balade → on repart de la position récente ;
+     * relance le lendemain → Paris, puis recadrage auto au 1er fix frais.
+     */
+    const val MAX_BOOTSTRAP_FIX_AGE_MS = 15 * 60_000L
 }
 
 /**
@@ -217,6 +195,15 @@ object LocationProvider {
  */
 fun Location.ageMs(): Long =
     (SystemClock.elapsedRealtimeNanos() - elapsedRealtimeNanos) / 1_000_000L
+
+/**
+ * « Ce fix est-il assez frais pour cadrer la carte ? » — borne basse 0
+ * incluse : un fix d'avant reboot porte un `elapsedRealtimeNanos` plus grand
+ * que l'horloge courante (âge négatif) et doit compter comme périmé, le
+ * last-known survivant au reboot sur Android récent.
+ */
+fun Location.isRecentFix(maxAgeMs: Long = LocationProvider.MAX_BOOTSTRAP_FIX_AGE_MS): Boolean =
+    ageMs() in 0..maxAgeMs
 
 /**
  * Critère « ce nouveau fix est-il préférable au courant » :

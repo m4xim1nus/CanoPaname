@@ -93,6 +93,7 @@ import app.arbre.ui.detail.ArbreDetailState
 import app.arbre.ui.theme.arbresColors
 import app.arbre.ui.theme.arbresMotion
 import app.arbre.util.LocationProvider
+import app.arbre.util.isRecentFix
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
@@ -176,9 +177,13 @@ private suspend fun awaitSplashFloor(sinceMs: Long, minMs: Long) {
 // chargement de la carte. Le recadrage sur la position réelle est fait par le
 // `LaunchedEffect` de recadrage auto dès qu'un fix arrive (cf. plus bas).
 // Pas de demande de permission ici — c'est le rôle du FAB de localisation.
+// Filtre `isRecentFix` : le seed de `start()` est déjà filtré, mais le
+// singleton `LocationProvider` survit à la recréation d'Activity — une valeur
+// d'une session précédente peut traîner dans le flow.
 private fun computeInitialCamera(ctx: Context): CameraPosition {
     if (!LocationProvider.hasFineLocationPermission(ctx)) return parisCamera()
-    val loc = LocationProvider.currentLocation.value ?: return parisCamera()
+    val loc = LocationProvider.currentLocation.value?.takeIf { it.isRecentFix() }
+        ?: return parisCamera()
     return CameraPosition.Builder()
         .target(LatLng(loc.latitude, loc.longitude))
         .zoom(USER_ZOOM)
@@ -203,7 +208,6 @@ fun MapScreen(
      * depuis la fiche genre : `{sk_sp.} ∪ {sks_du_genre_capturés}`.
      */
     filterSpecies: Set<Int> = emptySet(),
-    pulseArbreId: Long? = null,
     /**
      * Holder Activity-scopé de la MapView persistante — requis en mode normal
      * (fourni par `ArbresNavHost`), ignoré/absent en mode filtré qui garde sa
@@ -419,17 +423,20 @@ fun MapScreen(
         }
     }
 
-    suspend fun centerOnUser() {
-        val loc = LocationProvider.currentLocation.value
-            ?: LocationProvider.currentOrLastKnown(ctx)
-        if (loc == null) {
-            snackbar.showSnackbar("Position indisponible (GPS désactivé ?)")
-            return
-        }
+    fun recenterOn(loc: Location) {
         mapRef?.animateCamera(
             CameraUpdateFactory.newLatLngZoom(LatLng(loc.latitude, loc.longitude), USER_ZOOM)
         )
         mapRef?.style?.let { enableLocationPin(mapRef!!, it) }
+    }
+
+    // FAB « Me localiser » : fix frais en main → recentrage direct ; sinon
+    // bascule en attente du 1er fix frais (pulse FAB + snackbar + recentrage,
+    // cf. LaunchedEffect `awaitingFirstFix`). Pas de fallback last-known :
+    // recentrer sur la position d'hier est pire qu'attendre ~1 s un fix réel.
+    fun centerOnUser() {
+        val loc = LocationProvider.currentLocation.value?.takeIf { it.isRecentFix() }
+        if (loc != null) recenterOn(loc) else awaitingFirstFix = true
     }
 
     val permissionLauncher = rememberLauncherForActivityResult(
@@ -437,53 +444,66 @@ fun MapScreen(
     ) { granted ->
         if (granted) {
             LocationProvider.start(ctx)
-            // Bascule le FAB en mode pulse jusqu'au 1er fix (cf. LaunchedEffect
-            // ci-dessous). Si on a déjà un last-known en mémoire, le flow
-            // émettra immédiatement et le pulse s'éteindra dans la foulée.
+            // Bascule le FAB en mode pulse jusqu'au 1er fix frais, qui
+            // recentrera la carte (cf. LaunchedEffect ci-dessous).
             awaitingFirstFix = true
-            scope.launch { centerOnUser() }
         } else {
             scope.launch { snackbar.showSnackbar("Permission de localisation refusée") }
         }
     }
 
-    // Observer du 1er fix après grant permission. Tant que `awaitingFirstFix`
-    // est vrai, on affiche une snackbar « Localisation en cours… » et on
-    // attend le 1er fix non-null avec timeout 30 s. Au-delà, on stoppe le pulse
-    // et on affiche un warning — le téléphone est probablement en intérieur ou
-    // capteur HS.
+    // Observer du 1er fix frais (post-grant permission, ou FAB tapé sans fix
+    // récent en main). Tant que `awaitingFirstFix` est vrai, on affiche une
+    // snackbar « Localisation en cours… » et on attend un fix frais avec
+    // timeout 30 s — puis on recentre dessus. Au-delà, on stoppe le pulse et
+    // on affiche un warning — le téléphone est probablement en intérieur,
+    // GPS désactivé ou capteur HS.
     LaunchedEffect(awaitingFirstFix) {
         if (!awaitingFirstFix) return@LaunchedEffect
         val snackJob = launch {
             showSnackbarFor(snackbar, "Localisation en cours…")
         }
         val fix = withTimeoutOrNull(30_000) {
-            LocationProvider.currentLocation.filterNotNull().first()
+            LocationProvider.currentLocation.filterNotNull().first { it.isRecentFix() }
         }
         awaitingFirstFix = false
         snackJob.cancel()
         snackbar.currentSnackbarData?.dismiss()
         if (fix == null) {
             showSnackbarFor(snackbar, "GPS indisponible — sors à découvert")
+        } else {
+            recenterOn(fix)
         }
     }
 
-    // Saut vers un arbre exact : depuis la fiche-remarquable ou la
-    // `PhotoLightbox`, on navigue vers `Routes.map(arbreId)`. Au mount, on
-    // attend que la map ET les layers soient prêtes, puis fly-to ~600 ms à
-    // zoom élevé (z20) pour qu'aucun doute ne subsiste sur le pin ciblé, et
-    // au callback `onFinish` on déclenche le pulse — pas d'ouverture du
-    // sheet, l'utilisateur tape l'arbre lui-même s'il veut la fiche.
-    LaunchedEffect(pulseArbreId, mapRef, styleRef, arbresPrets) {
-        val id = pulseArbreId ?: return@LaunchedEffect
+    // Saut vers un arbre exact : depuis une fiche (remarquable, espèce, genre)
+    // on pose `MapHost.pendingPulseArbreId` puis on revient à l'entrée MAP en
+    // launchSingleTop (cf. ArbresNavHost). Intent ONE-SHOT : consommé ici dès
+    // le fly-to lancé, un retour ultérieur sur la carte ne rejoue rien. Au
+    // mount, on attend que la map ET les layers soient prêtes, puis fly-to
+    // ~600 ms à zoom élevé (z20) pour qu'aucun doute ne subsiste sur le pin
+    // ciblé, et au callback `onFinish` on déclenche le pulse — pas d'ouverture
+    // du sheet, l'utilisateur tape l'arbre lui-même s'il veut la fiche.
+    // La consommation (write `pendingPulseArbreId = null`) relance l'effet,
+    // qui early-return : elle doit donc rester APRÈS le lookup suspend et
+    // l'`animateCamera` (fire-and-forget, son callback vit sur la map).
+    LaunchedEffect(host?.pendingPulseArbreId, mapRef, styleRef, arbresPrets) {
+        val id = host?.pendingPulseArbreId ?: return@LaunchedEffect
         val map = mapRef ?: return@LaunchedEffect
         val style = styleRef ?: return@LaunchedEffect
         if (!arbresPrets) return@LaunchedEffect
         // L'arbre ciblé peut être hors subset d'un filtre rapide actif :
         // l'intent « voir cet arbre » prime — on défiltre, le runner
         // re-pousse le corpus complet pendant le fly-to.
-        if (host != null) host.quickFilter = null
-        val arbre = repo.arbreParId(id) ?: return@LaunchedEffect
+        host.quickFilter = null
+        // Un saut volontaire vaut placement caméra : neutralise le recadrage
+        // GPS auto qui le contrarierait au 1er fix.
+        host.autoRecenterDone = true
+        val arbre = repo.arbreParId(id)
+        if (arbre == null) {
+            host.pendingPulseArbreId = null
+            return@LaunchedEffect
+        }
         val target = LatLng(arbre.latitude, arbre.longitude)
         map.animateCamera(
             CameraUpdateFactory.newLatLngZoom(target, 20.0),
@@ -496,6 +516,7 @@ fun MapScreen(
                 }
             },
         )
+        host.pendingPulseArbreId = null
     }
 
     // Fly-to centroïde d'arrondissement depuis la Recherche universelle.
@@ -513,19 +534,25 @@ fun MapScreen(
         viewModel.consumeArrFlyTo()
     }
 
-    // Recadrage GPS auto au 1er fix. `computeInitialCamera` étant non-bloquant,
-    // sur un install frais (ou GPS froid en intérieur) la carte démarre sur Paris ;
-    // dès qu'un fix arrive on recentre dessus à zoom 16 — sauf si : mode filtré,
-    // saut vers un arbre (`pulseArbreId`), ou l'utilisateur a déjà bougé la
-    // caméra. Ne tire qu'une fois par vie d'Activity (`host.autoRecenterDone`),
-    // jamais au remount — la caméra de l'utilisateur est sacrée. La tentative
-    // est consommée dès son départ : annulée par une nav avant le 1er fix, elle
-    // n'est pas rejouée au retour (même contrat que l'ancien `freshMount`).
+    // Recadrage GPS auto au 1er fix FRAIS. `computeInitialCamera` étant
+    // non-bloquant, sur un install frais (ou GPS froid en intérieur) la carte
+    // démarre sur Paris ; dès qu'un fix frais arrive on recentre dessus à
+    // zoom 16 — sauf si : mode filtré, saut vers un arbre en attente
+    // (`pendingPulseArbreId`), ou l'utilisateur a déjà bougé la caméra.
+    // `isRecentFix` est essentiel : sans lui, un last-known de la veille
+    // encore dans le flow serait consommé par le `first()` et grillerait le
+    // recadrage — la carte resterait sur la position d'hier. Ne tire qu'une
+    // fois par vie d'Activity (`host.autoRecenterDone`), jamais au remount —
+    // la caméra de l'utilisateur est sacrée. La tentative est consommée dès
+    // son départ : annulée par une nav avant le 1er fix, elle n'est pas
+    // rejouée au retour (même contrat que l'ancien `freshMount`).
     LaunchedEffect(mapRef) {
         val map = mapRef ?: return@LaunchedEffect
-        if (host == null || host.autoRecenterDone || pulseArbreId != null) return@LaunchedEffect
+        if (host == null || host.autoRecenterDone || host.pendingPulseArbreId != null) {
+            return@LaunchedEffect
+        }
         host.autoRecenterDone = true
-        val fix = LocationProvider.currentLocation.filterNotNull().first()
+        val fix = LocationProvider.currentLocation.filterNotNull().first { it.isRecentFix() }
         if (userMovedCamera) return@LaunchedEffect
         map.animateCamera(
             CameraUpdateFactory.newLatLngZoom(LatLng(fix.latitude, fix.longitude), USER_ZOOM)
@@ -604,8 +631,9 @@ fun MapScreen(
                 // la boussole n'a plus de raison d'être — d'où `isCompassEnabled`.
                 map.uiSettings.isRotateGesturesEnabled = false
                 map.uiSettings.isCompassEnabled = false
-                map.cameraPosition = host.lastCamera ?: computeInitialCamera(ctx)
-                map.addOnCameraIdleListener { host.lastCamera = map.cameraPosition }
+                // One-shot par vie du holder : entre deux mounts, la caméra
+                // persiste dans la view elle-même — rien à restaurer ici.
+                map.cameraPosition = computeInitialCamera(ctx)
 
                 map.setStyle(Style.Builder().fromUri(styleUrl)) { style ->
                     val tStyle = android.os.SystemClock.elapsedRealtime()
@@ -850,10 +878,10 @@ fun MapScreen(
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
-        // En mode normal la view persistante peut encore être accrochée à une
-        // autre entrée MAP (deux entrées composées pendant la crossfade d'une
-        // nav `pulseArbreId`) : l'entrante la vole — trou de ~300 ms côté
-        // sortante, assumé. Un View ne peut avoir qu'un parent.
+        // Garde défensive : un View ne peut avoir qu'un parent — si la view
+        // persistante est encore accrochée ailleurs (l'entrée MAP est unique
+        // depuis le launchSingleTop des sauts pulse, mais un teardown tardif
+        // reste possible), l'entrante la vole.
         AndroidView(factory = { mapView.also { v -> (v.parent as? ViewGroup)?.removeView(v) } })
         CaptureCelebrationOverlay(
             captureRepo = captureRepo,
@@ -989,7 +1017,7 @@ fun MapScreen(
         UtilityFab(
             onClick = {
                 if (LocationProvider.hasFineLocationPermission(ctx)) {
-                    scope.launch { centerOnUser() }
+                    centerOnUser()
                 } else {
                     permissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
                 }
@@ -1100,9 +1128,9 @@ fun MapScreen(
             } else null
             // Filtres rapides : pin non remarquable découvert, carte normale
             // (host) seulement. Le label est figé ici (nv espèce / nom du
-            // genre) pour le QuickFilterBanner ; la caméra ease vers la vue
-            // d'ensemble Paris pour montrer l'étendue du subset — au
-            // défiltrage, on n'y touche pas.
+            // genre) pour le QuickFilterBanner. La caméra ne bouge ni au
+            // filtrage ni au défiltrage — le cadrage de l'utilisateur est
+            // sacré, le subset se découvre en dézoomant soi-même.
             val quickFilterEntry = if (host != null && !openedArbre.remarquable &&
                 sk != null && isDiscovered
             ) speciesIndex.get(sk) else null
@@ -1112,9 +1140,6 @@ fun MapScreen(
             fun applyQuickFilter(sks: Set<Int>, label: String) {
                 viewModel.closeDetail()
                 host?.quickFilter = QuickFilter(sks, label)
-                mapRef?.animateCamera(
-                    CameraUpdateFactory.newCameraPosition(parisCamera(PARIS_OVERVIEW_ZOOM))
-                )
             }
             ModalBottomSheet(
                 onDismissRequest = { viewModel.closeDetail() },

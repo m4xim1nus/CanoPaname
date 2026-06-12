@@ -52,6 +52,19 @@ fun ArbresNavHost() {
         onDispose { mapHost.release(lifecycleOwner.lifecycle) }
     }
 
+    // Saut « voir cet arbre » depuis une fiche : intent one-shot sur le holder
+    // (consommé par l'effet pulse de MapScreen) + retour à l'entrée MAP
+    // existante. `launchSingleTop` est essentiel : un param de route ou une
+    // 2e entrée MAP rejouerait le fly-to à chaque retour carte, et laisserait
+    // un appui back « fantôme » entre deux cartes identiques.
+    val showArbreOnMap: (Long) -> Unit = { id ->
+        mapHost.pendingPulseArbreId = id
+        nav.navigate(Routes.map()) {
+            popUpTo(Routes.MAP) { inclusive = false }
+            launchSingleTop = true
+        }
+    }
+
     // `startDestination` est une CONSTANTE — surtout PAS dérivé de `onboardingDone`.
     // S'il l'était, chaque changement de valeur (sur un install frais :
     // null → false → true via `markDone()`) reconstruirait le graphe via le
@@ -81,21 +94,7 @@ fun ArbresNavHost() {
                 onClose = { nav.popBackStack() },
             )
         }
-        composable(
-            Routes.MAP,
-            arguments = listOf(
-                navArgument("pulseArbreId") {
-                    // LongType ne supporte pas la nullabilité — on parse via
-                    // `toLongOrNull()` côté handler.
-                    type = NavType.StringType
-                    nullable = true
-                    defaultValue = null
-                },
-            ),
-        ) { entry ->
-            val pulseArbreId = entry.arguments
-                ?.getString("pulseArbreId")
-                ?.toLongOrNull()
+        composable(Routes.MAP) {
             MapScreen(
                 mapHost = mapHost,
                 onArboretumClick = { nav.navigate(Routes.ARBORETUM) },
@@ -107,7 +106,6 @@ fun ArbresNavHost() {
                 onFirstSpeciesCapture = { sk ->
                     nav.navigate(Routes.species(sk, celebrate = true))
                 },
-                pulseArbreId = pulseArbreId,
             )
         }
         composable(Routes.PROFILE) {
@@ -146,11 +144,7 @@ fun ArbresNavHost() {
                 arbreId = arbreId,
                 onBack = { nav.popBackStack() },
                 onSpeciesClick = { sk -> nav.navigate(Routes.species(sk)) },
-                onShowOnMap = { id ->
-                    nav.navigate(Routes.map(id)) {
-                        popUpTo(Routes.MAP) { inclusive = false }
-                    }
-                },
+                onShowOnMap = showArbreOnMap,
                 onUnlockLost = { nav.popBackStack(Routes.MAP, inclusive = false) },
             )
         }
@@ -171,11 +165,7 @@ fun ArbresNavHost() {
                 actions = SpeciesActions(
                     onBack = { nav.popBackStack() },
                     onShowOnMap = { sks -> nav.navigate(Routes.mapFiltered(sks)) },
-                    onShowArbreOnMap = { id ->
-                        nav.navigate(Routes.map(id)) {
-                            popUpTo(Routes.MAP) { inclusive = false }
-                        }
-                    },
+                    onShowArbreOnMap = showArbreOnMap,
                     onRemarquableClick = { id -> nav.navigate(Routes.remarquableDetail(id)) },
                     onUnlockLost = { nav.popBackStack(Routes.MAP, inclusive = false) },
                     onRedirectToGenre = { genre ->
@@ -223,11 +213,7 @@ fun ArbresNavHost() {
                     onBack = { nav.popBackStack() },
                     onSpeciesClick = { sk -> nav.navigate(Routes.species(sk)) },
                     onShowOnMap = { sks -> nav.navigate(Routes.mapFiltered(sks)) },
-                    onShowArbreOnMap = { id ->
-                        nav.navigate(Routes.map(id)) {
-                            popUpTo(Routes.MAP) { inclusive = false }
-                        }
-                    },
+                    onShowArbreOnMap = showArbreOnMap,
                     onUnlockLost = { nav.popBackStack(Routes.MAP, inclusive = false) },
                 ),
             )

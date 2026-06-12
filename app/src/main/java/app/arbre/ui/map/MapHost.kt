@@ -13,7 +13,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
-import org.maplibre.android.camera.CameraPosition
 import org.maplibre.android.maps.MapLibreMap
 import org.maplibre.android.maps.MapView
 import org.maplibre.android.maps.Style
@@ -88,18 +87,22 @@ class MapHost(private val context: Context) {
     var contentInitStarted: Boolean = false
 
     /**
-     * Dernière caméra connue (listener idle posé une fois à l'init du contenu).
-     * La caméra persiste de toute façon dans la view entre deux mounts ; ce
-     * champ remplace `MapViewModel.lastCamera` pour le mode normal.
+     * Intent one-shot « voir cet arbre » (fly-to + pulse), posé par les
+     * callbacks de nav d'`ArbresNavHost` (fiche-remarquable, fiche-espèce,
+     * fiche-genre) juste avant le `navigate(Routes.map())` en
+     * `launchSingleTop`. Consommé (remis à `null`) par l'effet pulse de
+     * `MapScreen` une fois le fly-to lancé — un retour ultérieur sur la
+     * carte ne rejoue donc jamais le saut. Perdu en process death pendant
+     * la nav : acceptable, pur confort UX.
      */
-    var lastCamera: CameraPosition? = null
+    var pendingPulseArbreId: Long? by mutableStateOf(null)
 
     /**
      * Filtre rapide actif (boutons sheet « Toute l'espèce » / « Tout le
      * genre »), `null` = carte entière. Survit aux navigations — cohérent
      * avec la source qui garde de toute façon le subset poussé — et meurt
-     * avec l'Activity (même contrat que [lastCamera]). Observé en
-     * `snapshotFlow` par le runner de `launchDiscoveryObservers`.
+     * avec l'Activity. Observé en `snapshotFlow` par le runner de
+     * `launchDiscoveryObservers`.
      */
     var quickFilter: QuickFilter? by mutableStateOf(null)
 
@@ -130,10 +133,11 @@ class MapHost(private val context: Context) {
     private var activityResumed = false
 
     /**
-     * Nombre d'entrées MAP actuellement montées qui affichent la view (0 ou 1,
-     * brièvement 2 pendant la crossfade `pulseArbreId` — compteur et pas
-     * booléen pour que le dispose tardif de l'entrée sortante n'écrase pas le
-     * mount de l'entrante). Incrémenté/décrémenté par `MapScreen`.
+     * Nombre d'entrées MAP actuellement montées qui affichent la view.
+     * L'entrée MAP est unique depuis le `launchSingleTop` des sauts pulse,
+     * mais on garde un compteur (et pas un booléen) par défense : un dispose
+     * tardif d'une entrée sortante ne doit pas écraser le mount de
+     * l'entrante. Incrémenté/décrémenté par `MapScreen`.
      */
     private var attachedScreens = 0
 
