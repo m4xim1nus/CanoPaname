@@ -179,15 +179,8 @@ fun GenreDetailScreen(
     }
     val spPhotoFiles = capturesSp.map { it.resolvedFile(ctx) }
 
-    // Set sk pour la carte filtrée : sp. (s'il existe) + chaque espèce
-    // identifiée du genre **capturée**. Focus « ce que j'ai à résoudre +
-    // mes trophées du genre ».
-    val genreFilterSet: Set<Int> = remember(genre, capturedSpecies, identifiedEntries, spEntry) {
-        val capturedSiblings = identifiedEntries
-            .map { it.index }
-            .filter { it in capturedSpecies }
-            .toSet()
-        capturedSiblings + setOfNotNull(spEntry?.index)
+    val genreFilterSet: Set<Int> = remember(genre, capturedSpecies) {
+        speciesIndexRepo.genreFilterSet(genre, capturedSpecies)
     }
 
     var lightboxIndex by remember(spEntry?.index ?: -1) { mutableStateOf<Int?>(null) }

@@ -158,6 +158,21 @@ class SpeciesIndex(entries: List<SpeciesEntry>) {
     }
 
     /**
+     * Set de sks pour une carte filtrée « tout le genre » : l'entrée `(G, sp.)`
+     * si elle existe + chaque espèce identifiée **active** du genre déjà
+     * capturée. Focus « ce que j'ai à résoudre + mes trophées du genre ».
+     * Partagé entre la fiche genre (bouton « Voir sur la carte ») et le filtre
+     * rapide de la sheet carte.
+     */
+    fun genreFilterSet(genre: String, capturedSks: Set<Int>): Set<Int> {
+        val sks = sksByGenre[genre] ?: return emptySet()
+        return sks.filterTo(mutableSetOf()) { sk ->
+            val entry = byIndex[sk] ?: return@filterTo false
+            entry.unknownSpecies || (entry.isActive && sk in capturedSks)
+        }
+    }
+
+    /**
      * Étend `captured` avec les sks `unknownSpecies` dont le genre contient au
      * moins une capture (sp. ou identifiée). Sert à la coloration de la carte :
      * si l'utilisateur a capturé `Tilia cordata`, tous les pins `Tilia sp.`

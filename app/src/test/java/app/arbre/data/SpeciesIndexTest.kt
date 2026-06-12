@@ -325,6 +325,46 @@ class SpeciesIndexTest {
         assertFalse(idx.genreHasAnyCapture("Unknown", setOf(0)))
     }
 
+    // ---------- genreFilterSet : carte filtrée genre + filtre rapide sheet ----------
+
+    @Test fun `genreFilterSet returns sp plus captured identified actives`() {
+        val idx = SpeciesIndex(listOf(
+            entry(0, "Quercus", "robur", pokedexNumber = 1),
+            entry(1, "Quercus", "petraea", pokedexNumber = 2),
+            entry(98, "Quercus", "sp.", unknownSpecies = true),
+        ))
+        // 1 identifiée capturée → elle + le sp. ; la non capturée reste dehors.
+        assertEquals(setOf(0, 98), idx.genreFilterSet("Quercus", setOf(0)))
+        assertEquals(setOf(0, 1, 98), idx.genreFilterSet("Quercus", setOf(0, 1)))
+    }
+
+    @Test fun `genreFilterSet without sp entry returns captured identified only`() {
+        val idx = SpeciesIndex(listOf(
+            entry(0, "Acer", "platanoides", pokedexNumber = 1),
+            entry(1, "Acer", "negundo", pokedexNumber = 2),
+        ))
+        assertEquals(setOf(1), idx.genreFilterSet("Acer", setOf(1)))
+    }
+
+    @Test fun `genreFilterSet excludes zombies and unknown genre`() {
+        // Le zombie (pokedexNumber null, non-sp.) est exclu même capturé.
+        val idx = SpeciesIndex(listOf(
+            entry(0, "Quercus", "robur", pokedexNumber = 1),
+            entry(1, "Quercus", "ilex"),
+            entry(98, "Quercus", "sp.", unknownSpecies = true),
+        ))
+        assertEquals(setOf(0, 98), idx.genreFilterSet("Quercus", setOf(0, 1)))
+        assertEquals(emptySet<Int>(), idx.genreFilterSet("Inconnu", setOf(0)))
+    }
+
+    @Test fun `genreFilterSet with no capture keeps only sp`() {
+        val idx = SpeciesIndex(listOf(
+            entry(0, "Tilia", "cordata", pokedexNumber = 1),
+            entry(99, "Tilia", "sp.", unknownSpecies = true),
+        ))
+        assertEquals(setOf(99), idx.genreFilterSet("Tilia", emptySet()))
+    }
+
     // ---------- effectivelyCapturedSpecies : auto-débloquage carte (S9 Lot C) ----------
 
     @Test fun `effectivelyCapturedSpecies adds sp sk when sibling identified captured`() {
