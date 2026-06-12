@@ -146,11 +146,15 @@ internal fun FilterBanner(
  * Même habillage que [FilterBanner], mais le ✕ retire le filtre in-place
  * (pas de navigation) et le label est une string libre (nv espèce ou nom de
  * genre). Prend le slot TopStart du FAB Recherche tant que le filtre est actif.
+ * `busy` (filtrage/défiltrage en cours, push de source pas terminé) remplace
+ * le ✕ par un spinner — feedback minimal pendant les ~1-3 s du swap, et pas
+ * de défiltrage cliquable tant que la source n'est pas stabilisée.
  */
 @Composable
 internal fun QuickFilterBanner(
     label: String,
     count: Int?,
+    busy: Boolean,
     onClear: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -165,11 +169,25 @@ internal fun QuickFilterBanner(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.padding(start = 4.dp, end = 12.dp, top = 4.dp, bottom = 4.dp),
         ) {
-            IconButton(onClick = onClear) {
-                Icon(
-                    Icons.Outlined.Close,
-                    contentDescription = "Retirer le filtre",
-                )
+            if (busy) {
+                // Même empreinte 48 dp que l'IconButton : pas de saut de
+                // layout au flip spinner ↔ ✕.
+                Box(
+                    modifier = Modifier.size(48.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    CircularProgressIndicator(
+                        strokeWidth = 2.dp,
+                        modifier = Modifier.size(20.dp),
+                    )
+                }
+            } else {
+                IconButton(onClick = onClear) {
+                    Icon(
+                        Icons.Outlined.Close,
+                        contentDescription = "Retirer le filtre",
+                    )
+                }
             }
             Column(modifier = Modifier.padding(start = 4.dp)) {
                 Text(

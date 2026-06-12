@@ -886,17 +886,24 @@ fun MapScreen(
             // Top-start : bandeau du filtre rapide quand il est actif (le FAB
             // Recherche cède son slot — chercher pendant un filtre est
             // marginal, le ✕ rend la carte entière d'abord), sinon 🔍
-            // Recherche universelle (discret).
-            val activeQuickFilter = host?.quickFilter
-            if (activeQuickFilter != null) {
-                val quickFilterCount = remember(activeQuickFilter) {
-                    activeQuickFilter.sks
+            // Recherche universelle (discret). Le banner reste affiché sur le
+            // filtre désiré OU appliqué : au défiltrage, c'est l'appliqué qui
+            // le maintient (avec spinner) jusqu'au re-push du corpus complet.
+            val desiredQuickFilter = host?.quickFilter
+            val appliedQuickFilter = host?.appliedQuickFilter
+            val bannerQuickFilter = desiredQuickFilter ?: appliedQuickFilter
+            if (bannerQuickFilter != null) {
+                val quickFilterCount = remember(bannerQuickFilter) {
+                    bannerQuickFilter.sks
                         .sumOf { speciesInfoRepo.get(it)?.stats?.count ?: 0 }
                         .takeIf { it > 0 }
                 }
                 QuickFilterBanner(
-                    label = activeQuickFilter.label,
+                    label = bannerQuickFilter.label,
                     count = quickFilterCount,
+                    // Filtrage ou défiltrage en cours : spinner à la place
+                    // du ✕ tant que la source ne contient pas le désiré.
+                    busy = desiredQuickFilter?.sks != appliedQuickFilter?.sks,
                     onClear = { host?.quickFilter = null },
                     modifier = Modifier
                         .align(Alignment.TopStart)
@@ -1310,6 +1317,7 @@ private fun launchDiscoveryObservers(
                     }
                     setArbresGeoJson(style, subset)
                     lastPushed = pushKey
+                    host.appliedQuickFilter = filter
                     android.util.Log.i(
                         "MapScreen",
                         "Filtre rapide poussé sks=${filter.sks} " +
@@ -1330,6 +1338,7 @@ private fun launchDiscoveryObservers(
                     cached != null -> {
                         setArbresGeoJson(style, cached)
                         lastPushed = pushKey
+                        host.appliedQuickFilter = null
                         android.util.Log.i("MapScreen", "Défiltrage : corpus enrichi (cache) re-poussé")
                     }
                     else -> {
@@ -1338,6 +1347,7 @@ private fun launchDiscoveryObservers(
                         // que les pins reviennent sans attendre l'enrich full.
                         if (lastPushed?.first != null) {
                             setArbresGeoJson(style, app.enrichedGeoJson.value ?: rawJson)
+                            host.appliedQuickFilter = null
                             android.util.Log.i("MapScreen", "Défiltrage : corpus provisoire re-poussé (vague 1)")
                         }
                         val enriched = withContext(Dispatchers.Default) {
@@ -1352,6 +1362,7 @@ private fun launchDiscoveryObservers(
                         app.lastEnrichmentKey = key
                         setArbresGeoJson(style, enriched)
                         lastPushed = pushKey
+                        host.appliedQuickFilter = null
                         android.util.Log.i(
                             "MapScreen",
                             "Enrichi poussé mid-session (+${android.os.SystemClock.elapsedRealtime() - tEnrich}ms UI)",

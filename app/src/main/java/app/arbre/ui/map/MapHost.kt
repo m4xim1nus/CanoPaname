@@ -104,6 +104,16 @@ class MapHost(private val context: Context) {
     var quickFilter: QuickFilter? by mutableStateOf(null)
 
     /**
+     * Filtre **réellement contenu** dans la source (posé par le runner après
+     * chaque push effectif, `null` = corpus complet). Le couple
+     * désiré/appliqué pilote le spinner du `QuickFilterBanner` : filtrage ou
+     * défiltrage en cours tant que [quickFilter]`.sks` ≠ `appliedQuickFilter.sks`
+     * — et au défiltrage, c'est lui qui garde le banner (et son label) affiché
+     * jusqu'au retour du corpus.
+     */
+    var appliedQuickFilter: QuickFilter? by mutableStateOf(null)
+
+    /**
      * Le recadrage GPS auto au 1er fix ne tire qu'une fois par vie d'Activity
      * (remplace l'ancien `freshMount`) — jamais au remount : la caméra de
      * l'utilisateur est sacrée.
