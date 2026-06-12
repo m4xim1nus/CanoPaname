@@ -19,6 +19,15 @@ import org.maplibre.android.maps.MapView
 import org.maplibre.android.maps.Style
 
 /**
+ * Filtre rapide posé depuis la sheet d'un arbre (« Toute l'espèce » / « Tout
+ * le genre ») : la source persistante ne contient plus que le subset `sks`.
+ * `label` est figé au moment du tap (nv espèce ou nom du genre) — il alimente
+ * le `QuickFilterBanner`. Appliqué/retiré par le runner filter-aware de
+ * `launchDiscoveryObservers` (cf. MapScreen.kt).
+ */
+data class QuickFilter(val sks: Set<Int>, val label: String)
+
+/**
  * Holder **Activity-scopé** de la MapView principale (mode normal de `MapScreen`).
  *
  * Avant lui, la MapView était `remember`-ée dans `MapScreen` : chaque navigation
@@ -84,6 +93,15 @@ class MapHost(private val context: Context) {
      * champ remplace `MapViewModel.lastCamera` pour le mode normal.
      */
     var lastCamera: CameraPosition? = null
+
+    /**
+     * Filtre rapide actif (boutons sheet « Toute l'espèce » / « Tout le
+     * genre »), `null` = carte entière. Survit aux navigations — cohérent
+     * avec la source qui garde de toute façon le subset poussé — et meurt
+     * avec l'Activity (même contrat que [lastCamera]). Observé en
+     * `snapshotFlow` par le runner de `launchDiscoveryObservers`.
+     */
+    var quickFilter: QuickFilter? by mutableStateOf(null)
 
     /**
      * Le recadrage GPS auto au 1er fix ne tire qu'une fois par vie d'Activity

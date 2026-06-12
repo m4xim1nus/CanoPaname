@@ -52,6 +52,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
@@ -94,6 +95,7 @@ import app.arbre.ui.theme.arbresMotion
 import app.arbre.util.LocationProvider
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.filterNotNull
@@ -477,6 +479,10 @@ fun MapScreen(
         val map = mapRef ?: return@LaunchedEffect
         val style = styleRef ?: return@LaunchedEffect
         if (!arbresPrets) return@LaunchedEffect
+        // L'arbre ciblé peut être hors subset d'un filtre rapide actif :
+        // l'intent « voir cet arbre » prime — on défiltre, le runner
+        // re-pousse le corpus complet pendant le fly-to.
+        if (host != null) host.quickFilter = null
         val arbre = repo.arbreParId(id) ?: return@LaunchedEffect
         val target = LatLng(arbre.latitude, arbre.longitude)
         map.animateCamera(
@@ -877,22 +883,43 @@ fun MapScreen(
                     .padding(16.dp),
             )
         } else {
-            // 🔍 Recherche universelle (top-start, discret).
-            UtilityFab(
-                onClick = {
-                    viewModel.openSearch(
-                        speciesIndex = speciesIndex,
-                        genreInfo = genreInfoRepo,
-                        arrIndex = arrSpeciesIndex,
-                        captureRepo = captureRepo,
-                    )
-                },
-                modifier = Modifier
-                    .align(Alignment.TopStart)
-                    .windowInsetsPadding(WindowInsets.statusBars)
-                    .padding(16.dp),
-            ) {
-                Icon(Icons.Outlined.Search, contentDescription = "Recherche")
+            // Top-start : bandeau du filtre rapide quand il est actif (le FAB
+            // Recherche cède son slot — chercher pendant un filtre est
+            // marginal, le ✕ rend la carte entière d'abord), sinon 🔍
+            // Recherche universelle (discret).
+            val activeQuickFilter = host?.quickFilter
+            if (activeQuickFilter != null) {
+                val quickFilterCount = remember(activeQuickFilter) {
+                    activeQuickFilter.sks
+                        .sumOf { speciesInfoRepo.get(it)?.stats?.count ?: 0 }
+                        .takeIf { it > 0 }
+                }
+                QuickFilterBanner(
+                    label = activeQuickFilter.label,
+                    count = quickFilterCount,
+                    onClear = { host?.quickFilter = null },
+                    modifier = Modifier
+                        .align(Alignment.TopStart)
+                        .windowInsetsPadding(WindowInsets.statusBars)
+                        .padding(16.dp),
+                )
+            } else {
+                UtilityFab(
+                    onClick = {
+                        viewModel.openSearch(
+                            speciesIndex = speciesIndex,
+                            genreInfo = genreInfoRepo,
+                            arrIndex = arrSpeciesIndex,
+                            captureRepo = captureRepo,
+                        )
+                    },
+                    modifier = Modifier
+                        .align(Alignment.TopStart)
+                        .windowInsetsPadding(WindowInsets.statusBars)
+                        .padding(16.dp),
+                ) {
+                    Icon(Icons.Outlined.Search, contentDescription = "Recherche")
+                }
             }
             // Pile bottom-end (haut → bas) : Remarquables, Arboretum, Profil.
             // Le shift `bottomShiftForHunt` la fait grimper au-dessus du HuntPanel.
@@ -1064,6 +1091,24 @@ fun MapScreen(
             val remarquableInfo = if (openedArbre.remarquable) {
                 remarquableInfoRepo.get(openedArbre.id)
             } else null
+            // Filtres rapides : pin non remarquable découvert, carte normale
+            // (host) seulement. Le label est figé ici (nv espèce / nom du
+            // genre) pour le QuickFilterBanner ; la caméra ease vers la vue
+            // d'ensemble Paris pour montrer l'étendue du subset — au
+            // défiltrage, on n'y touche pas.
+            val quickFilterEntry = if (host != null && !openedArbre.remarquable &&
+                sk != null && isDiscovered
+            ) speciesIndex.get(sk) else null
+            val genreFilterSks = quickFilterEntry?.let {
+                speciesIndex.genreFilterSet(it.genre, capturedSpecies)
+            } ?: emptySet()
+            fun applyQuickFilter(sks: Set<Int>, label: String) {
+                viewModel.closeDetail()
+                host?.quickFilter = QuickFilter(sks, label)
+                mapRef?.animateCamera(
+                    CameraUpdateFactory.newCameraPosition(parisCamera(PARIS_OVERVIEW_ZOOM))
+                )
+            }
             ModalBottomSheet(
                 onDismissRequest = { viewModel.closeDetail() },
                 sheetState = sheetState,
@@ -1102,6 +1147,22 @@ fun MapScreen(
                                 onRemarquableDetail(openedArbre.id)
                             }
                         } else null,
+                        onFilterSpecies = quickFilterEntry?.let { entry ->
+                            { applyQuickFilter(setOf(entry.index), entry.displayNomCommun) }
+                        },
+                        // Masqué quand le set genre se réduirait au même
+                        // singleton que l'espèce (bouton redondant) — et
+                        // garde-fou set vide (filtrerait vers une carte vide).
+                        onFilterGenre = quickFilterEntry
+                            ?.takeIf {
+                                genreFilterSks.isNotEmpty() &&
+                                    genreFilterSks != setOf(it.index)
+                            }
+                            ?.let { entry ->
+                                val genreLabel =
+                                    genreInfoRepo.get(entry.genre)?.nomFr ?: entry.genre
+                                { applyQuickFilter(genreFilterSks, genreLabel) }
+                            },
                     ),
                 )
             }
@@ -1170,17 +1231,28 @@ fun MapScreen(
  *
  * 1) **Coloration pins** : swap d'expression paint à chaque changement des
  *    captures (coût ∝ nb d'espèces capturées, pas au nb d'arbres) — sub-frame.
- * 2) **Enrichment clusters** : à chaque changement (debounce 1 s), régénère le
- *    GeoJSON enrichi (flag `discovered` par feature) en background et le
- *    re-pousse via `setArbresGeoJson`. C'est aussi lui qui fait le 1er
- *    enrichment du cold-start fresh (le pipeline d'init ne le fait pas :
- *    217 k features = trop lourd pour bloquer le 1er paint des pins).
- *    `app.enrichedGeoJson` / `app.lastEnrichmentKey` mémoïsent cross-holder
- *    (survivent à une recréation d'Activity via `ArbresApp`) — skip du
- *    re-enrich si les sets sont identiques.
+ * 2) **Pousseur de source** : décide ce que la source persistante doit
+ *    contenir — subset du filtre rapide (`host.quickFilter`, boutons de la
+ *    sheet) ou corpus complet enrichi — et le re-pousse quand les captures
+ *    (debounce 1 s) ou le filtre (snapshotFlow, immédiat) changent.
+ *    - Filtre actif : `filterGeoJsonBySpecies` sur le **rawJson** (contrat
+ *      « sk dernière clé » — l'enrichi ne matche plus, il se termine par
+ *      `discovered_remarquable`) puis enrich du subset (< 1 Mo, négligeable).
+ *      Ne touche pas au cache full `app.enrichedGeoJson`.
+ *    - Filtre null : pattern 2-vagues — au défiltrage, re-push immédiat du
+ *      meilleur corpus dispo (enrichi même stale, sinon raw : les pins
+ *      reviennent sans attendre, les clusters rattrapent), puis enrich full
+ *      si la key a changé. C'est aussi lui qui fait le 1er enrichment du
+ *      cold-start fresh (217 k features = trop lourd pour bloquer le 1er
+ *      paint des pins). `app.enrichedGeoJson` / `app.lastEnrichmentKey`
+ *      mémoïsent cross-holder (survivent à une recréation d'Activity).
+ *    `lastPushed` (sks du filtre + sets captures) absorbe les ré-émissions
+ *    Room à valeur identique ; `collectLatest` permet à un tap filtre
+ *    d'annuler un enrich full en cours (5-15 s) — le défiltrage suivant
+ *    ré-émettra et relancera l'enrich.
  *
- * Le mode filtré garde ses effets inline côté composable (sa MapView et son
- * style meurent avec l'écran).
+ * Le mode filtré (MAP_FILTERED) garde ses effets inline côté composable (sa
+ * MapView et son style meurent avec l'écran).
  */
 @OptIn(kotlinx.coroutines.FlowPreview::class)
 private fun launchDiscoveryObservers(
@@ -1207,38 +1279,85 @@ private fun launchDiscoveryObservers(
             }
     }
     host.scope.launch {
+        // Dernier contenu effectivement poussé : (sks du filtre ou null,
+        // captures espèces, captures remarquables). Absorbe les ré-émissions
+        // Room à valeur identique.
+        var lastPushed: Triple<Set<Int>?, Set<Int>, Set<Long>>? = null
         combine(
-            captureRepo.capturedSpeciesIndices(),
-            captureRepo.capturedRemarquableIds(),
-        ) { species, remarquables -> species to remarquables }
-            .debounce(1000)
-            .collect { (species, remarquables) ->
-                val key = species to remarquables
-                if (key == app.lastEnrichmentKey && app.enrichedGeoJson.value != null) {
-                    return@collect
-                }
+            combine(
+                captureRepo.capturedSpeciesIndices(),
+                captureRepo.capturedRemarquableIds(),
+            ) { species, remarquables -> species to remarquables }
+                .debounce(1000),
+            snapshotFlow { host.quickFilter },
+        ) { (species, remarquables), filter -> Triple(species, remarquables, filter) }
+            .collectLatest { (species, remarquables, filter) ->
+                val pushKey = Triple(filter?.sks, species, remarquables)
+                if (pushKey == lastPushed) return@collectLatest
                 val tStart = android.os.SystemClock.elapsedRealtime()
                 val rawJson = app.arbresGeoJsonAsync.await()
                 // Ajoute les sp. genre-débloqués au set passé à l'enrichment,
                 // pour que les clusters propagent l'état de découverte sur
                 // les (G, sp.) — symétrique de `applyDiscoveryColor`.
                 val effectiveSpecies = speciesIndex.effectivelyCapturedSpecies(species)
-                val enriched = withContext(Dispatchers.Default) {
-                    enrichGeoJsonWithDiscovery(rawJson, effectiveSpecies, remarquables)
+                if (filter != null) {
+                    val subset = withContext(Dispatchers.Default) {
+                        enrichGeoJsonWithDiscovery(
+                            filterGeoJsonBySpecies(rawJson, filter.sks, remarquables),
+                            effectiveSpecies,
+                            remarquables,
+                        )
+                    }
+                    setArbresGeoJson(style, subset)
+                    lastPushed = pushKey
+                    android.util.Log.i(
+                        "MapScreen",
+                        "Filtre rapide poussé sks=${filter.sks} " +
+                            "(${android.os.SystemClock.elapsedRealtime() - tStart}ms, ${subset.length / 1024}ko)",
+                    )
+                    return@collectLatest
                 }
-                val tEnrich = android.os.SystemClock.elapsedRealtime()
-                android.util.Log.i(
-                    "MapScreen",
-                    "GeoJSON enrichi mid-session (${tEnrich - tStart}ms bg, ${enriched.length / 1_000_000}Mo)",
-                )
-                app.enrichedGeoJson.value = enriched
-                app.lastEnrichmentKey = key
-                setArbresGeoJson(style, enriched)
-                val tPushed = android.os.SystemClock.elapsedRealtime()
-                android.util.Log.i(
-                    "MapScreen",
-                    "Enrichi poussé mid-session (+${tPushed - tEnrich}ms UI)",
-                )
+                val key = species to remarquables
+                val cached = app.enrichedGeoJson.value
+                    ?.takeIf { key == app.lastEnrichmentKey }
+                when {
+                    // 1er passage avec cache à jour (recréation d'Activity) :
+                    // le pipeline d'init a déjà poussé ce cache — ne pas
+                    // re-payer le parse 33 Mo.
+                    cached != null && lastPushed == null -> lastPushed = pushKey
+                    // Défiltrage sans nouvelle capture depuis le dernier
+                    // enrich : retour direct au corpus complet.
+                    cached != null -> {
+                        setArbresGeoJson(style, cached)
+                        lastPushed = pushKey
+                        android.util.Log.i("MapScreen", "Défiltrage : corpus enrichi (cache) re-poussé")
+                    }
+                    else -> {
+                        // Vague 1, défiltrage seulement : re-push immédiat du
+                        // meilleur corpus dispo (enrichi stale sinon raw) pour
+                        // que les pins reviennent sans attendre l'enrich full.
+                        if (lastPushed?.first != null) {
+                            setArbresGeoJson(style, app.enrichedGeoJson.value ?: rawJson)
+                            android.util.Log.i("MapScreen", "Défiltrage : corpus provisoire re-poussé (vague 1)")
+                        }
+                        val enriched = withContext(Dispatchers.Default) {
+                            enrichGeoJsonWithDiscovery(rawJson, effectiveSpecies, remarquables)
+                        }
+                        val tEnrich = android.os.SystemClock.elapsedRealtime()
+                        android.util.Log.i(
+                            "MapScreen",
+                            "GeoJSON enrichi mid-session (${tEnrich - tStart}ms bg, ${enriched.length / 1_000_000}Mo)",
+                        )
+                        app.enrichedGeoJson.value = enriched
+                        app.lastEnrichmentKey = key
+                        setArbresGeoJson(style, enriched)
+                        lastPushed = pushKey
+                        android.util.Log.i(
+                            "MapScreen",
+                            "Enrichi poussé mid-session (+${android.os.SystemClock.elapsedRealtime() - tEnrich}ms UI)",
+                        )
+                    }
+                }
             }
     }
 }

@@ -26,6 +26,7 @@ Polish de la boucle carte + capture. **Cycle en cours depuis le 2026-06-11** —
 - [→Netteté] Filtres rapides depuis la sheet d'un arbre non remarquable : boutons « toute l'espèce » / « tout le genre » qui ne gardent sur la carte que les pins verts/orange concernés, avec défiltrage en un clic ; viser un re-rendu sans gros rechargement de la source GeoJSON (user:moi, 2026-05-20)
 - [→Netteté] Transition de capture sans flash carte : entre la validation de la photo et l'ouverture de la fiche espèce, la carte réapparaît brièvement — couvrir la bascule par un overlay pour ne jamais repasser visuellement par la carte (user:moi, 2026-05-20)
 - [→Netteté] WelcomeScreen pas lu, intro depuis la carte — fold pressenti, inclusion dans le cycle encore à discuter/creuser (user:F&F + user:moi 2026-05-07 ; fold proposé 2026-05-21)
+- [→Netteté] Indication de la direction dans le mode Chasse : un point sur le radar indique "l'angle" / la direction de l'arbre remarquable. C'est à ce moment là que le radar "pulse" et que la distance se met à jour. A discuter en détail avant implémentation
 
 ## Cycle Herbier
 

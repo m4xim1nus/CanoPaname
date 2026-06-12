@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.MenuBook
+import androidx.compose.material.icons.outlined.FilterAlt
 import androidx.compose.material3.Button
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
@@ -64,6 +65,15 @@ data class ArbreDetailActions(
     val onCapturer: (() -> Unit)? = null,
     val onSpeciesClick: (() -> Unit)? = null,
     val onRemarquableClick: (() -> Unit)? = null,
+    /**
+     * Filtres rapides de la carte principale (« Toute l'espèce » / « Tout le
+     * genre ») — posés uniquement depuis la sheet d'un pin non remarquable
+     * découvert en mode carte normale ; `null` partout ailleurs (fiche
+     * remarquable, mode MAP_FILTERED). `onFilterGenre` reste `null` quand le
+     * set genre se réduirait au même singleton que l'espèce (bouton redondant).
+     */
+    val onFilterSpecies: (() -> Unit)? = null,
+    val onFilterGenre: (() -> Unit)? = null,
 )
 
 /**
@@ -149,6 +159,24 @@ private fun DiscoveredContent(
     }
     Text("ID OpenData : ${arbre.id}", style = MaterialTheme.typography.bodySmall)
 
+    DetailActionButtons(actions)
+    actions.onCapturer?.let { capturer ->
+        Spacer(Modifier.height(8.dp))
+        CaptureButton(
+            defaultLabel = "Recapturer",
+            onCapturer = capturer,
+            availability = state.captureAvailability,
+        )
+    }
+}
+
+/**
+ * Pile des boutons d'action du contenu découvert : fiches (remarquable /
+ * espèce) puis filtres rapides carte. Tout est conditionnel aux callbacks
+ * non-null des [ArbreDetailActions].
+ */
+@Composable
+private fun DetailActionButtons(actions: ArbreDetailActions) {
     val onRemarquableClick = actions.onRemarquableClick
     val onSpeciesClick = actions.onSpeciesClick
     if (onRemarquableClick != null || onSpeciesClick != null) {
@@ -188,12 +216,45 @@ private fun DiscoveredContent(
             )
         }
     }
-    actions.onCapturer?.let { capturer ->
-        Spacer(Modifier.height(8.dp))
-        CaptureButton(
-            defaultLabel = "Recapturer",
-            onCapturer = capturer,
-            availability = state.captureAvailability,
+    val onFilterSpecies = actions.onFilterSpecies
+    if (onFilterSpecies != null) {
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            QuickFilterButton(
+                label = "Toute l'espèce",
+                onClick = onFilterSpecies,
+                modifier = Modifier.weight(1f),
+            )
+            actions.onFilterGenre?.let { onFilterGenre ->
+                QuickFilterButton(
+                    label = "Tout le genre",
+                    onClick = onFilterGenre,
+                    modifier = Modifier.weight(1f),
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Bouton de filtre rapide carte (« Toute l'espèce » / « Tout le genre ») —
+ * deux par Row, d'où le label compact et l'icône entonnoir partagée.
+ */
+@Composable
+private fun QuickFilterButton(
+    label: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    OutlinedButton(onClick = onClick, modifier = modifier) {
+        Icon(
+            Icons.Outlined.FilterAlt,
+            contentDescription = null,
+            modifier = Modifier.size(20.dp),
+        )
+        Text(
+            label,
+            modifier = Modifier.padding(start = 8.dp),
+            maxLines = 1,
         )
     }
 }

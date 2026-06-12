@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -130,6 +131,56 @@ internal fun FilterBanner(
                 if (genreSubtitle != null) {
                     Text(
                         genreSubtitle,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Bandeau du filtre rapide (boutons sheet « Toute l'espèce » / « Tout le
+ * genre ») sur la carte principale : ✕ de défiltrage + label figé au tap.
+ * Même habillage que [FilterBanner], mais le ✕ retire le filtre in-place
+ * (pas de navigation) et le label est une string libre (nv espèce ou nom de
+ * genre). Prend le slot TopStart du FAB Recherche tant que le filtre est actif.
+ */
+@Composable
+internal fun QuickFilterBanner(
+    label: String,
+    count: Int?,
+    onClear: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        modifier = modifier.widthIn(max = 320.dp),
+        shape = RoundedCornerShape(12.dp),
+        color = MaterialTheme.colorScheme.surface,
+        tonalElevation = 4.dp,
+        shadowElevation = 4.dp,
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(start = 4.dp, end = 12.dp, top = 4.dp, bottom = 4.dp),
+        ) {
+            IconButton(onClick = onClear) {
+                Icon(
+                    Icons.Outlined.Close,
+                    contentDescription = "Retirer le filtre",
+                )
+            }
+            Column(modifier = Modifier.padding(start = 4.dp)) {
+                Text(
+                    label,
+                    style = MaterialTheme.typography.titleMedium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                if (count != null) {
+                    Text(
+                        "$count arbre${if (count > 1) "s" else ""} dans Paris",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
