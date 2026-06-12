@@ -79,6 +79,7 @@ import app.arbre.data.SpeciesIndex
 import app.arbre.data.rememberArbreRepository
 import app.arbre.data.rememberArrSpeciesIndex
 import app.arbre.data.rememberCaptureRepository
+import app.arbre.data.rememberOnboardingStore
 import app.arbre.data.rememberSpeciesIndex
 import app.arbre.data.rememberRemarquableInfoRepository
 import app.arbre.data.rememberGenreInfoRepository
@@ -225,6 +226,7 @@ fun MapScreen(
     val genreInfoRepo = rememberGenreInfoRepository()
     val arrSpeciesIndex = rememberArrSpeciesIndex()
     val remarquableInfoRepo = rememberRemarquableInfoRepository()
+    val onboardingStore = rememberOnboardingStore()
     val viewModel: MapViewModel = viewModel(
         factory = viewModelFactory {
             initializer { MapViewModel(repo, createSavedStateHandle()) }
@@ -551,6 +553,16 @@ fun MapScreen(
         if (host == null || host.autoRecenterDone || host.pendingPulseArbreId != null) {
             return@LaunchedEffect
         }
+        // Gate onboarding AVANT de consommer la tentative : au tout premier
+        // lancement, `startDestination` étant la constante MAP, une instance
+        // transiente monte sous le splash puis est purgée par la redirection
+        // WELCOME — si elle consommait `autoRecenterDone` (getMapAsync répond
+        // avant la redirection), le remount post-onboarding ne recadrait plus
+        // jamais : carte sur Paris jusqu'au FAB. Suspend tant que l'onboarding
+        // n'est pas fait — la transiente est démontée avec l'effet sans rien
+        // griller ; l'instance stable passe dès le commit de `markDone()` (~ms).
+        onboardingStore.onboardingDone.first { it }
+        if (host.autoRecenterDone) return@LaunchedEffect
         host.autoRecenterDone = true
         val fix = LocationProvider.currentLocation.filterNotNull().first { it.isRecentFix() }
         if (userMovedCamera) return@LaunchedEffect

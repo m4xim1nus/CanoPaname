@@ -91,3 +91,4 @@ _(vide — « MapView persistante » promu item 1 du cycle Netteté le 2026-06-1
 - [refusé] Mini-transition d'ambiance switch saison (audit-D2 ; user:moi 2026-05-07 : caduque, suppression saisons)
 - [refusé] Anticlimax du déblocage des 38 147 platanes (audit-tension#4 ; audit lui-même recommande de laisser tel quel — l'effet « wow » au J+3 vaut son anticlimax)
 - [refusé] Pré-affichage fiche remarquable enrichie même non capturée, bandeau « Pas encore découvert » (audit-B, 2026-05-06 ; déplacé depuis Endgame 2026-05-12 — c'est une chasse avec assez d'infos avec la distance)
+- [creuser] Vrai install frais (permission localisation jamais accordée) : personne ne demande la permission spontanément, carte sur Paris jusqu'au tap FAB — demander au 1er affichage carte post-onboarding (one-shot, refus respecté) ? À intégrer à la réflexion fold WelcomeScreen (item 6 Netteté) (device-test, 2026-06-12)
