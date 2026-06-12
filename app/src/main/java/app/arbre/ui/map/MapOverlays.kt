@@ -67,6 +67,9 @@ import java.util.Locale
 import kotlin.math.cos
 import kotlin.math.sin
 
+/** Période de rotation du mini-platane « filtrage en cours » du [QuickFilterBanner]. */
+private const val SPIN_PERIOD_MS = 1400L
+
 /** Bandeau retour + label espèce, affiché en mode `MAP_FILTERED` à la place
  *  des FABs Profil/Arboretum/Remarquables.
  */
@@ -146,9 +149,12 @@ internal fun FilterBanner(
  * Même habillage que [FilterBanner], mais le ✕ retire le filtre in-place
  * (pas de navigation) et le label est une string libre (nv espèce ou nom de
  * genre). Prend le slot TopStart du FAB Recherche tant que le filtre est actif.
- * `busy` (filtrage/défiltrage en cours, push de source pas terminé) remplace
- * le ✕ par un spinner — feedback minimal pendant les ~1-3 s du swap, et pas
- * de défiltrage cliquable tant que la source n'est pas stabilisée.
+ * `busy` (filtrage/défiltrage en cours, source pas encore basculée) remplace
+ * le ✕ par un mini-platane en rotation — feedback minimal pendant les ~1-3 s
+ * du swap, pas de défiltrage cliquable tant que la source n'est pas
+ * stabilisée. Rotation pilotée `withFrameNanos` (cf. `ui/common/FrameClock.kt`),
+ * PAS un `CircularProgressIndicator` indéterminé : ce spinner est le seul
+ * retour visuel du swap et doit rester vivant à échelle d'animation système 0.
  */
 @Composable
 internal fun QuickFilterBanner(
@@ -176,9 +182,20 @@ internal fun QuickFilterBanner(
                     modifier = Modifier.size(48.dp),
                     contentAlignment = Alignment.Center,
                 ) {
-                    CircularProgressIndicator(
-                        strokeWidth = 2.dp,
-                        modifier = Modifier.size(20.dp),
+                    val elapsed = rememberFrameMillis()
+                    val tint = MaterialTheme.colorScheme.primary
+                    Image(
+                        painter = painterResource(R.drawable.ic_arbre_canonical),
+                        contentDescription = "Filtrage en cours",
+                        colorFilter = ColorFilter.tint(tint),
+                        modifier = Modifier
+                            .size(22.dp)
+                            // Lecture du State dans le draw layer : invalide
+                            // le dessin à chaque frame sans recomposer.
+                            .graphicsLayer {
+                                rotationZ =
+                                    (elapsed.value % SPIN_PERIOD_MS) / SPIN_PERIOD_MS.toFloat() * 360f
+                            },
                     )
                 }
             } else {

@@ -1315,7 +1315,7 @@ private fun launchDiscoveryObservers(
                             remarquables,
                         )
                     }
-                    setArbresGeoJson(style, subset)
+                    pushArbresGeoJsonAndAwait(host.mapView, style, subset)
                     lastPushed = pushKey
                     host.appliedQuickFilter = filter
                     android.util.Log.i(
@@ -1336,7 +1336,7 @@ private fun launchDiscoveryObservers(
                     // Défiltrage sans nouvelle capture depuis le dernier
                     // enrich : retour direct au corpus complet.
                     cached != null -> {
-                        setArbresGeoJson(style, cached)
+                        pushArbresGeoJsonAndAwait(host.mapView, style, cached)
                         lastPushed = pushKey
                         host.appliedQuickFilter = null
                         android.util.Log.i("MapScreen", "Défiltrage : corpus enrichi (cache) re-poussé")
@@ -1346,7 +1346,9 @@ private fun launchDiscoveryObservers(
                         // meilleur corpus dispo (enrichi stale sinon raw) pour
                         // que les pins reviennent sans attendre l'enrich full.
                         if (lastPushed?.first != null) {
-                            setArbresGeoJson(style, app.enrichedGeoJson.value ?: rawJson)
+                            pushArbresGeoJsonAndAwait(
+                                host.mapView, style, app.enrichedGeoJson.value ?: rawJson,
+                            )
                             host.appliedQuickFilter = null
                             android.util.Log.i("MapScreen", "Défiltrage : corpus provisoire re-poussé (vague 1)")
                         }

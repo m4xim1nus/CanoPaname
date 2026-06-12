@@ -104,12 +104,13 @@ class MapHost(private val context: Context) {
     var quickFilter: QuickFilter? by mutableStateOf(null)
 
     /**
-     * Filtre **réellement contenu** dans la source (posé par le runner après
-     * chaque push effectif, `null` = corpus complet). Le couple
-     * désiré/appliqué pilote le spinner du `QuickFilterBanner` : filtrage ou
-     * défiltrage en cours tant que [quickFilter]`.sks` ≠ `appliedQuickFilter.sks`
-     * — et au défiltrage, c'est lui qui garde le banner (et son label) affiché
-     * jusqu'au retour du corpus.
+     * Filtre **réellement contenu** dans la source (`null` = corpus complet).
+     * Posé par le runner après la bascule effective de la source — via
+     * `pushArbresGeoJsonAndAwait`, car `setGeoJson` rend la main 1-3 s avant
+     * que le contenu soit visible. Le couple désiré/appliqué pilote le spinner
+     * du `QuickFilterBanner` : filtrage ou défiltrage en cours tant que
+     * [quickFilter]`.sks` ≠ `appliedQuickFilter.sks` — et au défiltrage, c'est
+     * lui qui garde le banner (et son label) affiché jusqu'au retour du corpus.
      */
     var appliedQuickFilter: QuickFilter? by mutableStateOf(null)
 

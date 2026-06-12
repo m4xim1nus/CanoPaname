@@ -4,6 +4,10 @@ import android.animation.ValueAnimator
 import android.animation.AnimatorListenerAdapter
 import android.animation.Animator
 import app.arbre.ui.theme.MapColors
+import kotlin.coroutines.resume
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withTimeoutOrNull
+import org.maplibre.android.maps.MapView
 import org.maplibre.android.style.expressions.Expression
 import org.maplibre.android.style.expressions.Expression.eq
 import org.maplibre.android.style.expressions.Expression.get
@@ -173,6 +177,39 @@ internal fun addArbresLayers(style: Style, json: String) {
 internal fun setArbresGeoJson(style: Style, json: String) {
     val source = style.getSourceAs<GeoJsonSource>(ARBRES_SOURCE_ID) ?: return
     source.setGeoJson(json)
+}
+
+/**
+ * Pousse le GeoJSON puis suspend jusqu'à ce que la source l'ait **réellement
+ * intégré** : `setGeoJson` rend la main immédiatement (parse + re-clustering
+ * en background côté natif, 1-3 s sur le corpus complet), alors que l'event
+ * `onSourceChanged` de la MapView signale la bascule effective. Le listener
+ * est posé AVANT le push (aucun event raté) ; timeout de sécurité car une
+ * view en pause (hors-écran) gèle les events du render thread. Sert au
+ * runner du filtre rapide : le spinner du `QuickFilterBanner` ne s'éteint
+ * qu'au moment où l'utilisateur voit le nouveau contenu.
+ */
+internal suspend fun pushArbresGeoJsonAndAwait(
+    mapView: MapView,
+    style: Style,
+    json: String,
+    timeoutMs: Long = 6_000L,
+) {
+    withTimeoutOrNull(timeoutMs) {
+        suspendCancellableCoroutine { cont ->
+            val listener = object : MapView.OnSourceChangedListener {
+                override fun onSourceChangedListener(id: String) {
+                    if (id == ARBRES_SOURCE_ID) {
+                        mapView.removeOnSourceChangedListener(this)
+                        if (cont.isActive) cont.resume(Unit)
+                    }
+                }
+            }
+            mapView.addOnSourceChangedListener(listener)
+            cont.invokeOnCancellation { mapView.removeOnSourceChangedListener(listener) }
+            setArbresGeoJson(style, json)
+        }
+    }
 }
 
 /**
