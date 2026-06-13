@@ -2,6 +2,31 @@
 
 Format basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions [SemVer](https://semver.org/lang/fr/).
 
+## [1.5.0] — 2026-06-13
+
+Cycle *Netteté* — thème **polish de la boucle carte + capture**. Six items livrés et validés device, aucune casse de schéma. L'instance `MapView` (style + source 217 k features) est hissée hors de `MapScreen` pour rendre le retour carte instantané, et sert de socle aux trois apports d'interaction : cône de vision boussole sur le puck, filtres rapides depuis la sheet d'un arbre, blip directionnel sur le radar de chasse. Deux passes de correction du cadrage caméra et de la transition de capture éliminent les derniers flashs visuels de la boucle.
+
+### Ajouté
+
+- **Cône de vision boussole** sur le pin Location : secteur orienté par la boussole du téléphone, façon Google Maps (`RenderMode.COMPASS` — CompassEngine interne MapLibre, zéro code capteur — + `bearingDrawable` custom `ic_location_cone`, secteur annulaire ±30° en fondu radial bleu puck). Le puck passe au-dessus des arbres via `LocationComponentOptions.layerAbove(CLUSTER_COUNT_LAYER_ID)`, z-order déterministe quel que soit le timing d'activation. Capteur boussole coupé hors-carte.
+- **Filtres rapides** « Toute l'espèce » / « Tout le genre » dans la sheet d'un pin découvert non remarquable, défiltrage en un clic via banner ✕ (slot du FAB 🔍). État `MapHost.quickFilter` (persiste aux navigations, meurt avec l'Activity) ; le runner d'enrichment de `launchDiscoveryObservers` devient le pousseur de source unique, re-push `setGeoJson` du subset filtré sur la source persistante (jamais `setFilter` de layer — clusters fantômes). Set genre partagé avec la fiche genre (`SpeciesIndex.genreFilterSet`). Spinner mini-platane frame-clock (insensible à l'échelle d'animation 0), fin de busy calée sur l'event `onSourceChanged`.
+- **Blip directionnel north-up** sur le radar du mode Chasse : blip cible orienté 0° = nord (zéro capteur boussole, cohérent avec la carte et le cône de vision ; repère « N » au-dessus du cadran), **rayon = distance** (mapping log `distanceToRadiusFrac` : 25 m → centre, ~105 m → anneau 1, ~450 m → anneau 2, ≥ 2 km → bord). Sous 25 m, plus de direction (bearing GPS = bruit), pulse central à la place (hystérésis de sortie 35 m). Refresh théâtralisé : pulse de barre + saut du blip + chiffre de distance commités au passage de la barre sur le blip (révélation sonar). Test JVM `DistanceToRadiusFracTest`.
+
+### Modifié
+
+- **MapView persistante across navigation** : l'instance `MapView` est hissée hors de `MapScreen` dans un `MapHost` scopé Activity (créé au niveau `ArbresNavHost`, lifecycle GL relayé depuis l'Activity), rendu gelé (`onPause`) quand aucun `MapScreen` ne l'affiche. Retour sur la carte instantané, **zéro splash si les pins sont déjà rendus**. Coloration pins re-appliquée sub-frame (swap d'expression), enrichment clusters déplacé dans le scope du holder → continue de tourner hors-écran. La carte filtrée (`MAP_FILTERED`) garde sa MapView jetable. Nettoyage `lastCamera` / `freshMount` obsolètes.
+- **Transition de capture sans flash carte** : la bascule validation photo → fiche espèce est couverte par un voile plein écran (`CaptureTransitionSplash`, habillage `SplashScaffold` muet — platane frame-clock). La carte n'est plus jamais visible entre les deux. Décision « 1re espèce » figée AVANT le launch caméra (`PendingCapture.willCelebrate`, SavedStateHandle — source unique du voile ET de la nav) ; voile rendu par `ArbresNavHost` au-dessus du NavHost, levé sur entrée SPECIES `RESUMED` + plancher 600 ms + timeout filet 6 s. Au passage : `CaptureCallbacks`, `runCapture` scindé en `prepareCapture(): Uri?`.
+
+### Corrigé
+
+- **Cadrage carte — trois effets de bord** : (1) relance le lendemain centrée sur la position de la veille — nouveau prédicat `Location.isRecentFix()` (15 min, âge négatif = périmé post-reboot) appliqué au seed GPS, au bootstrap caméra, au recadrage auto et au FAB localisation (qui attend désormais un fix frais au lieu de recentrer sur un last-known) ; (2) retour carte après un saut pulse → re-fly vers l'arbre — le query param `pulseArbreId` rejouait à chaque remount, remplacé par l'intent one-shot `MapHost.pendingPulseArbreId` + `navigate(Routes.map())` en `launchSingleTop` (plus jamais deux entrées MAP empilées) ; (3) le filtre rapide dézoomait sur Paris — supprimé, le cadrage ne bouge ni au filtrage ni au défiltrage. Nettoyage : `MapHost.lastCamera` et `LocationProvider.currentOrLastKnown` (code mort) supprimés.
+- **Crash carte filtrée** corrigé en clôture de cycle, + polish device divers.
+- Recadrage GPS auto grillé par l'instance MAP transiente pré-onboarding : la séquence de découverte ne consomme plus le `first()` du recadrage avant l'instance stable.
+
+### Privacy
+
+- Inchangé : 100 % local, aucune télémétrie, aucun service tiers au runtime.
+
 ## [1.4.0] — 2026-05-16
 
 Cycle *Boussole* — thème **navigation + lisibilité de la progression**. Sept sprints + deux passes de polish post-test device. Un correctif structurel (le critère « arrondissement complété » était injouable), trois apports inspirés du PWA livré par un admirateur (recherche universelle, réorg FAB Map, histogrammes Profil sur long-press), une extension du système de badges (6 paliers Pokédex), un polish chapitres + tips, et une clôture detekt + screenshots README. Aucune migration Room, régénération `arr-species.json` (ajout `remarquable_ids` + centroids par arr).
