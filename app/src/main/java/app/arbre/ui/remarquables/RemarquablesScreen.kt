@@ -470,7 +470,7 @@ private fun LoadingState() {
 private fun RemarquablesEmptyState() {
     EmptyState(
         title = "Aucun remarquable capturé.",
-        body = "Pars à la chasse : la loupe en bas-gauche de la carte t'indique la distance au plus proche.",
+        body = "Pars à la chasse : l'étoile ★ en bas-gauche de la carte ouvre le radar qui t'indique la distance au plus proche.",
         illustration = {
             Image(
                 painter = painterResource(R.drawable.illus_empty_remarquables),

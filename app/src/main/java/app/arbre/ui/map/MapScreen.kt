@@ -10,11 +10,7 @@ import android.view.ViewGroup
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.layout.Arrangement
@@ -87,6 +83,7 @@ import app.arbre.data.rememberSpeciesInfoRepository
 import app.arbre.data.resolvedFile
 import app.arbre.ui.common.DeleteCaptureDialog
 import app.arbre.ui.common.PhotoLightbox
+import app.arbre.ui.common.rememberFramePingPong
 import app.arbre.ui.common.showSnackbarFor
 import app.arbre.ui.detail.ArbreDetailActions
 import app.arbre.ui.detail.ArbreDetailContent
@@ -398,9 +395,13 @@ fun MapScreen(
                             // juste au-dessus de la layer arbres la plus haute,
                             // quel que soit le timing d'activation (défaut =
                             // top-of-stack à l'activation, timing-dépendant).
-                            // Précondition : les layers arbres existent — tenu
-                            // sur les deux modes, l'activation passe toujours
-                            // par un style post-`addArbresLayers`.
+                            // PRÉCONDITION DURE : `CLUSTER_COUNT_LAYER_ID` doit
+                            // exister à l'appel, sinon MapLibre abort natif
+                            // (PendingJavaException → SIGABRT, pas d'exception
+                            // Kotlin catchable). Chaque appelant DOIT donc passer
+                            // un style post-`addArbresLayers` — vérifié sur les
+                            // deux modes (principal : DisposableEffect(styleRef) ;
+                            // filtré : après le addArbresLayers du scope.launch).
                             .layerAbove(CLUSTER_COUNT_LAYER_ID)
                             .build()
                     )
@@ -798,9 +799,6 @@ fun MapScreen(
                         "MapScreen",
                         "Style prêt (process+${tStyle - tProcess}ms)",
                     )
-                    if (LocationProvider.hasFineLocationPermission(ctx)) {
-                        enableLocationPin(map, style)
-                    }
                     scope.launch {
                         try {
                             // Single-pass : GeoJSON filtré < 1 Mo (~38 k
@@ -849,6 +847,19 @@ fun MapScreen(
                             }
                             addArbresLayers(style, json)
                             filteredStyleRef = style
+                            // Pin user APRÈS addArbresLayers, jamais avant : le
+                            // puck est posé via layerAbove(CLUSTER_COUNT_LAYER_ID),
+                            // qui DOIT déjà exister — sinon MapLibre lève côté
+                            // natif (PendingJavaException dans
+                            // onDidFinishLoadingStyle → abort/SIGABRT). La carte
+                            // principale tient cette précondition via son
+                            // DisposableEffect(styleRef) post-init ; ici c'était
+                            // appelé synchroniquement dans le callback setStyle,
+                            // avant ce addArbresLayers async → crash systématique
+                            // sur « Voir sur la carte » avec permission accordée.
+                            if (LocationProvider.hasFineLocationPermission(ctx)) {
+                                enableLocationPin(map, style)
+                            }
                             val tLayers = android.os.SystemClock.elapsedRealtime()
                             android.util.Log.i(
                                 "MapScreen",
@@ -1014,18 +1025,12 @@ fun MapScreen(
                 }
             }
         }
-        // Pulse infini 1.0 → 1.12 pendant `awaitingFirstFix`. `Modifier.scale`
-        // affecte le draw, pas le layout, donc la hitbox du FAB reste stable.
-        val pulse = rememberInfiniteTransition(label = "gpsFabPulse")
-        val pulseScale by pulse.animateFloat(
-            initialValue = 1f,
-            targetValue = if (awaitingFirstFix) 1.12f else 1f,
-            animationSpec = infiniteRepeatable(
-                animation = tween(durationMillis = 800),
-                repeatMode = RepeatMode.Reverse,
-            ),
-            label = "gpsFabPulseScale",
-        )
+        // Pulse 1.0 → 1.12 → 1.0 pendant `awaitingFirstFix`, piloté `withFrameNanos`
+        // (cf. `ui/common/FrameClock.kt`) — vivant même à échelle d'animation système 0,
+        // là où `rememberInfiniteTransition` se fige. `Modifier.scale` affecte le draw,
+        // pas le layout, donc la hitbox du FAB reste stable.
+        val pulseP by rememberFramePingPong(periodMs = 1_600)
+        val pulseScale = if (awaitingFirstFix) 1f + pulseP * 0.12f else 1f
         UtilityFab(
             onClick = {
                 if (LocationProvider.hasFineLocationPermission(ctx)) {
@@ -1485,6 +1490,12 @@ private fun computeDeleteContext(
     }
 }
 
+// Palette verre dépoli des FAB utilitaires, figée hors du thème (cf. commentaire
+// d'`UtilityFab`) : pas de `MaterialTheme` ici, c'est volontaire — ces tokens
+// s'alignent sur la chromie claire de la carte, pas sur le scheme app.
+private val FAB_GLASS_CONTAINER = Color.White.copy(alpha = 0.78f)
+private val FAB_GLASS_CONTENT = Color(0xFF3C4043)
+
 // FAB « utilitaire » discret (Recherche, Localiser) : même taille que les FAB
 // gameplay (56 dp, touch target intact) mais palette **verre dépoli** figée
 // hors du thème système. Raison : ces FAB survolent toujours la carte
@@ -1510,8 +1521,8 @@ private fun UtilityFab(
     FloatingActionButton(
         onClick = onClick,
         modifier = modifier,
-        containerColor = Color.White.copy(alpha = 0.78f),
-        contentColor = Color(0xFF3C4043),
+        containerColor = FAB_GLASS_CONTAINER,
+        contentColor = FAB_GLASS_CONTENT,
         elevation = FloatingActionButtonDefaults.elevation(
             defaultElevation = 0.dp,
             pressedElevation = 0.dp,

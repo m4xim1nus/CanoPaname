@@ -24,7 +24,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.Close
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -182,20 +181,9 @@ internal fun QuickFilterBanner(
                     modifier = Modifier.size(48.dp),
                     contentAlignment = Alignment.Center,
                 ) {
-                    val elapsed = rememberFrameMillis()
-                    val tint = MaterialTheme.colorScheme.primary
-                    Image(
-                        painter = painterResource(R.drawable.ic_arbre_canonical),
+                    SpinningMiniArbre(
                         contentDescription = "Filtrage en cours",
-                        colorFilter = ColorFilter.tint(tint),
-                        modifier = Modifier
-                            .size(22.dp)
-                            // Lecture du State dans le draw layer : invalide
-                            // le dessin à chaque frame sans recomposer.
-                            .graphicsLayer {
-                                rotationZ =
-                                    (elapsed.value % SPIN_PERIOD_MS) / SPIN_PERIOD_MS.toFloat() * 360f
-                            },
+                        modifier = Modifier.size(22.dp),
                     )
                 }
             } else {
@@ -223,6 +211,30 @@ internal fun QuickFilterBanner(
             }
         }
     }
+}
+
+/**
+ * Spinner indéterminé maison : un mini-platane en rotation continue, piloté `withFrameNanos`
+ * (cf. `ui/common/FrameClock.kt`) — vivant même à échelle d'animation système 0, là où un
+ * `CircularProgressIndicator` se fige. À préférer partout où le retour de chargement doit
+ * survivre au réglage accessibilité. La lecture du `State` se fait dans le draw layer : invalide
+ * le dessin à chaque frame sans recomposer.
+ */
+@Composable
+private fun SpinningMiniArbre(
+    contentDescription: String?,
+    modifier: Modifier = Modifier,
+    tint: Color = MaterialTheme.colorScheme.primary,
+) {
+    val elapsed = rememberFrameMillis()
+    Image(
+        painter = painterResource(R.drawable.ic_arbre_canonical),
+        contentDescription = contentDescription,
+        colorFilter = ColorFilter.tint(tint),
+        modifier = modifier.graphicsLayer {
+            rotationZ = (elapsed.value % SPIN_PERIOD_MS) / SPIN_PERIOD_MS.toFloat() * 360f
+        },
+    )
 }
 
 /**
@@ -512,10 +524,10 @@ internal fun FilterSplash(speciesLabel: String) {
             modifier = Modifier.padding(horizontal = 32.dp),
         )
         Spacer(Modifier.height(20.dp))
-        CircularProgressIndicator(
-            color = Color.White.copy(alpha = 0.7f),
-            strokeWidth = 2.dp,
-            modifier = Modifier.size(20.dp),
+        SpinningMiniArbre(
+            contentDescription = "Réveil en cours",
+            modifier = Modifier.size(28.dp),
+            tint = Color.White.copy(alpha = 0.7f),
         )
     }
 }

@@ -15,7 +15,10 @@ Triage en lot au début de chaque cycle. Process complet dans `CLAUDE.md` (*Work
 
 ## À trier
 
-_(vide — les 5 inputs du 2026-05-20 triés et calés le 2026-05-21)_
+- [ ] Refresh des 6 screenshots README (`docs/screenshots/`) — datent de Boussole, les apports Netteté (cône de vision, blip radar, filtres rapides) n'y figurent pas ; nécessite des captures device fraîches, candidat naturel à la prochaine release (claude:tour-fin-Netteté, 2026-06-13)
+- [ ] Haptique manquant sur le ✕ de fermeture du HuntPanel (`HuntPanel.kt` ~353) — les autres gestes carte (capture, annulation) en ont (claude:tour-fin-Netteté, 2026-06-13)
+- [ ] [perf] Carte filtrée + filtre rapide lents : le 2-vagues re-pousse tout le GeoJSON et laisse MapLibre re-clusteriser 217 k points (défiltrage mesuré ~42 s wall-time, dominé par le re-clustering pas par l'enrich ~300 ms). Inhérent à l'archi « re-push + recluster », pas une régression. Pistes : push différentiel / garder la source clusterisée et ne changer que le filtre côté données (device-test, 2026-06-13)
+- [ ] [perf] Jank du FilterSplash : `addArbresLayers` (obligatoirement main-thread, contexte GL) bloque le main thread 1-4 s pour une espèce commune (subset réel plusieurs Mo, pas le « < 1 Mo » supposé en commentaire `MapScreen.kt:803`), figeant les animations frame-clock du splash. Sortir le clustering du chemin critique = chantier perf (device-test, 2026-06-13)
 
 ## Cycle Netteté
 
@@ -84,6 +87,7 @@ _(vide — « MapView persistante » promu item 1 du cycle Netteté le 2026-06-1
 
 ## Refusé
 
+- [refusé] Discriminant visuel pour remarquables jumeaux indistinguables en liste : deux « Marronnier / PARC DES BUTTES CHAUMONT / 7 RUE BOTZARIS » strictement identiques côte à côte (catalogue + fiche espèce « Arbres remarquables de cette espèce ») — réalité du dataset (deux individus physiques distincts à la même adresse), pas une erreur (claude:tour-fin-Netteté, 2026-06-13 ; user:moi 2026-06-13 : refusé)
 - [refusé] Bouton partage PNG sur fiche espèce (audit-C, tension single-player vs F&F à trancher - trop loin d'un intérêt)
 - [refusé] Carte chromatique vert/jaune/gris par arrondissement (audit V2#5, 2026-05-06 ; user:moi 2026-05-12 lors du cadrage Progression : la barre « X / 22 arrondissements visités » dans le Profil + le badge « Maître du Xe » suffisent pour mettre sur la piste, l'overlay chromatique sur la carte serait redondant et chargerait inutilement la vue principale)
 - [refusé] Liste « Espèces manquantes » + bouton « Trouver le plus proche » sur fiche espèce non capturée (audit-A, 2026-05-06 ; user:moi 2026-05-09 : philosophie « découverte en marchant », la 81e espèce se trouve en tapant un pin gris à proximité, le côté quête est porté par les Remarquables ★)
