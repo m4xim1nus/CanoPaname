@@ -65,6 +65,7 @@ import app.arbre.data.rememberDatasetStats
 import app.arbre.data.rememberSpeciesIndex
 import app.arbre.data.rememberSpeciesInfoRepository
 import app.arbre.data.resolvedFile
+import app.arbre.ui.common.AttributesBlock
 import app.arbre.ui.common.DeleteCaptureDialog
 import app.arbre.ui.common.PhotoGallery
 import app.arbre.ui.common.PhotoLightbox
@@ -172,6 +173,10 @@ fun SpeciesDetailScreen(
             }
 
             item { IdentityBlock(entry, arbreSample) }
+
+            info?.attributes?.let { attrs ->
+                item { AttributesBlock(attrs) }
+            }
 
             if (photoFiles.isNotEmpty()) {
                 item {
