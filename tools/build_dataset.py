@@ -83,7 +83,11 @@ ESSENCES_URL = (
     "https://opendata.paris.fr/api/explore/v2.1/catalog/datasets/"
     "fiches-essences-du-guide-des-essences-de-paris/records"
 )
-ESSENCES_CACHE_DIR = ROOT / "tools" / ".essences-cache"
+# `-v2` : le cache v1 ne stockait que 3 champs (nom_latin/nom_commun/pdf).
+# Depuis le cycle Herbier (S1) on fetch le record complet (~28 champs
+# structurés : port, feuillage, taille, exposition, indigénat…) ; versionner
+# le dossier force un refetch propre sans geste manuel de purge.
+ESSENCES_CACHE_DIR = ROOT / "tools" / ".essences-cache-v2"
 ESSENCES_PAGE_SIZE = 100
 
 WIKI_USER_AGENT = "canopaname-build/0.1 (personal Android app, https://github.com/m4xim1nus/CanoPaname)"
@@ -1457,6 +1461,7 @@ def _build_species_entry(
     total_arbres: int,
     wiki: dict | None,
     pdf_url: str | None,
+    ess: dict | None = None,
 ) -> dict:
     """Calcule stats locales + assemble les champs Wikipedia déjà fetchés."""
     stats: dict = {
@@ -1495,6 +1500,8 @@ def _build_species_entry(
             entry["summary"] = wiki["summary"]
     if pdf_url:
         entry["pdf"] = pdf_url
+    if ess:
+        entry["ess"] = ess
     return entry
 
 
@@ -1506,7 +1513,7 @@ def write_species_info(
     arr_by_sk: dict[int, dict[str, int]],
     arr_total: dict[str, int],
     total_arbres: int,
-    essences_pdf: dict[tuple[str, str], str],
+    essences: dict[tuple[str, str], dict],
 ) -> None:
     WIKIDATA_CACHE_DIR.mkdir(parents=True, exist_ok=True)
     print(
@@ -1532,9 +1539,10 @@ def write_species_info(
     entries: list[dict] = []
     wiki_hit = 0
     pdf_hit = 0
+    ess_hit = 0
     for (genre, espece), sk in species_index.items():
         wiki = fetch_species_info(sk, genre, espece, wikidata_resolution)
-        pdf_url = essences_pdf.get((genre, espece))
+        essence = essences.get((genre, espece)) or {}
         entry = _build_species_entry(
             sk=sk,
             genre=genre,
@@ -1546,12 +1554,15 @@ def write_species_info(
             arr_total=arr_total,
             total_arbres=total_arbres,
             wiki=wiki,
-            pdf_url=pdf_url,
+            pdf_url=essence.get("pdf"),
+            ess=essence.get("ess"),
         )
         if "summary" in entry:
             wiki_hit += 1
         if "pdf" in entry:
             pdf_hit += 1
+        if "ess" in entry:
+            ess_hit += 1
         entries.append(entry)
         if len(entries) % 100 == 0:
             print(f"[wp ] {len(entries)}/{len(species_index)} traités, {wiki_hit} avec summary")
@@ -1563,6 +1574,7 @@ def write_species_info(
     info_kb = OUT_SPECIES_INFO.stat().st_size // 1024
     print(f"[wp ] {wiki_hit}/{len(species_index)} espèces avec summary Wikipedia")
     print(f"[ess ] {pdf_hit}/{len(species_index)} espèces avec fiche PDF Ville de Paris")
+    print(f"[ess ] {ess_hit}/{len(species_index)} espèces avec attributs structurés (bloc ess)")
     print(f"       → {OUT_SPECIES_INFO.name} ({info_kb} Ko)")
 
 
@@ -1940,10 +1952,12 @@ def write_remarquables_info(records: list[dict], ids_in_csv: set[int]) -> None:
 
 
 def _fetch_essences_page(offset: int, limit: int) -> dict:
+    # Pas de `select` : on fetche le record complet (~28 champs structurés).
+    # Robuste aux renommages de colonnes amont ; le tri se fait au parse
+    # (`_parse_essence_attributes`). Cf. cache versionné `.essences-cache-v2`.
     params = urllib.parse.urlencode({
         "limit": limit,
         "offset": offset,
-        "select": "nom_latin,nom_commun,nom_fichier_pdf_associe",
     })
     url = f"{ESSENCES_URL}?{params}"
     req = urllib.request.Request(url, headers={"User-Agent": WIKI_USER_AGENT})
@@ -1955,9 +1969,10 @@ def fetch_essences() -> list[dict]:
     """Fetch les ~200 fiches PDF du dataset `fiches-essences-du-guide-des-essences-de-paris`.
 
     Cache disque par `pdf_id` (id de fichier OpenData) dans
-    `tools/.essences-cache/{pdf_id}.json` — payload OpenData brut. La liste
-    paginée est refetchée à chaque run (cheap, 2 pages), mais les records sont
-    relus depuis le cache si présents. Records sans PDF associé skippés.
+    `tools/.essences-cache-v2/{pdf_id}.json` — record OpenData complet (~28
+    champs). La liste paginée est refetchée à chaque run (cheap, 2 pages), mais
+    les records sont relus depuis le cache si présents. Records sans PDF associé
+    skippés.
     """
     ESSENCES_CACHE_DIR.mkdir(parents=True, exist_ok=True)
     records: list[dict] = []
@@ -2026,15 +2041,97 @@ def _parse_essence_taxon(nom_latin: str) -> tuple[str, str] | None:
     return (genre, espece)
 
 
-def _build_essences_index(records: list[dict]) -> dict[tuple[str, str], str]:
-    """`(genre, espece) → url_pdf`, en privilégiant le record le plus générique.
+# Labels lisibles (FR) pour les champs bool multi-modalités des fiches-essences.
+# Conserver l'ordre : il fixe l'ordre d'affichage des pills côté app (S3).
+_ESSENCE_EXPO_LABELS = {
+    "soleil": "soleil",
+    "mi_ombre": "mi-ombre",
+    "ombre": "ombre",
+    "indifferent": "indifférent",
+}
+_ESSENCE_EAU_LABELS = {
+    "sature": "sol saturé",
+    "humide": "sol humide",
+    "intermediaire_frais": "sol frais",
+    "mesophile": "sol mésophile",
+    "sec_tres_sec": "sol sec",
+}
+_ESSENCE_SITE_LABELS = {
+    "alignement": "alignement",
+    "place": "place",
+    "espaces_verts": "espaces verts",
+    "cimetieres": "cimetières",
+    "coeur_d_ilot": "cœur d'îlot",
+    "cour_d_ecole": "cour d'école",
+    "forets_urbaines": "forêts urbaines",
+    "noues_et_bassins": "noues et bassins",
+    "quai_et_berge": "quai et berge",
+    "espace_intermediaires": "espaces intermédiaires",
+}
+
+
+def _essence_str(rec: dict, key: str) -> str | None:
+    """Champ texte non vide, strippé, sinon None."""
+    v = (rec.get(key) or "").strip()
+    return v or None
+
+
+def _essence_bool_labels(rec: dict, prefix: str, labels: dict[str, str]) -> list[str]:
+    """Labels des modalités cochées `'oui'` pour une famille de champs bool.
+
+    Les fiches-essences encodent ces champs en `'oui'`/`'non'`/`None`
+    (minuscule), un champ par modalité (`{prefix}{suffix}`).
+    """
+    out: list[str] = []
+    for suffix, label in labels.items():
+        if (rec.get(prefix + suffix) or "").strip().lower() == "oui":
+            out.append(label)
+    return out
+
+
+def _parse_essence_attributes(rec: dict) -> dict:
+    """Extrait les attributs structurés d'un record fiches-essences → objet `ess`.
+
+    Clés courtes, provenance Ville de Paris. Champs absents/vides omis (pas de
+    clé) — c'est le contrat parsé côté app par `SpeciesInfo` (S2). Modalités
+    texte conservées telles quelles (déjà en FR lisible : « Caduc »,
+    « Pleureur », « Exotique »…).
+    """
+    attrs: dict = {}
+    if (port := _essence_str(rec, "type_de_port")):
+        attrs["port"] = port
+    if (feuillage := _essence_str(rec, "type_de_feuillage")):
+        attrs["feuillage"] = feuillage
+    if (taille := _essence_str(rec, "taille_de_developpement")):
+        attrs["taille"] = taille
+    if (indigenat := _essence_str(rec, "indigenat")):
+        attrs["indigenat"] = indigenat
+    if (origine := _essence_str(rec, "origine_geographique")):
+        attrs["origine"] = origine
+    fleurs = (rec.get("arbre_a_fleurs") or "").strip().lower()
+    if fleurs in ("oui", "non"):
+        attrs["fleurs"] = fleurs == "oui"
+    if (expo := _essence_bool_labels(rec, "exposition_possible_", _ESSENCE_EXPO_LABELS)):
+        attrs["expo"] = expo
+    if (eau := _essence_bool_labels(
+            rec, "besoins_en_eau_type_de_sol_tolere_", _ESSENCE_EAU_LABELS)):
+        attrs["eau"] = eau
+    if (sites := _essence_bool_labels(
+            rec, "site_de_plantation_possible_", _ESSENCE_SITE_LABELS)):
+        attrs["sites"] = sites
+    return attrs
+
+
+def _build_essences_index(records: list[dict]) -> dict[tuple[str, str], dict]:
+    """`(genre, espece) → {"pdf": url, "ess": {…attributs}}`, record le plus générique.
 
     Plusieurs fiches peuvent partager une même paire `(genre, espece)` (ex:
     `Acer platanoides` et plusieurs cultivars `Acer platanoides 'Globosum'`).
     On garde la fiche au `nom_latin` le plus court — c'est l'espèce nue, pas
-    un cultivar. Égalité → premier rencontré.
+    un cultivar. Égalité → premier rencontré. Le record choisi fournit à la
+    fois l'URL PDF et les attributs structurés (cohérence : même fiche source).
     """
-    chosen: dict[tuple[str, str], tuple[int, str]] = {}
+    chosen: dict[tuple[str, str], tuple[int, dict]] = {}
     for rec in records:
         nom_latin = (rec.get("nom_latin") or "").strip()
         taxon = _parse_essence_taxon(nom_latin)
@@ -2047,7 +2144,11 @@ def _build_essences_index(records: list[dict]) -> dict[tuple[str, str], str]:
         score = len(nom_latin)
         prev = chosen.get(taxon)
         if prev is None or score < prev[0]:
-            chosen[taxon] = (score, url)
+            value: dict = {"pdf": url}
+            attrs = _parse_essence_attributes(rec)
+            if attrs:
+                value["ess"] = attrs
+            chosen[taxon] = (score, value)
     return {k: v[1] for k, v in chosen.items()}
 
 
@@ -3300,16 +3401,16 @@ def build(csv_path: Path, db_path: Path, geojson_path: Path) -> None:
     )
 
     essences_records = fetch_essences()
-    essences_pdf = _build_essences_index(essences_records)
-    matched = sum(1 for k in essences_pdf if k in species_index)
+    essences_index = _build_essences_index(essences_records)
+    matched = sum(1 for k in essences_index if k in species_index)
     print(
-        f"[ess ] {len(essences_pdf)} taxons distincts dans le dataset, "
+        f"[ess ] {len(essences_index)} taxons distincts dans le dataset, "
         f"{matched} matchent une espèce du species-index"
     )
 
     write_species_info(species_index, count_by_sk, heights_by_sk, circs_by_sk,
                        arr_by_sk, arr_total, total_arbres=inserted,
-                       essences_pdf=essences_pdf)
+                       essences=essences_index)
 
     # species-index.json écrit ICI (post write_species_info) : la cascade nv
     # consomme les caches Wikidata fraîchement peuplés (`vernacularNames`,
