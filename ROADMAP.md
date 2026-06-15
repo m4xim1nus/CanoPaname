@@ -6,9 +6,34 @@ App perso, pas de calendrier engageant. Single-player, stockage local strict —
 
 ### Herbier
 
-Enrichissement des fiches espèces : saisonnalité (calendriers floraison/fructification), attributs, pictos, photos de référence. Pressenti avant Variantes — dépendance assumée : le calendrier de floraison alimentera la suggestion d'état « en fleur » de Variantes. Détails et chiffres dans `PROSPECTION_ARBORETUM.md`, items `[→Herbier]` du BACKLOG.
+Enrichissement des fiches espèces : saisonnalité (calendriers floraison/fructification), attributs, photos de référence. Pressenti avant Variantes — dépendance assumée : le calendrier de floraison alimentera la suggestion d'état « en fleur » de Variantes. Détails et chiffres dans `PROSPECTION_ARBORETUM.md`, items `[→Herbier]` du BACKLOG.
 
-1. **Upgrade Arboretum (saisonnalité, picto, photos de référence)** — exploiter le parsing PDF des fiches-essences Ville de Paris (200 espèces : calendriers floraison/fructification + atouts/limites + photos officielles) ; cascade Wikidata→iNat (photos) + Wikidata→POWO→Wikipedia FR (attributs) pour les ~584 espèces hors-fiches. Trou résiduel assumé = saisonnalité fine sur la longue traîne.
+#### Item 1 — Upgrade Arboretum (le gros morceau, éclaté en 13 sprints)
+
+Plan complet (contexte, archi, risques) : `/home/max/.claude/plans/on-attaque-le-cycle-temporal-abelson.md`. Sources chiffrées : `PROSPECTION_ARBORETUM.md`.
+
+**Décisions actées (2026-06-14)** : périmètre *tout d'un coup* (200 fiches API+PDF + cascade fallback 584) ; *cascade photos complète* embarquée WebP (officielles Ville de Paris + Wikidata P18/iNat filtre CC0/CC-BY) ; *pas de silhouettes procédurales* (identité = vraie photo, sinon placeholder + pills) ; cellule Arboretum non capturée garde « ??? » (photo de réf. seulement sur la fiche détail, désormais consultable même non capturée) ; inégalité 200/584 assumée et visible, jamais inventée.
+
+| # | Sprint | Type | Dép. |
+|---|---|---|---|
+| S1 | Champs API fiches-essences (200) → `species-info.json` | data | — |
+| S2 | Étendre `SpeciesInfo` (Kotlin, champs nullable) + parsing + tests | binding | S1 |
+| S3 | `AttributesBlock` (pills) sur la fiche espèce | UI | S2 |
+| S4 | Parsing PDF : calendriers floraison/fructification + « À retenir » | data | S1 |
+| S5 | `SeasonalityCalendar` + bloc « À retenir » | UI | S2,S4 |
+| S6 | Parsing PDF : champs textuels restants (famille, hauteur, descriptions, encarts, services éco) | data | S4 |
+| S7 | Affichage champs textuels (enrichir blocs) | UI | S2,S6 |
+| S8 | Cascade attributs 584 (Wikidata→POWO→Wikipedia FR→EOL) | data | S2 |
+| S9 | Photos officielles 200 (extraction PDF → WebP) | data | S4 |
+| S10 | Cascade photos 584 (Wikidata P18→iNat, filtre licence) | data | S9 |
+| S11 | `ReferencePhotoBlock` + `SpeciesPhotoRepository` + `CREDITS.md` + écran crédits | UI | S2,S9 |
+| S12 | Fiche détail consultable non capturée (cellules « ??? » tappables) | UI | S3,S11 |
+| S13 | Hygiène & clôture item 1 (detekt, tests, `CHANGELOG`, `CLAUDE.md`, screenshots, commit assets) | clôture | tous |
+
+Ordre : slice verticale d'abord (S1→S3 prouvent le pipeline bout-en-bout), puis saisonnalité (S4→S5, le gros gain Variantes), puis le reste, puis photos, puis découverte, puis clôture. S4/S8/S10 sont les plus lourds (scindables si besoin). Rupture à acter : `build_dataset.py` cesse d'être stdlib-only (`pymupdf`/`Pillow` build-time → `tools/requirements.txt`) ; runtime app inchangé. Suivi sprint-par-sprint : `BACKLOG.md`.
+
+#### Items 2 et 3 (après l'item 1)
+
 2. **Texte fallback pour les fiches espèces sans Wikipedia** — audit : 254/784 espèces identifiées (32 %) sans `summary`, ne couvrant que 7 778/204 364 arbres (3,8 %), quasi exclusivement hybrides/cultivars/sous-espèces. Fallback gratuit via `genre-info.json.summary` (texte Wikipedia du genre, déjà cuit). À trancher : lecture pondérée par arbres (sous le seuil 5 %) vs par espèce (bien au-dessus) selon la friction utilisateur ressentie.
 3. **Résidu botanique post-Catalogue** — 11 entrées avec `nv == binôme nu` et count ≤ 2 (`Ehretia macrophylla`, `Sophora flavescens`, `Betula occidentalis`, `Crataegus japonicum`…), botaniquement douteuses : réelles mais rares, ou saisies erronées. Recherche botanique pour trancher keep / rebinder.
 

@@ -15,8 +15,6 @@ Triage en lot au début de chaque cycle. Process complet dans `CLAUDE.md` (*Work
 
 ## À trier
 
-- [ ] Refresh des 6 screenshots README (`docs/screenshots/`) — datent de Boussole, les apports Netteté (cône de vision, blip radar, filtres rapides) n'y figurent pas ; nécessite des captures device fraîches, candidat naturel à la prochaine release (claude:tour-fin-Netteté, 2026-06-13)
-- [ ] Haptique manquant sur le ✕ de fermeture du HuntPanel (`HuntPanel.kt` ~353) — les autres gestes carte (capture, annulation) en ont (claude:tour-fin-Netteté, 2026-06-13)
 - [ ] [perf] Carte filtrée + filtre rapide lents : le 2-vagues re-pousse tout le GeoJSON et laisse MapLibre re-clusteriser 217 k points (défiltrage mesuré ~42 s wall-time, dominé par le re-clustering pas par l'enrich ~300 ms). Inhérent à l'archi « re-push + recluster », pas une régression. Pistes : push différentiel / garder la source clusterisée et ne changer que le filtre côté données (device-test, 2026-06-13)
 - [ ] [perf] Jank du FilterSplash : `addArbresLayers` (obligatoirement main-thread, contexte GL) bloque le main thread 1-4 s pour une espèce commune (subset réel plusieurs Mo, pas le « < 1 Mo » supposé en commentaire `MapScreen.kt:803`), figeant les animations frame-clock du splash. Sortir le clustering du chemin critique = chantier perf (device-test, 2026-06-13)
 
@@ -34,9 +32,24 @@ Polish de la boucle carte + capture. **Cycle en cours depuis le 2026-06-11** —
 
 Enrichissement des fiches espèces (saisonnalité, attributs, picto, photos de référence). Pressenti après Netteté et avant Variantes — dépendance assumée : le calendrier de floraison alimentera la suggestion d'état « en fleur » de Variantes.
 
-- [→Herbier] Upgrade Arboretum (saisonnalité, picto, photos ref) : exploiter le parsing PDF des fiches-essences Ville de Paris (200 espèces — calendriers floraison/fructification + atouts/limites + photos officielles) ; cascade Wikidata→iNat (photos) + Wikidata→POWO→Wikipedia FR (attributs) pour les 584 hors-fiches ; trou résiduel = saisonnalité fine sur la longue traîne. Détails et chiffres dans `PROSPECTION_ARBORETUM.md`. (user:moi, 2026-05-17)
+- ~~[→Herbier] Upgrade Arboretum (saisonnalité, picto, photos ref) — ligne parapluie~~ **éclatée en 13 sprints S1-S13 le 2026-06-14** (décisions actées : tout d'un coup + cascade photos complète + pas de silhouettes + cellule non capturée garde « ??? »). Plan : `~/.claude/plans/on-attaque-le-cycle-temporal-abelson.md` ; tableau dans `ROADMAP.md`. (user:moi, 2026-05-17)
+  - [→Herbier] **S1** Champs API fiches-essences (200) : étendre `fetch_essences()`/`_build_essences_index()` (port, feuillage, taille, expo, indigénat, origine…) → `species-info.json`. Aucune dép. (data)
+  - [→Herbier] **S2** Étendre `SpeciesInfo.kt` : forme cible complète des champs nullable (attributs + bitfields calendriers 12 + atouts/limites + textuels) + parsing tolérant + tests JVM. (binding, dép. S1)
+  - [→Herbier] **S3** `AttributesBlock` (pills Material 3) sur `SpeciesDetailScreen` — 1er livrable device, valide le pipeline bout-en-bout. (UI, dép. S2)
+  - [→Herbier] **S4** Parsing PDF (+`pymupdf`) : calendriers floraison/fructification (bitfields 12) + bloc « À RETENIR » (atouts/limites) + rapport HTML de validation sur les 200. Le gros gain. (data, dép. S1)
+  - [→Herbier] **S5** `SeasonalityCalendar` (strip 12 mois ×2) + « en floraison ce mois-ci » + bloc « À retenir ». Alimente l'état « en fleur » de Variantes. (UI, dép. S2,S4)
+  - [→Herbier] **S6** Parsing PDF : champs textuels restants (famille, hauteur chiffrée, envergure, croissance, longévité, descriptions courtes, encarts éditoriaux, services éco). (data, dép. S4)
+  - [→Herbier] **S7** Affichage champs textuels (enrichir `AttributesBlock` + encarts Ville de Paris, réservés aux 200). (UI, dép. S2,S6)
+  - [→Herbier] **S8** Cascade attributs 584 : Wikidata SPARQL→POWO→Wikipedia FR infobox→EOL + cache `.taxa-attributes-cache/`. Saisonnalité NLP best-effort haute confiance, jamais inventée. (data, dép. S2)
+  - [→Herbier] **S9** Photos officielles 200 (+`Pillow`) : `pymupdf.get_images()` → filtre taille → WebP → `assets/species-photos/` + `species-photos.json` (crédit ODbL Ville de Paris). (data, dép. S4)
+  - [→Herbier] **S10** Cascade photos 584 : Wikidata P18→iNat, filtre `cc0`/`cc-by` strict → WebP + crédit/licence par image. Surveiller taille APK. (data, dép. S9)
+  - [→Herbier] **S11** `ReferencePhotoBlock` + `SpeciesPhotoRepository` + `CREDITS.md` + écran crédits ; réviser phrase `CLAUDE.md` « images Wikipedia absentes ». (UI, dép. S2,S9)
+  - [→Herbier] **S12** Fiche détail consultable non capturée : cellules « ??? » tappables (`ArboretumScreen.kt:310,378,394`) → fiche aperçu (photo réf + attributs + calendrier, captures masquées, remarquables verrouillés) ; grille garde « ??? ». (UI, dép. S3,S11)
+  - [→Herbier] **S13** Hygiène & clôture item 1 : detekt ≤ baseline 9, tests, `CHANGELOG`, `CLAUDE.md` (deps Python + photos), screenshots, vérif taille APK, commit assets régénérés. (clôture, dép. tous)
 - [→Herbier] Texte fallback pour fiches espèces sans Wikipedia. Audit S7 (2026-05-16) : **254/784 espèces identifiées (32 %) sans `summary`**, mais ne couvrent que **7 778/204 364 arbres (3.8 %)** — quasi exclusivement des hybrides/cultivars/sous-espèces (Tilia x europaea, Pinus nigra subsp. nigra, Gleditsia triacanthos f. Inermis, x Cupressocyparis leylandii…). Fallback gratuit dispo via `genre-info.json.summary` (texte Wikipedia du genre, déjà cuit). Lecture pondérée par arbres = sous le seuil ≤ 5 %, lecture par espèce = bien au-dessus — à trancher dans un cycle futur si la friction utilisateur devient sensible. (audit-B 2026-05-06 ; ré-audité 2026-05-16 hors-cycle Boussole ; fold Herbier 2026-05-21)
 - [→Herbier] Résidu post-cycle Catalogue : 11 entrées résiduelles avec `nv == binôme nu` et count ≤ 2 (post-fil-rouge S10), botaniquement douteuses — `Ehretia macrophylla`, `Sophora flavescens`, `Betula occidentalis`, `Crataegus japonicum`, `Crataegus baccata`, `Celtis cerasifera`, `Carpinus carpinifolia`, `Phellodendron japonicum`, `Zanthoxylum bungei`, `Alnus formosana`, `Brucea javanica`. Peut-être réelles mais rares à Paris, peut-être saisies erronées. Demandent une recherche botanique pour trancher keep / rebinder (claude:audit-S6, 2026-05-11 ; réduit de 29→11 au S10 ; fold Herbier 2026-05-21)
+- [→Herbier] **S13** Refresh des 6 screenshots README (`docs/screenshots/`) — datent de Boussole, les apports Netteté (cône de vision, blip radar, filtres rapides) n'y figurent pas ; nécessite des captures device fraîches. Rangé dans la clôture item 1 (S13 prévoit déjà des screenshots) au triage démarrage Herbier (claude:tour-fin-Netteté, 2026-06-13 ; trié 2026-06-14)
+- [ ] Haptique manquant sur le ✕ de fermeture du HuntPanel (`HuntPanel.kt` ~353) — les autres gestes carte (capture, annulation) en ont (claude:tour-fin-Netteté, 2026-06-13)
 
 ## Cycle Variantes
 
