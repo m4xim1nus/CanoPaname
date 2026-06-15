@@ -16,6 +16,27 @@ data class SpeciesInfo(
     val summary: String?,
     val pdfUrl: String?,
     val stats: SpeciesStats,
+    val attributes: SpeciesAttributes? = null,
+)
+
+/**
+ * Attributs structurés issus des fiches-essences Ville de Paris (bloc `ess` du
+ * `species-info.json`, écrit par `tools/build_dataset.py`). Présent seulement
+ * sur les espèces matchées (~169/934) ; `null` sur la longue traîne. Modalités
+ * texte déjà en FR lisible (« Caduc », « Pleureur », « Exotique »…), champs vides
+ * omis à la source — d'où tous les scalaires nullable et les listes possiblement
+ * vides.
+ */
+data class SpeciesAttributes(
+    val port: String?,
+    val feuillage: String?,
+    val taille: String?,
+    val indigenat: String?,
+    val origine: String?,
+    val fleurs: Boolean?,
+    val exposition: List<String>,
+    val besoinsEau: List<String>,
+    val sitePlantation: List<String>,
 )
 
 data class SpeciesStats(
@@ -70,6 +91,7 @@ class SpeciesInfoRepository(private val byIndex: Map<Int, SpeciesInfo>) {
                 summary = o.optStringOrNull("summary"),
                 pdfUrl = o.optStringOrNull("pdf"),
                 stats = stats,
+                attributes = parseSpeciesAttributes(o.optJSONObject("ess")),
             )
         }
 
@@ -87,8 +109,35 @@ class SpeciesInfoRepository(private val byIndex: Map<Int, SpeciesInfo>) {
     }
 }
 
+/**
+ * Parse le bloc `ess` (attributs Ville de Paris) → `SpeciesAttributes`, ou `null`
+ * si le bloc est absent. Tolérant : toute clé manquante donne `null` (scalaires)
+ * ou liste vide (listes). `internal` pour rester directement testable sans
+ * `Context.assets`.
+ */
+internal fun parseSpeciesAttributes(ess: JSONObject?): SpeciesAttributes? {
+    if (ess == null) return null
+    return SpeciesAttributes(
+        port = ess.optStringOrNull("port"),
+        feuillage = ess.optStringOrNull("feuillage"),
+        taille = ess.optStringOrNull("taille"),
+        indigenat = ess.optStringOrNull("indigenat"),
+        origine = ess.optStringOrNull("origine"),
+        fleurs = ess.optBooleanOrNull("fleurs"),
+        exposition = parseStringList(ess.optJSONArray("expo")),
+        besoinsEau = parseStringList(ess.optJSONArray("eau")),
+        sitePlantation = parseStringList(ess.optJSONArray("sites")),
+    )
+}
+
+private fun parseStringList(arr: JSONArray?): List<String> =
+    if (arr == null) emptyList() else List(arr.length()) { arr.getString(it) }
+
 private fun JSONObject.optStringOrNull(key: String): String? =
     if (has(key) && !isNull(key)) optString(key).takeIf { it.isNotEmpty() } else null
 
 private fun JSONObject.optIntOrNull(key: String): Int? =
     if (has(key) && !isNull(key)) optInt(key) else null
+
+private fun JSONObject.optBooleanOrNull(key: String): Boolean? =
+    if (has(key) && !isNull(key)) optBoolean(key) else null
