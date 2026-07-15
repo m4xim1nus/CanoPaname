@@ -48,6 +48,22 @@ par les contributeurs de Wikipédia et publiés sous licence
 L'attribution CC BY-SA est affichée sous chaque résumé dans l'application,
 avec un lien vers le texte de la licence.
 
+### Fiches essences (Guide des essences de Paris)
+
+Les caractéristiques botaniques, descriptions d'identification, proses
+« L'essence à Paris » et services écosystémiques présentés dans la
+fiche-espèce sont extraits du dataset **« Fiches Essences du Guide des
+Essences de Paris »** — © Ville de Paris, OpenData Paris :
+<https://opendata.paris.fr/explore/dataset/fiches-essences-du-guide-des-essences-de-paris/>
+
+Ce dataset est publié sous **Open Database License (ODbL) v1.0** :
+<https://opendatacommons.org/licenses/odbl/1-0/>
+
+Les textes sont extraits par le script `tools/build_dataset.py` (via
+`tools/essence_pdf.py`) et pré-cuits dans `app/src/main/assets/species-info.json`.
+L'attribution « Source : Ville de Paris · Guide des essences » est affichée
+dans l'encart correspondant de la fiche-espèce.
+
 ## Polices
 
 ### Fraunces SemiBold

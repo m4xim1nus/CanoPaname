@@ -48,7 +48,50 @@ data class SpeciesAttributes(
     val fructification: Int?,
     val atouts: List<String>,
     val limites: List<String>,
+    /** Famille botanique (ex. « Sapindacée »). */
+    val famille: String? = null,
+    /** Hauteur adulte typique, valeur déjà unitée (ex. « 30 m »). */
+    val hauteur: String? = null,
+    /** Envergure adulte typique, valeur déjà unitée (ex. « 15 m »). */
+    val envergure: String? = null,
+    /** Vitesse de croissance (ex. « Moyenne »). */
+    val croissance: String? = null,
+    /** Longévité (ex. « Grande (> à 200 ans) »). */
+    val longevite: String? = null,
+    /** Descriptions terrain d'identification (écorce, feuillage…), `null` si absent/vide. */
+    val identDescriptions: IdentDescriptions? = null,
+    /** Prose éditoriale « L'essence à Paris ». */
+    val essenceParis: String? = null,
+    /** Services écosystémiques (climat, eau, biodiversité), `null` si absent/vide. */
+    val services: EcosystemServices? = null,
 )
+
+/**
+ * Textes descriptifs d'identification terrain (bloc `ess.iddesc`). Chaque champ
+ * optionnel (omis à la source si vide) ; un groupe entièrement vide est réduit à
+ * `null` côté parsing.
+ */
+data class IdentDescriptions(
+    val ecorce: String?,
+    val feuillage: String?,
+    val floraison: String?,
+    val fructification: String?,
+) {
+    val isEmpty: Boolean
+        get() = ecorce == null && feuillage == null && floraison == null && fructification == null
+}
+
+/**
+ * Proses de services écosystémiques (bloc `ess.svc`). Chaque champ optionnel ; un
+ * groupe entièrement vide est réduit à `null` côté parsing.
+ */
+data class EcosystemServices(
+    val climat: String?,
+    val eau: String?,
+    val biodiv: String?,
+) {
+    val isEmpty: Boolean get() = climat == null && eau == null && biodiv == null
+}
 
 /** Le mois (1..12, janvier = 1) est-il actif dans le bitfield ? bit 0 = janvier. */
 fun isMonthInBitfield(bits: Int, month: Int): Boolean = (bits shr (month - 1)) and 1 == 1
@@ -145,7 +188,36 @@ internal fun parseSpeciesAttributes(ess: JSONObject?): SpeciesAttributes? {
         fructification = ess.optIntOrNull("fruct")?.takeIf { it in 1..0xFFF },
         atouts = parseStringList(ess.optJSONArray("atouts")),
         limites = parseStringList(ess.optJSONArray("limites")),
+        famille = ess.optStringOrNull("fam"),
+        hauteur = ess.optStringOrNull("haut"),
+        envergure = ess.optStringOrNull("env"),
+        croissance = ess.optStringOrNull("croiss"),
+        longevite = ess.optStringOrNull("long"),
+        identDescriptions = parseIdentDescriptions(ess.optJSONObject("iddesc")),
+        essenceParis = ess.optStringOrNull("paris"),
+        services = parseEcosystemServices(ess.optJSONObject("svc")),
     )
+}
+
+/** Parse le groupe `ess.iddesc` ; renvoie `null` si absent ou entièrement vide. */
+private fun parseIdentDescriptions(o: JSONObject?): IdentDescriptions? {
+    if (o == null) return null
+    return IdentDescriptions(
+        ecorce = o.optStringOrNull("ecorce"),
+        feuillage = o.optStringOrNull("feuillage"),
+        floraison = o.optStringOrNull("floraison"),
+        fructification = o.optStringOrNull("fructification"),
+    ).takeUnless { it.isEmpty }
+}
+
+/** Parse le groupe `ess.svc` ; renvoie `null` si absent ou entièrement vide. */
+private fun parseEcosystemServices(o: JSONObject?): EcosystemServices? {
+    if (o == null) return null
+    return EcosystemServices(
+        climat = o.optStringOrNull("climat"),
+        eau = o.optStringOrNull("eau"),
+        biodiv = o.optStringOrNull("biodiv"),
+    ).takeUnless { it.isEmpty }
 }
 
 private fun parseStringList(arr: JSONArray?): List<String> =

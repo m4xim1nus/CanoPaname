@@ -24,18 +24,31 @@ import java.util.Locale
  * Bloc « Caractéristiques » de la fiche espèce : attributs structurés des
  * fiches-essences Ville de Paris (bloc `ess`) rendus en pills Material 3.
  *
- * Champs courts seulement (`port`, `feuillage`, `taille`, `indigenat`, `fleurs`,
- * `exposition`) ; `origine` (prose) en ligne dédiée. `besoinsEau`/`sitePlantation`
- * sont des listes longues, hors périmètre ici. Présent uniquement quand l'espèce
- * porte un bloc `ess` (~169/934) — sinon le call-site ne monte pas ce composable.
+ * Pills neutres : `port`, `feuillage`, `taille`, `indigenat`, `famille`, hauteur,
+ * envergure, croissance ; pills « soleil » : `exposition`. En prose (lignes
+ * label:valeur) : `origine` puis `longevite`. Section « descriptions
+ * d'identification » (`identDescriptions`) en fin de bloc : label + texte terrain,
+ * ligne omise si le champ est `null`, section omise si le groupe est `null`.
+ * `besoinsEau`/`sitePlantation` (listes longues) hors périmètre. Présent uniquement
+ * quand l'espèce porte un bloc `ess` — sinon le call-site ne monte pas ce composable.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun AttributesBlock(attrs: SpeciesAttributes) {
     val structural = listOfNotNull(attrs.port, attrs.feuillage, attrs.taille, attrs.indigenat)
+    val neutralExtras = listOfNotNull(
+        attrs.famille,
+        attrs.hauteur?.let { "Hauteur $it" },
+        attrs.envergure?.let { "Envergure $it" },
+        attrs.croissance?.let { "Croissance ${it.lowercase(Locale.FRENCH)}" },
+    )
     val showFleurs = attrs.fleurs == true
-    val hasPills = structural.isNotEmpty() || showFleurs || attrs.exposition.isNotEmpty()
-    if (!hasPills && attrs.origine == null) return
+    val hasPills =
+        structural.isNotEmpty() || neutralExtras.isNotEmpty() ||
+            showFleurs || attrs.exposition.isNotEmpty()
+    val hasProse = attrs.origine != null || attrs.longevite != null
+    val idDesc = attrs.identDescriptions
+    if (!hasPills && !hasProse && idDesc == null) return
 
     val arbresColors = MaterialTheme.arbresColors
     val neutralContainer = MaterialTheme.colorScheme.secondaryContainer
@@ -55,18 +68,51 @@ fun AttributesBlock(attrs: SpeciesAttributes) {
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     structural.forEach { Pill(it, neutralContainer, neutralContent) }
+                    neutralExtras.forEach { Pill(it, neutralContainer, neutralContent) }
                     if (showFleurs) Pill("À fleurs", neutralContainer, neutralContent)
                     attrs.exposition.forEach { Pill(capitalizeFirst(it), sunContainer, sunContent) }
                 }
             }
             attrs.origine?.let { origine ->
-                Text(
-                    "Origine : $origine",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+                ProseLine("Origine : $origine")
+            }
+            attrs.longevite?.let { longevite ->
+                ProseLine("Longévité : $longevite")
+            }
+            idDesc?.let { desc ->
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    desc.ecorce?.let { IdentDescRow("Écorce", it) }
+                    desc.feuillage?.let { IdentDescRow("Feuillage", it) }
+                    desc.floraison?.let { IdentDescRow("Floraison", it) }
+                    desc.fructification?.let { IdentDescRow("Fructification", it) }
+                }
             }
         }
+    }
+}
+
+@Composable
+private fun ProseLine(text: String) {
+    Text(
+        text,
+        style = MaterialTheme.typography.bodyMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+}
+
+@Composable
+private fun IdentDescRow(label: String, text: String) {
+    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Text(
+            label,
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Text(
+            text,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+        )
     }
 }
 

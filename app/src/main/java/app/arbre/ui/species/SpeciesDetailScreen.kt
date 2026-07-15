@@ -1,7 +1,5 @@
 package app.arbre.ui.species
 
-import android.content.Intent
-import android.net.Uri
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -18,8 +16,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
-import androidx.compose.material.icons.automirrored.outlined.OpenInNew
-import androidx.compose.material.icons.outlined.PictureAsPdf
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -68,9 +64,11 @@ import app.arbre.data.resolvedFile
 import app.arbre.ui.common.ARetenirBlock
 import app.arbre.ui.common.AttributesBlock
 import app.arbre.ui.common.DeleteCaptureDialog
+import app.arbre.ui.common.EssenceParisBlock
 import app.arbre.ui.common.PhotoGallery
 import app.arbre.ui.common.PhotoLightbox
 import app.arbre.ui.common.SeasonalityCalendar
+import app.arbre.ui.common.ServicesEcoBlock
 import app.arbre.ui.common.ShowOnMapButton
 import app.arbre.ui.common.WikipediaBlock
 import java.text.NumberFormat
@@ -184,6 +182,9 @@ fun SpeciesDetailScreen(
                 if (attrs.atouts.isNotEmpty() || attrs.limites.isNotEmpty()) {
                     item { ARetenirBlock(attrs.atouts, attrs.limites) }
                 }
+                attrs.services?.let { services ->
+                    item { ServicesEcoBlock(services) }
+                }
             }
 
             if (photoFiles.isNotEmpty()) {
@@ -204,8 +205,9 @@ fun SpeciesDetailScreen(
                 )
             }
 
-            info?.pdfUrl?.let { pdfUrl ->
-                item { EssencePdfBlock(pdfUrl) }
+            val essenceParis = info?.attributes?.essenceParis
+            if (essenceParis != null || info?.pdfUrl != null) {
+                item { EssenceParisBlock(essenceParis, info?.pdfUrl) }
             }
 
             info?.stats?.let { stats ->
@@ -472,50 +474,6 @@ private fun LockedRemarquableRow(arbre: Arbre) {
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.weight(1f),
         )
-    }
-}
-
-@Composable
-private fun EssencePdfBlock(pdfUrl: String) {
-    val ctx = LocalContext.current
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable {
-                runCatching {
-                    ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(pdfUrl)))
-                }
-            },
-    ) {
-        Row(
-            modifier = Modifier.padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            Icon(
-                Icons.Outlined.PictureAsPdf,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(24.dp),
-            )
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    "Fiche essence Ville de Paris",
-                    style = MaterialTheme.typography.titleSmall,
-                )
-                Text(
-                    "Document PDF officiel",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            Icon(
-                Icons.AutoMirrored.Outlined.OpenInNew,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(20.dp),
-            )
-        }
     }
 }
 

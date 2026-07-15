@@ -58,6 +58,12 @@ private val attributions = listOf(
         licenseUrl = "https://www.openstreetmap.org/copyright",
     ),
     Attribution(
+        label = "Fiches essences",
+        detail = "Guide des essences de Paris — Ville de Paris via OpenData Paris.",
+        licenseLabel = "ODbL v1.0",
+        licenseUrl = "https://opendatacommons.org/licenses/odbl/1-0/",
+    ),
+    Attribution(
         label = "Résumés d'espèces",
         detail = "Wikipédia francophone — contributeurs Wikipédia.",
         licenseLabel = "CC BY-SA 4.0",
