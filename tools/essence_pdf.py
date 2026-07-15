@@ -1266,6 +1266,42 @@ def _page0_inventory(doc) -> tuple[list[dict], bool]:
     return inv, saw_placeholder
 
 
+def _resize_and_save_webp(img: "Image.Image", cap: int, quality: int) -> tuple[bytes, "Image.Image"]:
+    """Downscale LANCZOS si long-edge > `cap`, puis encode WebP `method=_WEBP_METHOD`.
+
+    Logique commune partagée entre `_encode_photo` (recollage multi-tiles S9)
+    et `encode_raw_to_webp` (image brute unique, cascade S10). Retourne
+    `(octets, image éventuellement redimensionnée)` — l'appelant lit
+    `img.width`/`img.height` de l'image renvoyée (post-resize).
+    """
+    long_edge = max(img.width, img.height)
+    if long_edge > cap:
+        scale = cap / long_edge
+        img = img.resize(
+            (max(1, round(img.width * scale)),
+             max(1, round(img.height * scale))),
+            Image.LANCZOS)
+    buf = BytesIO()
+    img.save(buf, format="WEBP", quality=quality, method=_WEBP_METHOD)
+    return buf.getvalue(), img
+
+
+def encode_raw_to_webp(raw: bytes, cap: int, quality: int) -> bytes | None:
+    """Décode des octets image bruts, downscale si long-edge > `cap`, encode WebP.
+
+    `Image.open(BytesIO(raw)).convert("RGB")` → resize LANCZOS si long_edge >
+    cap → `save(format="WEBP", quality=quality, method=_WEBP_METHOD)`. Chemin
+    single-tile identique à `_encode_photo` (même helper resize+save). Toute
+    exception (Pillow absent, octets illisibles, encodage raté) → `None`.
+    """
+    try:
+        img = Image.open(BytesIO(raw)).convert("RGB")
+        data, _ = _resize_and_save_webp(img, cap, quality)
+        return data or None
+    except Exception:  # pragma: no cover - robustesse décodage/encodage
+        return None
+
+
 def _encode_photo(doc, group: dict, cap: int) -> tuple["SpeciesPhoto | None", str | None]:
     """Recolle les fragments d'un groupe et encode en WebP. `(photo|None, warn)`.
 
@@ -1292,17 +1328,7 @@ def _encode_photo(doc, group: dict, cap: int) -> tuple["SpeciesPhoto | None", st
             for t in tiles:
                 composed.paste(t, (0, y))
                 y += t.height
-        long_edge = max(composed.width, composed.height)
-        if long_edge > cap:
-            scale = cap / long_edge
-            composed = composed.resize(
-                (max(1, round(composed.width * scale)),
-                 max(1, round(composed.height * scale))),
-                Image.LANCZOS)
-        buf = BytesIO()
-        composed.save(buf, format="WEBP", quality=_WEBP_QUALITY,
-                      method=_WEBP_METHOD)
-        data = buf.getvalue()
+        data, composed = _resize_and_save_webp(composed, cap, _WEBP_QUALITY)
         if not data:
             return None, f"photos: {role} WebP vide"
         return SpeciesPhoto(

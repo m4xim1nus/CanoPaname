@@ -14,6 +14,7 @@ from __future__ import annotations
 import json
 import tempfile
 import unittest
+from io import BytesIO
 from pathlib import Path
 from types import SimpleNamespace
 from unittest import mock
@@ -47,6 +48,19 @@ from build_dataset import (
     pick_vernacular_from_redirects,
 )
 from build_dataset import _photo_manifest_entries
+from essence_pdf import encode_raw_to_webp
+from species_photos_cascade import (
+    FallbackPhoto,
+    _find_inat_taxon_id,
+    build_fallback_manifest_entry,
+    clean_artist_html,
+    commons_license_key,
+    filename_from_p18_value,
+    inat_license_key,
+    parse_commons_imageinfo,
+    pick_inat_photo,
+    taxon_name_matches,
+)
 
 
 class ApplySpeciesFixupsTest(unittest.TestCase):
@@ -1999,6 +2013,253 @@ class EssenceTaxonSynonymsTest(unittest.TestCase):
             build_dataset.ESSENCE_TAXON_SYNONYMS[("Sinomalus", "sieboldii")],
             ("Malus", "toringo"),
         )
+
+
+class CommonsLicenseKeyTest(unittest.TestCase):
+    """Filtre licence Commons : CC0 / PD / CC-BY* acceptés, -SA/-NC/-ND rejetés."""
+
+    def test_accepted(self):
+        self.assertEqual(commons_license_key("cc0"), "cc0")
+        self.assertEqual(commons_license_key("pd"), "pd")
+        self.assertEqual(commons_license_key("public domain"), "pd")
+        self.assertEqual(commons_license_key("cc-by-4.0"), "cc-by")
+        self.assertEqual(commons_license_key("CC BY 3.0"), "cc-by")
+
+    def test_rejected(self):
+        for bad in ("CC BY-SA 3.0", "cc-by-nc", "cc-by-nd", "", None):
+            self.assertIsNone(commons_license_key(bad))
+
+
+class InatLicenseKeyTest(unittest.TestCase):
+    """Filtre licence iNat strict : cc0 / cc-by seuls acceptés."""
+
+    def test_accepted(self):
+        self.assertEqual(inat_license_key("cc0"), "cc0")
+        self.assertEqual(inat_license_key("cc-by"), "cc-by")
+        self.assertEqual(inat_license_key("CC-BY"), "cc-by")
+
+    def test_rejected(self):
+        for bad in ("cc-by-nc", "cc-by-sa", "cc-by-nd", None,
+                    "all rights reserved"):
+            self.assertIsNone(inat_license_key(bad))
+
+
+class CleanArtistHtmlTest(unittest.TestCase):
+    """Nettoyage HTML de l'attribution Commons → texte plat ou None."""
+
+    def test_strips_tags(self):
+        self.assertEqual(
+            clean_artist_html('<a href="x">Jane <b>Doe</b></a>'), "Jane Doe"
+        )
+
+    def test_unescapes_entities(self):
+        self.assertEqual(clean_artist_html("Jean&nbsp;&amp; Marie"), "Jean & Marie")
+
+    def test_empty_returns_none(self):
+        self.assertIsNone(clean_artist_html(""))
+        self.assertIsNone(clean_artist_html("<span></span>"))
+        self.assertIsNone(clean_artist_html(None))
+
+
+class ParseCommonsImageinfoTest(unittest.TestCase):
+    """Parsing d'une réponse MediaWiki imageinfo (formatversion=2)."""
+
+    def _api(self, extmeta, *, thumburl="https://commons/thumb.jpg"):
+        return {
+            "query": {
+                "pages": [
+                    {
+                        "imageinfo": [
+                            {
+                                "thumburl": thumburl,
+                                "descriptionurl": "https://commons/File:X.jpg",
+                                "extmetadata": extmeta,
+                            }
+                        ]
+                    }
+                ]
+            }
+        }
+
+    def test_valid(self):
+        api = self._api({
+            "License": {"value": "cc-by-4.0"},
+            "Artist": {"value": '<a href="x">Jane Doe</a>'},
+        })
+        meta = parse_commons_imageinfo(api)
+        self.assertEqual(meta["license_key"], "cc-by")
+        self.assertEqual(meta["artist"], "Jane Doe")
+        self.assertEqual(meta["page_url"], "https://commons/File:X.jpg")
+        self.assertEqual(meta["download_url"], "https://commons/thumb.jpg")
+
+    def test_license_slug_preferred(self):
+        # `License` machine-slug préféré au `LicenseShortName` humain.
+        api = self._api({
+            "License": {"value": "cc0"},
+            "LicenseShortName": {"value": "CC0"},
+        })
+        self.assertEqual(parse_commons_imageinfo(api)["license_key"], "cc0")
+
+    def test_page_absent(self):
+        self.assertIsNone(parse_commons_imageinfo({"query": {"pages": []}}))
+
+    def test_imageinfo_empty(self):
+        api = {"query": {"pages": [{"title": "File:X.jpg"}]}}
+        self.assertIsNone(parse_commons_imageinfo(api))
+
+
+class TaxonNameMatchesTest(unittest.TestCase):
+    """Matching binomial : genre ET espèce, insensible casse et `×`/`x`."""
+
+    def test_exact(self):
+        self.assertTrue(taxon_name_matches("Quercus robur", "Quercus robur"))
+
+    def test_case_insensitive(self):
+        self.assertTrue(taxon_name_matches("quercus ROBUR", "Quercus robur"))
+
+    def test_hybrid_marker(self):
+        self.assertTrue(
+            taxon_name_matches("Platanus x hispanica", "Platanus × hispanica")
+        )
+
+    def test_genus_differs(self):
+        self.assertFalse(taxon_name_matches("Quercus robur", "Fagus robur"))
+
+    def test_species_differs(self):
+        self.assertFalse(taxon_name_matches("Quercus robur", "Quercus ilex"))
+
+
+class FilenameFromP18ValueTest(unittest.TestCase):
+    """Décodage d'une valeur P18 (URL Special:FilePath) → nom de fichier."""
+
+    def test_decode(self):
+        url = ("http://commons.wikimedia.org/wiki/Special:FilePath/"
+               "Quercus%20robur%20-%20K%C3%B6hler.jpg")
+        self.assertEqual(
+            filename_from_p18_value(url), "Quercus robur - Köhler.jpg"
+        )
+
+    def test_underscores_to_spaces(self):
+        url = ("http://commons.wikimedia.org/wiki/Special:FilePath/"
+               "Acer_platanoides.jpg")
+        self.assertEqual(filename_from_p18_value(url), "Acer platanoides.jpg")
+
+    def test_empty(self):
+        self.assertIsNone(filename_from_p18_value(""))
+
+
+class PickInatPhotoTest(unittest.TestCase):
+    """Choix de la 1re photo licence-valide du 1er taxon concordant."""
+
+    def _photo(self, license_code, pid=42):
+        return {
+            "id": pid,
+            "license_code": license_code,
+            "attribution": "(c) Jane Doe, some rights reserved",
+            "medium_url": "https://inat/photos/42/medium.jpg",
+        }
+
+    def test_match_cc0(self):
+        api = {"results": [
+            {"name": "Quercus robur", "default_photo": self._photo("cc0")}
+        ]}
+        pick = pick_inat_photo(api, "Quercus robur")
+        self.assertIsNotNone(pick)
+        self.assertEqual(pick["license_key"], "cc0")
+        self.assertEqual(pick["page_url"], "https://www.inaturalist.org/photos/42")
+        self.assertEqual(pick["image_url"], "https://inat/photos/42/medium.jpg")
+        self.assertTrue(pick["by"])
+
+    def test_match_cc_by_nc_rejected(self):
+        api = {"results": [
+            {"name": "Quercus robur", "default_photo": self._photo("cc-by-nc")}
+        ]}
+        self.assertIsNone(pick_inat_photo(api, "Quercus robur"))
+
+    def test_first_non_matching_skipped(self):
+        api = {"results": [
+            {"name": "Fagus sylvatica", "default_photo": self._photo("cc0", pid=1)},
+            {"name": "Quercus robur", "default_photo": self._photo("cc-by", pid=2)},
+        ]}
+        pick = pick_inat_photo(api, "Quercus robur")
+        self.assertIsNotNone(pick)
+        self.assertEqual(pick["license_key"], "cc-by")
+        self.assertEqual(pick["page_url"], "https://www.inaturalist.org/photos/2")
+
+    def test_taxon_photos_fallback_when_default_restricted(self):
+        # Cas réel : `default_photo` réservée, une `taxon_photos` est CC0
+        # (la fiche détail iNat expose taxon_photos, pas la recherche).
+        api = {"results": [{
+            "name": "Zelkova serrata",
+            "default_photo": self._photo(None, pid=1),
+            "taxon_photos": [
+                {"photo": self._photo("cc-by-nc", pid=2)},
+                {"photo": self._photo("cc0", pid=3)},
+            ],
+        }]}
+        pick = pick_inat_photo(api, "Zelkova serrata")
+        self.assertIsNotNone(pick)
+        self.assertEqual(pick["license_key"], "cc0")
+        self.assertEqual(pick["page_url"], "https://www.inaturalist.org/photos/3")
+
+
+class FindInatTaxonIdTest(unittest.TestCase):
+    """Id du 1er résultat de recherche concordant (anti-faux-positif)."""
+
+    def test_matching_id(self):
+        api = {"results": [
+            {"name": "Acer platanoides", "id": 55},
+            {"name": "Zelkova serrata", "id": 129055},
+        ]}
+        self.assertEqual(_find_inat_taxon_id(api, "Zelkova serrata"), 129055)
+
+    def test_no_match(self):
+        api = {"results": [{"name": "Acer platanoides", "id": 55}]}
+        self.assertIsNone(_find_inat_taxon_id(api, "Zelkova serrata"))
+
+    def test_empty(self):
+        self.assertIsNone(_find_inat_taxon_id({"results": []}, "Zelkova serrata"))
+
+
+class BuildFallbackManifestEntryTest(unittest.TestCase):
+    """Forme exacte de l'entrée manifest d'un trou comblé."""
+
+    def test_shape(self):
+        photo = FallbackPhoto(
+            webp=b"RIFF", lic="cc-by", src="inaturalist",
+            by="Jane Doe", u="https://www.inaturalist.org/photos/42",
+        )
+        self.assertEqual(
+            build_fallback_manifest_entry(7, photo),
+            {
+                "f": "7-0.webp",
+                "r": "p",
+                "src": "inaturalist",
+                "lic": "cc-by",
+                "by": "Jane Doe",
+                "u": "https://www.inaturalist.org/photos/42",
+            },
+        )
+
+
+class EncodeRawToWebpTest(unittest.TestCase):
+    """Encodage WebP d'octets bruts : format WEBP, long-edge borné par le cap."""
+
+    def test_png_to_webp(self):
+        try:
+            from PIL import Image
+        except ImportError:  # pragma: no cover - dépend de l'install
+            self.skipTest("Pillow absent")
+        buf = BytesIO()
+        Image.new("RGB", (120, 40), (10, 120, 60)).save(buf, format="PNG")
+        webp = encode_raw_to_webp(buf.getvalue(), cap=64, quality=78)
+        self.assertIsNotNone(webp)
+        self.assertEqual(webp[8:12], b"WEBP")
+        out = Image.open(BytesIO(webp))
+        self.assertLessEqual(max(out.width, out.height), 64)
+
+    def test_garbage_returns_none(self):
+        self.assertIsNone(encode_raw_to_webp(b"not an image", cap=800, quality=78))
 
 
 if __name__ == "__main__":

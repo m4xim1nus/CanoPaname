@@ -74,6 +74,25 @@ dans `app/src/main/assets/species-photos/` ; le manifest
 `app/src/main/assets/species-photos.json` porte, pour chaque photo, la
 source, la licence et l'URL de la fiche PDF d'origine.
 
+#### Photos de référence — sources externes (espèces hors fiches essences)
+
+Les espèces sans fiche officielle Ville de Paris sont illustrées par une
+photo de référence récupérée au build via **Wikimedia Commons**
+(propriété *image* P18 de Wikidata) puis, en second recours,
+**iNaturalist**. Seules les images sous licence **CC0**, **domaine
+public** ou **CC BY** (toutes versions) sont retenues — un filtre strict
+exclut CC BY-SA, CC BY-NC et CC BY-ND.
+
+Chaque photo porte dans le manifest `species-photos.json` sa source
+(`wikimedia-commons` / `inaturalist`), sa licence, le **nom de l'auteur**
+et l'**URL de la page source** — l'attribution requise par CC BY est ainsi
+tracée par image. Sources :
+
+- **Wikimedia Commons** : <https://commons.wikimedia.org/> — chaque fichier
+  est crédité à son auteur (voir champ `by` du manifest).
+- **iNaturalist** : <https://www.inaturalist.org/> — photos de la communauté,
+  crédit et lien par photo dans le manifest.
+
 ## Polices
 
 ### Fraunces SemiBold

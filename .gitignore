@@ -49,6 +49,7 @@ tools/.essences-cache/
 tools/.essences-cache-v2/
 tools/.essences-pdf-cache/
 tools/.remarquables-cache/
+tools/.species-photos-cache/
 tools/_trace/
 tools/__pycache__/
 *.pyc

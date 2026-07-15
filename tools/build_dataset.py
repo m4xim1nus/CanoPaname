@@ -27,6 +27,7 @@ from __future__ import annotations
 import csv
 import html
 import json
+import os
 import re
 import sqlite3
 import statistics
@@ -2369,11 +2370,34 @@ _PHOTO_LICENSES: dict[str, dict] = {
         "name": "Open Database License v1.0",
         "url": "https://opendatacommons.org/licenses/odbl/1-0/",
     },
+    # S10 — cascade Wikidata P18 / iNaturalist (filtre strict). CC-BY toutes
+    # versions collapsées en une clé générique : l'attribution précise vit dans
+    # `by` (auteur) + `u` (URL page source) de chaque entrée photo.
+    "cc0": {
+        "name": "CC0 1.0",
+        "url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    },
+    "pd": {
+        "name": "Domaine public",
+        "url": "https://creativecommons.org/publicdomain/mark/1.0/",
+    },
+    "cc-by": {
+        "name": "CC BY",
+        "url": "https://creativecommons.org/licenses/by/4.0/",
+    },
 }
 _PHOTO_SOURCES: dict[str, dict] = {
     "paris": {
         "name": "Ville de Paris — Guide des essences 2024",
         "authors": "J.E. Michaut, B. Morlon, B. Serres",
+    },
+    "wikimedia-commons": {
+        "name": "Wikimedia Commons",
+        "authors": "",
+    },
+    "inaturalist": {
+        "name": "iNaturalist",
+        "authors": "",
     },
 }
 
@@ -2402,8 +2426,9 @@ def _photo_manifest_entries(sk: int, photos: list, pdf_url: str | None) -> list[
 def _write_species_photos(
     essences_index: dict[tuple[str, str], dict],
     species_index: dict[tuple[str, str], int],
+    fallback_photos: "dict[int, object] | None" = None,
 ) -> dict:
-    """Extrait + écrit les WebP des photos officielles et le manifest (S9).
+    """Extrait + écrit les WebP des photos officielles et le manifest (S9 + S10).
 
     Itère les taxons **matchés** (présents dans le species-index), extrait leurs
     photos depuis les PDF déjà cachés (`essence_pdf.PDF_CACHE_DIR`, zéro réseau),
@@ -2411,11 +2436,19 @@ def _write_species_photos(
     les évolutions d'algo), nettoie les orphelins du dossier, puis sérialise
     `species-photos.json` (trié par sk, déterministe, `ensure_ascii=False`).
 
+    `fallback_photos` (S10) : photos de la cascade Wikidata P18 / iNaturalist,
+    keyées par `sk` (disjoints des sk S9 matchés), 1 `FallbackPhoto` par trou.
+    Elles sont repliées dans `expected_files` / `manifest_photos` / `total_bytes`
+    **avant** le balayage d'orphelins et la sérialisation : un seul nettoyage,
+    un seul manifest, union S9 ∪ S10 garantie (sinon les deux jeux s'effaceraient
+    mutuellement, sk disjoints ⇒ jamais dans l'`expected_files` de l'autre).
+
     Retourne un dict keyé par `pdf_id` → `{"sk", "photos", "warnings"}` pour
     enrichir le sidecar `_write_essence_extras_trace`. Principe « ne jamais
     inventer » : une fiche sans photo ou sans PDF est simplement omise + comptée.
     """
     import essence_pdf
+    import species_photos_cascade
 
     OUT_SPECIES_PHOTOS_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -2466,6 +2499,31 @@ def _write_species_photos(
         n_photos += len(photos)
         manifest_photos[str(sk)] = _photo_manifest_entries(sk, photos, pdf_url)
 
+    # S10 — cascade Wikidata P18 / iNaturalist : replier les photos fallback
+    # (sk disjoints des matchés S9) AVANT le balayage d'orphelins et le manifest.
+    n_fallback = 0
+    fb_bytes = 0
+    fb_wikimedia = 0
+    fb_inat = 0
+    for sk in sorted(fallback_photos or {}):
+        fp = fallback_photos[sk]
+        assert fp.lic in _PHOTO_LICENSES, f"licence S10 inconnue: {fp.lic}"
+        fname = f"{sk}-0.webp"
+        expected_files.add(fname)
+        dest = OUT_SPECIES_PHOTOS_DIR / fname
+        if not dest.exists() or dest.read_bytes() != fp.webp:
+            dest.write_bytes(fp.webp)
+        total_bytes += len(fp.webp)
+        fb_bytes += len(fp.webp)
+        n_fallback += 1
+        if fp.src == "inaturalist":
+            fb_inat += 1
+        else:
+            fb_wikimedia += 1
+        manifest_photos[str(sk)] = [
+            species_photos_cascade.build_fallback_manifest_entry(sk, fp)
+        ]
+
     # Nettoyage des orphelins (WebP d'un run précédent hors ensemble attendu).
     for stale in OUT_SPECIES_PHOTOS_DIR.glob("*.webp"):
         if stale.name not in expected_files:
@@ -2496,8 +2554,15 @@ def _write_species_photos(
     )
     if missing_pdf:
         print(f"[phot]   {len(missing_pdf)} matchées sans PDF en cache (ignorées)")
+    if fallback_photos is not None:
+        print(
+            f"[cas ] {n_fallback} espèces via cascade "
+            f"({fb_wikimedia} Wikidata P18, {fb_inat} iNaturalist), "
+            f"{fb_bytes / (1024 * 1024):.1f} Mo"
+        )
     print(f"       → {OUT_SPECIES_PHOTOS_MANIFEST.name} + "
-          f"{OUT_SPECIES_PHOTOS_DIR.name}/ ({len(expected_files)} WebP)")
+          f"{OUT_SPECIES_PHOTOS_DIR.name}/ ({len(expected_files)} WebP, "
+          f"{total_bytes / (1024 * 1024):.1f} Mo total)")
     return results_by_pdf_id
 
 
@@ -3767,7 +3832,18 @@ def build(csv_path: Path, db_path: Path, geojson_path: Path) -> None:
     )
     # S9 — photos officielles : extraction/écriture WebP + manifest (taxons
     # matchés seulement). Consomme les PDF déjà cachés par `extract_all`.
-    photo_results = _write_species_photos(essences_index, species_index)
+    # S10 — cascade Wikidata P18 / iNaturalist pour les espèces identifiées sans
+    # fiche officielle (trous). Réseau au 1er run, offline ensuite (cache +
+    # ledger). `CANOPANAME_OFFLINE=1` force le mode reproductible sans réseau.
+    import species_photos_cascade
+    covered_sks = {
+        species_index[t] for t in essences_index if t in species_index
+    }
+    offline = os.environ.get("CANOPANAME_OFFLINE") == "1"
+    fallback_photos = species_photos_cascade.resolve_fallback_photos(
+        species_index, covered_sks, offline=offline)
+    photo_results = _write_species_photos(
+        essences_index, species_index, fallback_photos=fallback_photos)
     _write_essence_extras_trace(
         essences_records, essences_index, extras_by_pdf_id, species_index,
         photo_results)

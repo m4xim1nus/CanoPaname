@@ -5,12 +5,32 @@
       "odbl-1.0": {
         "name": "Open Database License v1.0",
         "url": "https://opendatacommons.org/licenses/odbl/1-0/"
+      },
+      "cc0": {
+        "name": "CC0 1.0",
+        "url": "https://creativecommons.org/publicdomain/zero/1.0/"
+      },
+      "pd": {
+        "name": "Domaine public",
+        "url": "https://creativecommons.org/publicdomain/mark/1.0/"
+      },
+      "cc-by": {
+        "name": "CC BY",
+        "url": "https://creativecommons.org/licenses/by/4.0/"
       }
     },
     "sources": {
       "paris": {
         "name": "Ville de Paris — Guide des essences 2024",
         "authors": "J.E. Michaut, B. Morlon, B. Serres"
+      },
+      "wikimedia-commons": {
+        "name": "Wikimedia Commons",
+        "authors": ""
+      },
+      "inaturalist": {
+        "name": "iNaturalist",
+        "authors": ""
       }
     }
   },
@@ -233,6 +253,16 @@
         "u": "https://opendata.paris.fr/api/explore/v2.1/catalog/datasets/fiches-essences-du-guide-des-essences-de-paris/files/28ef916546d17f5c17734ffa060aed5e"
       }
     ],
+    "12": [
+      {
+        "f": "12-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc0",
+        "by": "no rights reserved, uploaded by 葉子",
+        "u": "https://www.inaturalist.org/photos/60475471"
+      }
+    ],
     "13": [
       {
         "f": "13-0.webp",
@@ -257,6 +287,16 @@
         "lic": "odbl-1.0",
         "by": "Ville de Paris",
         "u": "https://opendata.paris.fr/api/explore/v2.1/catalog/datasets/fiches-essences-du-guide-des-essences-de-paris/files/f20101f94276b28ce10ca06875e81a66"
+      }
+    ],
+    "14": [
+      {
+        "f": "14-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "cc-by",
+        "by": "Udo Schröter",
+        "u": "https://commons.wikimedia.org/wiki/File:Busch_Jakobsberg.jpg"
       }
     ],
     "15": [
@@ -379,6 +419,16 @@
         "lic": "odbl-1.0",
         "by": "Ville de Paris",
         "u": "https://opendata.paris.fr/api/explore/v2.1/catalog/datasets/fiches-essences-du-guide-des-essences-de-paris/files/69ff6f300269ac71c06eaad17ca3a7f9"
+      }
+    ],
+    "20": [
+      {
+        "f": "20-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc-by",
+        "by": "(c) John Rusk, some rights reserved (CC BY)",
+        "u": "https://www.inaturalist.org/photos/73842966"
       }
     ],
     "21": [
@@ -641,6 +691,26 @@
         "u": "https://opendata.paris.fr/api/explore/v2.1/catalog/datasets/fiches-essences-du-guide-des-essences-de-paris/files/f15eebbaca2b9aa864fd18e372a63fd3"
       }
     ],
+    "33": [
+      {
+        "f": "33-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc-by",
+        "by": "(c) Daniel Cahen, some rights reserved (CC BY), uploaded by Daniel Cahen",
+        "u": "https://www.inaturalist.org/photos/129203110"
+      }
+    ],
+    "34": [
+      {
+        "f": "34-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "cc0",
+        "by": "LIght Dim",
+        "u": "https://commons.wikimedia.org/wiki/File:%D0%A1%D0%BA%D1%83%D0%BC%D0%BF%D0%B8%D1%8F_%D0%BA%D0%BE%D0%B6%D0%B5%D0%B2%D0%B5%D0%BD%D0%BD%D0%B0%D1%8F_European_smoketree_(Cotinus_coggygria).jpg"
+      }
+    ],
     "35": [
       {
         "f": "35-0.webp",
@@ -667,6 +737,16 @@
         "u": "https://opendata.paris.fr/api/explore/v2.1/catalog/datasets/fiches-essences-du-guide-des-essences-de-paris/files/dd3a712f72f94958d3d29aa875a3013a"
       }
     ],
+    "36": [
+      {
+        "f": "36-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc-by",
+        "by": "(c) Ashwin Srinivasan, some rights reserved (CC BY), uploaded by Ashwin Srinivasan",
+        "u": "https://www.inaturalist.org/photos/20571536"
+      }
+    ],
     "38": [
       {
         "f": "38-0.webp",
@@ -691,6 +771,16 @@
         "lic": "odbl-1.0",
         "by": "Ville de Paris",
         "u": "https://opendata.paris.fr/api/explore/v2.1/catalog/datasets/fiches-essences-du-guide-des-essences-de-paris/files/d1536f28e9d0322e6b12fda17cd8f441"
+      }
+    ],
+    "39": [
+      {
+        "f": "39-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc-by",
+        "by": "(c) Drepanostoma, some rights reserved (CC BY), uploaded by Drepanostoma",
+        "u": "https://www.inaturalist.org/photos/5418011"
       }
     ],
     "40": [
@@ -1013,6 +1103,16 @@
         "lic": "odbl-1.0",
         "by": "Ville de Paris",
         "u": "https://opendata.paris.fr/api/explore/v2.1/catalog/datasets/fiches-essences-du-guide-des-essences-de-paris/files/e53c4c60803721c0e8bdcaf80c00b611"
+      }
+    ],
+    "59": [
+      {
+        "f": "59-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "cc0",
+        "by": "AnRo0002",
+        "u": "https://commons.wikimedia.org/wiki/File:20140317Prunus_cerasifera_Hockenheimer_Rheinbogen5.jpg"
       }
     ],
     "60": [
@@ -1389,6 +1489,16 @@
         "u": "https://opendata.paris.fr/api/explore/v2.1/catalog/datasets/fiches-essences-du-guide-des-essences-de-paris/files/c420349c47133a8caa8f7de28538ca57"
       }
     ],
+    "81": [
+      {
+        "f": "81-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "pd",
+        "by": "Philipp Franz von Siebold and Joseph Gerhard Zuccarini",
+        "u": "https://commons.wikimedia.org/wiki/File:Cornus_officinalis_SZ50.png"
+      }
+    ],
     "83": [
       {
         "f": "83-0.webp",
@@ -1441,6 +1551,26 @@
         "u": "https://opendata.paris.fr/api/explore/v2.1/catalog/datasets/fiches-essences-du-guide-des-essences-de-paris/files/447ad39856fb28117499b73e40019d55"
       }
     ],
+    "87": [
+      {
+        "f": "87-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc0",
+        "by": "no rights reserved, uploaded by José Luis Camaño",
+        "u": "https://www.inaturalist.org/photos/149836472"
+      }
+    ],
+    "88": [
+      {
+        "f": "88-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "cc0",
+        "by": "W.carter",
+        "u": "https://commons.wikimedia.org/wiki/File:Tree_with_red_apples_in_Barkedal_4.jpg"
+      }
+    ],
     "89": [
       {
         "f": "89-0.webp",
@@ -1483,6 +1613,16 @@
         "lic": "odbl-1.0",
         "by": "Ville de Paris",
         "u": "https://opendata.paris.fr/api/explore/v2.1/catalog/datasets/fiches-essences-du-guide-des-essences-de-paris/files/e680344b0243d874816967d3df5e8fdd"
+      }
+    ],
+    "94": [
+      {
+        "f": "94-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc0",
+        "by": "no rights reserved, uploaded by Jenny Christianson",
+        "u": "https://www.inaturalist.org/photos/30084777"
       }
     ],
     "96": [
@@ -1555,6 +1695,16 @@
         "lic": "odbl-1.0",
         "by": "Ville de Paris",
         "u": "https://opendata.paris.fr/api/explore/v2.1/catalog/datasets/fiches-essences-du-guide-des-essences-de-paris/files/56fac5e2a7ca05be5cf62b6def4d047c"
+      }
+    ],
+    "100": [
+      {
+        "f": "100-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "pd",
+        "by": "Wikimedia Commons",
+        "u": "https://commons.wikimedia.org/wiki/File:Taxodium_distichum_NRCSMS01010.jpg"
       }
     ],
     "101": [
@@ -1661,6 +1811,16 @@
         "u": "https://opendata.paris.fr/api/explore/v2.1/catalog/datasets/fiches-essences-du-guide-des-essences-de-paris/files/39b188de44845b49edc9d2f38932c4a1"
       }
     ],
+    "106": [
+      {
+        "f": "106-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc-by",
+        "by": "(c) Manuel Schwarz, some rights reserved (CC BY), uploaded by Manuel Schwarz",
+        "u": "https://www.inaturalist.org/photos/111962570"
+      }
+    ],
     "108": [
       {
         "f": "108-0.webp",
@@ -1685,6 +1845,16 @@
         "lic": "odbl-1.0",
         "by": "Ville de Paris",
         "u": "https://opendata.paris.fr/api/explore/v2.1/catalog/datasets/fiches-essences-du-guide-des-essences-de-paris/files/31b2bf1b13a7c805a3b2826b9b2cf104"
+      }
+    ],
+    "109": [
+      {
+        "f": "109-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "cc-by",
+        "by": "No machine-readable author provided. MPF assumed (based on copyright claims).",
+        "u": "https://commons.wikimedia.org/wiki/File:Buxus_sempervirens.jpg"
       }
     ],
     "110": [
@@ -1933,6 +2103,16 @@
         "u": "https://opendata.paris.fr/api/explore/v2.1/catalog/datasets/fiches-essences-du-guide-des-essences-de-paris/files/003da003245011a4db3905442293b295"
       }
     ],
+    "127": [
+      {
+        "f": "127-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc-by",
+        "by": "(c) Larry D. Moore, some rights reserved (CC BY)",
+        "u": "https://www.inaturalist.org/photos/407909479"
+      }
+    ],
     "130": [
       {
         "f": "130-0.webp",
@@ -2167,6 +2347,16 @@
         "u": "https://opendata.paris.fr/api/explore/v2.1/catalog/datasets/fiches-essences-du-guide-des-essences-de-paris/files/d744c4a0d0bed9304661f08758b068c6"
       }
     ],
+    "143": [
+      {
+        "f": "143-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc-by",
+        "by": "(c) Sandy Wolkenberg, some rights reserved (CC BY), uploaded by Sandy Wolkenberg",
+        "u": "https://www.inaturalist.org/photos/23431353"
+      }
+    ],
     "144": [
       {
         "f": "144-0.webp",
@@ -2209,6 +2399,56 @@
         "lic": "odbl-1.0",
         "by": "Ville de Paris",
         "u": "https://opendata.paris.fr/api/explore/v2.1/catalog/datasets/fiches-essences-du-guide-des-essences-de-paris/files/49a0e6d3a805a2a96c817190adcb3058"
+      }
+    ],
+    "147": [
+      {
+        "f": "147-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc-by",
+        "by": "(c) Steve Matson, some rights reserved (CC BY), uploaded by Steve Matson",
+        "u": "https://www.inaturalist.org/photos/164092406"
+      }
+    ],
+    "148": [
+      {
+        "f": "148-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "cc-by",
+        "by": "No machine-readable author provided. MPF assumed (based on copyright claims).",
+        "u": "https://commons.wikimedia.org/wiki/File:Ligustrum_ovalifolium.jpg"
+      }
+    ],
+    "150": [
+      {
+        "f": "150-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc-by",
+        "by": "(c) Katja Schulz, some rights reserved (CC BY)",
+        "u": "https://www.inaturalist.org/photos/5641007"
+      }
+    ],
+    "151": [
+      {
+        "f": "151-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "cc-by",
+        "by": "No machine-readable author provided. TeunSpaans assumed (based on copyright claims).",
+        "u": "https://commons.wikimedia.org/wiki/File:Betula_maximowicziana_01-10-2005_12.43.20.JPG"
+      }
+    ],
+    "154": [
+      {
+        "f": "154-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "pd",
+        "by": "Kahuroa",
+        "u": "https://commons.wikimedia.org/wiki/File:CordylineAustralis.jpg"
       }
     ],
     "155": [
@@ -2315,6 +2555,26 @@
         "u": "https://opendata.paris.fr/api/explore/v2.1/catalog/datasets/fiches-essences-du-guide-des-essences-de-paris/files/7b304ea9dce6c41f2f55804ce0ad8ed8"
       }
     ],
+    "162": [
+      {
+        "f": "162-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "pd",
+        "by": "Franz Eugen Köhler, Köhler's Medizinal-Pflanzen",
+        "u": "https://commons.wikimedia.org/wiki/File:Malus_domestica_-_K%C3%B6hler%E2%80%93s_Medizinal-Pflanzen-108.jpg"
+      }
+    ],
+    "163": [
+      {
+        "f": "163-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc-by",
+        "by": "(c) Eugene Popov, some rights reserved (CC BY), uploaded by Eugene Popov",
+        "u": "https://www.inaturalist.org/photos/77409679"
+      }
+    ],
     "164": [
       {
         "f": "164-0.webp",
@@ -2339,6 +2599,16 @@
         "lic": "odbl-1.0",
         "by": "Ville de Paris",
         "u": "https://opendata.paris.fr/api/explore/v2.1/catalog/datasets/fiches-essences-du-guide-des-essences-de-paris/files/c539385127fb55d31e37e6a96d43dca0"
+      }
+    ],
+    "166": [
+      {
+        "f": "166-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "pd",
+        "by": "Karduelis",
+        "u": "https://commons.wikimedia.org/wiki/File:Karayemi%C5%9F-8.jpg"
       }
     ],
     "168": [
@@ -2429,6 +2699,16 @@
         "u": "https://opendata.paris.fr/api/explore/v2.1/catalog/datasets/fiches-essences-du-guide-des-essences-de-paris/files/5eac527959aa99dbb5e9c518139ea890"
       }
     ],
+    "178": [
+      {
+        "f": "178-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc-by",
+        "by": "(c) Joseph Aubert, some rights reserved (CC BY), uploaded by Joseph Aubert",
+        "u": "https://www.inaturalist.org/photos/598107700"
+      }
+    ],
     "179": [
       {
         "f": "179-0.webp",
@@ -2479,6 +2759,16 @@
         "lic": "odbl-1.0",
         "by": "Ville de Paris",
         "u": "https://opendata.paris.fr/api/explore/v2.1/catalog/datasets/fiches-essences-du-guide-des-essences-de-paris/files/73d304f72013518e01a49595bf8dca21"
+      }
+    ],
+    "182": [
+      {
+        "f": "182-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc-by",
+        "by": "(c) Saskia, some rights reserved (CC BY), uploaded by Saskia",
+        "u": "https://www.inaturalist.org/photos/301552038"
       }
     ],
     "183": [
@@ -2533,6 +2823,16 @@
         "u": "https://opendata.paris.fr/api/explore/v2.1/catalog/datasets/fiches-essences-du-guide-des-essences-de-paris/files/5efb4eb552817eea613a3317c9624655"
       }
     ],
+    "186": [
+      {
+        "f": "186-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc-by",
+        "by": "(c) Lyrae, some rights reserved (CC BY), uploaded by Lyrae",
+        "u": "https://www.inaturalist.org/photos/242866027"
+      }
+    ],
     "189": [
       {
         "f": "189-0.webp",
@@ -2557,6 +2857,26 @@
         "lic": "odbl-1.0",
         "by": "Ville de Paris",
         "u": "https://opendata.paris.fr/api/explore/v2.1/catalog/datasets/fiches-essences-du-guide-des-essences-de-paris/files/eed86ad53e56286af72147222345b9a3"
+      }
+    ],
+    "191": [
+      {
+        "f": "191-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc-by",
+        "by": "(c) Clive Freedman, some rights reserved (CC BY), uploaded by Clive Freedman",
+        "u": "https://www.inaturalist.org/photos/487442497"
+      }
+    ],
+    "193": [
+      {
+        "f": "193-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc-by",
+        "by": "(c) Andrew Conboy, some rights reserved (CC BY), uploaded by Andrew Conboy",
+        "u": "https://www.inaturalist.org/photos/230253191"
       }
     ],
     "194": [
@@ -2663,6 +2983,16 @@
         "u": "https://opendata.paris.fr/api/explore/v2.1/catalog/datasets/fiches-essences-du-guide-des-essences-de-paris/files/973bb968df1cfc353af3d2af844ea6c2"
       }
     ],
+    "198": [
+      {
+        "f": "198-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc-by",
+        "by": "(c) Barry Walter, some rights reserved (CC BY), uploaded by Barry Walter",
+        "u": "https://www.inaturalist.org/photos/31217474"
+      }
+    ],
     "199": [
       {
         "f": "199-0.webp",
@@ -2741,6 +3071,66 @@
         "u": "https://opendata.paris.fr/api/explore/v2.1/catalog/datasets/fiches-essences-du-guide-des-essences-de-paris/files/bf3aa3d62835d1a0c5d25cf09060a67e"
       }
     ],
+    "203": [
+      {
+        "f": "203-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc-by",
+        "by": "(c) etw, some rights reserved (CC BY)",
+        "u": "https://www.inaturalist.org/photos/83151983"
+      }
+    ],
+    "205": [
+      {
+        "f": "205-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "pd",
+        "by": "Wikimedia Commons",
+        "u": "https://commons.wikimedia.org/wiki/File:Quercus_acutissima.jpg"
+      }
+    ],
+    "208": [
+      {
+        "f": "208-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc-by",
+        "by": "(c) Robin Abraham, some rights reserved (CC BY)",
+        "u": "https://www.inaturalist.org/photos/8553356"
+      }
+    ],
+    "209": [
+      {
+        "f": "209-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "cc-by",
+        "by": "Original: Raita Futo from Tokyo, Japan; this edit: User:MPF",
+        "u": "https://commons.wikimedia.org/wiki/File:Chamaecyparis_pisifera_near_Mount_Buk%C5%8D,_Saitama,_Japan_(49576718803).jpg"
+      }
+    ],
+    "213": [
+      {
+        "f": "213-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "cc-by",
+        "by": "Jay Sturner from USA",
+        "u": "https://commons.wikimedia.org/wiki/File:Rim_Rock_Trail_-_Scarlet_Oak_(Quercus_coccinea)_-_Flickr_-_Jay_Sturner_(2).jpg"
+      }
+    ],
+    "214": [
+      {
+        "f": "214-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "cc-by",
+        "by": "Robert Linsdell from St. Andrews, Canada",
+        "u": "https://commons.wikimedia.org/wiki/File:Grand_Beach_Provincial_Park,_Manitoba_(481751)_(9448100060).jpg"
+      }
+    ],
     "215": [
       {
         "f": "215-0.webp",
@@ -2811,6 +3201,16 @@
         "u": "https://opendata.paris.fr/api/explore/v2.1/catalog/datasets/fiches-essences-du-guide-des-essences-de-paris/files/dcdd842f2620df4ab9bf5cbd2ddd24de"
       }
     ],
+    "220": [
+      {
+        "f": "220-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "cc0",
+        "by": "Daderot",
+        "u": "https://commons.wikimedia.org/wiki/File:Sorbus_ulleungensis_-_Savill_Garden_-_Windsor_Great_Park,_England_-_DSC06344.jpg"
+      }
+    ],
     "224": [
       {
         "f": "224-0.webp",
@@ -2835,6 +3235,16 @@
         "lic": "odbl-1.0",
         "by": "Ville de Paris",
         "u": "https://opendata.paris.fr/api/explore/v2.1/catalog/datasets/fiches-essences-du-guide-des-essences-de-paris/files/4fa6a580cf05e477b23b7b965d438bd5"
+      }
+    ],
+    "225": [
+      {
+        "f": "225-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "cc-by",
+        "by": "abdallahh from Montréal, Canada",
+        "u": "https://commons.wikimedia.org/wiki/File:Thuja_plicata_Vancouver.jpg"
       }
     ],
     "226": [
@@ -2863,6 +3273,76 @@
         "u": "https://opendata.paris.fr/api/explore/v2.1/catalog/datasets/fiches-essences-du-guide-des-essences-de-paris/files/9d9db19984d99f646fb9f1c9a3d8f7e7"
       }
     ],
+    "227": [
+      {
+        "f": "227-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc-by",
+        "by": "(c) botanygirl, some rights reserved (CC BY), uploaded by botanygirl",
+        "u": "https://www.inaturalist.org/photos/408237"
+      }
+    ],
+    "228": [
+      {
+        "f": "228-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc0",
+        "by": "no rights reserved, uploaded by 葉子",
+        "u": "https://www.inaturalist.org/photos/43793696"
+      }
+    ],
+    "229": [
+      {
+        "f": "229-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc-by",
+        "by": "(c) Michael J. Papay, some rights reserved (CC BY), uploaded by Michael J. Papay",
+        "u": "https://www.inaturalist.org/photos/265449483"
+      }
+    ],
+    "231": [
+      {
+        "f": "231-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "cc-by",
+        "by": "yeowatzup at Flickr",
+        "u": "https://commons.wikimedia.org/wiki/File:Platycladus_orientalis_Simatai.jpg"
+      }
+    ],
+    "232": [
+      {
+        "f": "232-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc-by",
+        "by": "(c) Wendy Cutler, some rights reserved (CC BY)",
+        "u": "https://www.inaturalist.org/photos/783106"
+      }
+    ],
+    "233": [
+      {
+        "f": "233-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "pd",
+        "by": "Wikimedia Commons",
+        "u": "https://commons.wikimedia.org/wiki/File:Illustration_Morus_nigra0.jpg"
+      }
+    ],
+    "235": [
+      {
+        "f": "235-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc-by",
+        "by": "(c) Yoshihiro Tokue, some rights reserved (CC BY), uploaded by Yoshihiro Tokue",
+        "u": "https://www.inaturalist.org/photos/48261297"
+      }
+    ],
     "237": [
       {
         "f": "237-0.webp",
@@ -2879,6 +3359,36 @@
         "lic": "odbl-1.0",
         "by": "Ville de Paris",
         "u": "https://opendata.paris.fr/api/explore/v2.1/catalog/datasets/fiches-essences-du-guide-des-essences-de-paris/files/d67faffa0b6e3b4e110d1341f51a5220"
+      }
+    ],
+    "240": [
+      {
+        "f": "240-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc-by",
+        "by": "(c) Sandy Wolkenberg, some rights reserved (CC BY), uploaded by Sandy Wolkenberg",
+        "u": "https://www.inaturalist.org/photos/39325100"
+      }
+    ],
+    "241": [
+      {
+        "f": "241-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "cc-by",
+        "by": "Donald Hobern from Copenhagen, Denmark",
+        "u": "https://commons.wikimedia.org/wiki/File:Acacia_dealbata_(37540484220).jpg"
+      }
+    ],
+    "244": [
+      {
+        "f": "244-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "pd",
+        "by": "M.S. del, J.N.Fitch , lith.",
+        "u": "https://commons.wikimedia.org/wiki/File:Pyrus_ioensis_139-8488.jpg"
       }
     ],
     "245": [
@@ -2995,6 +3505,16 @@
         "u": "https://opendata.paris.fr/api/explore/v2.1/catalog/datasets/fiches-essences-du-guide-des-essences-de-paris/files/ce5ab36497794874fee746cfb6675bc0"
       }
     ],
+    "250": [
+      {
+        "f": "250-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "pd",
+        "by": "Daderot",
+        "u": "https://commons.wikimedia.org/wiki/File:Cornus_controversa_%27variegata%27_-_NBGB_-_IMG_4246.JPG"
+      }
+    ],
     "251": [
       {
         "f": "251-0.webp",
@@ -3045,6 +3565,16 @@
         "lic": "odbl-1.0",
         "by": "Ville de Paris",
         "u": "https://opendata.paris.fr/api/explore/v2.1/catalog/datasets/fiches-essences-du-guide-des-essences-de-paris/files/922d1b66c80822647cdaf84f69559420"
+      }
+    ],
+    "253": [
+      {
+        "f": "253-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "cc0",
+        "by": "AnRo0002",
+        "u": "https://commons.wikimedia.org/wiki/File:20131018Euonymus_europaeus4.jpg"
       }
     ],
     "255": [
@@ -3099,6 +3629,66 @@
         "u": "https://opendata.paris.fr/api/explore/v2.1/catalog/datasets/fiches-essences-du-guide-des-essences-de-paris/files/5eb93928afd04e4f6ee9a6ff7a2af19d"
       }
     ],
+    "257": [
+      {
+        "f": "257-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc-by",
+        "by": "(c) Andrew Conboy, some rights reserved (CC BY), uploaded by Andrew Conboy",
+        "u": "https://www.inaturalist.org/photos/224889290"
+      }
+    ],
+    "258": [
+      {
+        "f": "258-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "cc-by",
+        "by": "The original uploader was Geographer at English Wikipedia .",
+        "u": "https://commons.wikimedia.org/wiki/File:Incensecedar_sanjacintomts.JPG"
+      }
+    ],
+    "259": [
+      {
+        "f": "259-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "pd",
+        "by": "Daderot",
+        "u": "https://commons.wikimedia.org/wiki/File:Cephalotaxus_fortunei,_Arnold_Arboretum_-_IMG_6021.JPG"
+      }
+    ],
+    "260": [
+      {
+        "f": "260-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc-by",
+        "by": "(c) Muki Haklay, some rights reserved (CC BY), uploaded by Muki Haklay",
+        "u": "https://www.inaturalist.org/photos/125768479"
+      }
+    ],
+    "264": [
+      {
+        "f": "264-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc-by",
+        "by": "(c) Marco Mussita, some rights reserved (CC BY), uploaded by Marco Mussita",
+        "u": "https://www.inaturalist.org/photos/82249897"
+      }
+    ],
+    "267": [
+      {
+        "f": "267-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "pd",
+        "by": "Karduelis",
+        "u": "https://commons.wikimedia.org/wiki/File:Do%C4%9Fu_ladini-1.jpg"
+      }
+    ],
     "269": [
       {
         "f": "269-0.webp",
@@ -3123,6 +3713,26 @@
         "lic": "odbl-1.0",
         "by": "Ville de Paris",
         "u": "https://opendata.paris.fr/api/explore/v2.1/catalog/datasets/fiches-essences-du-guide-des-essences-de-paris/files/251ab0e91dafccecd06ac749504bc598"
+      }
+    ],
+    "271": [
+      {
+        "f": "271-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc-by",
+        "by": "(c) Daniel Cahen, some rights reserved (CC BY), uploaded by Daniel Cahen",
+        "u": "https://www.inaturalist.org/photos/26243184"
+      }
+    ],
+    "272": [
+      {
+        "f": "272-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "cc-by",
+        "by": "Jean-Pol GRANDMONT",
+        "u": "https://commons.wikimedia.org/wiki/File:Malus_toringoides_JPG1fr.jpg"
       }
     ],
     "273": [
@@ -3151,6 +3761,96 @@
         "u": "https://opendata.paris.fr/api/explore/v2.1/catalog/datasets/fiches-essences-du-guide-des-essences-de-paris/files/c6bfbfe67ad34b91a896628bdc4d86b0"
       }
     ],
+    "275": [
+      {
+        "f": "275-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc0",
+        "by": "no rights reserved, uploaded by flamelily",
+        "u": "https://www.inaturalist.org/photos/336907233"
+      }
+    ],
+    "277": [
+      {
+        "f": "277-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc-by",
+        "by": "(c) Kristály Cravens-Liszak, some rights reserved (CC BY), uploaded by Kristály Cravens-Liszak",
+        "u": "https://www.inaturalist.org/photos/284271709"
+      }
+    ],
+    "279": [
+      {
+        "f": "279-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc0",
+        "by": "no rights reserved, uploaded by Piermario Maculan",
+        "u": "https://www.inaturalist.org/photos/189109633"
+      }
+    ],
+    "280": [
+      {
+        "f": "280-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "pd",
+        "by": "The original uploader was Muggwort17 at English Wikipedia .",
+        "u": "https://commons.wikimedia.org/wiki/File:Rhty_002_lhp.jpg"
+      }
+    ],
+    "281": [
+      {
+        "f": "281-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "cc-by",
+        "by": "Nicholas A. Tonelli from Northeast Pennsylvania, USA",
+        "u": "https://commons.wikimedia.org/wiki/File:Louise_W._Moore_County_Park_(Revisited)_(5)_(8666437563).jpg"
+      }
+    ],
+    "284": [
+      {
+        "f": "284-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "pd",
+        "by": "Wikimedia Commons",
+        "u": "https://commons.wikimedia.org/wiki/File:Umbellularia_californica_02.jpg"
+      }
+    ],
+    "285": [
+      {
+        "f": "285-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "pd",
+        "by": "Ptelea at English Wikipedia",
+        "u": "https://commons.wikimedia.org/wiki/File:Davidiana1.jpg"
+      }
+    ],
+    "286": [
+      {
+        "f": "286-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc-by",
+        "by": "(c) Forest and Kim Starr, some rights reserved (CC BY)",
+        "u": "https://www.inaturalist.org/photos/638440764"
+      }
+    ],
+    "288": [
+      {
+        "f": "288-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc-by",
+        "by": "(c) Jason Grant, some rights reserved (CC BY), uploaded by Jason Grant",
+        "u": "https://www.inaturalist.org/photos/4629978"
+      }
+    ],
     "291": [
       {
         "f": "291-0.webp",
@@ -3175,6 +3875,26 @@
         "lic": "odbl-1.0",
         "by": "Ville de Paris",
         "u": "https://opendata.paris.fr/api/explore/v2.1/catalog/datasets/fiches-essences-du-guide-des-essences-de-paris/files/e95c6a499dba0116d8b3577f8ef747bb"
+      }
+    ],
+    "293": [
+      {
+        "f": "293-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc-by",
+        "by": "(c) Katja Schulz, some rights reserved (CC BY)",
+        "u": "https://www.inaturalist.org/photos/149585804"
+      }
+    ],
+    "296": [
+      {
+        "f": "296-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc-by",
+        "by": "(c) Kristine Paulus, some rights reserved (CC BY)",
+        "u": "https://www.inaturalist.org/photos/2253580"
       }
     ],
     "297": [
@@ -3229,6 +3949,46 @@
         "u": "https://opendata.paris.fr/api/explore/v2.1/catalog/datasets/fiches-essences-du-guide-des-essences-de-paris/files/df0571342e09d45522773e0ff8328657"
       }
     ],
+    "302": [
+      {
+        "f": "302-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "cc0",
+        "by": "Poyt448 Peter Woodard",
+        "u": "https://commons.wikimedia.org/wiki/File:Eucalyptus_parvula_Batemans_Bay.jpg"
+      }
+    ],
+    "303": [
+      {
+        "f": "303-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "pd",
+        "by": "Robert H. Mohlenbrock",
+        "u": "https://commons.wikimedia.org/wiki/File:Betula_occidentalis_USDA.jpg"
+      }
+    ],
+    "307": [
+      {
+        "f": "307-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "cc0",
+        "by": "AnRo0002",
+        "u": "https://commons.wikimedia.org/wiki/File:20120827Populus_%C3%97_canescens.jpg"
+      }
+    ],
+    "309": [
+      {
+        "f": "309-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "pd",
+        "by": "Chhe ( talk )",
+        "u": "https://commons.wikimedia.org/wiki/File:TetradiumDaniellii.jpg"
+      }
+    ],
     "311": [
       {
         "f": "311-0.webp",
@@ -3281,6 +4041,46 @@
         "u": "https://opendata.paris.fr/api/explore/v2.1/catalog/datasets/fiches-essences-du-guide-des-essences-de-paris/files/a491ed970921ffd6b75643a7f9ef2048"
       }
     ],
+    "314": [
+      {
+        "f": "314-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "cc-by",
+        "by": "Mark Wagner",
+        "u": "https://commons.wikimedia.org/wiki/File:Catalpa_speciosa_20060624.jpg"
+      }
+    ],
+    "316": [
+      {
+        "f": "316-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "pd",
+        "by": "Nadiatalent",
+        "u": "https://commons.wikimedia.org/wiki/File:Crataegus_lavallei_flowers.jpg"
+      }
+    ],
+    "317": [
+      {
+        "f": "317-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc-by",
+        "by": "(c) S. Rae, some rights reserved (CC BY)",
+        "u": "https://www.inaturalist.org/photos/10838354"
+      }
+    ],
+    "319": [
+      {
+        "f": "319-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "cc-by",
+        "by": "Allagash Brewing",
+        "u": "https://commons.wikimedia.org/wiki/File:Peaches_at_Applecrest_Farm_Orchards_-_20108462909.jpg"
+      }
+    ],
     "320": [
       {
         "f": "320-0.webp",
@@ -3297,6 +4097,16 @@
         "lic": "odbl-1.0",
         "by": "Ville de Paris",
         "u": "https://opendata.paris.fr/api/explore/v2.1/catalog/datasets/fiches-essences-du-guide-des-essences-de-paris/files/9a025724e8c1a3a3551885d02e019fc0"
+      }
+    ],
+    "321": [
+      {
+        "f": "321-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "cc0",
+        "by": "Ronnie Nijboer",
+        "u": "https://commons.wikimedia.org/wiki/File:RN_Ulmus_parvifolia_(Hilversum).JPG"
       }
     ],
     "323": [
@@ -3325,6 +4135,116 @@
         "u": "https://opendata.paris.fr/api/explore/v2.1/catalog/datasets/fiches-essences-du-guide-des-essences-de-paris/files/c60588c880dd0acbe2fbef7b4bf14c97"
       }
     ],
+    "325": [
+      {
+        "f": "325-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "pd",
+        "by": "Javier martin",
+        "u": "https://commons.wikimedia.org/wiki/File:Quercus_coccifera_Bellotas_2010-10-03_DehesaBoyaldePuertollano.jpg"
+      }
+    ],
+    "326": [
+      {
+        "f": "326-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "cc-by",
+        "by": "Σ64",
+        "u": "https://commons.wikimedia.org/wiki/File:Chamaecyparis_obtusa_01.jpg"
+      }
+    ],
+    "327": [
+      {
+        "f": "327-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "cc-by",
+        "by": "Picea_breweriana_Canyon_Creek_Lakes_1.jpg : Tom Hilton derivative work: MPF",
+        "u": "https://commons.wikimedia.org/wiki/File:Picea_breweriana_Canyon_Creek_Lakes_2.jpg"
+      }
+    ],
+    "328": [
+      {
+        "f": "328-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc-by",
+        "by": "(c) Cheng-Tao Lin, some rights reserved (CC BY), uploaded by Cheng-Tao Lin",
+        "u": "https://www.inaturalist.org/photos/21764728"
+      }
+    ],
+    "332": [
+      {
+        "f": "332-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "cc-by",
+        "by": "Ulf Eliasson",
+        "u": "https://commons.wikimedia.org/wiki/File:Cladrastis_kentukea_1b_UME.jpg"
+      }
+    ],
+    "333": [
+      {
+        "f": "333-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "cc-by",
+        "by": "Taken by Fanghong",
+        "u": "https://commons.wikimedia.org/wiki/File:LoniceraMaackiiFlowers3.jpg"
+      }
+    ],
+    "334": [
+      {
+        "f": "334-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc0",
+        "by": "no rights reserved, uploaded by 葉子",
+        "u": "https://www.inaturalist.org/photos/499869913"
+      }
+    ],
+    "335": [
+      {
+        "f": "335-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc-by",
+        "by": "(c) Duarte Frade, some rights reserved (CC BY), uploaded by Duarte Frade",
+        "u": "https://www.inaturalist.org/photos/59790777"
+      }
+    ],
+    "337": [
+      {
+        "f": "337-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc0",
+        "by": "no rights reserved, uploaded by Andra Waagmeester",
+        "u": "https://www.inaturalist.org/photos/30403985"
+      }
+    ],
+    "342": [
+      {
+        "f": "342-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc-by",
+        "by": "(c) Cheng-Te Hsu, some rights reserved (CC BY), uploaded by Cheng-Te Hsu",
+        "u": "https://www.inaturalist.org/photos/22125621"
+      }
+    ],
+    "344": [
+      {
+        "f": "344-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "pd",
+        "by": "Wikimedia Commons",
+        "u": "https://commons.wikimedia.org/wiki/File:Salix_daphnoides_Bra62.png"
+      }
+    ],
     "345": [
       {
         "f": "345-0.webp",
@@ -3349,6 +4269,86 @@
         "lic": "odbl-1.0",
         "by": "Ville de Paris",
         "u": "https://opendata.paris.fr/api/explore/v2.1/catalog/datasets/fiches-essences-du-guide-des-essences-de-paris/files/ad95c052d1ff71d8ba6919cb1c58185c"
+      }
+    ],
+    "346": [
+      {
+        "f": "346-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "pd",
+        "by": "Yoiyoi_kancho",
+        "u": "https://commons.wikimedia.org/wiki/File:Liquidambar_formosana_01.jpg"
+      }
+    ],
+    "348": [
+      {
+        "f": "348-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "cc-by",
+        "by": "David Short",
+        "u": "https://commons.wikimedia.org/wiki/File:Sorbus_meliosmifolia.jpg"
+      }
+    ],
+    "349": [
+      {
+        "f": "349-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "cc-by",
+        "by": "Silversyrpher (very busy at the moment) from Scotland, UK",
+        "u": "https://commons.wikimedia.org/wiki/File:Abies_bracteata_03_Bottcher%27s_Gap.jpg"
+      }
+    ],
+    "350": [
+      {
+        "f": "350-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc-by",
+        "by": "(c) James H. Miller, USDA Forest Service, Bugwood.org, some rights reserved (CC BY)",
+        "u": "https://www.inaturalist.org/photos/79702703"
+      }
+    ],
+    "351": [
+      {
+        "f": "351-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc-by",
+        "by": "(c) jthorngren, some rights reserved (CC BY), uploaded by jthorngren",
+        "u": "https://www.inaturalist.org/photos/175004544"
+      }
+    ],
+    "354": [
+      {
+        "f": "354-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "cc-by",
+        "by": "Jason Hollinger",
+        "u": "https://commons.wikimedia.org/wiki/File:Stiped_Maple_(4750636617).jpg"
+      }
+    ],
+    "356": [
+      {
+        "f": "356-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "pd",
+        "by": "Darkotico",
+        "u": "https://commons.wikimedia.org/wiki/File:Pyrusnivalis.jpg"
+      }
+    ],
+    "357": [
+      {
+        "f": "357-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "cc-by",
+        "by": "Bruce Marlin",
+        "u": "https://commons.wikimedia.org/wiki/File:Carpinus_japonica.jpg"
       }
     ],
     "360": [
@@ -3403,6 +4403,16 @@
         "u": "https://opendata.paris.fr/api/explore/v2.1/catalog/datasets/fiches-essences-du-guide-des-essences-de-paris/files/6a345958a5388b5ff16d3da40c189cfd"
       }
     ],
+    "365": [
+      {
+        "f": "365-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "cc-by",
+        "by": "No machine-readable author provided. Koba-chan assumed (based on copyright claims).",
+        "u": "https://commons.wikimedia.org/wiki/File:Benthamidia_florida_berry.jpg"
+      }
+    ],
     "370": [
       {
         "f": "370-0.webp",
@@ -3427,6 +4437,196 @@
         "lic": "odbl-1.0",
         "by": "Ville de Paris",
         "u": "https://opendata.paris.fr/api/explore/v2.1/catalog/datasets/fiches-essences-du-guide-des-essences-de-paris/files/3e4dc92483ef9972f4d0b67efb8020ad"
+      }
+    ],
+    "371": [
+      {
+        "f": "371-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "cc-by",
+        "by": "No machine-readable author provided. Koba-chan assumed (based on copyright claims).",
+        "u": "https://commons.wikimedia.org/wiki/File:Lithocarpus_edulis_Nakai_leaf_acorn.jpg"
+      }
+    ],
+    "373": [
+      {
+        "f": "373-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "cc-by",
+        "by": "A. Barra",
+        "u": "https://commons.wikimedia.org/wiki/File:Buxus_balearica.jpg"
+      }
+    ],
+    "377": [
+      {
+        "f": "377-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc0",
+        "by": "no rights reserved, uploaded by 葉子",
+        "u": "https://www.inaturalist.org/photos/62662560"
+      }
+    ],
+    "378": [
+      {
+        "f": "378-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc-by",
+        "by": "(c) Marco Mussita, some rights reserved (CC BY), uploaded by Marco Mussita",
+        "u": "https://www.inaturalist.org/photos/8881655"
+      }
+    ],
+    "379": [
+      {
+        "f": "379-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "cc-by",
+        "by": "Geographer ( talk )",
+        "u": "https://commons.wikimedia.org/wiki/File:Celtis_sinensis%3DChinese_Hackberry.jpg"
+      }
+    ],
+    "382": [
+      {
+        "f": "382-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc-by",
+        "by": "(c) Francisco E. Fonturbel, some rights reserved (CC BY), uploaded by Francisco E. Fonturbel",
+        "u": "https://www.inaturalist.org/photos/16303515"
+      }
+    ],
+    "385": [
+      {
+        "f": "385-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc-by",
+        "by": "(c) Manuel M. V., some rights reserved (CC BY)",
+        "u": "https://www.inaturalist.org/photos/1137603"
+      }
+    ],
+    "386": [
+      {
+        "f": "386-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc-by",
+        "by": "(c) Katja Schulz, some rights reserved (CC BY)",
+        "u": "https://www.inaturalist.org/photos/89683060"
+      }
+    ],
+    "389": [
+      {
+        "f": "389-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "pd",
+        "by": "Daderot",
+        "u": "https://commons.wikimedia.org/wiki/File:Heptacodium_miconioides_-_in_Mount_Auburn_Cemetery.JPG"
+      }
+    ],
+    "394": [
+      {
+        "f": "394-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc-by",
+        "by": "(c) Kim, Hyun-tae, some rights reserved (CC BY), uploaded by Kim, Hyun-tae",
+        "u": "https://www.inaturalist.org/photos/4366806"
+      }
+    ],
+    "396": [
+      {
+        "f": "396-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "cc-by",
+        "by": "Jean-Pol GRANDMONT",
+        "u": "https://commons.wikimedia.org/wiki/File:Aesculus_x_mutabilis_%27Induta%27_JPG1FeFr.jpg"
+      }
+    ],
+    "397": [
+      {
+        "f": "397-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc-by",
+        "by": "(c) m. m. v., some rights reserved (CC BY)",
+        "u": "https://www.inaturalist.org/photos/628831937"
+      }
+    ],
+    "398": [
+      {
+        "f": "398-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc-by",
+        "by": "(c) Forest and Kim Starr, some rights reserved (CC BY)",
+        "u": "https://www.inaturalist.org/photos/101775898"
+      }
+    ],
+    "401": [
+      {
+        "f": "401-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "pd",
+        "by": "Nadiatalent",
+        "u": "https://commons.wikimedia.org/wiki/File:Crataegus_crus_galli_4.jpg"
+      }
+    ],
+    "406": [
+      {
+        "f": "406-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc-by",
+        "by": "(c) Forest and Kim Starr, some rights reserved (CC BY)",
+        "u": "https://www.inaturalist.org/photos/170120684"
+      }
+    ],
+    "408": [
+      {
+        "f": "408-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "pd",
+        "by": "Franz Eugen Köhler, Köhler's Medizinal-Pflanzen",
+        "u": "https://commons.wikimedia.org/wiki/File:Prunus_cerasus_-_K%C3%B6hler%E2%80%93s_Medizinal-Pflanzen-113.jpg"
+      }
+    ],
+    "409": [
+      {
+        "f": "409-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "cc-by",
+        "by": "Dave Powell, USDA Forest Service",
+        "u": "https://commons.wikimedia.org/wiki/File:Pseudotsuga_glauca_treeUSDA.jpg"
+      }
+    ],
+    "412": [
+      {
+        "f": "412-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc-by",
+        "by": "(c) cstobie, some rights reserved (CC BY), uploaded by cstobie",
+        "u": "https://www.inaturalist.org/photos/18467856"
+      }
+    ],
+    "413": [
+      {
+        "f": "413-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc0",
+        "by": "no rights reserved, uploaded by Marc-Aurèle Vallée",
+        "u": "https://www.inaturalist.org/photos/510942515"
       }
     ],
     "414": [
@@ -3455,6 +4655,66 @@
         "u": "https://opendata.paris.fr/api/explore/v2.1/catalog/datasets/fiches-essences-du-guide-des-essences-de-paris/files/71006d1018288d5d2e19d7bd531763c2"
       }
     ],
+    "416": [
+      {
+        "f": "416-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "cc-by",
+        "by": "Pato Novoa",
+        "u": "https://commons.wikimedia.org/wiki/File:Luma_chequen.jpg"
+      }
+    ],
+    "419": [
+      {
+        "f": "419-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc-by",
+        "by": "(c) Forest and Kim Starr, some rights reserved (CC BY)",
+        "u": "https://www.inaturalist.org/photos/118305054"
+      }
+    ],
+    "420": [
+      {
+        "f": "420-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "pd",
+        "by": "Mason Brock ( Masebrock )",
+        "u": "https://commons.wikimedia.org/wiki/File:Magnolia_tripetala_flower.jpg"
+      }
+    ],
+    "421": [
+      {
+        "f": "421-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc-by",
+        "by": "(c) Bob MacInnes, some rights reserved (CC BY)",
+        "u": "https://www.inaturalist.org/photos/2121"
+      }
+    ],
+    "422": [
+      {
+        "f": "422-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc-by",
+        "by": "(c) Sam Kieschnick, some rights reserved (CC BY), uploaded by Sam Kieschnick",
+        "u": "https://www.inaturalist.org/photos/41709199"
+      }
+    ],
+    "423": [
+      {
+        "f": "423-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc-by",
+        "by": "(c) Marco Mussita, some rights reserved (CC BY), uploaded by Marco Mussita",
+        "u": "https://www.inaturalist.org/photos/25692449"
+      }
+    ],
     "424": [
       {
         "f": "424-0.webp",
@@ -3479,6 +4739,46 @@
         "lic": "odbl-1.0",
         "by": "Ville de Paris",
         "u": "https://opendata.paris.fr/api/explore/v2.1/catalog/datasets/fiches-essences-du-guide-des-essences-de-paris/files/3ad080fae883a860188953fce449ae33"
+      }
+    ],
+    "426": [
+      {
+        "f": "426-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "cc-by",
+        "by": "Bruce Marlin",
+        "u": "https://commons.wikimedia.org/wiki/File:Phellodendron_amurense_Morton.jpg"
+      }
+    ],
+    "427": [
+      {
+        "f": "427-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "pd",
+        "by": "Wikimedia Commons",
+        "u": "https://commons.wikimedia.org/wiki/File:Quercus_glauca_Bra65.png"
+      }
+    ],
+    "428": [
+      {
+        "f": "428-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc-by",
+        "by": "(c) Ian Manning, some rights reserved (CC BY), uploaded by Ian Manning",
+        "u": "https://www.inaturalist.org/photos/8541909"
+      }
+    ],
+    "429": [
+      {
+        "f": "429-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "cc-by",
+        "by": "Σ64",
+        "u": "https://commons.wikimedia.org/wiki/File:Carpinus_cordata_02.jpg"
       }
     ],
     "430": [
@@ -3507,6 +4807,46 @@
         "u": "https://opendata.paris.fr/api/explore/v2.1/catalog/datasets/fiches-essences-du-guide-des-essences-de-paris/files/553abdff9e378fe510c4091edc7a754f"
       }
     ],
+    "432": [
+      {
+        "f": "432-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "pd",
+        "by": "Britton, N.L., and A. Brown. 1913. An illustrated flora of the northern United States, Canada and the British Possession…",
+        "u": "https://commons.wikimedia.org/wiki/File:Diospyros_virginiana_BB-1913.png"
+      }
+    ],
+    "436": [
+      {
+        "f": "436-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc0",
+        "by": "no rights reserved, uploaded by 葉子",
+        "u": "https://www.inaturalist.org/photos/316346924"
+      }
+    ],
+    "440": [
+      {
+        "f": "440-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc0",
+        "by": "no rights reserved, uploaded by Peter de Lange",
+        "u": "https://www.inaturalist.org/photos/2152688"
+      }
+    ],
+    "442": [
+      {
+        "f": "442-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "cc-by",
+        "by": "Lukas on Flickr",
+        "u": "https://commons.wikimedia.org/wiki/File:Picea_schrenkiana_forest.jpg"
+      }
+    ],
     "443": [
       {
         "f": "443-0.webp",
@@ -3531,6 +4871,46 @@
         "lic": "odbl-1.0",
         "by": "Ville de Paris",
         "u": "https://opendata.paris.fr/api/explore/v2.1/catalog/datasets/fiches-essences-du-guide-des-essences-de-paris/files/e8be0c93ada0cc0971c7e60cadf1c91b"
+      }
+    ],
+    "444": [
+      {
+        "f": "444-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc-by",
+        "by": "(c) Σ64, some rights reserved (CC BY)",
+        "u": "https://www.inaturalist.org/photos/69066485"
+      }
+    ],
+    "445": [
+      {
+        "f": "445-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc-by",
+        "by": "(c) WATANABE Hitoshi 渡辺仁, some rights reserved (CC BY), uploaded by WATANABE Hitoshi 渡辺仁",
+        "u": "https://www.inaturalist.org/photos/453506130"
+      }
+    ],
+    "446": [
+      {
+        "f": "446-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc-by",
+        "by": "(c) Yi CHEN, some rights reserved (CC BY), uploaded by Yi CHEN",
+        "u": "https://www.inaturalist.org/photos/208719889"
+      }
+    ],
+    "447": [
+      {
+        "f": "447-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc-by",
+        "by": "(c) Lera Miles, some rights reserved (CC BY), uploaded by Lera Miles",
+        "u": "https://www.inaturalist.org/photos/138726156"
       }
     ],
     "449": [
@@ -3559,6 +4939,96 @@
         "u": "https://opendata.paris.fr/api/explore/v2.1/catalog/datasets/fiches-essences-du-guide-des-essences-de-paris/files/f232c82db847a227c2c841371a18a7d0"
       }
     ],
+    "450": [
+      {
+        "f": "450-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc-by",
+        "by": "(c) Daniel Cahen, some rights reserved (CC BY), uploaded by Daniel Cahen",
+        "u": "https://www.inaturalist.org/photos/288489110"
+      }
+    ],
+    "451": [
+      {
+        "f": "451-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "pd",
+        "by": "Eoghanacht at English Wikipedia",
+        "u": "https://commons.wikimedia.org/wiki/File:Robinia-hispida1.jpg"
+      }
+    ],
+    "452": [
+      {
+        "f": "452-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "pd",
+        "by": "Wikimedia Commons",
+        "u": "https://commons.wikimedia.org/wiki/File:Corylus_americana1.jpg"
+      }
+    ],
+    "453": [
+      {
+        "f": "453-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "cc0",
+        "by": "Daderot",
+        "u": "https://commons.wikimedia.org/wiki/File:Carpinus_turczaninowii_-_Arnold_Arboretum_-_DSC06925.JPG"
+      }
+    ],
+    "459": [
+      {
+        "f": "459-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc-by",
+        "by": "(c) Wolfgang Jauch, some rights reserved (CC BY), uploaded by Wolfgang Jauch",
+        "u": "https://www.inaturalist.org/photos/200991868"
+      }
+    ],
+    "462": [
+      {
+        "f": "462-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc0",
+        "by": "no rights reserved, uploaded by Ellyne Geurts",
+        "u": "https://www.inaturalist.org/photos/159545535"
+      }
+    ],
+    "463": [
+      {
+        "f": "463-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "pd",
+        "by": "en:User:Neonfreon",
+        "u": "https://commons.wikimedia.org/wiki/File:Shumard_oak_leaves.JPG"
+      }
+    ],
+    "468": [
+      {
+        "f": "468-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "cc-by",
+        "by": "Dcrjsr",
+        "u": "https://commons.wikimedia.org/wiki/File:Painted_buckeye_Aesculus_sylvatica_flowers_leaves.jpg"
+      }
+    ],
+    "470": [
+      {
+        "f": "470-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc-by",
+        "by": "(c) Marco Mussita, some rights reserved (CC BY), uploaded by Marco Mussita",
+        "u": "https://www.inaturalist.org/photos/63357957"
+      }
+    ],
     "475": [
       {
         "f": "475-0.webp",
@@ -3569,6 +5039,86 @@
         "u": "https://opendata.paris.fr/api/explore/v2.1/catalog/datasets/fiches-essences-du-guide-des-essences-de-paris/files/3891ac38984e663d234b02b31149bea7"
       }
     ],
+    "477": [
+      {
+        "f": "477-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "cc-by",
+        "by": "Farm",
+        "u": "https://commons.wikimedia.org/wiki/File:Torreya_grandis.jpg"
+      }
+    ],
+    "478": [
+      {
+        "f": "478-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "pd",
+        "by": "Snezana Trifunovic, user:Tsnena",
+        "u": "https://commons.wikimedia.org/wiki/File:Tamarix_tetrandra.jpg"
+      }
+    ],
+    "479": [
+      {
+        "f": "479-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "pd",
+        "by": "Robert H. Mohlenbrock",
+        "u": "https://commons.wikimedia.org/wiki/File:Amelanchier_laevis.jpg"
+      }
+    ],
+    "481": [
+      {
+        "f": "481-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "cc-by",
+        "by": "dylanshaw",
+        "u": "https://commons.wikimedia.org/wiki/File:Aesculus_parviflora,_Coosa_WMA,_Alabama_1.jpg"
+      }
+    ],
+    "490": [
+      {
+        "f": "490-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "cc-by",
+        "by": "Elie plus",
+        "u": "https://commons.wikimedia.org/wiki/File:Abies_cilicica.JPG"
+      }
+    ],
+    "493": [
+      {
+        "f": "493-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc-by",
+        "by": "(c) Daniel Cahen, some rights reserved (CC BY), uploaded by Daniel Cahen",
+        "u": "https://www.inaturalist.org/photos/142702939"
+      }
+    ],
+    "494": [
+      {
+        "f": "494-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc-by",
+        "by": "(c) Sam Beaumont, some rights reserved (CC BY), uploaded by Sam Beaumont",
+        "u": "https://www.inaturalist.org/photos/236261704"
+      }
+    ],
+    "495": [
+      {
+        "f": "495-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc-by",
+        "by": "(c) Matt Berger, some rights reserved (CC BY), uploaded by Matt Berger",
+        "u": "https://www.inaturalist.org/photos/57883764"
+      }
+    ],
     "496": [
       {
         "f": "496-0.webp",
@@ -3577,6 +5127,46 @@
         "lic": "odbl-1.0",
         "by": "Ville de Paris",
         "u": "https://opendata.paris.fr/api/explore/v2.1/catalog/datasets/fiches-essences-du-guide-des-essences-de-paris/files/ec099aa82610f982457dd301460ee3b2"
+      }
+    ],
+    "499": [
+      {
+        "f": "499-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc-by",
+        "by": "(c) Aaron Liston, some rights reserved (CC BY), uploaded by Aaron Liston",
+        "u": "https://www.inaturalist.org/photos/190510962"
+      }
+    ],
+    "500": [
+      {
+        "f": "500-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "cc-by",
+        "by": "j. lindsay",
+        "u": "https://commons.wikimedia.org/wiki/File:Korean_Beech_Bonsai_Tree.jpg"
+      }
+    ],
+    "502": [
+      {
+        "f": "502-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "pd",
+        "by": "Britton, N.L., and A. Brown. 1913. An illustrated flora of the northern United States, Canada and the British Possession…",
+        "u": "https://commons.wikimedia.org/wiki/File:Crataegus_coccinioides_BB-1913.png"
+      }
+    ],
+    "503": [
+      {
+        "f": "503-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc-by",
+        "by": "(c) Георгий Виноградов (Georgy Vinogradov), some rights reserved (CC BY), uploaded by Георгий Виноградов (Georgy Vinogra…",
+        "u": "https://www.inaturalist.org/photos/33589887"
       }
     ],
     "506": [
@@ -3605,6 +5195,96 @@
         "u": "https://opendata.paris.fr/api/explore/v2.1/catalog/datasets/fiches-essences-du-guide-des-essences-de-paris/files/47f9a6afb858acb0ee75671d1792fa72"
       }
     ],
+    "508": [
+      {
+        "f": "508-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "cc-by",
+        "by": "Bruce Marlin",
+        "u": "https://commons.wikimedia.org/wiki/File:Magnolia_acuminata.jpg"
+      }
+    ],
+    "511": [
+      {
+        "f": "511-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "cc0",
+        "by": "Arbres d'ornement-1 - ornamental trees in colour- Public domain book illustration (visual explanation, informative drawi…",
+        "u": "https://commons.wikimedia.org/wiki/File:Lilac_Larousse_Extracted.png"
+      }
+    ],
+    "512": [
+      {
+        "f": "512-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc0",
+        "by": "no rights reserved, uploaded by Stephen James McWilliam",
+        "u": "https://www.inaturalist.org/photos/65533607"
+      }
+    ],
+    "514": [
+      {
+        "f": "514-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc-by",
+        "by": "(c) Jane Charlen, some rights reserved (CC BY), uploaded by Jane Charlen",
+        "u": "https://www.inaturalist.org/photos/488672099"
+      }
+    ],
+    "517": [
+      {
+        "f": "517-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "cc-by",
+        "by": "Jean-Pol GRANDMONT",
+        "u": "https://commons.wikimedia.org/wiki/File:Juglans_mandshurica_Walnut_JPG.jpg"
+      }
+    ],
+    "524": [
+      {
+        "f": "524-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "pd",
+        "by": "Nadiatalent",
+        "u": "https://commons.wikimedia.org/wiki/File:Prunus_virginiana_flowers.jpg"
+      }
+    ],
+    "525": [
+      {
+        "f": "525-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc-by",
+        "by": "(c) Jesús Cabrera, some rights reserved (CC BY)",
+        "u": "https://www.inaturalist.org/photos/102456013"
+      }
+    ],
+    "528": [
+      {
+        "f": "528-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc-by",
+        "by": "(c) Toby Y, some rights reserved (CC BY), uploaded by Toby Y",
+        "u": "https://www.inaturalist.org/photos/143802659"
+      }
+    ],
+    "531": [
+      {
+        "f": "531-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "cc0",
+        "by": "Ruff tuff cream puff",
+        "u": "https://commons.wikimedia.org/wiki/File:Enkianthus_chinensis.jpg"
+      }
+    ],
     "533": [
       {
         "f": "533-0.webp",
@@ -3629,6 +5309,96 @@
         "lic": "odbl-1.0",
         "by": "Ville de Paris",
         "u": "https://opendata.paris.fr/api/explore/v2.1/catalog/datasets/fiches-essences-du-guide-des-essences-de-paris/files/b3c26aa97946fdff8a4b03dd03b920b7"
+      }
+    ],
+    "535": [
+      {
+        "f": "535-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "pd",
+        "by": "Giuseppe Frizzi",
+        "u": "https://commons.wikimedia.org/wiki/File:Dettaglio_-_Rhamnaceae_Rhamnus_Alaternus_Lin._Erbario_Frizzi_Perugia_n._3815.jpg"
+      }
+    ],
+    "539": [
+      {
+        "f": "539-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc-by",
+        "by": "(c) Forest & Kim Starr, some rights reserved (CC BY)",
+        "u": "https://www.inaturalist.org/photos/1159223"
+      }
+    ],
+    "540": [
+      {
+        "f": "540-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "cc0",
+        "by": "HermannSchachner",
+        "u": "https://commons.wikimedia.org/wiki/File:Euonymus_latifolius_(Voralpen-Spindelstrauch)_IMG_2617.jpg"
+      }
+    ],
+    "541": [
+      {
+        "f": "541-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc-by",
+        "by": "(c) Duarte Frade, some rights reserved (CC BY), uploaded by Duarte Frade",
+        "u": "https://www.inaturalist.org/photos/461869897"
+      }
+    ],
+    "542": [
+      {
+        "f": "542-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc-by",
+        "by": "(c) Matt Berger, some rights reserved (CC BY), uploaded by Matt Berger",
+        "u": "https://www.inaturalist.org/photos/219823350"
+      }
+    ],
+    "543": [
+      {
+        "f": "543-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "cc-by",
+        "by": "Jean-Pol GRANDMONT",
+        "u": "https://commons.wikimedia.org/wiki/File:Pterocarya_%C3%97rehderiana_JPG1.jpg"
+      }
+    ],
+    "544": [
+      {
+        "f": "544-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "pd",
+        "by": "U.S. Fish and Wildlife Service",
+        "u": "https://commons.wikimedia.org/wiki/File:Betula_alleghaniensis.jpg"
+      }
+    ],
+    "546": [
+      {
+        "f": "546-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc-by",
+        "by": "(c) Sandy Wolkenberg, some rights reserved (CC BY), uploaded by Sandy Wolkenberg",
+        "u": "https://www.inaturalist.org/photos/61854798"
+      }
+    ],
+    "549": [
+      {
+        "f": "549-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "pd",
+        "by": "Scott Bauer, USDA",
+        "u": "https://commons.wikimedia.org/wiki/File:Asimina_triloba3.jpg"
       }
     ],
     "550": [
@@ -3657,6 +5427,226 @@
         "u": "https://opendata.paris.fr/api/explore/v2.1/catalog/datasets/fiches-essences-du-guide-des-essences-de-paris/files/3ae49517fa7c8386c4166252f0e0463d"
       }
     ],
+    "551": [
+      {
+        "f": "551-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc-by",
+        "by": "(c) Вячеслав Юсупов, some rights reserved (CC BY), uploaded by Вячеслав Юсупов",
+        "u": "https://www.inaturalist.org/photos/48074742"
+      }
+    ],
+    "553": [
+      {
+        "f": "553-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "cc-by",
+        "by": "A. Barra",
+        "u": "https://commons.wikimedia.org/wiki/File:Cotoneaster_franchetii_2.jpg"
+      }
+    ],
+    "557": [
+      {
+        "f": "557-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "pd",
+        "by": "Wikimedia Commons",
+        "u": "https://commons.wikimedia.org/wiki/File:Salix_pyrifolia(01).jpg"
+      }
+    ],
+    "558": [
+      {
+        "f": "558-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc-by",
+        "by": "(c) Andrew Conboy, some rights reserved (CC BY), uploaded by Andrew Conboy",
+        "u": "https://www.inaturalist.org/photos/198335112"
+      }
+    ],
+    "559": [
+      {
+        "f": "559-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc-by",
+        "by": "(c) Нурхайдарова Татьяна, some rights reserved (CC BY), uploaded by Нурхайдарова Татьяна",
+        "u": "https://www.inaturalist.org/photos/73725868"
+      }
+    ],
+    "560": [
+      {
+        "f": "560-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "pd",
+        "by": "Me",
+        "u": "https://commons.wikimedia.org/wiki/File:Acer_heidrechii_ssp_heidrechii_R0019776.JPG"
+      }
+    ],
+    "561": [
+      {
+        "f": "561-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "pd",
+        "by": "Daderot",
+        "u": "https://commons.wikimedia.org/wiki/File:Phellodendron_chinense_var._yunnanensis_-_Kunming_Botanical_Garden_-_DSC03155.JPG"
+      }
+    ],
+    "562": [
+      {
+        "f": "562-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc-by",
+        "by": "(c) Marco Mussita, some rights reserved (CC BY), uploaded by Marco Mussita",
+        "u": "https://www.inaturalist.org/photos/55946261"
+      }
+    ],
+    "563": [
+      {
+        "f": "563-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "cc-by",
+        "by": "Zigalga.jpg : Pesotsky derivative work: MPF",
+        "u": "https://commons.wikimedia.org/wiki/File:Picea_obovata_Zigalga.jpg"
+      }
+    ],
+    "566": [
+      {
+        "f": "566-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc-by",
+        "by": "(c) Juan Carlos Caicedo Hernández, some rights reserved (CC BY), uploaded by Juan Carlos Caicedo Hernández",
+        "u": "https://www.inaturalist.org/photos/13241054"
+      }
+    ],
+    "567": [
+      {
+        "f": "567-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "pd",
+        "by": "Giuseppe Frizzi",
+        "u": "https://commons.wikimedia.org/wiki/File:Dettaglio_-_Caprifoliaceae_Viburnum_tinus_Lin._Erbario_Frizzi_Perugia_n._1221.jpg"
+      }
+    ],
+    "571": [
+      {
+        "f": "571-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "cc-by",
+        "by": "mikepirie",
+        "u": "https://commons.wikimedia.org/wiki/File:Picea_omorika,_Zaovine,_Serbia_1.jpg"
+      }
+    ],
+    "576": [
+      {
+        "f": "576-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc-by",
+        "by": "(c) Nina Filippova, some rights reserved (CC BY), uploaded by Nina Filippova",
+        "u": "https://www.inaturalist.org/photos/153461732"
+      }
+    ],
+    "577": [
+      {
+        "f": "577-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "cc-by",
+        "by": "Scott Zona",
+        "u": "https://commons.wikimedia.org/wiki/File:Crataegus_viridis_%27Winter_King%27.jpg"
+      }
+    ],
+    "578": [
+      {
+        "f": "578-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc-by",
+        "by": "(c) Robert Flogaus-Faust, some rights reserved (CC BY)",
+        "u": "https://www.inaturalist.org/photos/341888418"
+      }
+    ],
+    "580": [
+      {
+        "f": "580-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc-by",
+        "by": "(c) Repina Tatyana, some rights reserved (CC BY), uploaded by Repina Tatyana",
+        "u": "https://www.inaturalist.org/photos/39091897"
+      }
+    ],
+    "583": [
+      {
+        "f": "583-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "pd",
+        "by": "Wikimedia Commons",
+        "u": "https://commons.wikimedia.org/wiki/File:Quercus_nigra_USDA.jpg"
+      }
+    ],
+    "584": [
+      {
+        "f": "584-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "cc-by",
+        "by": "No machine-readable author provided. MPF assumed (based on copyright claims).",
+        "u": "https://commons.wikimedia.org/wiki/File:Acer_saccharum_foliage.jpg"
+      }
+    ],
+    "586": [
+      {
+        "f": "586-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc-by",
+        "by": "(c) Dave Powell, USDA Forest Service, United States, some rights reserved (CC BY)",
+        "u": "https://www.inaturalist.org/photos/1484576"
+      }
+    ],
+    "587": [
+      {
+        "f": "587-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "pd",
+        "by": "Mason Brock ( Masebrock )",
+        "u": "https://commons.wikimedia.org/wiki/File:Celtis_tenuifolia_leaves.JPG"
+      }
+    ],
+    "591": [
+      {
+        "f": "591-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc-by",
+        "by": "(c) Lyrae, some rights reserved (CC BY), uploaded by Lyrae",
+        "u": "https://www.inaturalist.org/photos/245834485"
+      }
+    ],
+    "594": [
+      {
+        "f": "594-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "cc-by",
+        "by": "The original uploader was Geographer at English Wikipedia .",
+        "u": "https://commons.wikimedia.org/wiki/File:Culter_pine_cone.jpg"
+      }
+    ],
     "598": [
       {
         "f": "598-0.webp",
@@ -3673,6 +5663,246 @@
         "lic": "odbl-1.0",
         "by": "Ville de Paris",
         "u": "https://opendata.paris.fr/api/explore/v2.1/catalog/datasets/fiches-essences-du-guide-des-essences-de-paris/files/ef12407c607280b5be245a045111be5b"
+      }
+    ],
+    "603": [
+      {
+        "f": "603-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "pd",
+        "by": "Jhodlof",
+        "u": "https://commons.wikimedia.org/wiki/File:Mature_Jeffrey_Pine.JPG"
+      }
+    ],
+    "607": [
+      {
+        "f": "607-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "cc-by",
+        "by": "Jean-Pol GRANDMONT",
+        "u": "https://commons.wikimedia.org/wiki/File:Corylus_chinensis_JPG1c.jpg"
+      }
+    ],
+    "609": [
+      {
+        "f": "609-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc-by",
+        "by": "(c) Marco Mussita, some rights reserved (CC BY), uploaded by Marco Mussita",
+        "u": "https://www.inaturalist.org/photos/38855256"
+      }
+    ],
+    "611": [
+      {
+        "f": "611-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "pd",
+        "by": "Franz Eugen Köhler, Köhler's Medizinal-Pflanzen",
+        "u": "https://commons.wikimedia.org/wiki/File:Hamamelis_virginiana_-_K%C3%B6hler%E2%80%93s_Medizinal-Pflanzen-070.jpg"
+      }
+    ],
+    "613": [
+      {
+        "f": "613-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc-by",
+        "by": "(c) Ken-ichi Ueda, some rights reserved (CC BY)",
+        "u": "https://www.inaturalist.org/photos/29182"
+      }
+    ],
+    "614": [
+      {
+        "f": "614-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc-by",
+        "by": "(c) Melissa McMasters, some rights reserved (CC BY)",
+        "u": "https://www.inaturalist.org/photos/4046101"
+      }
+    ],
+    "615": [
+      {
+        "f": "615-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "cc-by",
+        "by": "Paul Bolstad, University of Minnesota",
+        "u": "https://commons.wikimedia.org/wiki/File:Nyssa_aquatica_tree.jpg"
+      }
+    ],
+    "616": [
+      {
+        "f": "616-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "pd",
+        "by": "Botanical Register",
+        "u": "https://commons.wikimedia.org/wiki/File:1009_Aesculus_%C3%97neglecta.jpg"
+      }
+    ],
+    "617": [
+      {
+        "f": "617-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc-by",
+        "by": "(c) Marco Mussita, some rights reserved (CC BY), uploaded by Marco Mussita",
+        "u": "https://www.inaturalist.org/photos/378528001"
+      }
+    ],
+    "618": [
+      {
+        "f": "618-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "pd",
+        "by": "Daderot",
+        "u": "https://commons.wikimedia.org/wiki/File:Corylus_fargesii,_Arnold_Arboretum_-_IMG_6165.JPG"
+      }
+    ],
+    "620": [
+      {
+        "f": "620-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "pd",
+        "by": "Franz Eugen Köhler, Köhler's Medizinal-Pflanzen",
+        "u": "https://commons.wikimedia.org/wiki/File:Abies_alba_-_K%C3%B6hler%E2%80%93s_Medizinal-Pflanzen-001.jpg"
+      }
+    ],
+    "622": [
+      {
+        "f": "622-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "cc0",
+        "by": "Daderot",
+        "u": "https://commons.wikimedia.org/wiki/File:Pteroceltis_tatarinowii_-_Morris_Arboretum_-_DSC00350.JPG"
+      }
+    ],
+    "624": [
+      {
+        "f": "624-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "cc-by",
+        "by": "Ian McMaster",
+        "u": "https://commons.wikimedia.org/wiki/File:Subsp._niphophila.jpg"
+      }
+    ],
+    "625": [
+      {
+        "f": "625-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc-by",
+        "by": "(c) Clay, some rights reserved (CC BY), uploaded by Clay",
+        "u": "https://www.inaturalist.org/photos/45773216"
+      }
+    ],
+    "626": [
+      {
+        "f": "626-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc0",
+        "by": "no rights reserved, uploaded by Noel",
+        "u": "https://www.inaturalist.org/photos/5926747"
+      }
+    ],
+    "627": [
+      {
+        "f": "627-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "pd",
+        "by": "Harriet L. Keeler",
+        "u": "https://commons.wikimedia.org/wiki/File:Canada_Plum_fruiting_spray_Keeler.png"
+      }
+    ],
+    "629": [
+      {
+        "f": "629-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "cc-by",
+        "by": "Bruce Marlin",
+        "u": "https://commons.wikimedia.org/wiki/File:Malus_prunifolia.JPG"
+      }
+    ],
+    "631": [
+      {
+        "f": "631-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "pd",
+        "by": "Gordon Leppig & Andrea J. Pickart",
+        "u": "https://commons.wikimedia.org/wiki/File:Salixhookeriana.jpg"
+      }
+    ],
+    "632": [
+      {
+        "f": "632-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc0",
+        "by": "no rights reserved, uploaded by 葉子",
+        "u": "https://www.inaturalist.org/photos/107712768"
+      }
+    ],
+    "633": [
+      {
+        "f": "633-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "cc0",
+        "by": "Humb. and Bonpl.",
+        "u": "https://commons.wikimedia.org/wiki/File:Naturalis_Biodiversity_Center_-_L.1567782_-_Quercus_crassifolia_Humb._and_Bonpl._-_Fagaceae_-_Plant_type_specimen.jpeg"
+      }
+    ],
+    "642": [
+      {
+        "f": "642-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc-by",
+        "by": "(c) Marco Mussita, some rights reserved (CC BY), uploaded by Marco Mussita",
+        "u": "https://www.inaturalist.org/photos/8658087"
+      }
+    ],
+    "644": [
+      {
+        "f": "644-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "pd",
+        "by": "Wikimedia Commons",
+        "u": "https://commons.wikimedia.org/wiki/File:Sophora_flavescens.jpg"
+      }
+    ],
+    "645": [
+      {
+        "f": "645-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "pd",
+        "by": "Mason Brock ( Masebrock )",
+        "u": "https://commons.wikimedia.org/wiki/File:Fraxinus_quadrangulata.JPG"
+      }
+    ],
+    "646": [
+      {
+        "f": "646-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "cc-by",
+        "by": "Melburnian",
+        "u": "https://commons.wikimedia.org/wiki/File:Cupressus_funebris_02.jpg"
       }
     ],
     "652": [
@@ -3701,6 +5931,196 @@
         "u": "https://opendata.paris.fr/api/explore/v2.1/catalog/datasets/fiches-essences-du-guide-des-essences-de-paris/files/c1b47fbaabb5d9fff061e2fb1fdd8a6b"
       }
     ],
+    "654": [
+      {
+        "f": "654-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc-by",
+        "by": "(c) Stephen Thorpe, some rights reserved (CC BY), uploaded by Stephen Thorpe",
+        "u": "https://www.inaturalist.org/photos/84809113"
+      }
+    ],
+    "659": [
+      {
+        "f": "659-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "pd",
+        "by": "François André Michaux (book author), Pancrace Bessa (illustrator), Fe.Bocquet (engraver)",
+        "u": "https://commons.wikimedia.org/wiki/File:NAS-018f_Quercus_%C3%97_heterophylla.png"
+      }
+    ],
+    "660": [
+      {
+        "f": "660-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc-by",
+        "by": "(c) Marco Mussita, some rights reserved (CC BY), uploaded by Marco Mussita",
+        "u": "https://www.inaturalist.org/photos/311156000"
+      }
+    ],
+    "662": [
+      {
+        "f": "662-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "cc-by",
+        "by": "No machine-readable author provided. TeunSpaans assumed (based on copyright claims).",
+        "u": "https://commons.wikimedia.org/wiki/File:Betula_lenta_subsps_lenta_01-10-2005_14.53.56.JPG"
+      }
+    ],
+    "666": [
+      {
+        "f": "666-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc-by",
+        "by": "(c) Davide Puddu, some rights reserved (CC BY), uploaded by Davide Puddu",
+        "u": "https://www.inaturalist.org/photos/41453904"
+      }
+    ],
+    "669": [
+      {
+        "f": "669-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc-by",
+        "by": "(c) Superior National Forest, some rights reserved (CC BY)",
+        "u": "https://www.inaturalist.org/photos/188262344"
+      }
+    ],
+    "670": [
+      {
+        "f": "670-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "cc-by",
+        "by": "Jean-Pol GRANDMONT",
+        "u": "https://commons.wikimedia.org/wiki/File:Tilia_oliveri_JPG1Fe.jpg"
+      }
+    ],
+    "672": [
+      {
+        "f": "672-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "pd",
+        "by": "Wikimedia Commons",
+        "u": "https://commons.wikimedia.org/wiki/File:Elaeagnus_commutata_USDA.jpg"
+      }
+    ],
+    "674": [
+      {
+        "f": "674-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc0",
+        "by": "no rights reserved, uploaded by Daniel Atha",
+        "u": "https://www.inaturalist.org/photos/17372391"
+      }
+    ],
+    "675": [
+      {
+        "f": "675-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc0",
+        "by": "no rights reserved, uploaded by Jason Leduc",
+        "u": "https://www.inaturalist.org/photos/462121096"
+      }
+    ],
+    "679": [
+      {
+        "f": "679-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "cc-by",
+        "by": "belvedere04",
+        "u": "https://commons.wikimedia.org/wiki/File:Japanese_White_Pine_(Pinus_parviflora),_Shigeno,_Tomi,_Nagano_Prefecture,_Japan_1.jpg"
+      }
+    ],
+    "686": [
+      {
+        "f": "686-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc-by",
+        "by": "(c) Shaun Swanepoel, some rights reserved (CC BY), uploaded by Shaun Swanepoel",
+        "u": "https://www.inaturalist.org/photos/15492941"
+      }
+    ],
+    "688": [
+      {
+        "f": "688-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc-by",
+        "by": "(c) Mary K. Hanson, some rights reserved (CC BY), uploaded by Mary K. Hanson",
+        "u": "https://www.inaturalist.org/photos/73840879"
+      }
+    ],
+    "690": [
+      {
+        "f": "690-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc-by",
+        "by": "(c) Nicholas A. Tonelli, some rights reserved (CC BY)",
+        "u": "https://www.inaturalist.org/photos/74554055"
+      }
+    ],
+    "691": [
+      {
+        "f": "691-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "pd",
+        "by": "USDA-NRCS PLANTS Database / Herman, D.E. et al. 1996. North Dakota tree handbook. USDA NRCS ND State Soil Conservation C…",
+        "u": "https://commons.wikimedia.org/wiki/File:Pinus_contorta_latifolia_tree.jpg"
+      }
+    ],
+    "693": [
+      {
+        "f": "693-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc0",
+        "by": "no rights reserved, uploaded by Ken Kneidel",
+        "u": "https://www.inaturalist.org/photos/11379193"
+      }
+    ],
+    "698": [
+      {
+        "f": "698-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc-by",
+        "by": "(c) Andrew Conboy, some rights reserved (CC BY), uploaded by Andrew Conboy",
+        "u": "https://www.inaturalist.org/photos/215552230"
+      }
+    ],
+    "699": [
+      {
+        "f": "699-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "cc-by",
+        "by": "A. Barra",
+        "u": "https://commons.wikimedia.org/wiki/File:Caragana_arborescens.jpg"
+      }
+    ],
+    "700": [
+      {
+        "f": "700-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "cc-by",
+        "by": "Wikimedia Commons",
+        "u": "https://commons.wikimedia.org/wiki/File:Populus_trichocarpa_05897.JPG"
+      }
+    ],
     "701": [
       {
         "f": "701-0.webp",
@@ -3717,6 +6137,366 @@
         "lic": "odbl-1.0",
         "by": "Ville de Paris",
         "u": "https://opendata.paris.fr/api/explore/v2.1/catalog/datasets/fiches-essences-du-guide-des-essences-de-paris/files/eda625bddd8ad5b46506dccc4401cc48"
+      }
+    ],
+    "703": [
+      {
+        "f": "703-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc0",
+        "by": "no rights reserved, uploaded by Viola Alekseeva",
+        "u": "https://www.inaturalist.org/photos/143333725"
+      }
+    ],
+    "704": [
+      {
+        "f": "704-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc-by",
+        "by": "(c) John Baur, some rights reserved (CC BY), uploaded by John Baur",
+        "u": "https://www.inaturalist.org/photos/51468204"
+      }
+    ],
+    "706": [
+      {
+        "f": "706-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc-by",
+        "by": "(c) Marco Mussita, some rights reserved (CC BY), uploaded by Marco Mussita",
+        "u": "https://www.inaturalist.org/photos/8692647"
+      }
+    ],
+    "707": [
+      {
+        "f": "707-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "cc-by",
+        "by": "אבישי טייכר",
+        "u": "https://commons.wikimedia.org/wiki/File:PikiWiki_Israel_5534_koelreuteria_bippnata.jpg"
+      }
+    ],
+    "708": [
+      {
+        "f": "708-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "pd",
+        "by": "Tusbra",
+        "u": "https://commons.wikimedia.org/wiki/File:Pseudocydonia.jpg"
+      }
+    ],
+    "709": [
+      {
+        "f": "709-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc-by",
+        "by": "(c) Aaron Liston, some rights reserved (CC BY), uploaded by Aaron Liston",
+        "u": "https://www.inaturalist.org/photos/9553024"
+      }
+    ],
+    "712": [
+      {
+        "f": "712-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc-by",
+        "by": "(c) Adam J. Searcy, some rights reserved (CC BY), uploaded by Adam J. Searcy",
+        "u": "https://www.inaturalist.org/photos/90567457"
+      }
+    ],
+    "715": [
+      {
+        "f": "715-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "cc-by",
+        "by": "Walter Siegmund",
+        "u": "https://commons.wikimedia.org/wiki/File:Abies_lasiocarpa_26008.JPG"
+      }
+    ],
+    "721": [
+      {
+        "f": "721-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "cc-by",
+        "by": "Degueulasse",
+        "u": "https://commons.wikimedia.org/wiki/File:Weeping_cherry_tree_in_Daianji_elementary_school_02.jpg"
+      }
+    ],
+    "723": [
+      {
+        "f": "723-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc-by",
+        "by": "(c) Marco Mussita, some rights reserved (CC BY), uploaded by Marco Mussita",
+        "u": "https://www.inaturalist.org/photos/168476121"
+      }
+    ],
+    "724": [
+      {
+        "f": "724-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "pd",
+        "by": "Daderot",
+        "u": "https://commons.wikimedia.org/wiki/File:Nyssa_sinensis_-_Kunming_Botanical_Garden_-_DSC03162.JPG"
+      }
+    ],
+    "725": [
+      {
+        "f": "725-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc-by",
+        "by": "(c) Lin Scott, some rights reserved (CC BY), uploaded by Lin Scott",
+        "u": "https://www.inaturalist.org/photos/18806401"
+      }
+    ],
+    "726": [
+      {
+        "f": "726-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "cc-by",
+        "by": "663highland",
+        "u": "https://commons.wikimedia.org/wiki/File:Dojoji_Gobo_Wakayama05n4272.jpg"
+      }
+    ],
+    "727": [
+      {
+        "f": "727-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc0",
+        "by": "no rights reserved, uploaded by 葉子",
+        "u": "https://www.inaturalist.org/photos/31410152"
+      }
+    ],
+    "728": [
+      {
+        "f": "728-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "cc-by",
+        "by": "Jean-Pol GRANDMONT",
+        "u": "https://commons.wikimedia.org/wiki/File:Sorbus_vilmorinii_JPG1a.jpg"
+      }
+    ],
+    "730": [
+      {
+        "f": "730-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "cc0",
+        "by": "AnRo0002",
+        "u": "https://commons.wikimedia.org/wiki/File:20130817Staphylea_pinnata1.jpg"
+      }
+    ],
+    "732": [
+      {
+        "f": "732-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc-by",
+        "by": "(c) Ramnarayan K, some rights reserved (CC BY), uploaded by Ramnarayan K",
+        "u": "https://www.inaturalist.org/photos/189213940"
+      }
+    ],
+    "733": [
+      {
+        "f": "733-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "cc0",
+        "by": "gbno",
+        "u": "https://commons.wikimedia.org/wiki/File:Gymnocladus_chinensis,_Hangzhou,_Zhejiang,_China_4.jpg"
+      }
+    ],
+    "735": [
+      {
+        "f": "735-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc-by",
+        "by": "(c) Σ64, some rights reserved (CC BY)",
+        "u": "https://www.inaturalist.org/photos/11757322"
+      }
+    ],
+    "736": [
+      {
+        "f": "736-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc-by",
+        "by": "(c) Wendy Cutler, some rights reserved (CC BY)",
+        "u": "https://www.inaturalist.org/photos/1871277"
+      }
+    ],
+    "737": [
+      {
+        "f": "737-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "pd",
+        "by": "Kristjan",
+        "u": "https://commons.wikimedia.org/wiki/File:Juglans_cinerea_01.jpg"
+      }
+    ],
+    "738": [
+      {
+        "f": "738-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc-by",
+        "by": "(c) Stanislav Krejčík, some rights reserved (CC BY)",
+        "u": "https://www.inaturalist.org/photos/529229"
+      }
+    ],
+    "742": [
+      {
+        "f": "742-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc0",
+        "by": "no rights reserved, uploaded by 葉子",
+        "u": "https://www.inaturalist.org/photos/68686046"
+      }
+    ],
+    "744": [
+      {
+        "f": "744-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc-by",
+        "by": "(c) alfanoar, some rights reserved (CC BY), uploaded by alfanoar",
+        "u": "https://www.inaturalist.org/photos/7579822"
+      }
+    ],
+    "746": [
+      {
+        "f": "746-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "cc-by",
+        "by": "karimhaddad",
+        "u": "https://commons.wikimedia.org/wiki/File:Abies_numidica,_Jebel_Babor,_S%C3%A9tif,_Algeria_1.jpg"
+      }
+    ],
+    "748": [
+      {
+        "f": "748-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "cc0",
+        "by": "Daderot",
+        "u": "https://commons.wikimedia.org/wiki/File:Parrotiopsis_jacquemontiana_-_Botanischer_Garten,_Frankfurt_am_Main_-_DSC03275.JPG"
+      }
+    ],
+    "749": [
+      {
+        "f": "749-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc-by",
+        "by": "(c) Cheng-Te Hsu, some rights reserved (CC BY), uploaded by Cheng-Te Hsu",
+        "u": "https://www.inaturalist.org/photos/21782727"
+      }
+    ],
+    "750": [
+      {
+        "f": "750-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc0",
+        "by": "no rights reserved, uploaded by Paul Braun",
+        "u": "https://www.inaturalist.org/photos/8785746"
+      }
+    ],
+    "752": [
+      {
+        "f": "752-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc0",
+        "by": "no rights reserved, uploaded by Étienne Lacroix-Carignan",
+        "u": "https://www.inaturalist.org/photos/276869050"
+      }
+    ],
+    "753": [
+      {
+        "f": "753-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "cc0",
+        "by": "Wiki Farazi",
+        "u": "https://commons.wikimedia.org/wiki/File:Brucea_javanica_along_Bukit_Juru_Trail_within_Hutan_Simpanan_Kekal_Bukit_Juru_in_Kampung_Kuala_Juru,_SPT_District_20240915_094103.jpg"
+      }
+    ],
+    "754": [
+      {
+        "f": "754-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc0",
+        "by": "no rights reserved, uploaded by David A. Krause",
+        "u": "https://www.inaturalist.org/photos/14269153"
+      }
+    ],
+    "755": [
+      {
+        "f": "755-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc-by",
+        "by": "(c) rduta on Flickr, some rights reserved (CC BY)",
+        "u": "https://www.inaturalist.org/photos/8733185"
+      }
+    ],
+    "756": [
+      {
+        "f": "756-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "pd",
+        "by": "Herman, D.E., et al. North Dakota tree handbook. USDA NRCS.",
+        "u": "https://commons.wikimedia.org/wiki/File:Fraxinus_mandschurica_USDA.jpg"
+      }
+    ],
+    "760": [
+      {
+        "f": "760-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc-by",
+        "by": "(c) Carrie Seltzer, some rights reserved (CC BY), uploaded by Carrie Seltzer",
+        "u": "https://www.inaturalist.org/photos/4111716"
+      }
+    ],
+    "761": [
+      {
+        "f": "761-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "pd",
+        "by": "Qwert1234",
+        "u": "https://commons.wikimedia.org/wiki/File:Swida_macrophylla_1.JPG"
+      }
+    ],
+    "763": [
+      {
+        "f": "763-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "pd",
+        "by": "Wikimedia Commons",
+        "u": "https://commons.wikimedia.org/wiki/File:Quercus_falcata_leaf_bark.jpg"
       }
     ],
     "765": [
@@ -3745,6 +6525,396 @@
         "u": "https://opendata.paris.fr/api/explore/v2.1/catalog/datasets/fiches-essences-du-guide-des-essences-de-paris/files/743141770f159fe49b1c0a310f4836c9"
       }
     ],
+    "769": [
+      {
+        "f": "769-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "pd",
+        "by": "Britton, N.L., and A. Brown. 1913. An illustrated flora of the northern United States, Canada and the British Possession…",
+        "u": "https://commons.wikimedia.org/wiki/File:Crataegus_calpodendron_BB-1913.png"
+      }
+    ],
+    "770": [
+      {
+        "f": "770-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "cc-by",
+        "by": "A. Barra",
+        "u": "https://commons.wikimedia.org/wiki/File:Celtis_bungeana.JPG"
+      }
+    ],
+    "771": [
+      {
+        "f": "771-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "pd",
+        "by": "Nadiatalent",
+        "u": "https://commons.wikimedia.org/wiki/File:Crataegus-ambigua-2.jpg"
+      }
+    ],
+    "772": [
+      {
+        "f": "772-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc-by",
+        "by": "(c) Duarte Frade, some rights reserved (CC BY), uploaded by Duarte Frade",
+        "u": "https://www.inaturalist.org/photos/146556483"
+      }
+    ],
+    "776": [
+      {
+        "f": "776-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc-by",
+        "by": "(c) Junichi Mandai, some rights reserved (CC BY), uploaded by Junichi Mandai",
+        "u": "https://www.inaturalist.org/photos/68590199"
+      }
+    ],
+    "777": [
+      {
+        "f": "777-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "cc-by",
+        "by": "Themodoccypress",
+        "u": "https://commons.wikimedia.org/wiki/File:Cupressus_bakeri_foliage_and_cones1.JPG"
+      }
+    ],
+    "778": [
+      {
+        "f": "778-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc-by",
+        "by": "(c) Tatyana Petrenko, some rights reserved (CC BY), uploaded by Tatyana Petrenko",
+        "u": "https://www.inaturalist.org/photos/332248394"
+      }
+    ],
+    "787": [
+      {
+        "f": "787-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc-by",
+        "by": "(c) Andre Hosper, some rights reserved (CC BY), uploaded by Andre Hosper",
+        "u": "https://www.inaturalist.org/photos/90983244"
+      }
+    ],
+    "788": [
+      {
+        "f": "788-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "cc-by",
+        "by": "pakku",
+        "u": "https://commons.wikimedia.org/wiki/File:%E8%94%B5%E7%8E%8B%E3%81%AE%E5%BD%A9_Acer_sieboldianum,_Kamihozawa,_Yamagata,_Japan.jpg"
+      }
+    ],
+    "789": [
+      {
+        "f": "789-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "pd",
+        "by": "Wouter Hagens",
+        "u": "https://commons.wikimedia.org/wiki/File:Cornus_kousa_chinensis_A.jpg"
+      }
+    ],
+    "791": [
+      {
+        "f": "791-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "pd",
+        "by": "Angilbas at English Wikipedia",
+        "u": "https://commons.wikimedia.org/wiki/File:Acer_macrophyllum_1199.jpg"
+      }
+    ],
+    "792": [
+      {
+        "f": "792-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc-by",
+        "by": "(c) Col Ford and Natasha de Vere, some rights reserved (CC BY)",
+        "u": "https://www.inaturalist.org/photos/38026423"
+      }
+    ],
+    "794": [
+      {
+        "f": "794-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "cc0",
+        "by": "daveincamas",
+        "u": "https://commons.wikimedia.org/wiki/File:Coast_Silk_Tassel_(Garrya_elliptica),_Redwoods_NP,_Del_Norte,_California_1.jpg"
+      }
+    ],
+    "797": [
+      {
+        "f": "797-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "cc0",
+        "by": "Daderot",
+        "u": "https://commons.wikimedia.org/wiki/File:Cupressus_chengiana_-_Quarryhill_Botanical_Garden_-_DSC03571.JPG"
+      }
+    ],
+    "798": [
+      {
+        "f": "798-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "cc-by",
+        "by": "Marcus334",
+        "u": "https://commons.wikimedia.org/wiki/File:Rhododendron_arboreum_subsp._nilagiricum_(1).jpg"
+      }
+    ],
+    "799": [
+      {
+        "f": "799-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc-by",
+        "by": "(c) Wendy Cutler, some rights reserved (CC BY)",
+        "u": "https://www.inaturalist.org/photos/1539311"
+      }
+    ],
+    "801": [
+      {
+        "f": "801-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc-by",
+        "by": "(c) Karim Haddad, some rights reserved (CC BY), uploaded by Karim Haddad",
+        "u": "https://www.inaturalist.org/photos/57018656"
+      }
+    ],
+    "802": [
+      {
+        "f": "802-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "cc0",
+        "by": "Forestowlet",
+        "u": "https://commons.wikimedia.org/wiki/File:Picea_smithiana_007.jpg"
+      }
+    ],
+    "804": [
+      {
+        "f": "804-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "pd",
+        "by": "panteek",
+        "u": "https://commons.wikimedia.org/wiki/File:Duke_cherry.jpg"
+      }
+    ],
+    "807": [
+      {
+        "f": "807-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc-by",
+        "by": "(c) Bruce Kirchoff, some rights reserved (CC BY)",
+        "u": "https://www.inaturalist.org/photos/13988560"
+      }
+    ],
+    "808": [
+      {
+        "f": "808-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "cc-by",
+        "by": "Dick Culbert from Gibsons, B.C., Canada",
+        "u": "https://commons.wikimedia.org/wiki/File:Nothofagus_obliqua_(8645995778).jpg"
+      }
+    ],
+    "809": [
+      {
+        "f": "809-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "cc-by",
+        "by": "A. Barra",
+        "u": "https://commons.wikimedia.org/wiki/File:Pittosporum_heterophyllum.jpg"
+      }
+    ],
+    "810": [
+      {
+        "f": "810-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "cc-by",
+        "by": "Walter Siegmund",
+        "u": "https://commons.wikimedia.org/wiki/File:Alnus_rubra_0020.JPG"
+      }
+    ],
+    "813": [
+      {
+        "f": "813-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "pd",
+        "by": "Daderot",
+        "u": "https://commons.wikimedia.org/wiki/File:Euscaphis_japonica_-_J._C._Raulston_Arboretum_-_DSC06182.JPG"
+      }
+    ],
+    "817": [
+      {
+        "f": "817-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "cc0",
+        "by": "stekkelpak",
+        "u": "https://commons.wikimedia.org/wiki/File:2022-02-20_Washingtonia_robusta,_Las_Flores,_Todos_Santos,_Baja_California_Sur,_Mexico.jpg"
+      }
+    ],
+    "818": [
+      {
+        "f": "818-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc-by",
+        "by": "(c) Petr Harant, some rights reserved (CC BY), uploaded by Petr Harant",
+        "u": "https://www.inaturalist.org/photos/291303580"
+      }
+    ],
+    "819": [
+      {
+        "f": "819-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "pd",
+        "by": "M.S. del., J.N.Fitch lith.",
+        "u": "https://commons.wikimedia.org/wiki/File:Styrax_hemsleyanus_136-8339.jpg"
+      }
+    ],
+    "821": [
+      {
+        "f": "821-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "pd",
+        "by": "Lynden Gerdes @ USDA-NRCS PLANTS Database / USDA NRCS. 1995. Northeast wetland flora: Field office guide to plant specie…",
+        "u": "https://commons.wikimedia.org/wiki/File:Populus_balsamifera.jpg"
+      }
+    ],
+    "825": [
+      {
+        "f": "825-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "cc-by",
+        "by": "Alexander Dubynin",
+        "u": "https://commons.wikimedia.org/wiki/File:Betula_tianschanica_246519625.jpg"
+      }
+    ],
+    "831": [
+      {
+        "f": "831-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "cc-by",
+        "by": "Wikimedia Commons",
+        "u": "https://commons.wikimedia.org/wiki/File:Pinus_syluestriformis_(Takenouchi)T.Wang_ex_Cheng.JPG"
+      }
+    ],
+    "833": [
+      {
+        "f": "833-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "pd",
+        "by": "Organisme public, publication avec licence Creative Commons, sens large.",
+        "u": "https://commons.wikimedia.org/wiki/File:T_chinensis.jpg"
+      }
+    ],
+    "837": [
+      {
+        "f": "837-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc-by",
+        "by": "(c) Shang Ning, some rights reserved (CC BY)",
+        "u": "https://www.inaturalist.org/photos/8464390"
+      }
+    ],
+    "840": [
+      {
+        "f": "840-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "pd",
+        "by": "Philipp Franz von Siebold and Joseph Gerhard Zuccarini",
+        "u": "https://commons.wikimedia.org/wiki/File:Pterocarya_rhoifolia_SZ150.png"
+      }
+    ],
+    "843": [
+      {
+        "f": "843-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc-by",
+        "by": "(c) manuel m. v., some rights reserved (CC BY)",
+        "u": "https://www.inaturalist.org/photos/93582104"
+      }
+    ],
+    "846": [
+      {
+        "f": "846-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc-by",
+        "by": "(c) Martin Scheuch, some rights reserved (CC BY), uploaded by Martin Scheuch",
+        "u": "https://www.inaturalist.org/photos/226070581"
+      }
+    ],
+    "847": [
+      {
+        "f": "847-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "cc-by",
+        "by": "bobistraveling on Flickr",
+        "u": "https://commons.wikimedia.org/wiki/File:Pinus_rigida_cone_Linville.jpg"
+      }
+    ],
+    "848": [
+      {
+        "f": "848-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "pd",
+        "by": "DeepFork ( talk ) ( Uploads )",
+        "u": "https://commons.wikimedia.org/wiki/File:Blackjack_and_little_bluestem.png"
+      }
+    ],
+    "849": [
+      {
+        "f": "849-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "cc-by",
+        "by": "Photographed and uploaded by :en:Geographer ( talk | contribs )",
+        "u": "https://commons.wikimedia.org/wiki/File:Leaves_of_California_Scrub_Oak.JPG"
+      }
+    ],
+    "851": [
+      {
+        "f": "851-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "cc-by",
+        "by": "Bruce Marlin",
+        "u": "https://commons.wikimedia.org/wiki/File:Juglans_major_Morton.jpg"
+      }
+    ],
     "853": [
       {
         "f": "853-0.webp",
@@ -3771,6 +6941,26 @@
         "u": "https://opendata.paris.fr/api/explore/v2.1/catalog/datasets/fiches-essences-du-guide-des-essences-de-paris/files/77344443900044be9db2b664888a6750"
       }
     ],
+    "854": [
+      {
+        "f": "854-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "cc-by",
+        "by": "Jason Hollinger",
+        "u": "https://commons.wikimedia.org/wiki/File:Taxus_brevifolia_Blue_Mts_WA.jpg"
+      }
+    ],
+    "857": [
+      {
+        "f": "857-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "pd",
+        "by": "Chhe ( talk )",
+        "u": "https://commons.wikimedia.org/wiki/File:MagnoliaMacrophylla.jpg"
+      }
+    ],
     "858": [
       {
         "f": "858-0.webp",
@@ -3787,6 +6977,256 @@
         "lic": "odbl-1.0",
         "by": "Ville de Paris",
         "u": "https://opendata.paris.fr/api/explore/v2.1/catalog/datasets/fiches-essences-du-guide-des-essences-de-paris/files/f375ee5ca792fe053a93e6334c411672"
+      }
+    ],
+    "860": [
+      {
+        "f": "860-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "cc0",
+        "by": "Daderot",
+        "u": "https://commons.wikimedia.org/wiki/File:Fagus_engleriana_-_Morris_Arboretum_-_DSC00475.JPG"
+      }
+    ],
+    "863": [
+      {
+        "f": "863-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc-by",
+        "by": "(c) Roland Godon, some rights reserved (CC BY), uploaded by Roland Godon",
+        "u": "https://www.inaturalist.org/photos/523586508"
+      }
+    ],
+    "867": [
+      {
+        "f": "867-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc-by",
+        "by": "(c) Marco Mussita, some rights reserved (CC BY), uploaded by Marco Mussita",
+        "u": "https://www.inaturalist.org/photos/90557099"
+      }
+    ],
+    "869": [
+      {
+        "f": "869-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc-by",
+        "by": "(c) Nicolás Lavandero, some rights reserved (CC BY), uploaded by Nicolás Lavandero",
+        "u": "https://www.inaturalist.org/photos/527204067"
+      }
+    ],
+    "870": [
+      {
+        "f": "870-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc-by",
+        "by": "(c) Ljaž, some rights reserved (CC BY), uploaded by Ljaž",
+        "u": "https://www.inaturalist.org/photos/133380998"
+      }
+    ],
+    "871": [
+      {
+        "f": "871-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc-by",
+        "by": "(c) Siddarth Machado, some rights reserved (CC BY), uploaded by Siddarth Machado",
+        "u": "https://www.inaturalist.org/photos/71737513"
+      }
+    ],
+    "873": [
+      {
+        "f": "873-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "cc-by",
+        "by": "No machine-readable author provided. TeunSpaans assumed (based on copyright claims).",
+        "u": "https://commons.wikimedia.org/wiki/File:Betula_medwediewii_01-10-2005_14.59.02.JPG"
+      }
+    ],
+    "876": [
+      {
+        "f": "876-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "cc0",
+        "by": "Daderot",
+        "u": "https://commons.wikimedia.org/wiki/File:Acer_hyrcanum_-_Hillier_Gardens_-_Romsey,_Hampshire,_England_-_DSC04299.jpg"
+      }
+    ],
+    "877": [
+      {
+        "f": "877-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc-by",
+        "by": "(c) Igor Balashov, some rights reserved (CC BY), uploaded by Igor Balashov",
+        "u": "https://www.inaturalist.org/photos/220237785"
+      }
+    ],
+    "878": [
+      {
+        "f": "878-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc-by",
+        "by": "(c) Dmitry Kulakov, some rights reserved (CC BY), uploaded by Dmitry Kulakov",
+        "u": "https://www.inaturalist.org/photos/55959799"
+      }
+    ],
+    "879": [
+      {
+        "f": "879-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc-by",
+        "by": "(c) Repina Tatyana, some rights reserved (CC BY), uploaded by Repina Tatyana",
+        "u": "https://www.inaturalist.org/photos/112303466"
+      }
+    ],
+    "882": [
+      {
+        "f": "882-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "pd",
+        "by": "Agricultural Research Service (Research agent of United States Department of Agriculture )",
+        "u": "https://commons.wikimedia.org/wiki/File:Malus_sieversii_Tarbagatai.jpg"
+      }
+    ],
+    "883": [
+      {
+        "f": "883-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc-by",
+        "by": "(c) Naturalista, some rights reserved (CC BY), uploaded by Naturalista",
+        "u": "https://www.inaturalist.org/photos/335734595"
+      }
+    ],
+    "890": [
+      {
+        "f": "890-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc-by",
+        "by": "(c) Homer Edward Price, some rights reserved (CC BY)",
+        "u": "https://www.inaturalist.org/photos/2261216"
+      }
+    ],
+    "891": [
+      {
+        "f": "891-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc-by",
+        "by": "(c) Melissa McMasters, some rights reserved (CC BY)",
+        "u": "https://www.inaturalist.org/photos/83873382"
+      }
+    ],
+    "892": [
+      {
+        "f": "892-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "pd",
+        "by": "Karduelis",
+        "u": "https://commons.wikimedia.org/wiki/File:Quercus_pontica-5.jpg"
+      }
+    ],
+    "894": [
+      {
+        "f": "894-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "pd",
+        "by": "Franz Eugen Köhler, Köhler's Medizinal-Pflanzen",
+        "u": "https://commons.wikimedia.org/wiki/File:Carica_papaya_-_K%C3%B6hler%E2%80%93s_Medizinal-Pflanzen-029.jpg"
+      }
+    ],
+    "896": [
+      {
+        "f": "896-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "cc-by",
+        "by": "איתן פרמן",
+        "u": "https://commons.wikimedia.org/wiki/File:Styrax_officinalis.jpg"
+      }
+    ],
+    "897": [
+      {
+        "f": "897-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "cc-by",
+        "by": "KENPEI",
+        "u": "https://commons.wikimedia.org/wiki/File:Lindera_glauca1.jpg"
+      }
+    ],
+    "900": [
+      {
+        "f": "900-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "cc-by",
+        "by": "Jean-Pol GRANDMONT",
+        "u": "https://commons.wikimedia.org/wiki/File:Fraxinus_latifolia_JPG1A.jpg"
+      }
+    ],
+    "902": [
+      {
+        "f": "902-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "pd",
+        "by": "Thomas Kirk",
+        "u": "https://commons.wikimedia.org/wiki/File:Forest_Flora_of_New_Zealand_Pl._103_(BHL62324855).webp"
+      }
+    ],
+    "905": [
+      {
+        "f": "905-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "pd",
+        "by": "Nadiatalent",
+        "u": "https://commons.wikimedia.org/wiki/File:Crataegus_spathulata_trunk.jpg"
+      }
+    ],
+    "906": [
+      {
+        "f": "906-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "pd",
+        "by": "Robert H. Mohlenbrock. USDA SCS. Southern wetland flora: Field office guide to plant species .",
+        "u": "https://commons.wikimedia.org/wiki/File:Carya_aquatica_USDA.jpg"
+      }
+    ],
+    "931": [
+      {
+        "f": "931-0.webp",
+        "r": "p",
+        "src": "wikimedia-commons",
+        "lic": "cc-by",
+        "by": "Charles Gadbois",
+        "u": "https://commons.wikimedia.org/wiki/File:Arequipa_-_Canyon_de_Colca_123_Schinus_molle_1.JPG"
+      }
+    ],
+    "933": [
+      {
+        "f": "933-0.webp",
+        "r": "p",
+        "src": "inaturalist",
+        "lic": "cc0",
+        "by": "no rights reserved, uploaded by 葉子",
+        "u": "https://www.inaturalist.org/photos/599785046"
       }
     ]
   }
