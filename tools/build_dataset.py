@@ -56,6 +56,8 @@ OUT_REMARQUABLES_INFO = ASSETS_DIR / "remarquables-info.json"
 OUT_GENRE_INFO = ASSETS_DIR / "genre-info.json"
 OUT_SPLASH_TIPS = ASSETS_DIR / "splash-tips.json"
 OUT_ARR_SPECIES = ASSETS_DIR / "arr-species.json"
+OUT_SPECIES_PHOTOS_DIR = ASSETS_DIR / "species-photos"
+OUT_SPECIES_PHOTOS_MANIFEST = ASSETS_DIR / "species-photos.json"
 STATIC_SPLASH_TIPS = ROOT / "tools" / "splash-tips-static.json"
 
 # Placeholders runtime supportés côté Kotlin (cf. SplashTipsController). Toute
@@ -2123,6 +2125,30 @@ def _parse_essence_attributes(rec: dict) -> dict:
     return attrs
 
 
+# Synonymes appliqués à la CLÉ taxon d'une fiche-essence (sortie de
+# `_parse_essence_taxon`) au moment où `_build_essences_index` la construit.
+# Pendant que `SPECIES_FIXUPS` corrige les rows CSV les-arbres, cette table-ci
+# corrige les fiches-essences PDF : leur `nom_latin` suit parfois une graphie
+# ou une synonymie que le species-index (issu du CSV) n'emploie pas, si bien que
+# le lookup EXACT `taxon in species_index` échoue alors que l'espèce EST au
+# catalogue. On remappe vers le taxon canonique du species-index pour que TOUT
+# le pipeline (dédup, merge extras, photos, flag matched, sidecar) voie la même
+# clé. Sens : (graphie fiche) → (taxon canonique species-index).
+ESSENCE_TAXON_SYNONYMS: dict[tuple[str, str], tuple[str, str]] = {
+    # Variante de genre grammatical de l'épithète : la fiche écrit l'espèce au
+    # masculin (dioicus), le CSV/species-index au féminin (dioica). Même espèce,
+    # le Chicot du Canada (Gymnocladus dioica, sk 136, ~334 arbres). POWO retient
+    # « Gymnocladus dioica (L.) K.Koch » comme nom accepté.
+    ("Gymnocladus", "dioicus"): ("Gymnocladus", "dioica"),
+    # Synonymie genre+espèce : la fiche « Sinomalus sieboldii » désigne le
+    # pommier de Siebold, dont POWO (Plants of the World Online, Kew) et le
+    # Catalogue of Life retiennent aujourd'hui « Malus toringo (Siebold)
+    # de Vriese » comme nom accepté (Sinomalus sieboldii et Malus sieboldii en
+    # sont des synonymes). Correspond à Malus toringo au catalogue (sk 338).
+    ("Sinomalus", "sieboldii"): ("Malus", "toringo"),
+}
+
+
 def _build_essences_index(records: list[dict]) -> dict[tuple[str, str], dict]:
     """`(genre, espece) → {"pdf": url, "ess": {…attributs}}`, record le plus générique.
 
@@ -2138,6 +2164,9 @@ def _build_essences_index(records: list[dict]) -> dict[tuple[str, str], dict]:
         taxon = _parse_essence_taxon(nom_latin)
         if taxon is None:
             continue
+        # Remappe la graphie/synonymie de la fiche vers le taxon canonique du
+        # species-index, AVANT la dédup et tout usage aval, pour cohérence.
+        taxon = ESSENCE_TAXON_SYNONYMS.get(taxon, taxon)
         pdf = rec.get("nom_fichier_pdf_associe") or {}
         url = pdf.get("url")
         if not url:
@@ -2210,13 +2239,18 @@ def _write_essence_extras_trace(
     essences_index: dict[tuple[str, str], dict],
     extras_by_pdf_id: dict,
     species_index: dict[tuple[str, str], int],
+    photo_results: dict | None = None,
 ) -> None:
     """Sidecar `tools/_trace/essence-extras.json` + log de synthèse `[pdf ]`.
 
     Une entrée par PDF extrait (toutes les fiches, cultivars compris). `matched`
     = la fiche est CELLE retenue dans l'index ET son (genre, espece) est présent
     dans le species-index (mêmes conditions que le compteur de matching essences).
+    `photo_results` (S9, sortie de `_write_species_photos`, keyée par pdf_id)
+    enrichit chaque entrée matchée : `sk`, `photos` (métadonnées des WebP écrits)
+    et `photo_warnings`. `sk` reste None pour les fiches non matchées.
     """
+    photo_results = photo_results or {}
     # nom_latin / filename / url par pdf_id, depuis les records bruts.
     meta_by_pdf_id: dict[str, dict] = {}
     for rec in records:
@@ -2228,12 +2262,14 @@ def _write_essence_extras_trace(
                 "filename": pdf.get("filename"),
                 "url": pdf.get("url"),
             }
-    # pdf_id retenus dans l'index et matchant le species-index.
+    # pdf_id retenus dans l'index et matchant le species-index (+ leur sk).
     matched_pdf_ids: set[str] = set()
+    sk_by_pdf_id: dict[str, int] = {}
     for taxon, value in essences_index.items():
         pid = value.get("_pdf_id")
         if pid and taxon in species_index:
             matched_pdf_ids.add(pid)
+            sk_by_pdf_id[pid] = species_index[taxon]
 
     trace: dict[str, dict] = {}
     n_flor = n_fruct = n_atouts = n_limites = n_warn = 0
@@ -2241,10 +2277,19 @@ def _write_essence_extras_trace(
     total_fails: list[str] = []
     for pdf_id, extras in extras_by_pdf_id.items():
         meta = meta_by_pdf_id.get(pdf_id, {})
+        sk = sk_by_pdf_id.get(pdf_id)
+        pr = photo_results.get(pdf_id) or {}
+        photo_rows = [
+            {"f": f"{sk}-{n}.webp",
+             "r": "p" if ph.role == "principal" else "d",
+             "w": ph.width, "h": ph.height, "bytes": len(ph.webp)}
+            for n, ph in enumerate(pr.get("photos", []))
+        ]
         trace[pdf_id] = {
             "nom_latin": meta.get("nom_latin", ""),
             "filename": meta.get("filename"),
             "url": meta.get("url"),
+            "sk": sk,
             "flor": extras.flor,
             "fruct": extras.fruct,
             "atouts": extras.atouts,
@@ -2258,6 +2303,8 @@ def _write_essence_extras_trace(
             "iddesc": extras.iddesc,
             "paris": extras.paris,
             "svc": extras.svc,
+            "photos": photo_rows,
+            "photo_warnings": pr.get("warnings", []),
             "warnings": extras.warnings,
             "matched": pdf_id in matched_pdf_ids,
         }
@@ -2308,6 +2355,150 @@ def _write_essence_extras_trace(
     )
     for name in sorted(total_fails):
         print(f"[pdf ]   échec total : {name}")
+
+
+# ---------------------------------------------------------------------------
+# S9 — Photos officielles : écriture des assets + manifest
+# ---------------------------------------------------------------------------
+# Métadonnées d'indirection du manifest (dédupliquées via `meta`). S10 ajoutera
+# des clés dans `licenses`/`sources` (cascade Wikidata/iNat) sans changer le
+# schéma. Toutes les photos S9 partagent une même source (Ville de Paris) et
+# licence (ODbL v1.0).
+_PHOTO_LICENSES: dict[str, dict] = {
+    "odbl-1.0": {
+        "name": "Open Database License v1.0",
+        "url": "https://opendatacommons.org/licenses/odbl/1-0/",
+    },
+}
+_PHOTO_SOURCES: dict[str, dict] = {
+    "paris": {
+        "name": "Ville de Paris — Guide des essences 2024",
+        "authors": "J.E. Michaut, B. Morlon, B. Serres",
+    },
+}
+
+
+def _photo_manifest_entries(sk: int, photos: list, pdf_url: str | None) -> list[dict]:
+    """Entrées manifest `{f,r,src,lic,by,u}` d'une espèce (PURE, testable).
+
+    `photos` = liste de `SpeciesPhoto` (index 0 = principale, 1.. = détails) ;
+    `r` = "p"/"d" selon `role`, `f` = nom de fichier `{sk}-{n}.webp`, `u` = URL
+    de la fiche PDF source. Ne lit que `photos[i].role` — aucune dépendance
+    fitz/Pillow.
+    """
+    return [
+        {
+            "f": f"{sk}-{n}.webp",
+            "r": "p" if ph.role == "principal" else "d",
+            "src": "paris",
+            "lic": "odbl-1.0",
+            "by": "Ville de Paris",
+            "u": pdf_url,
+        }
+        for n, ph in enumerate(photos)
+    ]
+
+
+def _write_species_photos(
+    essences_index: dict[tuple[str, str], dict],
+    species_index: dict[tuple[str, str], int],
+) -> dict:
+    """Extrait + écrit les WebP des photos officielles et le manifest (S9).
+
+    Itère les taxons **matchés** (présents dans le species-index), extrait leurs
+    photos depuis les PDF déjà cachés (`essence_pdf.PDF_CACHE_DIR`, zéro réseau),
+    écrit `{sk}-{n}.webp` en **write-if-changed** (git propre au re-run, capte
+    les évolutions d'algo), nettoie les orphelins du dossier, puis sérialise
+    `species-photos.json` (trié par sk, déterministe, `ensure_ascii=False`).
+
+    Retourne un dict keyé par `pdf_id` → `{"sk", "photos", "warnings"}` pour
+    enrichir le sidecar `_write_essence_extras_trace`. Principe « ne jamais
+    inventer » : une fiche sans photo ou sans PDF est simplement omise + comptée.
+    """
+    import essence_pdf
+
+    OUT_SPECIES_PHOTOS_DIR.mkdir(parents=True, exist_ok=True)
+
+    # Ordre déterministe : par sk croissant.
+    matched = sorted(
+        ((species_index[taxon], value)
+         for taxon, value in essences_index.items() if taxon in species_index),
+        key=lambda it: it[0],
+    )
+
+    manifest_photos: dict[str, list[dict]] = {}
+    results_by_pdf_id: dict[str, dict] = {}
+    expected_files: set[str] = set()
+    n_species = n_photos = n_principal = n_detail = 0
+    total_bytes = 0
+    no_principal: list[int] = []
+    missing_pdf: list[int] = []
+
+    for sk, value in matched:
+        pdf_id = value.get("_pdf_id")
+        pdf_url = value.get("pdf")
+        if not pdf_id:
+            missing_pdf.append(sk)
+            continue
+        pdf_path = essence_pdf.PDF_CACHE_DIR / f"{pdf_id}.pdf"
+        if not pdf_path.exists():
+            missing_pdf.append(sk)
+            continue
+        photos, warnings = essence_pdf.extract_photos(pdf_path)
+        results_by_pdf_id[pdf_id] = {
+            "sk": sk, "photos": photos, "warnings": warnings,
+        }
+        if not photos:
+            no_principal.append(sk)
+            continue
+        for n, ph in enumerate(photos):
+            fname = f"{sk}-{n}.webp"
+            expected_files.add(fname)
+            dest = OUT_SPECIES_PHOTOS_DIR / fname
+            if not dest.exists() or dest.read_bytes() != ph.webp:
+                dest.write_bytes(ph.webp)
+            total_bytes += len(ph.webp)
+            if ph.role == "principal":
+                n_principal += 1
+            else:
+                n_detail += 1
+        n_species += 1
+        n_photos += len(photos)
+        manifest_photos[str(sk)] = _photo_manifest_entries(sk, photos, pdf_url)
+
+    # Nettoyage des orphelins (WebP d'un run précédent hors ensemble attendu).
+    for stale in OUT_SPECIES_PHOTOS_DIR.glob("*.webp"):
+        if stale.name not in expected_files:
+            stale.unlink()
+
+    manifest = {
+        "meta": {
+            "v": 1,
+            "licenses": _PHOTO_LICENSES,
+            "sources": _PHOTO_SOURCES,
+        },
+        "photos": {
+            k: manifest_photos[k]
+            for k in sorted(manifest_photos, key=int)
+        },
+    }
+    payload = json.dumps(manifest, ensure_ascii=False, indent=2) + "\n"
+    if (not OUT_SPECIES_PHOTOS_MANIFEST.exists()
+            or OUT_SPECIES_PHOTOS_MANIFEST.read_text(encoding="utf-8") != payload):
+        with OUT_SPECIES_PHOTOS_MANIFEST.open("w", encoding="utf-8") as f:
+            f.write(payload)
+
+    print(
+        f"[phot] {n_species} espèces avec photos, {n_photos} photos "
+        f"({n_principal} principales, {n_detail} détails), "
+        f"{total_bytes / (1024 * 1024):.1f} Mo, "
+        f"{len(no_principal)} matchées sans principale"
+    )
+    if missing_pdf:
+        print(f"[phot]   {len(missing_pdf)} matchées sans PDF en cache (ignorées)")
+    print(f"       → {OUT_SPECIES_PHOTOS_MANIFEST.name} + "
+          f"{OUT_SPECIES_PHOTOS_DIR.name}/ ({len(expected_files)} WebP)")
+    return results_by_pdf_id
 
 
 def _format_int_fr(n: int) -> str:
@@ -3563,6 +3754,10 @@ def build(csv_path: Path, db_path: Path, geojson_path: Path) -> None:
     # `build_report.py` importe ce module sans l'avoir. Échec dur clair si absent.
     import essence_pdf
     extras_by_pdf_id = essence_pdf.extract_all(essences_records)
+    # Complète les 6 fiches à PDF rasterisé (texte non extractible) depuis la
+    # transcription manuelle versionnée. Muté AVANT _merge_pdf_extras et le
+    # sidecar : species-info.json ET la préviz voient les champs complétés.
+    essence_pdf.apply_essence_overrides(extras_by_pdf_id)
     essences_index = _build_essences_index(essences_records)
     _merge_pdf_extras(essences_index, extras_by_pdf_id)
     matched = sum(1 for k in essences_index if k in species_index)
@@ -3570,8 +3765,12 @@ def build(csv_path: Path, db_path: Path, geojson_path: Path) -> None:
         f"[ess ] {len(essences_index)} taxons distincts dans le dataset, "
         f"{matched} matchent une espèce du species-index"
     )
+    # S9 — photos officielles : extraction/écriture WebP + manifest (taxons
+    # matchés seulement). Consomme les PDF déjà cachés par `extract_all`.
+    photo_results = _write_species_photos(essences_index, species_index)
     _write_essence_extras_trace(
-        essences_records, essences_index, extras_by_pdf_id, species_index)
+        essences_records, essences_index, extras_by_pdf_id, species_index,
+        photo_results)
 
     write_species_info(species_index, count_by_sk, heights_by_sk, circs_by_sk,
                        arr_by_sk, arr_total, total_arbres=inserted,

@@ -6,6 +6,10 @@ Lit le sidecar produit par `tools/build_dataset.py` :
 - `tools/_trace/essence-extras.json` : `{pdf_id: {nom_latin, filename, url, flor,
   fruct, atouts, limites, warnings, matched}}` (`flor`/`fruct` = bitfield 12 bits
   int ou null, **bit 0 = janvier** ; `atouts`/`limites` listes ; `matched` bool).
+  Champs photos S9 (tolérés absents tant que le build complet n'a pas tourné) :
+  `sk` (int|null), `photos` (liste `{f, r, w, h, bytes}`, `r` = "p" principale /
+  "d" détail) et `photo_warnings` (liste). Absents → section photos vide,
+  compteurs à 0, aucun crash.
 
 Ce script NE re-parse PAS les PDF pour les attributs (pas d'appel à
 `extract_all`/`extract_extras`) et ne fait AUCUN réseau. Il importe `essence_pdf`
@@ -13,10 +17,15 @@ uniquement pour `report_clips()` — il ouvre chaque PDF du cache local
 (`tools/.essences-pdf-cache/{pdf_id}.pdf`) et en extrait deux crops image (zone
 calendriers page 0, zone « À RETENIR ») rendus en JPEG base64 inline pour la
 comparaison visuelle case à case avec le mini-calendrier reconstruit des bitfields.
+Les photos officielles S9 (`app/src/main/assets/species-photos/{sk}-{n}.webp`)
+sont **référencées par chemin relatif** (`<img src="../../app/src/main/assets/...">`)
+et non inlinées : les WebP committés pèsent lourd (~21 Mo) et les inliner en
+base64 gonflait l'HTML committé à > 30 Mo. Un chemin relatif suffit pour la
+relecture locale (recollage, fuites de logo) et garde l'HTML léger.
 
-Sortie unique : un HTML autonome (sans CDN ni dépendance JS), < 6 Mo à 200 fiches
-(crops JPEG q70 dpi 80). PDF absent du cache ou zone introuvable → placeholder
-texte, jamais d'exception.
+Sortie unique : un HTML autonome pour le texte/crops (crops JPEG inline), léger
+(< 6 Mo) car les photos S9 sont seulement liées. PDF absent du cache ou zone
+introuvable → placeholder texte, jamais d'exception.
 
 Ce n'est **pas** un artefact de build consommé par l'app : c'est un outil de
 relecture, à régénérer après `python3 tools/build_dataset.py`.
@@ -32,6 +41,7 @@ import base64
 import datetime
 import html
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -40,6 +50,15 @@ ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_TRACE = ROOT / "tools" / "_trace" / "essence-extras.json"
 DEFAULT_OUT = ROOT / "docs" / "essences" / "index.html"
 PDF_CACHE_DIR = ROOT / "tools" / ".essences-pdf-cache"
+# Dossier des WebP officiels S9 (committés par build_dataset.py). Paramétrable
+# via --photos-dir pour valider le rendu sur un dossier factice (scratchpad).
+DEFAULT_PHOTOS_DIR = ROOT / "app" / "src" / "main" / "assets" / "species-photos"
+# Réaffecté par main() si --photos-dir est fourni. Lu par photos_for() (existence
+# des WebP sur disque, pour le placeholder si absent).
+PHOTOS_DIR = DEFAULT_PHOTOS_DIR
+# Préfixe de chemin relatif de l'HTML de sortie vers PHOTOS_DIR, calculé par
+# main() (`os.path.relpath`). Les <img> pointent `{PHOTOS_REL_PREFIX}/{fname}`.
+PHOTOS_REL_PREFIX = ".."
 
 # Import de essence_pdf pour report_clips() + fitz. Purement build-time.
 sys.path.insert(0, str(ROOT / "tools"))
@@ -100,6 +119,63 @@ def _img_or_placeholder(b64: str | None, alt: str) -> str:
             f'alt="{html.escape(alt)}" loading="lazy">'
         )
     return f'<div class="crop-missing">{html.escape(alt)} indisponible</div>'
+
+
+# ---------------------------------------------------------------------------
+# Photos officielles S9 → base64 (WebP committés, aucun réseau ni ré-encodage)
+# ---------------------------------------------------------------------------
+
+def photos_for(entry: dict) -> str:
+    """Section « Photos » d'une fiche : référence les WebP committés par chemin.
+
+    Lit `entry["photos"]` (sidecar S9) : liste de dicts `{f, r, w, h, bytes}` où
+    `r` = "p" (principale) / "d" (détail). Chaque WebP est référencé par chemin
+    relatif (`{PHOTOS_REL_PREFIX}/{fname}`, calculé de l'HTML de sortie vers
+    `PHOTOS_DIR`) — jamais inliné en base64 (garde l'HTML léger). Étiquette de
+    rôle, dimensions natives et poids Ko lus du sidecar. WebP absent du disque
+    → placeholder texte discret. Champ `photos` absent/vide → chaîne vide.
+    """
+    photos = entry.get("photos") or []
+    if not photos:
+        return ""
+
+    cards = []
+    for p in photos:
+        fname = (p.get("f") or "").strip()
+        is_principal = p.get("r") == "p"
+        role_label = "principale" if is_principal else "détail"
+        role_cls = "role-p" if is_principal else "role-d"
+        w, h, nbytes = p.get("w"), p.get("h"), p.get("bytes")
+        dims = f"{w}×{h}" if w and h else "dimensions ?"
+        ko = f"{nbytes / 1024:.0f} Ko" if nbytes else "poids ?"
+
+        path = (PHOTOS_DIR / fname) if fname else None
+        if path is not None and path.exists():
+            src = f"{PHOTOS_REL_PREFIX}/{fname}"
+            media = (f'<img class="photo-img" src="{html.escape(src)}" '
+                     f'alt="{html.escape(fname)}" loading="lazy">')
+        else:
+            media = _photo_placeholder(fname)
+
+        cards.append(
+            '<figure class="photo">'
+            f'{media}'
+            '<figcaption>'
+            f'<span class="photo-role {role_cls}">{role_label}</span>'
+            f'<span class="photo-meta">{html.escape(dims)} · {html.escape(ko)}</span>'
+            '</figcaption></figure>'
+        )
+
+    return (
+        '<div class="photos-block"><div class="col-title">Photos officielles (S9)</div>'
+        f'<div class="photos-row">{"".join(cards)}</div></div>'
+    )
+
+
+def _photo_placeholder(fname: str) -> str:
+    label = html.escape(fname) if fname else "fichier inconnu"
+    return (f'<div class="photo-missing"><code>{label}</code><br>'
+            'WebP absent du disque</div>')
 
 
 # ---------------------------------------------------------------------------
@@ -286,6 +362,21 @@ h2 { margin: 34px 0 12px; font-size: 18px; border-bottom: 1px solid var(--border
 .kv-l { color: var(--muted); font-weight: 600; }
 .prose { font-size: 13px; margin-bottom: 8px; }
 .prose .col-title { margin-bottom: 3px; }
+/* Section photos officielles S9. */
+.photos-block { margin-top: 10px; border-top: 1px dashed var(--border); padding-top: 10px; }
+.photos-row { display: flex; gap: 14px; flex-wrap: wrap; align-items: flex-start; }
+.photo { margin: 0; display: flex; flex-direction: column; gap: 4px; }
+.photo-img { max-height: 260px; max-width: 220px; width: auto; border: 1px solid var(--border);
+  border-radius: 6px; background: white; display: block; }
+.photo-missing { color: var(--muted); font-size: 12px; font-style: italic;
+  border: 1px dashed var(--border); border-radius: 6px; padding: 20px 14px;
+  background: #f9fafb; text-align: center; min-width: 140px; }
+.photo-missing code { font-family: ui-monospace, monospace; font-size: 11px; font-style: normal; }
+.photo figcaption { display: flex; gap: 8px; align-items: baseline; font-size: 12px; }
+.photo-role { font-weight: 600; padding: 1px 8px; border-radius: 999px; font-size: 11px; }
+.photo-role.role-p { background: #dcfce7; color: var(--accent); }
+.photo-role.role-d { background: #eef2ff; color: #3730a3; }
+.photo-meta { color: var(--muted); font-size: 11.5px; }
 """
 
 
@@ -309,6 +400,14 @@ def render_html(trace: dict, trace_path: Path) -> str:
     n_iddesc = sum(1 for e in entries if e.get("iddesc"))
     n_paris = sum(1 for e in entries if e.get("paris") is not None)
     n_svc = sum(1 for e in entries if e.get("svc"))
+    # Compteurs photos S9 (champs tolérés absents → tout à 0).
+    n_ph_principal = sum(
+        1 for e in entries if any(p.get("r") == "p" for p in (e.get("photos") or [])))
+    n_ph_details = sum(
+        1 for e in entries for p in (e.get("photos") or []) if p.get("r") == "d")
+    ph_bytes = sum(
+        (p.get("bytes") or 0) for e in entries for p in (e.get("photos") or []))
+    ph_mb = ph_bytes / (1024 * 1024)
 
     generated = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
     git_ref = git_short_hash()
@@ -357,11 +456,15 @@ def render_html(trace: dict, trace_path: Path) -> str:
     out.append(_card("Descriptions", f"{n_iddesc}/{total}", "iddesc ≥ 1 clé"))
     out.append(_card("Essence à Paris", f"{n_paris}/{total}", "prose"))
     out.append(_card("Services", f"{n_svc}/{total}", "≥ 1 service"))
+    out.append(_card(
+        "Photos (S9)", f"{n_ph_principal}/{n_matched}",
+        f"principale · {n_ph_details} détails · {ph_mb:.1f} Mo"))
     out.append("</div>")
 
     # --- Section triage : échecs & warnings ---
     out.append('<h2>Échecs &amp; warnings</h2>')
-    triage = [e for e in entries if e.get("warnings") or _missing_fields(e)]
+    triage = [e for e in entries
+              if e.get("warnings") or e.get("photo_warnings") or _missing_fields(e)]
     if not triage:
         out.append('<p class="ok-note">Aucun échec : toutes les fiches ont flor, '
                    'fruct, atouts, limites extraits et aucun warning.</p>')
@@ -370,7 +473,7 @@ def render_html(trace: dict, trace_path: Path) -> str:
                    'champ manquant.</p>')
         for e in triage:
             miss = _missing_fields(e)
-            warns = e.get("warnings") or []
+            warns = (e.get("warnings") or []) + (e.get("photo_warnings") or [])
             out.append('<div class="triage">')
             out.append(
                 '<div class="t-head">'
@@ -420,7 +523,8 @@ def _fiche_card(e: dict) -> str:
         head.append('<span class="badge-nomatch">non retenue</span>')
     head.append('</div>')
 
-    warns = e.get("warnings") or []
+    # Warnings d'extraction + warnings photos S9 (mêmes styles, tolérés absents).
+    warns = (e.get("warnings") or []) + (e.get("photo_warnings") or [])
     warn_html = ""
     if warns:
         warn_html = ('<div class="fiche-warn">⚠ '
@@ -463,6 +567,7 @@ def _fiche_card(e: dict) -> str:
         + cal_block
         + retenir_block
         + _descriptif_block(e, crops)
+        + photos_for(e)
         + '</div>'
     )
 
@@ -561,7 +666,16 @@ def main() -> int:
                     help=f"sidecar essence-extras.json (défaut {DEFAULT_TRACE})")
     ap.add_argument("--out", type=Path, default=DEFAULT_OUT,
                     help=f"HTML de sortie (défaut {DEFAULT_OUT})")
+    ap.add_argument("--photos-dir", type=Path, default=DEFAULT_PHOTOS_DIR,
+                    help="dossier des WebP officiels S9, référencés par chemin "
+                         f"relatif dans l'HTML (défaut {DEFAULT_PHOTOS_DIR})")
     args = ap.parse_args()
+
+    global PHOTOS_DIR, PHOTOS_REL_PREFIX
+    PHOTOS_DIR = args.photos_dir
+    # Chemin relatif de l'HTML de sortie vers le dossier des photos (les <img>
+    # pointent dessus au lieu d'inliner les WebP en base64).
+    PHOTOS_REL_PREFIX = os.path.relpath(PHOTOS_DIR, args.out.parent)
 
     if not args.trace.exists():
         print(f"[err] sidecar absent : {args.trace}\n"

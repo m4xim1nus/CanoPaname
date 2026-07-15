@@ -5,3 +5,7 @@
 #
 # pymupdf (fitz) : extraction des PDF fiches-essences (tools/essence_pdf.py).
 pymupdf>=1.24,<2
+# Pillow : recollage + encodage WebP des photos des fiches-essences
+# (pymupdf ne sait pas encoder en WebP). Épinglé en major : un bump de
+# libwebp peut re-churner tous les WebP committés (one-shot accepté).
+pillow>=10,<12

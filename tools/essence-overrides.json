@@ -1,0 +1,204 @@
+{
+  "_meta": {
+    "description": "Overrides des champs textuels des 6 fiches-essences dont le PDF du Guide des essences (Ville de Paris 2024) est un export rasterisé (aucune couche texte, extraction géométrique impossible).",
+    "provenance": "Transcription manuelle double-vérifiée : DEUX agents ont transcrit indépendamment les 15 champs textuels x 6 fiches depuis les rendus PNG des PDF ; le diff croisé donne 147/147 valeurs identiques (seuls écarts : glyphes d apostrophe, normalisés en U+0027 droit).",
+    "date": "2026-07-15",
+    "reverifier_si": "La Ville de Paris réédite ces 6 PDF (Betula nigra, Fagus sylvatica, Tilia cordata, Tilia platyphyllos, Tilia tomentosa, Tilia x euchlora) : re-transcrire et re-diff avant de mettre à jour ce fichier.",
+    "fusion": "Appliqué par essence_pdf.merge_override : complète UNIQUEMENT les champs None/vides de l EssenceExtras extraite ; n écrase jamais une valeur extraite (les calendriers flor/fruct de ces fiches restent ceux du fallback couleur). Les clés _meta et nom_latin sont ignorées à la fusion."
+  },
+  "ce5ab36497794874fee746cfb6675bc0": {
+    "nom_latin": "Betula nigra",
+    "fam": "Bétulacées",
+    "haut": "20 m",
+    "env": "15 m",
+    "croiss": "Rapide",
+    "long": "Moyenne (100 à 200 ans)",
+    "iddesc": {
+      "ecorce": "Écorce brun-rouge en plaques",
+      "feuillage": "Feuilles caduques lobées",
+      "floraison": "Chatons jaune clair très visibles",
+      "fructification": "Cône"
+    },
+    "paris": "Très rare à Paris, il est principalement utilisé en jardins. Un arbre classé remarquable au Jardin des Serres d'Auteuil (16 e). Présent à l'Arboretum de Paris.",
+    "svc": {
+      "climat": "Capacité moyenne d'effet d'ombrage en raison de la moyenne densité des petites feuilles de cet arbre.",
+      "eau": "Bonne capacité à réguler l'eau pluviale. Grande taille de l'arbre, densité moyenne du feuillage et système racinaire développé favorisant absorption de l'eau et transpiration. La présence de nombreuses radicelles occupant la couche supérieure du sol améliore l'infiltration de l'eau en surface. Peut consommer des quantités d'eau élevées lorsqu'elle est disponible et supporte de courtes inondations.",
+      "biodiv": "Arbre attractif pour les insectes pollinisateurs et les oiseaux, comme les autres arbres du genre Betula. Feuilles appréciées des chenilles. Essence exotique."
+    },
+    "atouts": [
+      "Bonne capacité à réguler la ressource en eau",
+      "Résistant aux vagues de grand froid"
+    ],
+    "limites": [
+      "Peu résistant aux épisodes de chaleur",
+      "Sensible à la sécheresse",
+      "Fort potentiel allergisant des pollens"
+    ]
+  },
+  "e53c4c60803721c0e8bdcaf80c00b611": {
+    "nom_latin": "Fagus sylvatica",
+    "fam": "Fagacées",
+    "haut": "30 m",
+    "env": "20 m",
+    "croiss": "Lente",
+    "long": "Grande (> à 200 ans)",
+    "iddesc": {
+      "ecorce": "Écorce grise lisse à plissée",
+      "feuillage": "Feuilles caduques oblongues à bordure légèrement ondulée",
+      "floraison": "Discrète jaune pâle",
+      "fructification": "Akène"
+    },
+    "paris": "Arbre célèbre des forêts et des parcs, il représente moins de 1% des arbres à Paris où il est principalement planté en jardin (2% des arbres qui y sont recensés). Présent à l'Arboretum de Paris.",
+    "svc": {
+      "climat": "Bonne capacité d'effet d'ombrage due à sa grande hauteur et à la forte densité de son feuillage.",
+      "eau": "Les grandes dimensions de l'arbre, sa forte densité du feuillage et son système racinaire développé notamment en surface favorisent l'absorption, la transpiration et l'infiltration de l'eau. Il peut consommer des quantités d'eau élevées lorsqu'elle est disponible.",
+      "biodiv": "Plus de 12 espèces d'Arthropodes sont associés au Hêtre. Ressource alimentaire très intéressante pour la faune. Très favorable pour offrir des habitats et des cavités aux oiseaux et aux chauves-souris. Supporte des lichens diversifiés."
+    },
+    "atouts": [
+      "Tolère des sols variés (acides à hyper alcalins)",
+      "Résistant aux vagues de grand froid",
+      "Espèce forestière par excellence, ayant un intérêt paysager marqué",
+      "Espèce régionale d'Ile-de-France",
+      "Très favorable à la biodiversité par ses cavités, son bois et ses fruits",
+      "Excellente capacité à réguler le climat local (ombrage) et la ressource en eau"
+    ],
+    "limites": [
+      "Potentiel allergisant moyen des pollens",
+      "Sensible à la sécheresse et à la chaleur",
+      "Peu adapté au milieu urbain"
+    ]
+  },
+  "f20101f94276b28ce10ca06875e81a66": {
+    "nom_latin": "Tilia cordata",
+    "fam": "Malvacées",
+    "haut": "25 m",
+    "env": "15 m",
+    "croiss": "Lente",
+    "long": "Grande (> à 200 ans)",
+    "iddesc": {
+      "ecorce": "Grise crevassée",
+      "feuillage": "Feuilles caduques en forme de cœur",
+      "floraison": "Corymbes parfumés jaune-crème",
+      "fructification": "Capsule sur bractée foliacée"
+    },
+    "paris": "Essence courante à Paris, elle est utilisée principalement en alignement. Les sujets les plus remarquables sont visibles au Cimetière de Montmartre (18 e) et au Parc de Belleville (20 e). Présent à l'Arboretum de Paris.",
+    "svc": {
+      "climat": "Excellente capacité d'effet d'ombrage due au port arrondi de ce grand arbre ainsi qu'à la forte densité de ses feuilles simples.",
+      "eau": "Excellentes capacités d'absorption de l'eau, de transpiration et d'infiltration de l'eau grâce aux grandes dimensions de l'arbre, à la forte densité de son feuillage et à son système racinaire développé tant en surface (chevelu) qu'en profondeur.",
+      "biodiv": "Lié à de nombreuses espèces d'insectes : pucerons et prédateurs, grande quantité de nectar produite attirant fortement les pollinisateurs. Génère facilement des gîtes pour les chauves-souris. Supporte des lichens diversifiés."
+    },
+    "atouts": [
+      "Arbre majestueux présentant un fort intérêt paysager en différents contextes",
+      "Espèce régionale d'Ile-de-France",
+      "Excellentes régulations du climat local (effet d'ombrage important) et de la ressource en eau (absorption, infiltration)",
+      "Résistant à la chaleur et aux vagues de grand froid, essence adaptée au milieu urbain"
+    ],
+    "limites": [
+      "Très sensible aux échaudures",
+      "Approvisionnement selon demande concurrentielle dans toute l'Europe",
+      "Gêne potentielle liée au miellat",
+      "Peu résistant à la sécheresse",
+      "Potentiel allergisant moyen des pollens"
+    ]
+  },
+  "4a9f73ce0cdb41028c655ca9167df563": {
+    "nom_latin": "Tilia platyphyllos",
+    "fam": "Malvacées",
+    "haut": "35 m",
+    "env": "25 m",
+    "croiss": "Moyenne",
+    "long": "Grande (> à 200 ans)",
+    "iddesc": {
+      "ecorce": "Grise faiblement crevassée",
+      "feuillage": "Feuilles caduques simple",
+      "floraison": "Corymbes discrets jaune-crème",
+      "fructification": "Capsule sur bractée foliacée"
+    },
+    "paris": "Essence courante à Paris, elle est utilisée en alignement et dans les jardins. Les sujets les plus remarquables sont visibles au Parc des Buttes Chaumont (19 e) et Route de la Pyramide (Bois de Vincennes, 12 e). Présent à l'Arboretum de Paris.",
+    "svc": {
+      "climat": "Excellente capacité d'effet d'ombrage due au port arrondi de ce très grand arbre ainsi qu'à la forte densité de ses feuilles simples.",
+      "eau": "Excellentes capacités d'absorption de l'eau, de transpiration et d'infiltration de l'eau grâce aux très grandes dimensions de l'arbre, à la forte densité de son feuillage et à son système racinaire développé.",
+      "biodiv": "Lié à de nombreuses espèces d'insectes : pucerons et prédateurs, grande quantité de nectar produite attirant fortement les pollinisateurs. Génère facilement des gîtes pour les chauves-souris. Supporte des lichens diversifiés. Abrite plus d'une quinzaines d'espèces de Diptères et Acariens."
+    },
+    "atouts": [
+      "Grand arbre d'ombrage qui anime très bien l'espace au fil des saisons",
+      "Essence adaptée au milieu urbain",
+      "Espèce régionale d'Ile-de-France",
+      "Excellentes régulations du climat local (effet d'ombrage important) et de la ressource en eau (absorption, infiltration)",
+      "Résistant aux vagues de grand froid"
+    ],
+    "limites": [
+      "Très sensible aux échaudures",
+      "Système racinaire pouvant causer des dommages",
+      "Gêne potentielle liée au miellat",
+      "Approvisionnement selon demande concurrentielle dans toute l'Europe",
+      "Peu résistant à la sécheresse et aux épisodes de chaleur",
+      "Potentiel allergisant moyen des pollens"
+    ]
+  },
+  "d5cead01f863e12168caa54c788dcc41": {
+    "nom_latin": "Tilia tomentosa",
+    "fam": "Malvacées",
+    "haut": "30 m",
+    "env": "18 m",
+    "croiss": "Moyenne",
+    "long": "Grande (> à 200 ans)",
+    "iddesc": {
+      "ecorce": "Grise crevassée",
+      "feuillage": "Feuilles caduques simples",
+      "floraison": "Corymbes parfumés jaune-crème",
+      "fructification": "Capsule sur bractée foliacée"
+    },
+    "paris": "Espèce de tilleul la plus représentée à Paris (hors bois), on la retrouve principalement en alignement. Le sujet le plus remarquable se trouve au Parc Montsouris (14 e). Présent à l'Arboretum de Paris.",
+    "svc": {
+      "climat": "Bonne capacité d'effet d'ombrage due au port arrondi de ce grand arbre ainsi qu'à la forte densité de ses feuilles simples.",
+      "eau": "Excellentes capacités d'absorption de l'eau, de transpiration et d'infiltration de l'eau grâce aux très grandes dimensions de l'arbre, à la forte densité de son feuillage et à son système racinaire développé.",
+      "biodiv": "Espèce nectarifère toxique pour les abeilles. Arbre qui abrite de nombreux pucerons, attire les oiseaux et génère des habitats pour la faune. Supporte des lichens diversifiés. Espèce exotique."
+    },
+    "atouts": [
+      "Arbre à intérêt paysager marqué au fil des saisons, remarquable pour son feuillage automnal et sa floraison parfumée en été",
+      "Excellente régulation de la ressource en eau (absorption, infiltration) et bonne régulation du climat local (ombre)",
+      "Très résistant à la sécheresse, aux épisodes de chaleur et aux vagues de grand froid : particulièrement adapté aux évolutions climatiques attendues à Paris",
+      "Essence adaptée au milieu urbain"
+    ],
+    "limites": [
+      "Très sensible aux échaudures",
+      "Sensibiité aux fourches à écorce incluse du fait de la fourchaison aigüe",
+      "Nectar toxique pour les abeilles",
+      "Gêne potentielle liée au miellat",
+      "Approvisionnement selon demande concurrentielle dans toute l'Europe",
+      "Potentiel allergisant moyen des pollens"
+    ]
+  },
+  "028023065ad919bb39b5155bdb893b08": {
+    "nom_latin": "Tilia x euchlora",
+    "fam": "Malvacées",
+    "haut": "20 m",
+    "env": "12 m",
+    "croiss": "Moyenne",
+    "long": "Grande (> 200 ans)",
+    "iddesc": {
+      "ecorce": "Brune crevassée",
+      "feuillage": "Feuilles caduques simples",
+      "floraison": "Corymbes parfumés jaune clair",
+      "fructification": "Capsule sur bractée foliacée"
+    },
+    "paris": "Essence courante à Paris, elle est plantée principalement dans les cimetières et en alignement. Les sujets les plus remarquables se trouvent au cimetière parisien de Thiais (94).",
+    "svc": {
+      "climat": "Bonne capacité d'effet d'ombrage due au port arrondi de l'arbre ainsi qu'à la forte densité de ses feuilles simples.",
+      "eau": "Excellentes capacités d'absorption de l'eau, de transpiration et d'infiltration de l'eau grâce aux grandes dimensions de l'arbre, à la forte densité de son feuillage et à son système racinaire développé, particulièrement en surface.",
+      "biodiv": "Arbre qui abrite de nombreux pucerons, attire les oiseaux et génère des habitats pour la faune. Supporte des lichens diversifiés. Espèce horticole."
+    },
+    "atouts": [
+      "Arbre majestueux présentant un intérêt paysager marqué au fil des saisons, remarquable pour sa floraison abondante parfumée",
+      "Excellente régulation de la ressource en eau (absorption, infiltration) et bonne régulation du climat local (ombre)",
+      "Très résistant à la sécheresse et aux vagues de grand froid, essence adaptée au milieu urbain et à l'alignement"
+    ],
+    "limites": [
+      "Très sensible aux échaudures",
+      "Gêne potentielle liée au miellat",
+      "Peu résistant aux épisodes de chaleur",
+      "Potentiel allergisant moyen des pollens"
+    ]
+  }
+}

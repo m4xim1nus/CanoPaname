@@ -64,6 +64,16 @@ Les textes sont extraits par le script `tools/build_dataset.py` (via
 L'attribution « Source : Ville de Paris · Guide des essences » est affichée
 dans l'encart correspondant de la fiche-espèce.
 
+#### Photos des fiches essences
+
+Les photos botaniques de référence (arbre entier, feuillage, écorce,
+fructification) sont extraites des mêmes fiches PDF — crédits photos
+**J.E. Michaut, B. Morlon, B. Serres / Ville de Paris**, dataset publié
+sous **ODbL v1.0** (liens ci-dessus). Elles sont recompressées en WebP
+dans `app/src/main/assets/species-photos/` ; le manifest
+`app/src/main/assets/species-photos.json` porte, pour chaque photo, la
+source, la licence et l'URL de la fiche PDF d'origine.
+
 ## Polices
 
 ### Fraunces SemiBold

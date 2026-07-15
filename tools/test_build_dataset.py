@@ -15,14 +15,22 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
 from unittest import mock
 
 import build_dataset
 import essence_pdf
 from essence_pdf import (
+    _PH_PLACEHOLDER_DHASH_MAX_DIST,
+    _PH_PLACEHOLDER_DHASHES,
     _bits_from_flags,
+    _chains,
+    _dhash,
     _extract_bullets,
+    _hamming,
+    _is_placeholder_dhash,
     _validate_bullets,
+    select_photos,
 )
 from build_dataset import (
     GENRE_FR,
@@ -38,6 +46,7 @@ from build_dataset import (
     is_unknown_species,
     pick_vernacular_from_redirects,
 )
+from build_dataset import _photo_manifest_entries
 
 
 class ApplySpeciesFixupsTest(unittest.TestCase):
@@ -1371,6 +1380,625 @@ class ValidateBulletsTest(unittest.TestCase):
         result, warn = _validate_bullets(["x" * 301])
         self.assertEqual(result, [])
         self.assertIsNotNone(warn)
+
+
+def _img(xref, bbox, width, height, nbytes, colvar=1000.0):
+    """Fabrique une entrée d'inventaire synthétique (dims/octets NATIFS, bbox pt).
+
+    Miroir du format produit par `_page0_inventory` : bbox en points PDF,
+    `width`/`height` en pixels natifs, `nbytes` en octets bruts de l'image,
+    `colvar` = variance couleur (garde anti-aplat ; défaut 1000 = vraie photo,
+    bien au-dessus de `_PH_MIN_COLVAR` = 30).
+    """
+    return {
+        "xref": xref,
+        "bbox": bbox,
+        "width": width,
+        "height": height,
+        "nbytes": nbytes,
+        "colvar": colvar,
+    }
+
+
+# Page A4 de référence : 595 pt de large (seuil pleine largeur = 0.9 * 595 =
+# 535.5 pt). La colonne droite d'une fiche essence vit vers x ≈ 340-460 pt.
+_PAGE_W = 595.0
+
+
+class SelectPhotosTest(unittest.TestCase):
+    """Sélection PURE principale/détails depuis un inventaire page 0 synthétique.
+
+    Géométries inspirées du corpus réel : principale ~464×620 px colonne droite,
+    bandeaux/fonds pleine largeur, logos d'en-tête/pied, fragments recollables.
+    Aucun fitz/Pillow — dicts natifs uniquement.
+    """
+
+    def test_principale_par_aire_bbox(self):
+        # Bandeau pleine largeur + logo en-tête + logo pied + grande image
+        # colonne droite → principale = grande image (seule candidate), 0 détail.
+        inventory = [
+            # Bandeau décoratif pleine largeur (555 pt >= 535.5) → exclu.
+            _img(1, (20.0, 30.0, 575.0, 120.0), 1000, 160, 90_000),
+            # Logo d'en-tête (y0 < 70) → exclu.
+            _img(2, (30.0, 20.0, 90.0, 60.0), 200, 200, 4_000),
+            # Logo de pied (y1 > 745) → exclu.
+            _img(3, (30.0, 750.0, 90.0, 790.0), 200, 200, 3_000),
+            # Grande image colonne droite → principale.
+            _img(4, (340.0, 200.0, 460.0, 360.0), 464, 620, 90_000),
+        ]
+        principal, details = select_photos(inventory, _PAGE_W)
+        self.assertIsNotNone(principal)
+        self.assertEqual(principal["role"], "principal")
+        self.assertEqual(principal["xrefs"], (4,))
+        self.assertEqual(details, [])
+
+    def test_principale_gros_plan_vs_portrait(self):
+        # Scénario MEDIUM : un gros plan écorce/feuille très lourd en octets mais
+        # de petite bbox, face à un portrait d'arbre de grande bbox mais plus
+        # léger. La principale doit être le PORTRAIT (aire de bbox), pas le gros
+        # plan — sinon la fiche affiche une texture au lieu de la silhouette.
+        inventory = [
+            # Gros plan (octets max, petite bbox 150×100 pt = 15 000 pt²,
+            # downscale 900/150 = 6 → passe le filtre bande déco).
+            _img(90, (380.0, 300.0, 530.0, 400.0), 900, 1000, 200_000),
+            # Portrait d'arbre (grande bbox 120×300 pt = 36 000 pt², plus léger).
+            _img(91, (340.0, 200.0, 460.0, 500.0), 464, 1100, 120_000),
+        ]
+        principal, details = select_photos(inventory, _PAGE_W)
+        self.assertEqual(principal["xrefs"], (91,))       # portrait, pas gros plan
+        self.assertEqual([d["xrefs"] for d in details], [(90,)])
+
+    def test_aplat_decoratif_ne_rafle_pas_la_principale(self):
+        # Cas Cedrus atlantica (sk 99) : un panneau bleu uni (grande bbox, aire
+        # native énorme, mais variance couleur ~0) recouvre le vrai portrait,
+        # de bbox quasi identique. Sans garde, l'aplat rafle la principale par
+        # aire de bbox. Le garde anti-aplat (colvar < _PH_MIN_COLVAR) l'écarte
+        # → principale = portrait, aplat ABSENT partout (ni principale, ni détail).
+        inventory = [
+            # Aplat décoratif bleu uni : bbox (légèrement) la plus grande.
+            _img(41, (385.0, 115.0, 555.6, 342.5), 711, 948, 19_780, colvar=0.6),
+            # Vrai portrait du cèdre, même colonne, bbox quasi identique.
+            _img(42, (385.1, 115.3, 555.4, 342.4), 464, 619, 66_231, colvar=1220.0),
+            # Petit détail (feuillage), colonne gauche.
+            _img(43, (289.3, 219.1, 381.6, 342.1), 234, 312, 12_879, colvar=4419.0),
+        ]
+        principal, details = select_photos(inventory, _PAGE_W)
+        self.assertEqual(principal["xrefs"], (42,))       # portrait, pas l'aplat
+        all_xrefs = {principal["xrefs"]} | {d["xrefs"] for d in details}
+        self.assertNotIn((41,), all_xrefs)                # aplat nulle part
+        self.assertEqual([d["xrefs"] for d in details], [(43,)])
+
+    def test_aplat_decoratif_ne_devient_pas_detail(self):
+        # Un aplat plus petit que la principale ne doit pas non plus fuir en
+        # détail : le garde s'applique à TOUTE candidate, pas seulement la 1re.
+        inventory = [
+            _img(50, (340.0, 100.0, 460.0, 260.0), 464, 620, 90_000),  # principale
+            _img(51, (480.0, 300.0, 540.0, 380.0), 700, 900, 18_000, colvar=1.0),
+        ]
+        principal, details = select_photos(inventory, _PAGE_W)
+        self.assertEqual(principal["xrefs"], (50,))
+        self.assertEqual(details, [])  # l'aplat 51 écarté, pas relégué en détail
+
+    def test_tie_break_octets_a_aire_egale(self):
+        # Deux candidates de MÊME aire de bbox : départage par octets natifs
+        # décroissants (déterminisme, garde le fichier le mieux résolu).
+        inventory = [
+            _img(1, (340.0, 100.0, 460.0, 260.0), 464, 620, 60_000),
+            _img(2, (100.0, 100.0, 220.0, 260.0), 464, 620, 80_000),
+        ]
+        principal, _details = select_photos(inventory, _PAGE_W)
+        self.assertEqual(principal["xrefs"], (2,))  # même bbox, octets max
+
+    def test_fond_pleine_page_exclu_ancien_template(self):
+        # Fond pleine page (ancien template) : plus gros octets natifs de tous,
+        # mais exclu par le filtre pleine largeur AVANT le choix par octets.
+        inventory = [
+            _img(1, (0.0, 0.0, 595.0, 842.0), 2480, 3508, 500_000),
+            _img(2, (340.0, 200.0, 460.0, 360.0), 464, 620, 85_000),
+        ]
+        principal, details = select_photos(inventory, _PAGE_W)
+        self.assertIsNotNone(principal)
+        self.assertEqual(principal["xrefs"], (2,))  # pas le fond malgré ses octets
+        self.assertEqual(details, [])
+
+    def test_recollage_big_plus_bande_fine(self):
+        # « big + bande fine » même largeur contiguë → 1 groupe : hauteur sommée,
+        # octets sommés, xrefs ordonnés haut→bas.
+        inventory = [
+            _img(10, (340.0, 100.0, 440.0, 300.0), 656, 752, 60_000),
+            _img(11, (340.0, 300.0, 440.0, 312.0), 656, 47, 5_000),
+        ]
+        principal, details = select_photos(inventory, _PAGE_W)
+        self.assertIsNotNone(principal)
+        self.assertEqual(principal["xrefs"], (10, 11))
+        self.assertEqual(principal["height"], 752 + 47)
+        self.assertEqual(principal["nbytes"], 60_000 + 5_000)
+        self.assertEqual(details, [])
+
+    def test_recollage_quatre_tranches_egales(self):
+        # 4 tranches horizontales égales même largeur → 1 groupe recollé.
+        inventory = [
+            _img(20, (340.0, 200.0, 420.0, 220.0), 322, 86, 15_000),
+            _img(21, (340.0, 220.0, 420.0, 240.0), 322, 86, 15_000),
+            _img(22, (340.0, 240.0, 420.0, 260.0), 322, 86, 15_000),
+            _img(23, (340.0, 260.0, 420.0, 280.0), 322, 86, 15_000),
+        ]
+        principal, details = select_photos(inventory, _PAGE_W)
+        self.assertIsNotNone(principal)
+        self.assertEqual(principal["xrefs"], (20, 21, 22, 23))
+        self.assertEqual(principal["height"], 86 * 4)
+        self.assertEqual(details, [])
+
+    def test_non_fusion_deux_details_portrait(self):
+        # Cas Celtis : deux détails portrait distincts empilés même largeur
+        # (aspect < 1.8, donc 2 « non-tranches ») → NON fusionnés, 2 groupes.
+        inventory = [
+            # Principale colonne droite (octets max).
+            _img(30, (340.0, 100.0, 460.0, 260.0), 464, 620, 90_000),
+            # Feuille (portrait) puis écorce (portrait), empilées, même largeur.
+            _img(31, (480.0, 300.0, 540.0, 380.0), 300, 400, 30_000),
+            _img(32, (480.0, 380.0, 540.0, 460.0), 300, 400, 28_000),
+        ]
+        principal, details = select_photos(inventory, _PAGE_W)
+        self.assertEqual(principal["xrefs"], (30,))
+        self.assertEqual(len(details), 2)  # non fusionnés
+        self.assertEqual([d["xrefs"] for d in details], [(31,), (32,)])
+
+    def test_rejet_bande_deco_downscale_haut(self):
+        # Bande décorative : 2362 px natifs squeezés dans ~68 pt → downscale
+        # 34.7 > 10 → rejetée (ne fuit pas en détail).
+        inventory = [
+            _img(40, (100.0, 400.0, 168.0, 420.0), 2362, 100, 40_000),
+            _img(41, (340.0, 100.0, 460.0, 260.0), 464, 620, 80_000),
+        ]
+        principal, details = select_photos(inventory, _PAGE_W)
+        self.assertEqual(principal["xrefs"], (41,))
+        self.assertEqual(details, [])
+
+    def test_rejet_vignette_etiree_downscale_bas(self):
+        # Vignette 2×2 px étirée sur ~225 pt → downscale 0.009 < 1.0
+        # (_PH_DS_MIN) → rejetée.
+        inventory = [
+            _img(50, (100.0, 300.0, 325.0, 400.0), 2, 2, 500),
+            _img(51, (340.0, 100.0, 460.0, 260.0), 464, 620, 80_000),
+        ]
+        principal, details = select_photos(inventory, _PAGE_W)
+        self.assertEqual(principal["xrefs"], (51,))
+        self.assertEqual(details, [])
+
+    def test_rejet_entete_et_pied(self):
+        # Logo d'en-tête (y0 < _PH_Y_TOP = 25) et logo de pied (y1 > 745) rejetés :
+        # sans ces filtres ils passeraient en détails.
+        inventory = [
+            _img(60, (30.0, 10.0, 130.0, 22.0), 200, 90, 4_000),   # y0 < 25
+            _img(61, (30.0, 750.0, 130.0, 800.0), 200, 90, 3_000),  # y1 > 745
+            _img(62, (340.0, 100.0, 460.0, 260.0), 464, 620, 70_000),
+        ]
+        principal, details = select_photos(inventory, _PAGE_W)
+        self.assertEqual(principal["xrefs"], (62,))
+        self.assertEqual(details, [])
+
+    def test_portrait_haut_place_passe_logo_rejete(self):
+        # Régression défaut 2 : _PH_Y_TOP abaissé de 70 à 25. Un vrai portrait
+        # colonne-droite haut placé (y0=30, comme Platanus orientalis 30.1 /
+        # occidentalis 32.9 / Prunus avium 60.4) doit PASSER — à 70 il était
+        # rejeté et la fiche affichait un gros plan feuille/fleur à la place.
+        # Un logo d'en-tête (y0=10) reste rejeté.
+        inventory = [
+            _img(1, (30.0, 10.0, 90.0, 22.0), 200, 231, 4_000),      # logo, y0<25
+            _img(2, (340.0, 30.0, 460.0, 190.0), 464, 620, 90_000),  # portrait, y0=30
+        ]
+        principal, details = select_photos(inventory, _PAGE_W)
+        self.assertIsNotNone(principal)
+        self.assertEqual(principal["xrefs"], (2,))  # portrait retenu
+        self.assertEqual(details, [])               # logo écarté (ni principale ni détail)
+
+    def test_bande_haute_reservee_a_la_principale(self):
+        # Cas Populus tremula 'Erecta' : la bande 25-70 pt est admise pour la
+        # principale (portraits haut placés) mais PAS pour les détails — un
+        # schéma de « port » stylisé y0=46 (colvar élevée, grande bbox mais
+        # non-principale) ne doit pas fuiter comme faux détail (_PH_Y_TOP_DETAIL).
+        inventory = [
+            _img(1, (340.0, 100.0, 460.0, 260.0), 464, 620, 90_000),  # portrait
+            _img(2, (250.0, 46.0, 330.0, 140.0), 320, 380, 30_000),   # schéma port, y0=46
+            _img(3, (480.0, 300.0, 540.0, 380.0), 300, 200, 20_000),  # vrai détail
+        ]
+        principal, details = select_photos(inventory, _PAGE_W)
+        self.assertEqual(principal["xrefs"], (1,))
+        self.assertEqual([d["xrefs"] for d in details], [(3,)])  # schéma exclu
+
+    def test_details_tronques_a_trois_ordonnes(self):
+        # 5 détails candidats → tronqués à 3, ordonnés par y0 croissant.
+        inventory = [
+            _img(70, (340.0, 80.0, 460.0, 240.0), 464, 620, 100_000),  # principale
+            _img(71, (480.0, 500.0, 540.0, 580.0), 300, 200, 20_000),
+            _img(72, (480.0, 300.0, 540.0, 380.0), 300, 200, 20_000),
+            _img(73, (480.0, 400.0, 540.0, 480.0), 300, 200, 20_000),
+            _img(74, (480.0, 600.0, 540.0, 680.0), 300, 200, 20_000),
+            _img(75, (480.0, 200.0, 540.0, 280.0), 300, 200, 20_000),
+        ]
+        principal, details = select_photos(inventory, _PAGE_W)
+        self.assertEqual(principal["xrefs"], (70,))
+        self.assertEqual(len(details), 3)
+        # Tri par y0 : 75 (200), 72 (300), 73 (400) — les deux plus bas coupés.
+        self.assertEqual([d["xrefs"][0] for d in details], [75, 72, 73])
+        for d in details:
+            self.assertEqual(d["role"], "detail")
+
+    def test_aucune_candidate_assez_grande(self):
+        # Aucune image d'aire native >= 70 000 px → (None, []).
+        inventory = [
+            _img(80, (340.0, 100.0, 460.0, 200.0), 200, 200, 30_000),  # 40 000 px
+            _img(81, (340.0, 300.0, 460.0, 400.0), 250, 250, 35_000),  # 62 500 px
+        ]
+        self.assertEqual(select_photos(inventory, _PAGE_W), (None, []))
+
+
+class ChainsTest(unittest.TestCase):
+    """Bornes du chaînage vertical `_chains` (empilement de fragments, S9).
+
+    `_chains(a, b)` : `b` (juste sous `a`) empile-t-il ? Même largeur native,
+    bords x alignés (< `_PH_XEPS`), écart vertical bord-à-bord ∈ [-2, `_PH_GAP`].
+    """
+
+    @staticmethod
+    def _seg(x0, y0, x1, y1, width=656):
+        # Fragment horizontal : bbox en points, `width` natif (aligné pour chaîner).
+        return {"xref": 1, "bbox": (x0, y0, x1, y1), "width": width,
+                "height": 40, "nbytes": 5_000}
+
+    def test_chaine_contigu(self):
+        # Contigus (gap = 0) → chaînent.
+        a = self._seg(340.0, 100.0, 440.0, 300.0)
+        b = self._seg(340.0, 300.0, 440.0, 312.0)
+        self.assertTrue(_chains(a, b))
+
+    def test_gap_dans_borne(self):
+        # Gap de 10 pt (< _PH_GAP = 12) → chaînent.
+        a = self._seg(340.0, 100.0, 440.0, 300.0)
+        b = self._seg(340.0, 310.0, 440.0, 322.0)
+        self.assertTrue(_chains(a, b))
+
+    def test_gap_trop_grand_ne_chaine_pas(self):
+        # Gap vertical de 20 pt (> _PH_GAP = 12) → NE chaîne PAS.
+        a = self._seg(340.0, 100.0, 440.0, 300.0)
+        b = self._seg(340.0, 320.0, 440.0, 340.0)
+        self.assertFalse(_chains(a, b))
+
+    def test_chevauchement_trop_fort_ne_chaine_pas(self):
+        # Chevauchement de 5 pt (gap = -5 < -2) → NE chaîne PAS (images distinctes
+        # qui se recouvrent, pas des tranches contiguës).
+        a = self._seg(340.0, 100.0, 440.0, 300.0)
+        b = self._seg(340.0, 295.0, 440.0, 315.0)
+        self.assertFalse(_chains(a, b))
+
+    def test_largeur_differente_ne_chaine_pas(self):
+        a = self._seg(340.0, 100.0, 440.0, 300.0, width=656)
+        b = self._seg(340.0, 300.0, 440.0, 312.0, width=322)
+        self.assertFalse(_chains(a, b))
+
+    def test_x_desaligne_ne_chaine_pas(self):
+        # Bords x décalés de 5 pt (>= _PH_XEPS = 2.5) → NE chaîne PAS.
+        a = self._seg(340.0, 100.0, 440.0, 300.0)
+        b = self._seg(345.0, 300.0, 445.0, 312.0)
+        self.assertFalse(_chains(a, b))
+
+
+class DhashTest(unittest.TestCase):
+    """dHash perceptuel 8×8 + distance de Hamming — fonctions PURES (S9).
+
+    Testées sur des matrices de niveaux de gris synthétiques (72 = 8×9 valeurs),
+    sans Pillow : `_dhash` compare des pixels horizontalement adjacents
+    (gauche > droite → 1), `_hamming` compte les bits différents.
+    """
+
+    def test_hamming_valeurs_connues(self):
+        self.assertEqual(_hamming(0, 0), 0)
+        self.assertEqual(_hamming(0b1011, 0b1110), 2)
+        self.assertEqual(_hamming(0, (1 << 64) - 1), 64)
+
+    def test_dhash_uniforme_est_zero(self):
+        # Image uniforme : aucun pixel n'est > son voisin → 64 bits à 0.
+        gray = [128] * (8 * 9)
+        self.assertEqual(_dhash(gray), 0)
+
+    def test_dhash_gradient_croissant_est_zero(self):
+        # Rangées strictement croissantes (gauche < droite partout) → tous les
+        # bits à 0 (le bit vaut 1 seulement si gauche > droite).
+        gray = [c for _row in range(8) for c in range(9)]
+        self.assertEqual(_dhash(gray), 0)
+
+    def test_dhash_gradient_decroissant_est_tout_a_un(self):
+        # Rangées strictement décroissantes (gauche > droite partout) → 64 bits à 1.
+        gray = [8 - c for _row in range(8) for c in range(9)]
+        self.assertEqual(_dhash(gray), (1 << 64) - 1)
+
+    def test_dhash_distingue_bruit(self):
+        # Deux motifs différents produisent des hashes différents (non triviaux).
+        uniforme = _dhash([100] * (8 * 9))
+        alterne = _dhash([(200 if c % 2 else 50) for _r in range(8) for c in range(9)])
+        self.assertNotEqual(uniforme, alterne)
+
+
+class PlaceholderDhashTest(unittest.TestCase):
+    """Contrat du filtre placeholder « Photos à venir » (S9, dHash perceptuel).
+
+    Le filtrage lui-même vit dans `_page0_inventory` (couche IMPURE : il faut les
+    octets natifs de `extract_image` pour décoder et hasher l'image). La logique
+    de décision `_is_placeholder_dhash`, elle, est PURE et testable directement :
+    une référence exacte est un placeholder, une image quelconque (Hamming >> 8)
+    ne l'est pas, `None` (décodage raté) non plus.
+    """
+
+    def test_deux_references_grandes_connues(self):
+        # Les 2 variantes « grande » 1182×1004 mesurées au build.
+        self.assertIn(544520902464865219, _PH_PLACEHOLDER_DHASHES)
+        self.assertIn(544520902397756359, _PH_PLACEHOLDER_DHASHES)
+        self.assertEqual(len(_PH_PLACEHOLDER_DHASHES), 2)
+
+    def test_reference_exacte_est_placeholder(self):
+        for ref in _PH_PLACEHOLDER_DHASHES:
+            self.assertTrue(_is_placeholder_dhash(ref))
+
+    def test_proche_sous_seuil_est_placeholder(self):
+        # Une variante ré-encodée à Hamming = seuil est encore rattrapée.
+        ref = _PH_PLACEHOLDER_DHASHES[0]
+        near = ref ^ ((1 << _PH_PLACEHOLDER_DHASH_MAX_DIST) - 1)  # exactement seuil bits
+        self.assertEqual(_hamming(ref, near), _PH_PLACEHOLDER_DHASH_MAX_DIST)
+        self.assertTrue(_is_placeholder_dhash(near))
+
+    def test_au_dela_du_seuil_nest_pas_placeholder(self):
+        # Une vraie photo (Hamming 21 sur le corpus, ici seuil+1) n'est pas rejetée.
+        ref = _PH_PLACEHOLDER_DHASHES[0]
+        far = ref ^ ((1 << (_PH_PLACEHOLDER_DHASH_MAX_DIST + 1)) - 1)
+        self.assertEqual(_hamming(ref, far), _PH_PLACEHOLDER_DHASH_MAX_DIST + 1)
+        self.assertFalse(_is_placeholder_dhash(far))
+
+    def test_none_nest_pas_placeholder(self):
+        # Décodage raté → jamais écarté (« ne jamais inventer »).
+        self.assertFalse(_is_placeholder_dhash(None))
+
+
+class PhotoManifestEntriesTest(unittest.TestCase):
+    """Construction PURE des entrées manifest `{f,r,src,lic,by,u}` (S9)."""
+
+    @staticmethod
+    def _photos(*roles):
+        return [SimpleNamespace(role=r) for r in roles]
+
+    def test_principale_puis_details(self):
+        entries = _photo_manifest_entries(
+            42, self._photos("principal", "detail", "detail"),
+            "https://opendata.paris.fr/fiche.pdf")
+        self.assertEqual(entries, [
+            {"f": "42-0.webp", "r": "p", "src": "paris", "lic": "odbl-1.0",
+             "by": "Ville de Paris", "u": "https://opendata.paris.fr/fiche.pdf"},
+            {"f": "42-1.webp", "r": "d", "src": "paris", "lic": "odbl-1.0",
+             "by": "Ville de Paris", "u": "https://opendata.paris.fr/fiche.pdf"},
+            {"f": "42-2.webp", "r": "d", "src": "paris", "lic": "odbl-1.0",
+             "by": "Ville de Paris", "u": "https://opendata.paris.fr/fiche.pdf"},
+        ])
+
+    def test_nommage_indexe_par_sk(self):
+        entries = _photo_manifest_entries(
+            7, self._photos("principal", "detail"), "https://x/f.pdf")
+        self.assertEqual([e["f"] for e in entries], ["7-0.webp", "7-1.webp"])
+        # n=0 = principale ("p"), la suite = détails ("d").
+        self.assertEqual([e["r"] for e in entries], ["p", "d"])
+
+    def test_principale_seule(self):
+        entries = _photo_manifest_entries(
+            100, self._photos("principal"), "https://x/f.pdf")
+        self.assertEqual(len(entries), 1)
+        self.assertEqual(entries[0]["f"], "100-0.webp")
+        self.assertEqual(entries[0]["r"], "p")
+
+    def test_url_propagee(self):
+        url = "https://opendata.paris.fr/essences/tilia.pdf"
+        entries = _photo_manifest_entries(3, self._photos("principal"), url)
+        self.assertTrue(all(e["u"] == url for e in entries))
+
+
+class TestEssenceOverrides(unittest.TestCase):
+    """Fusion des overrides manuels (fiches à PDF rasterisé) — 100 % pur."""
+
+    def _rasterized(self):
+        """EssenceExtras d'une fiche rasterisée : flor/fruct OK, texte None."""
+        return essence_pdf.EssenceExtras(
+            flor=8, fruct=48,
+            warnings=[
+                "à retenir: ancres Atouts/Limites introuvables",
+                "descriptif: PDF rasterisé (heading absent), "
+                "champs textuels non extraits",
+            ],
+        )
+
+    def _override(self):
+        return {
+            "nom_latin": "Betula nigra",
+            "fam": "Bétulacées",
+            "haut": "20 m",
+            "env": "15 m",
+            "croiss": "Rapide",
+            "long": "Moyenne (100 à 200 ans)",
+            "iddesc": {
+                "ecorce": "Écorce brun-rouge en plaques",
+                "feuillage": "Feuilles caduques lobées",
+                "floraison": "Chatons jaune clair",
+                "fructification": "Cône",
+            },
+            "paris": "Très rare à Paris.",
+            "svc": {"climat": "Ombrage moyen.", "eau": "Bonne.", "biodiv": "Insectes."},
+            "atouts": ["Régule l'eau", "Résiste au froid"],
+            "limites": ["Sensible à la sécheresse"],
+        }
+
+    def test_remplit_les_champs_none(self):
+        extras = self._rasterized()
+        self.assertTrue(essence_pdf.merge_override(extras, self._override()))
+        self.assertEqual(extras.fam, "Bétulacées")
+        self.assertEqual(extras.haut, "20 m")
+        self.assertEqual(extras.env, "15 m")
+        self.assertEqual(extras.croiss, "Rapide")
+        self.assertEqual(extras.long, "Moyenne (100 à 200 ans)")
+        self.assertEqual(extras.paris, "Très rare à Paris.")
+        self.assertEqual(set(extras.iddesc), {"ecorce", "feuillage", "floraison", "fructification"})
+        self.assertEqual(set(extras.svc), {"climat", "eau", "biodiv"})
+        self.assertEqual(extras.atouts, ["Régule l'eau", "Résiste au froid"])
+        self.assertEqual(extras.limites, ["Sensible à la sécheresse"])
+
+    def test_flor_fruct_preserves(self):
+        # L'override ne porte pas de calendrier : le fallback couleur reste.
+        extras = self._rasterized()
+        essence_pdf.merge_override(extras, self._override())
+        self.assertEqual(extras.flor, 8)
+        self.assertEqual(extras.fruct, 48)
+
+    def test_n_ecrase_jamais_une_valeur_existante(self):
+        # Fiche entièrement extraite : l'override ne doit RIEN faire.
+        extras = essence_pdf.EssenceExtras(
+            flor=1, fruct=2,
+            fam="DéjàLà", haut="99 m", env="88 m", croiss="Vive",
+            long="courte", paris="Paris extrait",
+            iddesc={"ecorce": "existante"},
+            svc={"climat": "existant"},
+            atouts=["atout extrait"], limites=["limite extraite"],
+        )
+        ov = self._override()
+        # Rien à compléter → retourne False, tout inchangé.
+        self.assertFalse(essence_pdf.merge_override(extras, ov))
+        self.assertEqual(extras.fam, "DéjàLà")
+        self.assertEqual(extras.haut, "99 m")
+        self.assertEqual(extras.iddesc, {"ecorce": "existante"})
+        self.assertEqual(extras.svc, {"climat": "existant"})
+        self.assertEqual(extras.atouts, ["atout extrait"])
+        self.assertEqual(extras.limites, ["limite extraite"])
+
+    def test_completion_partielle(self):
+        # fam extrait mais paris manquant : remplit paris, garde fam.
+        extras = essence_pdf.EssenceExtras(flor=1, fruct=2, fam="Extraite")
+        self.assertTrue(essence_pdf.merge_override(extras, self._override()))
+        self.assertEqual(extras.fam, "Extraite")        # intouché
+        self.assertEqual(extras.paris, "Très rare à Paris.")  # complété
+
+    def test_ignore_meta_et_nom_latin(self):
+        extras = self._rasterized()
+        ov = self._override()
+        ov["_meta"] = {"description": "ne doit pas fuiter"}
+        essence_pdf.merge_override(extras, ov)
+        # nom_latin/_meta ne créent pas d'attribut ni ne fuitent nulle part.
+        self.assertFalse(hasattr(extras, "nom_latin"))
+        self.assertFalse(hasattr(extras, "_meta"))
+
+    def test_warning_requalifie_et_note_provenance(self):
+        extras = self._rasterized()
+        essence_pdf.merge_override(extras, self._override())
+        # Note de provenance en tête.
+        self.assertEqual(extras.warnings[0], essence_pdf._OVERRIDE_PROVENANCE_WARNING)
+        joined = " ".join(extras.warnings)
+        # Warnings obsolètes retirés.
+        self.assertNotIn("champs textuels non extraits", joined)
+        self.assertNotIn("ancres Atouts/Limites introuvables", joined)
+        self.assertNotIn("ancien template", joined)
+
+    def test_requalifie_ancien_template_residuel(self):
+        # Ceinture+bretelles : une mention « ancien template » subsistante est
+        # requalifiée (et non supprimée) si elle ne relève pas des 2 obsolètes.
+        extras = essence_pdf.EssenceExtras(
+            flor=1, fruct=2,
+            warnings=["divers: ancien template détecté ailleurs"],
+        )
+        essence_pdf.merge_override(extras, self._override())
+        self.assertIn("divers: PDF rasterisé détecté ailleurs", extras.warnings)
+
+    def test_apply_pdf_id_inconnu_ne_crashe_pas(self):
+        corpus = {"connu": self._rasterized()}
+        overrides = {
+            "_meta": {"x": 1},
+            "connu": self._override(),
+            "inconnu-xyz": self._override(),
+        }
+        # pdf_id inconnu ignoré, pas d'exception.
+        essence_pdf.apply_essence_overrides(corpus, overrides)
+        self.assertEqual(corpus["connu"].fam, "Bétulacées")
+
+    def test_apply_fichier_absent_noop(self):
+        corpus = {"connu": self._rasterized()}
+        with mock.patch.object(
+            essence_pdf, "ESSENCE_OVERRIDES_PATH",
+            Path("/nonexistent/essence-overrides.json"),
+        ):
+            essence_pdf.apply_essence_overrides(corpus)  # overrides=None → lit disque
+        # Rien complété.
+        self.assertIsNone(corpus["connu"].fam)
+
+    def test_override_reel_du_disque_bien_forme(self):
+        # Le fichier versionné a bien 6 entrées, chacune complète.
+        with essence_pdf.ESSENCE_OVERRIDES_PATH.open(encoding="utf-8") as f:
+            data = json.load(f)
+        self.assertIn("_meta", data)
+        entries = {k: v for k, v in data.items() if k != "_meta"}
+        self.assertEqual(len(entries), 6)
+        required = {"nom_latin", "fam", "haut", "env", "croiss", "long",
+                    "iddesc", "paris", "svc", "atouts", "limites"}
+        for pid, v in entries.items():
+            self.assertEqual(required, set(v), f"clés incomplètes pour {pid}")
+            self.assertEqual({"ecorce", "feuillage", "floraison", "fructification"}, set(v["iddesc"]))
+            self.assertEqual({"climat", "eau", "biodiv"}, set(v["svc"]))
+
+
+class EssenceTaxonSynonymsTest(unittest.TestCase):
+    """Remappage synonymie/graphie des clés taxon des fiches-essences.
+
+    `ESSENCE_TAXON_SYNONYMS` doit être appliquée par `_build_essences_index` à
+    la clé issue de `_parse_essence_taxon`, pour que le taxon canonique du
+    species-index soit vu de façon cohérente par tout le pipeline. Test pur.
+    """
+
+    @staticmethod
+    def _rec(nom_latin, pdf_id):
+        return {
+            "nom_latin": nom_latin,
+            "nom_fichier_pdf_associe": {
+                "url": f"https://example/{pdf_id}",
+                "id": pdf_id,
+                "filename": f"{pdf_id}.pdf",
+            },
+        }
+
+    def test_gymnocladus_dioicus_remappe_vers_dioica(self):
+        idx = build_dataset._build_essences_index(
+            [self._rec("Gymnocladus dioicus", "p1")]
+        )
+        self.assertIn(("Gymnocladus", "dioica"), idx)
+        self.assertNotIn(("Gymnocladus", "dioicus"), idx)
+
+    def test_sinomalus_sieboldii_remappe_vers_malus_toringo(self):
+        idx = build_dataset._build_essences_index(
+            [self._rec("Sinomalus sieboldii 'Brouwers Beauty'", "p2")]
+        )
+        self.assertIn(("Malus", "toringo"), idx)
+        self.assertNotIn(("Sinomalus", "sieboldii"), idx)
+
+    def test_taxons_non_synonymes_intacts(self):
+        idx = build_dataset._build_essences_index([
+            self._rec("Acer platanoides", "p3"),
+            self._rec("Quercus robur 'Fastigiata'", "p4"),
+        ])
+        self.assertIn(("Acer", "platanoides"), idx)
+        # Le cultivar est réduit à l'espèce nue, pas remappé par synonymie.
+        self.assertIn(("Quercus", "robur"), idx)
+
+    def test_table_sens_fiche_vers_canonique(self):
+        # La table mappe (graphie fiche) → (taxon canonique species-index).
+        self.assertEqual(
+            build_dataset.ESSENCE_TAXON_SYNONYMS[("Gymnocladus", "dioicus")],
+            ("Gymnocladus", "dioica"),
+        )
+        self.assertEqual(
+            build_dataset.ESSENCE_TAXON_SYNONYMS[("Sinomalus", "sieboldii")],
+            ("Malus", "toringo"),
+        )
 
 
 if __name__ == "__main__":
