@@ -37,7 +37,21 @@ data class SpeciesAttributes(
     val exposition: List<String>,
     val besoinsEau: List<String>,
     val sitePlantation: List<String>,
+    /**
+     * Calendrier de floraison en bitfield 12 bits : **bit 0 = janvier … bit 11 =
+     * décembre**. Contrat miroir avec `tools/essence_pdf.py` côté build (même
+     * famille de contrats build↔Kotlin que `arr_key_slug`/`parseArrKey`). `null`
+     * quand la donnée est absente. Lire un mois via [isMonthInBitfield].
+     */
+    val floraison: Int?,
+    /** Calendrier de fructification, même encodage que [floraison] (bit 0 = janvier). */
+    val fructification: Int?,
+    val atouts: List<String>,
+    val limites: List<String>,
 )
+
+/** Le mois (1..12, janvier = 1) est-il actif dans le bitfield ? bit 0 = janvier. */
+fun isMonthInBitfield(bits: Int, month: Int): Boolean = (bits shr (month - 1)) and 1 == 1
 
 data class SpeciesStats(
     val count: Int,
@@ -127,6 +141,10 @@ internal fun parseSpeciesAttributes(ess: JSONObject?): SpeciesAttributes? {
         exposition = parseStringList(ess.optJSONArray("expo")),
         besoinsEau = parseStringList(ess.optJSONArray("eau")),
         sitePlantation = parseStringList(ess.optJSONArray("sites")),
+        floraison = ess.optIntOrNull("flor")?.takeIf { it in 1..0xFFF },
+        fructification = ess.optIntOrNull("fruct")?.takeIf { it in 1..0xFFF },
+        atouts = parseStringList(ess.optJSONArray("atouts")),
+        limites = parseStringList(ess.optJSONArray("limites")),
     )
 }
 

@@ -65,10 +65,12 @@ import app.arbre.data.rememberDatasetStats
 import app.arbre.data.rememberSpeciesIndex
 import app.arbre.data.rememberSpeciesInfoRepository
 import app.arbre.data.resolvedFile
+import app.arbre.ui.common.ARetenirBlock
 import app.arbre.ui.common.AttributesBlock
 import app.arbre.ui.common.DeleteCaptureDialog
 import app.arbre.ui.common.PhotoGallery
 import app.arbre.ui.common.PhotoLightbox
+import app.arbre.ui.common.SeasonalityCalendar
 import app.arbre.ui.common.ShowOnMapButton
 import app.arbre.ui.common.WikipediaBlock
 import java.text.NumberFormat
@@ -176,6 +178,12 @@ fun SpeciesDetailScreen(
 
             info?.attributes?.let { attrs ->
                 item { AttributesBlock(attrs) }
+                if (attrs.floraison != null || attrs.fructification != null) {
+                    item { SeasonalityCalendar(attrs.floraison, attrs.fructification) }
+                }
+                if (attrs.atouts.isNotEmpty() || attrs.limites.isNotEmpty()) {
+                    item { ARetenirBlock(attrs.atouts, attrs.limites) }
+                }
             }
 
             if (photoFiles.isNotEmpty()) {
