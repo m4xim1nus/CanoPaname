@@ -143,6 +143,7 @@ SUMMARY_NV_RE = re.compile(
 # par `tools/build_report.py` pour générer le tableau de validation HTML.
 TRACE_DIR = ROOT / "tools" / "_trace"
 OUT_VERNACULAR_TRACE = TRACE_DIR / "vernacular-source.json"
+OUT_ESSENCE_EXTRAS_TRACE = TRACE_DIR / "essence-extras.json"
 
 # Coquilles latines récurrentes du CSV OpenData. Appliqué AVANT le lookup
 # `species_index` : la row est rebindée vers l'entrée canonique, son `sk`
@@ -2144,12 +2145,121 @@ def _build_essences_index(records: list[dict]) -> dict[tuple[str, str], dict]:
         score = len(nom_latin)
         prev = chosen.get(taxon)
         if prev is None or score < prev[0]:
-            value: dict = {"pdf": url}
+            # `_pdf_id` / `_nom_latin` : champs internes (préfixe `_`) portant
+            # la fiche CHOISIE (nom_latin le plus court) jusqu'à `_merge_pdf_extras`
+            # et le sidecar. Retirés de `value["ess"]` avant émission.
+            value: dict = {
+                "pdf": url,
+                "_pdf_id": pdf.get("id"),
+                "_nom_latin": nom_latin,
+                "_filename": pdf.get("filename"),
+            }
             attrs = _parse_essence_attributes(rec)
             if attrs:
                 value["ess"] = attrs
             chosen[taxon] = (score, value)
     return {k: v[1] for k, v in chosen.items()}
+
+
+def _merge_pdf_extras(
+    essences_index: dict[tuple[str, str], dict],
+    extras_by_pdf_id: dict,
+) -> None:
+    """Fusionne les extras PDF (flor/fruct/atouts/limites) dans `value["ess"]`.
+
+    Muté en place. Seulement les champs non-None / non-vides (contrat existant :
+    champ vide = clé omise). Crée le dict `ess` s'il manque. Ne touche pas aux
+    9 clés structurées existantes. Se cale sur le `_pdf_id` de la fiche choisie.
+    """
+    for value in essences_index.values():
+        extras = extras_by_pdf_id.get(value.get("_pdf_id"))
+        if extras is None:
+            continue
+        additions: dict = {}
+        if extras.flor is not None:
+            additions["flor"] = extras.flor
+        if extras.fruct is not None:
+            additions["fruct"] = extras.fruct
+        if extras.atouts:
+            additions["atouts"] = extras.atouts
+        if extras.limites:
+            additions["limites"] = extras.limites
+        if additions:
+            value.setdefault("ess", {}).update(additions)
+
+
+def _write_essence_extras_trace(
+    records: list[dict],
+    essences_index: dict[tuple[str, str], dict],
+    extras_by_pdf_id: dict,
+    species_index: dict[tuple[str, str], int],
+) -> None:
+    """Sidecar `tools/_trace/essence-extras.json` + log de synthèse `[pdf ]`.
+
+    Une entrée par PDF extrait (toutes les fiches, cultivars compris). `matched`
+    = la fiche est CELLE retenue dans l'index ET son (genre, espece) est présent
+    dans le species-index (mêmes conditions que le compteur de matching essences).
+    """
+    # nom_latin / filename / url par pdf_id, depuis les records bruts.
+    meta_by_pdf_id: dict[str, dict] = {}
+    for rec in records:
+        pdf = rec.get("nom_fichier_pdf_associe") or {}
+        pdf_id = pdf.get("id")
+        if pdf_id and pdf_id not in meta_by_pdf_id:
+            meta_by_pdf_id[pdf_id] = {
+                "nom_latin": (rec.get("nom_latin") or "").strip(),
+                "filename": pdf.get("filename"),
+                "url": pdf.get("url"),
+            }
+    # pdf_id retenus dans l'index et matchant le species-index.
+    matched_pdf_ids: set[str] = set()
+    for taxon, value in essences_index.items():
+        pid = value.get("_pdf_id")
+        if pid and taxon in species_index:
+            matched_pdf_ids.add(pid)
+
+    trace: dict[str, dict] = {}
+    n_flor = n_fruct = n_atouts = n_limites = n_warn = 0
+    total_fails: list[str] = []
+    for pdf_id, extras in extras_by_pdf_id.items():
+        meta = meta_by_pdf_id.get(pdf_id, {})
+        trace[pdf_id] = {
+            "nom_latin": meta.get("nom_latin", ""),
+            "filename": meta.get("filename"),
+            "url": meta.get("url"),
+            "flor": extras.flor,
+            "fruct": extras.fruct,
+            "atouts": extras.atouts,
+            "limites": extras.limites,
+            "warnings": extras.warnings,
+            "matched": pdf_id in matched_pdf_ids,
+        }
+        if extras.flor is not None:
+            n_flor += 1
+        if extras.fruct is not None:
+            n_fruct += 1
+        if extras.atouts:
+            n_atouts += 1
+        if extras.limites:
+            n_limites += 1
+        if extras.warnings:
+            n_warn += 1
+        if (extras.flor is None and extras.fruct is None
+                and not extras.atouts and not extras.limites):
+            total_fails.append(meta.get("nom_latin") or pdf_id)
+
+    OUT_ESSENCE_EXTRAS_TRACE.parent.mkdir(parents=True, exist_ok=True)
+    ordered = dict(sorted(trace.items(), key=lambda kv: kv[1]["nom_latin"]))
+    with OUT_ESSENCE_EXTRAS_TRACE.open("w", encoding="utf-8") as f:
+        json.dump(ordered, f, ensure_ascii=False, indent=1)
+
+    n = len(extras_by_pdf_id)
+    print(
+        f"[pdf ] flor: {n_flor}/{n} · fruct: {n_fruct}/{n} · "
+        f"atouts: {n_atouts}/{n} · limites: {n_limites}/{n} · warnings: {n_warn}"
+    )
+    for name in sorted(total_fails):
+        print(f"[pdf ]   échec total : {name}")
 
 
 def _format_int_fr(n: int) -> str:
@@ -3401,12 +3511,19 @@ def build(csv_path: Path, db_path: Path, geojson_path: Path) -> None:
     )
 
     essences_records = fetch_essences()
+    # Import paresseux : pymupdf est une dépendance build-time seulement, et
+    # `build_report.py` importe ce module sans l'avoir. Échec dur clair si absent.
+    import essence_pdf
+    extras_by_pdf_id = essence_pdf.extract_all(essences_records)
     essences_index = _build_essences_index(essences_records)
+    _merge_pdf_extras(essences_index, extras_by_pdf_id)
     matched = sum(1 for k in essences_index if k in species_index)
     print(
         f"[ess ] {len(essences_index)} taxons distincts dans le dataset, "
         f"{matched} matchent une espèce du species-index"
     )
+    _write_essence_extras_trace(
+        essences_records, essences_index, extras_by_pdf_id, species_index)
 
     write_species_info(species_index, count_by_sk, heights_by_sk, circs_by_sk,
                        arr_by_sk, arr_total, total_arbres=inserted,

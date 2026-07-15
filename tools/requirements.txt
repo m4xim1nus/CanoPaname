@@ -1,0 +1,7 @@
+# Dépendances build-time du pipeline dataset (tools/build_dataset.py).
+# Le runtime de l'app Android n'en dépend PAS : ces libs ne servent qu'à
+# générer les assets committés. Installer avec :
+#   pip install -r tools/requirements.txt
+#
+# pymupdf (fitz) : extraction des PDF fiches-essences (tools/essence_pdf.py).
+pymupdf>=1.24,<2

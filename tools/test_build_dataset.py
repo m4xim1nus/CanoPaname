@@ -18,6 +18,12 @@ from pathlib import Path
 from unittest import mock
 
 import build_dataset
+import essence_pdf
+from essence_pdf import (
+    _bits_from_flags,
+    _extract_bullets,
+    _validate_bullets,
+)
 from build_dataset import (
     GENRE_FR,
     SPECIES_FIXUPS,
@@ -1278,6 +1284,93 @@ class SplashTipsTest(unittest.TestCase):
                 self.assertIn(ph, self.PLACEHOLDERS, (t["id"], ph))
             for req in t.get("requires", []):
                 self.assertIn(req, self.PLACEHOLDERS, (t["id"], req))
+
+
+class BitsFromFlagsTest(unittest.TestCase):
+    """Contrat bitfield : bit 0 = janvier … bit 11 = décembre."""
+
+    def test_empty_is_zero(self):
+        self.assertEqual(_bits_from_flags([]), 0)
+
+    def test_all_false_is_zero(self):
+        self.assertEqual(_bits_from_flags([False] * 12), 0)
+
+    def test_january_only(self):
+        flags = [True] + [False] * 11
+        self.assertEqual(_bits_from_flags(flags), 1)
+
+    def test_december_only(self):
+        flags = [False] * 11 + [True]
+        self.assertEqual(_bits_from_flags(flags), 2048)
+
+    def test_all_twelve(self):
+        self.assertEqual(_bits_from_flags([True] * 12), 4095)
+
+
+class ExtractBulletsTest(unittest.TestCase):
+    """Regroupement pur des puces (x0, y0, texte) → liste de puces."""
+
+    def test_single_bullet(self):
+        items = [(10.0, 100.0, "•"), (20.0, 100.0, "Résistant à la sécheresse")]
+        self.assertEqual(
+            _extract_bullets(items), ["Résistant à la sécheresse"]
+        )
+
+    def test_continuation_multiline(self):
+        # 2e ligne (y ~110) sans puce = continuation rattachée à la 1re.
+        items = [
+            (10.0, 100.0, "•"),
+            (20.6, 100.6, "Bonnes capacités de régulation"),
+            (20.0, 110.0, "du climat local"),
+        ]
+        self.assertEqual(
+            _extract_bullets(items),
+            ["Bonnes capacités de régulation du climat local"],
+        )
+
+    def test_two_bullets(self):
+        items = [
+            (10.0, 100.0, "•"),
+            (20.0, 100.0, "Première puce"),
+            (10.0, 120.0, "•"),
+            (20.0, 120.0, "Deuxième puce"),
+        ]
+        self.assertEqual(
+            _extract_bullets(items), ["Première puce", "Deuxième puce"]
+        )
+
+
+class ValidateBulletsTest(unittest.TestCase):
+    """Bornes de validation : 1-8 puces, chacune 3-300 caractères."""
+
+    def test_valid_passes(self):
+        bullets = ["Puce une", "Puce deux"]
+        self.assertEqual(_validate_bullets(bullets), (bullets, None))
+
+    def test_empty_rejected(self):
+        result, warn = _validate_bullets([])
+        self.assertEqual(result, [])
+        self.assertIsNotNone(warn)
+
+    def test_too_many_rejected(self):
+        result, warn = _validate_bullets([f"puce {i}" for i in range(9)])
+        self.assertEqual(result, [])
+        self.assertIsNotNone(warn)
+
+    def test_seven_bullets_pass(self):
+        # Fraxinus excelsior a 7 limites réelles — ne doit pas être rejeté.
+        bullets = [f"limite numéro {i}" for i in range(7)]
+        self.assertEqual(_validate_bullets(bullets), (bullets, None))
+
+    def test_bullet_too_short_rejected(self):
+        result, warn = _validate_bullets(["ok longueur", "ab"])
+        self.assertEqual(result, [])
+        self.assertIsNotNone(warn)
+
+    def test_bullet_too_long_rejected(self):
+        result, warn = _validate_bullets(["x" * 301])
+        self.assertEqual(result, [])
+        self.assertIsNotNone(warn)
 
 
 if __name__ == "__main__":

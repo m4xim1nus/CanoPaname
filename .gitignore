@@ -47,6 +47,7 @@ tools/.wikipedia-aliases-cache/
 tools/.wikipedia-genre-cache/
 tools/.essences-cache/
 tools/.essences-cache-v2/
+tools/.essences-pdf-cache/
 tools/.remarquables-cache/
 tools/_trace/
 tools/__pycache__/
