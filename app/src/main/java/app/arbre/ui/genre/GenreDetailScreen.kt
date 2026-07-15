@@ -37,13 +37,16 @@ import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.unit.dp
 import app.arbre.data.ArrCount
 import app.arbre.data.Capture
+import app.arbre.data.CataloguePhotos
 import app.arbre.data.SpeciesEntry
 import app.arbre.data.SpeciesIndex
 import app.arbre.data.SpeciesInfoRepository
+import app.arbre.data.SpeciesPhotoRepository
 import app.arbre.data.rememberCaptureRepository
 import app.arbre.data.rememberGenreInfoRepository
 import app.arbre.data.rememberSpeciesIndex
 import app.arbre.data.rememberSpeciesInfoRepository
+import app.arbre.data.rememberSpeciesPhotoRepository
 import app.arbre.data.resolvedFile
 import app.arbre.ui.common.CatalogueCell
 import app.arbre.ui.common.DeleteCaptureDialog
@@ -83,6 +86,7 @@ fun GenreDetailScreen(
     val onUnlockLost = actions.onUnlockLost
     val speciesIndexRepo = rememberSpeciesIndex()
     val speciesInfoRepo = rememberSpeciesInfoRepository()
+    val speciesPhotoRepo = rememberSpeciesPhotoRepository()
     val genreInfoRepo = rememberGenreInfoRepository()
     val captureRepo = rememberCaptureRepository()
 
@@ -235,6 +239,7 @@ fun GenreDetailScreen(
                         row = row,
                         speciesIndexRepo = speciesIndexRepo,
                         speciesInfoRepo = speciesInfoRepo,
+                        speciesPhotoRepo = speciesPhotoRepo,
                         capturedSpecies = capturedSpecies,
                         photoBySk = genrePhotosBySk,
                         onSpeciesClick = onSpeciesClick,
@@ -398,6 +403,7 @@ private fun GenreCatalogueRow(
     row: List<SpeciesEntry>,
     speciesIndexRepo: SpeciesIndex,
     speciesInfoRepo: SpeciesInfoRepository,
+    speciesPhotoRepo: SpeciesPhotoRepository,
     capturedSpecies: Set<Int>,
     photoBySk: Map<Int, java.io.File>,
     onSpeciesClick: (Int) -> Unit,
@@ -413,7 +419,14 @@ private fun GenreCatalogueRow(
             CatalogueCell(
                 displayLabel = label,
                 entry = entry,
-                photoFile = photoBySk[entry.index],
+                // Photo de référence prioritaire sur la 1re capture, jamais
+                // pour une cellule non découverte (la silhouette reste).
+                photos = CataloguePhotos(
+                    referencePath = if (discovered) {
+                        speciesPhotoRepo.get(entry.index)?.principal?.assetPath
+                    } else null,
+                    captureFile = photoBySk[entry.index],
+                ),
                 discovered = discovered,
                 onClick = if (discovered) {
                     { onSpeciesClick(entry.index) }

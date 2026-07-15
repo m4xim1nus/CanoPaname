@@ -18,6 +18,7 @@ import app.arbre.data.RemarquableInfoRepository
 import app.arbre.data.SeasonStore
 import app.arbre.data.SpeciesIndex
 import app.arbre.data.SpeciesInfoRepository
+import app.arbre.data.SpeciesPhotoRepository
 import app.arbre.data.SplashTipsRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
@@ -44,6 +45,7 @@ class ArbresApp : Application() {
     val speciesIndex: SpeciesIndex by lazy { SpeciesIndex.load(this) }
     val datasetStats: DatasetStats by lazy { DatasetStats.load(this) }
     val speciesInfoRepository: SpeciesInfoRepository by lazy { SpeciesInfoRepository.load(this) }
+    val speciesPhotoRepository: SpeciesPhotoRepository by lazy { SpeciesPhotoRepository.load(this) }
     val remarquableInfoRepository: RemarquableInfoRepository by lazy {
         RemarquableInfoRepository.load(this)
     }

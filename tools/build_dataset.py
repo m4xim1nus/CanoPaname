@@ -59,6 +59,7 @@ OUT_SPLASH_TIPS = ASSETS_DIR / "splash-tips.json"
 OUT_ARR_SPECIES = ASSETS_DIR / "arr-species.json"
 OUT_SPECIES_PHOTOS_DIR = ASSETS_DIR / "species-photos"
 OUT_SPECIES_PHOTOS_MANIFEST = ASSETS_DIR / "species-photos.json"
+OUT_CREDITS_MD = ROOT / "CREDITS.md"
 STATIC_SPLASH_TIPS = ROOT / "tools" / "splash-tips-static.json"
 
 # Placeholders runtime supportés côté Kotlin (cf. SplashTipsController). Toute
@@ -2566,6 +2567,108 @@ def _write_species_photos(
     return results_by_pdf_id
 
 
+# Ordre d'affichage des sections crédits : bloc collectif Ville de Paris
+# d'abord (attribution unique), puis les listes ligne-par-ligne.
+_CREDITS_SECTION_ORDER = ("paris", "wikimedia-commons", "inaturalist")
+
+
+def _render_credits_md(manifest: dict, name_by_sk: "dict[int, str]") -> str:
+    """Rend le corps Markdown de `CREDITS.md` (PURE, testable).
+
+    `manifest` = contenu de `species-photos.json` (`meta` + `photos`),
+    `name_by_sk` = nom affiché résolu par sk (cascade nv → nc → binôme).
+    Groupe par source : bloc collectif Ville de Paris, puis Wikimedia Commons
+    et iNaturalist en listes une ligne par photo triées `(nom, sk, fichier)`.
+    Zéro timestamp — sortie déterministe (git propre au re-run).
+    """
+    meta = manifest.get("meta", {})
+    licenses = meta.get("licenses", {})
+    sources = meta.get("sources", {})
+    photos = manifest.get("photos", {})
+
+    def license_name(lic: str) -> str:
+        return licenses.get(lic, {}).get("name", lic)
+
+    def display(sk: int) -> str:
+        return name_by_sk.get(sk) or f"sk {sk}"
+
+    # Aplatir en lignes `(src, nom, sk, fichier, by, lic, u)`.
+    rows: list[tuple] = []
+    for sk_str, entries in photos.items():
+        sk = int(sk_str)
+        name = display(sk)
+        for e in entries:
+            rows.append((
+                e["src"], name, sk, e["f"], e.get("by", ""), e["lic"],
+                e.get("u"),
+            ))
+
+    n_species = len(photos)
+    n_photos = len(rows)
+
+    lines: list[str] = [
+        "# Crédits photos",
+        "",
+        "_Généré par `tools/build_dataset.py` — ne pas éditer à la main._",
+        "",
+        f"{n_species} espèces illustrées · {n_photos} photos de référence.",
+    ]
+
+    for src in _CREDITS_SECTION_ORDER:
+        src_rows = [r for r in rows if r[0] == src]
+        if not src_rows:
+            continue
+        # Tri casse-insensible, aligné sur l'écran crédits Kotlin
+        # (PhotoCreditsScreen trie par nom lowercase puis sk).
+        src_rows.sort(key=lambda r: (r[1].lower(), r[2], r[3]))
+        title = sources.get(src, {}).get("name", src)
+        lines.append("")
+        lines.append(f"## {title} ({len(src_rows)} photos)")
+        lines.append("")
+        if src == "paris":
+            # Bloc collectif : compte + auteurs + licence (attribution unique).
+            authors = sources.get("paris", {}).get("authors", "")
+            lic = src_rows[0][5]
+            lic_url = licenses.get(lic, {}).get("url", "")
+            attribution = f"{len(src_rows)} photos"
+            if authors:
+                attribution += f" — {authors}"
+            lines.append(
+                f"{attribution}. Licence "
+                f"[{license_name(lic)}]({lic_url})."
+            )
+        else:
+            for _src, name, _sk, _f, by, lic, u in src_rows:
+                line = f"- {name} — {by} · {license_name(lic)}"
+                if u:
+                    line += f" — {u}"
+                lines.append(line)
+
+    return "\n".join(lines) + "\n"
+
+
+def write_credits_md(entries: "list[dict]") -> None:
+    """Écrit `CREDITS.md` (racine) : crédits photo par image, groupés par source.
+
+    Re-lit le manifest `species-photos.json` (découplé de `_write_species_photos`)
+    et résout le nom affiché de chaque espèce depuis `entries` (cascade
+    nv → nc → binôme, comme l'app). Write-if-changed, zéro timestamp.
+    """
+    if not OUT_SPECIES_PHOTOS_MANIFEST.exists():
+        return
+    manifest = json.loads(
+        OUT_SPECIES_PHOTOS_MANIFEST.read_text(encoding="utf-8"))
+    name_by_sk = {
+        e["i"]: (e.get("nv") or e.get("nc") or f"{e['g']} {e['e']}")
+        for e in entries
+    }
+    payload = _render_credits_md(manifest, name_by_sk)
+    if (not OUT_CREDITS_MD.exists()
+            or OUT_CREDITS_MD.read_text(encoding="utf-8") != payload):
+        OUT_CREDITS_MD.write_text(payload, encoding="utf-8")
+    print(f"       → {OUT_CREDITS_MD.name} (racine)")
+
+
 def _format_int_fr(n: int) -> str:
     """`213042 -> "213 042"` (espace insécable narrow), pour rendu visuel."""
     return f"{n:,}".replace(",", " ")
@@ -3873,6 +3976,10 @@ def build(csv_path: Path, db_path: Path, geojson_path: Path) -> None:
         f"({vernacular_counters['nv_disambiguations']} désamb) "
         f"→ {vernacular_counters['pokedex_count']} #N Pokédex"
     )
+
+    # Crédits photo par image (racine, hors APK) : re-lit le manifest S9/S10 et
+    # résout les noms affichés depuis les `entries` post-cascade nv.
+    write_credits_md(entries)
 
     # 1 article Wikipedia FR par genre, agrégats stats Paris (médianes
     # hauteur/circonférence, proportion dataset, top arr sur-représentés ;

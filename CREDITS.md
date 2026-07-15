@@ -1,0 +1,357 @@
+# Crédits photos
+
+_Généré par `tools/build_dataset.py` — ne pas éditer à la main._
+
+497 espèces illustrées · 775 photos de référence.
+
+## Ville de Paris — Guide des essences 2024 (433 photos)
+
+433 photos — J.E. Michaut, B. Morlon, B. Serres. Licence [Open Database License v1.0](https://opendatacommons.org/licenses/odbl/1-0/).
+
+## Wikimedia Commons (184 photos)
+
+- Abiès alba — Franz Eugen Köhler, Köhler's Medizinal-Pflanzen · Domaine public — https://commons.wikimedia.org/wiki/File:Abies_alba_-_K%C3%B6hler%E2%80%93s_Medizinal-Pflanzen-001.jpg
+- Aliboufier — איתן פרמן · CC BY — https://commons.wikimedia.org/wiki/File:Styrax_officinalis.jpg
+- Amélanchier de Lamarck — Udo Schröter · CC BY — https://commons.wikimedia.org/wiki/File:Busch_Jakobsberg.jpg
+- Amélanchier glabre — Robert H. Mohlenbrock · Domaine public — https://commons.wikimedia.org/wiki/File:Amelanchier_laevis.jpg
+- Andromède — Ruff tuff cream puff · CC0 1.0 — https://commons.wikimedia.org/wiki/File:Enkianthus_chinensis.jpg
+- Arbre à miel — Chhe ( talk ) · Domaine public — https://commons.wikimedia.org/wiki/File:TetradiumDaniellii.jpg
+- Arbre à savon — gbno · CC0 1.0 — https://commons.wikimedia.org/wiki/File:Gymnocladus_chinensis,_Hangzhou,_Zhejiang,_China_4.jpg
+- Asiminier trilobé — Scott Bauer, USDA · Domaine public — https://commons.wikimedia.org/wiki/File:Asimina_triloba3.jpg
+- Aubépine (C. ambigua) — Nadiatalent · Domaine public — https://commons.wikimedia.org/wiki/File:Crataegus-ambigua-2.jpg
+- Aubépine (C. coccinioides) — Britton, N.L., and A. Brown. 1913. An illustrated flora of the northern United States, Canada and the British Possession… · Domaine public — https://commons.wikimedia.org/wiki/File:Crataegus_coccinioides_BB-1913.png
+- Aubépine (C. lavalleei) — Nadiatalent · Domaine public — https://commons.wikimedia.org/wiki/File:Crataegus_lavallei_flowers.jpg
+- Aubépine (C. spathulata) — Nadiatalent · Domaine public — https://commons.wikimedia.org/wiki/File:Crataegus_spathulata_trunk.jpg
+- Aubépine (C. viridis) — Scott Zona · CC BY — https://commons.wikimedia.org/wiki/File:Crataegus_viridis_%27Winter_King%27.jpg
+- Aubépine ergot-de-coq — Nadiatalent · Domaine public — https://commons.wikimedia.org/wiki/File:Crataegus_crus_galli_4.jpg
+- Aubépine à fruits piriformes — Britton, N.L., and A. Brown. 1913. An illustrated flora of the northern United States, Canada and the British Possession… · Domaine public — https://commons.wikimedia.org/wiki/File:Crataegus_calpodendron_BB-1913.png
+- Aulne rouge — Walter Siegmund · CC BY — https://commons.wikimedia.org/wiki/File:Alnus_rubra_0020.JPG
+- Balsam willow — Wikimedia Commons · Domaine public — https://commons.wikimedia.org/wiki/File:Salix_pyrifolia(01).jpg
+- Betula occidentalis — Robert H. Mohlenbrock · Domaine public — https://commons.wikimedia.org/wiki/File:Betula_occidentalis_USDA.jpg
+- Bois chavanon — Mark Wagner · CC BY — https://commons.wikimedia.org/wiki/File:Catalpa_speciosa_20060624.jpg
+- Bouleau (B. maximowicziana) — No machine-readable author provided. TeunSpaans assumed (based on copyright claims). · CC BY — https://commons.wikimedia.org/wiki/File:Betula_maximowicziana_01-10-2005_12.43.20.JPG
+- Bouleau (B. medwediewii) — No machine-readable author provided. TeunSpaans assumed (based on copyright claims). · CC BY — https://commons.wikimedia.org/wiki/File:Betula_medwediewii_01-10-2005_14.59.02.JPG
+- Bouleau (B. papyrifera) — Robert Linsdell from St. Andrews, Canada · CC BY — https://commons.wikimedia.org/wiki/File:Grand_Beach_Provincial_Park,_Manitoba_(481751)_(9448100060).jpg
+- Bouleau (B. tianschanica) — Alexander Dubynin · CC BY — https://commons.wikimedia.org/wiki/File:Betula_tianschanica_246519625.jpg
+- Bouleau flexible — No machine-readable author provided. TeunSpaans assumed (based on copyright claims). · CC BY — https://commons.wikimedia.org/wiki/File:Betula_lenta_subsps_lenta_01-10-2005_14.53.56.JPG
+- Bouleau gris — Nicholas A. Tonelli from Northeast Pennsylvania, USA · CC BY — https://commons.wikimedia.org/wiki/File:Louise_W._Moore_County_Park_(Revisited)_(5)_(8666437563).jpg
+- Bouleau jaune — U.S. Fish and Wildlife Service · Domaine public — https://commons.wikimedia.org/wiki/File:Betula_alleghaniensis.jpg
+- Brucea javanica — Wiki Farazi · CC0 1.0 — https://commons.wikimedia.org/wiki/File:Brucea_javanica_along_Bukit_Juru_Trail_within_Hutan_Simpanan_Kekal_Bukit_Juru_in_Kampung_Kuala_Juru,_SPT_District_20240915_094103.jpg
+- Buis commun — No machine-readable author provided. MPF assumed (based on copyright claims). · CC BY — https://commons.wikimedia.org/wiki/File:Buxus_sempervirens.jpg
+- Buis des Baléares — A. Barra · CC BY — https://commons.wikimedia.org/wiki/File:Buxus_balearica.jpg
+- Caraganier de Sibérie — A. Barra · CC BY — https://commons.wikimedia.org/wiki/File:Caragana_arborescens.jpg
+- Caryer (C. aquatica) — Robert H. Mohlenbrock. USDA SCS. Southern wetland flora: Field office guide to plant species . · Domaine public — https://commons.wikimedia.org/wiki/File:Carya_aquatica_USDA.jpg
+- Cerisier acide — Franz Eugen Köhler, Köhler's Medizinal-Pflanzen · Domaine public — https://commons.wikimedia.org/wiki/File:Prunus_cerasus_-_K%C3%B6hler%E2%80%93s_Medizinal-Pflanzen-113.jpg
+- Cerisier de Virginie — Nadiatalent · Domaine public — https://commons.wikimedia.org/wiki/File:Prunus_virginiana_flowers.jpg
+- Cerisier pleureur — Degueulasse · CC BY — https://commons.wikimedia.org/wiki/File:Weeping_cherry_tree_in_Daianji_elementary_school_02.jpg
+- Cerisier à fleurs (P. nigra) — Harriet L. Keeler · Domaine public — https://commons.wikimedia.org/wiki/File:Canada_Plum_fruiting_spray_Keeler.png
+- Chalef argenté — Wikimedia Commons · Domaine public — https://commons.wikimedia.org/wiki/File:Elaeagnus_commutata_USDA.jpg
+- Charme (C. cordata) — Σ64 · CC BY — https://commons.wikimedia.org/wiki/File:Carpinus_cordata_02.jpg
+- Charme (C. japonica) — Bruce Marlin · CC BY — https://commons.wikimedia.org/wiki/File:Carpinus_japonica.jpg
+- Charme (C. turczaninowii) — Daderot · CC0 1.0 — https://commons.wikimedia.org/wiki/File:Carpinus_turczaninowii_-_Arnold_Arboretum_-_DSC06925.JPG
+- Charme de Corée — j. lindsay · CC BY — https://commons.wikimedia.org/wiki/File:Korean_Beech_Bonsai_Tree.jpg
+- Chene kermes — Javier martin · Domaine public — https://commons.wikimedia.org/wiki/File:Quercus_coccifera_Bellotas_2010-10-03_DehesaBoyaldePuertollano.jpg
+- Chequén — Pato Novoa · CC BY — https://commons.wikimedia.org/wiki/File:Luma_chequen.jpg
+- Chèvrefeuille de Maack — Taken by Fanghong · CC BY — https://commons.wikimedia.org/wiki/File:LoniceraMaackiiFlowers3.jpg
+- Chêne (Q. berberidifolia) — Photographed and uploaded by :en:Geographer ( talk | contribs ) · CC BY — https://commons.wikimedia.org/wiki/File:Leaves_of_California_Scrub_Oak.JPG
+- Chêne (Q. crassifolia) — Humb. and Bonpl. · CC0 1.0 — https://commons.wikimedia.org/wiki/File:Naturalis_Biodiversity_Center_-_L.1567782_-_Quercus_crassifolia_Humb._and_Bonpl._-_Fagaceae_-_Plant_type_specimen.jpeg
+- Chêne (Q. heterophylla) — François André Michaux (book author), Pancrace Bessa (illustrator), Fe.Bocquet (engraver) · Domaine public — https://commons.wikimedia.org/wiki/File:NAS-018f_Quercus_%C3%97_heterophylla.png
+- Chêne d'Arménie — Karduelis · Domaine public — https://commons.wikimedia.org/wiki/File:Quercus_pontica-5.jpg
+- Chêne de Shumard — en:User:Neonfreon · Domaine public — https://commons.wikimedia.org/wiki/File:Shumard_oak_leaves.JPG
+- Chêne du Japon — Wikimedia Commons · Domaine public — https://commons.wikimedia.org/wiki/File:Quercus_acutissima.jpg
+- Chêne du Maryland — DeepFork ( talk ) ( Uploads ) · Domaine public — https://commons.wikimedia.org/wiki/File:Blackjack_and_little_bluestem.png
+- Chêne glauque — Wikimedia Commons · Domaine public — https://commons.wikimedia.org/wiki/File:Quercus_glauca_Bra65.png
+- Chêne noir — Wikimedia Commons · Domaine public — https://commons.wikimedia.org/wiki/File:Quercus_nigra_USDA.jpg
+- Chêne rouge falciforme — Wikimedia Commons · Domaine public — https://commons.wikimedia.org/wiki/File:Quercus_falcata_leaf_bark.jpg
+- Chêne écarlate — Jay Sturner from USA · CC BY — https://commons.wikimedia.org/wiki/File:Rim_Rock_Trail_-_Scarlet_Oak_(Quercus_coccinea)_-_Flickr_-_Jay_Sturner_(2).jpg
+- Ciprière — Wikimedia Commons · Domaine public — https://commons.wikimedia.org/wiki/File:Taxodium_distichum_NRCSMS01010.jpg
+- Cognassier de Chine — Tusbra · Domaine public — https://commons.wikimedia.org/wiki/File:Pseudocydonia.jpg
+- Copalme (L. formosana) — Yoiyoi_kancho · Domaine public — https://commons.wikimedia.org/wiki/File:Liquidambar_formosana_01.jpg
+- Cordyline — Kahuroa · Domaine public — https://commons.wikimedia.org/wiki/File:CordylineAustralis.jpg
+- Cornouiller (C. kousa var. chinensis) — Wouter Hagens · Domaine public — https://commons.wikimedia.org/wiki/File:Cornus_kousa_chinensis_A.jpg
+- Cornouiller (C. macrophylla) — Qwert1234 · Domaine public — https://commons.wikimedia.org/wiki/File:Swida_macrophylla_1.JPG
+- Cornouiller des pagodes — Daderot · Domaine public — https://commons.wikimedia.org/wiki/File:Cornus_controversa_%27variegata%27_-_NBGB_-_IMG_4246.JPG
+- Cornouiller officinal — Philipp Franz von Siebold and Joseph Gerhard Zuccarini · Domaine public — https://commons.wikimedia.org/wiki/File:Cornus_officinalis_SZ50.png
+- Cornouiller à fleurs — No machine-readable author provided. Koba-chan assumed (based on copyright claims). · CC BY — https://commons.wikimedia.org/wiki/File:Benthamidia_florida_berry.jpg
+- Cotonéaster de Franchet — A. Barra · CC BY — https://commons.wikimedia.org/wiki/File:Cotoneaster_franchetii_2.jpg
+- Cyprès (C. chengiana) — Daderot · CC0 1.0 — https://commons.wikimedia.org/wiki/File:Cupressus_chengiana_-_Quarryhill_Botanical_Garden_-_DSC03571.JPG
+- Cyprès de Baker — Themodoccypress · CC BY — https://commons.wikimedia.org/wiki/File:Cupressus_bakeri_foliage_and_cones1.JPG
+- Cyprès de Chine — Melburnian · CC BY — https://commons.wikimedia.org/wiki/File:Cupressus_funebris_02.jpg
+- Cyprès de Sawara — Original: Raita Futo from Tokyo, Japan; this edit: User:MPF · CC BY — https://commons.wikimedia.org/wiki/File:Chamaecyparis_pisifera_near_Mount_Buk%C5%8D,_Saitama,_Japan_(49576718803).jpg
+- Cyprès du Japon — Σ64 · CC BY — https://commons.wikimedia.org/wiki/File:Chamaecyparis_obtusa_01.jpg
+- Cèdre blanc de Californie — The original uploader was Geographer at English Wikipedia . · CC BY — https://commons.wikimedia.org/wiki/File:Incensecedar_sanjacintomts.JPG
+- Céphalotaxe de Fortune — Daderot · Domaine public — https://commons.wikimedia.org/wiki/File:Cephalotaxus_fortunei,_Arnold_Arboretum_-_IMG_6021.JPG
+- Epicéa (P. smithiana) — Forestowlet · CC0 1.0 — https://commons.wikimedia.org/wiki/File:Picea_smithiana_007.jpg
+- Erable (A. hyrcanum) — Daderot · CC0 1.0 — https://commons.wikimedia.org/wiki/File:Acer_hyrcanum_-_Hillier_Gardens_-_Romsey,_Hampshire,_England_-_DSC04299.jpg
+- Erable (A. sieboldianum) — pakku · CC BY — https://commons.wikimedia.org/wiki/File:%E8%94%B5%E7%8E%8B%E3%81%AE%E5%BD%A9_Acer_sieboldianum,_Kamihozawa,_Yamagata,_Japan.jpg
+- Eucalyptus (E. pauciflora subsp. niphophila) — Ian McMaster · CC BY — https://commons.wikimedia.org/wiki/File:Subsp._niphophila.jpg
+- Euscaphis — Daderot · Domaine public — https://commons.wikimedia.org/wiki/File:Euscaphis_japonica_-_J._C._Raulston_Arboretum_-_DSC06182.JPG
+- Faux pistachier — AnRo0002 · CC0 1.0 — https://commons.wikimedia.org/wiki/File:20130817Staphylea_pinnata1.jpg
+- Faux-poivrier odorant — Charles Gadbois · CC BY — https://commons.wikimedia.org/wiki/File:Arequipa_-_Canyon_de_Colca_123_Schinus_molle_1.JPG
+- Frêne (F. mandshurica) — Herman, D.E., et al. North Dakota tree handbook. USDA NRCS. · Domaine public — https://commons.wikimedia.org/wiki/File:Fraxinus_mandschurica_USDA.jpg
+- Frêne (F. quadrangulata) — Mason Brock ( Masebrock ) · Domaine public — https://commons.wikimedia.org/wiki/File:Fraxinus_quadrangulata.JPG
+- Frêne d'Oregon — Jean-Pol GRANDMONT · CC BY — https://commons.wikimedia.org/wiki/File:Fraxinus_latifolia_JPG1A.jpg
+- Fusain d'Europe — AnRo0002 · CC0 1.0 — https://commons.wikimedia.org/wiki/File:20131018Euonymus_europaeus4.jpg
+- Fusain à larges feuilles — HermannSchachner · CC0 1.0 — https://commons.wikimedia.org/wiki/File:Euonymus_latifolius_(Voralpen-Spindelstrauch)_IMG_2617.jpg
+- Garrya — daveincamas · CC0 1.0 — https://commons.wikimedia.org/wiki/File:Coast_Silk_Tassel_(Garrya_elliptica),_Redwoods_NP,_Del_Norte,_California_1.jpg
+- Genévrier de Chine — 663highland · CC BY — https://commons.wikimedia.org/wiki/File:Dojoji_Gobo_Wakayama05n4272.jpg
+- Gommier à petites feuilles — Poyt448 Peter Woodard · CC0 1.0 — https://commons.wikimedia.org/wiki/File:Eucalyptus_parvula_Batemans_Bay.jpg
+- Hamamélis de Virginie — Franz Eugen Köhler, Köhler's Medizinal-Pflanzen · Domaine public — https://commons.wikimedia.org/wiki/File:Hamamelis_virginiana_-_K%C3%B6hler%E2%80%93s_Medizinal-Pflanzen-070.jpg
+- Heptacodion de Chine — Daderot · Domaine public — https://commons.wikimedia.org/wiki/File:Heptacodium_miconioides_-_in_Mount_Auburn_Cemetery.JPG
+- Hêtre (F. engleriana) — Daderot · CC0 1.0 — https://commons.wikimedia.org/wiki/File:Fagus_engleriana_-_Morris_Arboretum_-_DSC00475.JPG
+- If de l'Ouest — Jason Hollinger · CC BY — https://commons.wikimedia.org/wiki/File:Taxus_brevifolia_Blue_Mts_WA.jpg
+- Laurier de Californie — Wikimedia Commons · Domaine public — https://commons.wikimedia.org/wiki/File:Umbellularia_californica_02.jpg
+- Laurier palme — Karduelis · Domaine public — https://commons.wikimedia.org/wiki/File:Karayemi%C5%9F-8.jpg
+- Lilas commun — Arbres d'ornement-1 - ornamental trees in colour- Public domain book illustration (visual explanation, informative drawi… · CC0 1.0 — https://commons.wikimedia.org/wiki/File:Lilac_Larousse_Extracted.png
+- Lindera — KENPEI · CC BY — https://commons.wikimedia.org/wiki/File:Lindera_glauca1.jpg
+- Lithocarpus — No machine-readable author provided. Koba-chan assumed (based on copyright claims). · CC BY — https://commons.wikimedia.org/wiki/File:Lithocarpus_edulis_Nakai_leaf_acorn.jpg
+- Magnolia acuminé — Bruce Marlin · CC BY — https://commons.wikimedia.org/wiki/File:Magnolia_acuminata.jpg
+- Magnolia à grandes feuilles — Chhe ( talk ) · Domaine public — https://commons.wikimedia.org/wiki/File:MagnoliaMacrophylla.jpg
+- Magnolier parasol — Mason Brock ( Masebrock ) · Domaine public — https://commons.wikimedia.org/wiki/File:Magnolia_tripetala_flower.jpg
+- Marronnier (A. mutabilis) — Jean-Pol GRANDMONT · CC BY — https://commons.wikimedia.org/wiki/File:Aesculus_x_mutabilis_%27Induta%27_JPG1FeFr.jpg
+- Marronnier (A. neglecta) — Botanical Register · Domaine public — https://commons.wikimedia.org/wiki/File:1009_Aesculus_%C3%97neglecta.jpg
+- Marronnier (A. sylvatica) — Dcrjsr · CC BY — https://commons.wikimedia.org/wiki/File:Painted_buckeye_Aesculus_sylvatica_flowers_leaves.jpg
+- Micocoulier (C. bungeana) — A. Barra · CC BY — https://commons.wikimedia.org/wiki/File:Celtis_bungeana.JPG
+- Micocoulier (C. sinensis) — Geographer ( talk ) · CC BY — https://commons.wikimedia.org/wiki/File:Celtis_sinensis%3DChinese_Hackberry.jpg
+- Micocoulier (C. tenuifolia) — Mason Brock ( Masebrock ) · Domaine public — https://commons.wikimedia.org/wiki/File:Celtis_tenuifolia_leaves.JPG
+- Mimosa d'hiver — Donald Hobern from Copenhagen, Denmark · CC BY — https://commons.wikimedia.org/wiki/File:Acacia_dealbata_(37540484220).jpg
+- Muscadier de Chine — Farm · CC BY — https://commons.wikimedia.org/wiki/File:Torreya_grandis.jpg
+- Mûrier noir — Wikimedia Commons · Domaine public — https://commons.wikimedia.org/wiki/File:Illustration_Morus_nigra0.jpg
+- Nerprun alaterne — Giuseppe Frizzi · Domaine public — https://commons.wikimedia.org/wiki/File:Dettaglio_-_Rhamnaceae_Rhamnus_Alaternus_Lin._Erbario_Frizzi_Perugia_n._3815.jpg
+- Noisetier (C. fargesii) — Daderot · Domaine public — https://commons.wikimedia.org/wiki/File:Corylus_fargesii,_Arnold_Arboretum_-_IMG_6165.JPG
+- Noisetier d'Amérique — Wikimedia Commons · Domaine public — https://commons.wikimedia.org/wiki/File:Corylus_americana1.jpg
+- Noisetier de Chine — Jean-Pol GRANDMONT · CC BY — https://commons.wikimedia.org/wiki/File:Corylus_chinensis_JPG1c.jpg
+- Nothofagus (N. obliqua) — Dick Culbert from Gibsons, B.C., Canada · CC BY — https://commons.wikimedia.org/wiki/File:Nothofagus_obliqua_(8645995778).jpg
+- Noyer cendré — Kristjan · Domaine public — https://commons.wikimedia.org/wiki/File:Juglans_cinerea_01.jpg
+- Noyer de Mandchourie — Jean-Pol GRANDMONT · CC BY — https://commons.wikimedia.org/wiki/File:Juglans_mandshurica_Walnut_JPG.jpg
+- Noyer noir d'Arizona — Bruce Marlin · CC BY — https://commons.wikimedia.org/wiki/File:Juglans_major_Morton.jpg
+- Orme (U. davidiana) — Ptelea at English Wikipedia · Domaine public — https://commons.wikimedia.org/wiki/File:Davidiana1.jpg
+- Orme de Chine — Ronnie Nijboer · CC0 1.0 — https://commons.wikimedia.org/wiki/File:RN_Ulmus_parvifolia_(Hilversum).JPG
+- Palmier jupon du Mexique — stekkelpak · CC0 1.0 — https://commons.wikimedia.org/wiki/File:2022-02-20_Washingtonia_robusta,_Las_Flores,_Todos_Santos,_Baja_California_Sur,_Mexico.jpg
+- Papayer — Franz Eugen Köhler, Köhler's Medizinal-Pflanzen · Domaine public — https://commons.wikimedia.org/wiki/File:Carica_papaya_-_K%C3%B6hler%E2%80%93s_Medizinal-Pflanzen-029.jpg
+- Parrotiopsis — Daderot · CC0 1.0 — https://commons.wikimedia.org/wiki/File:Parrotiopsis_jacquemontiana_-_Botanischer_Garten,_Frankfurt_am_Main_-_DSC03275.JPG
+- Pavier blanc — dylanshaw · CC BY — https://commons.wikimedia.org/wiki/File:Aesculus_parviflora,_Coosa_WMA,_Alabama_1.jpg
+- Peuplier de Gilead — Lynden Gerdes @ USDA-NRCS PLANTS Database / USDA NRCS. 1995. Northeast wetland flora: Field office guide to plant specie… · Domaine public — https://commons.wikimedia.org/wiki/File:Populus_balsamifera.jpg
+- Peuplier de l'Ouest — Wikimedia Commons · CC BY — https://commons.wikimedia.org/wiki/File:Populus_trichocarpa_05897.JPG
+- Peuplier grisard — AnRo0002 · CC0 1.0 — https://commons.wikimedia.org/wiki/File:20120827Populus_%C3%97_canescens.jpg
+- Phellodendron (P. chinense) — Daderot · Domaine public — https://commons.wikimedia.org/wiki/File:Phellodendron_chinense_var._yunnanensis_-_Kunming_Botanical_Garden_-_DSC03155.JPG
+- Phellodendron de l'Amour — Bruce Marlin · CC BY — https://commons.wikimedia.org/wiki/File:Phellodendron_amurense_Morton.jpg
+- Pin (P. contorta var. latifolia) — USDA-NRCS PLANTS Database / Herman, D.E. et al. 1996. North Dakota tree handbook. USDA NRCS ND State Soil Conservation C… · Domaine public — https://commons.wikimedia.org/wiki/File:Pinus_contorta_latifolia_tree.jpg
+- Pin blanc du Japon — belvedere04 · CC BY — https://commons.wikimedia.org/wiki/File:Japanese_White_Pine_(Pinus_parviflora),_Shigeno,_Tomi,_Nagano_Prefecture,_Japan_1.jpg
+- Pin de Jeffrey — Jhodlof · Domaine public — https://commons.wikimedia.org/wiki/File:Mature_Jeffrey_Pine.JPG
+- Pin rigide — bobistraveling on Flickr · CC BY — https://commons.wikimedia.org/wiki/File:Pinus_rigida_cone_Linville.jpg
+- Pin rouge du Japon — Wikimedia Commons · CC BY — https://commons.wikimedia.org/wiki/File:Pinus_syluestriformis_(Takenouchi)T.Wang_ex_Cheng.JPG
+- Pin à gros cônes — The original uploader was Geographer at English Wikipedia . · CC BY — https://commons.wikimedia.org/wiki/File:Culter_pine_cone.jpg
+- Pittosporum hétérophylle — A. Barra · CC BY — https://commons.wikimedia.org/wiki/File:Pittosporum_heterophyllum.jpg
+- Plagianthe (P. betulinus) — Thomas Kirk · Domaine public — https://commons.wikimedia.org/wiki/File:Forest_Flora_of_New_Zealand_Pl._103_(BHL62324855).webp
+- Plaqueminier de Virginie — Britton, N.L., and A. Brown. 1913. An illustrated flora of the northern United States, Canada and the British Possession… · Domaine public — https://commons.wikimedia.org/wiki/File:Diospyros_virginiana_BB-1913.png
+- Poirier d'hiver — Darkotico · Domaine public — https://commons.wikimedia.org/wiki/File:Pyrusnivalis.jpg
+- Pommetier des prairies — M.S. del, J.N.Fitch , lith. · Domaine public — https://commons.wikimedia.org/wiki/File:Pyrus_ioensis_139-8488.jpg
+- Pommier domestique — W.carter · CC0 1.0 — https://commons.wikimedia.org/wiki/File:Tree_with_red_apples_in_Barkedal_4.jpg
+- Pommier du Kazakhstan — Agricultural Research Service (Research agent of United States Department of Agriculture ) · Domaine public — https://commons.wikimedia.org/wiki/File:Malus_sieversii_Tarbagatai.jpg
+- Pommier à feuilles de prunier — Bruce Marlin · CC BY — https://commons.wikimedia.org/wiki/File:Malus_prunifolia.JPG
+- Pommier à fleurs (M. toringoides) — Jean-Pol GRANDMONT · CC BY — https://commons.wikimedia.org/wiki/File:Malus_toringoides_JPG1fr.jpg
+- Pommier à fruits (M. pumila) — Franz Eugen Köhler, Köhler's Medizinal-Pflanzen · Domaine public — https://commons.wikimedia.org/wiki/File:Malus_domestica_-_K%C3%B6hler%E2%80%93s_Medizinal-Pflanzen-108.jpg
+- Prunier pourpre — AnRo0002 · CC0 1.0 — https://commons.wikimedia.org/wiki/File:20140317Prunus_cerasifera_Hockenheimer_Rheinbogen5.jpg
+- Prunus ×gondouinii — panteek · Domaine public — https://commons.wikimedia.org/wiki/File:Duke_cherry.jpg
+- Pterocarya ×rehderiana — Jean-Pol GRANDMONT · CC BY — https://commons.wikimedia.org/wiki/File:Pterocarya_%C3%97rehderiana_JPG1.jpg
+- Ptérocaryer du Japon — Philipp Franz von Siebold and Joseph Gerhard Zuccarini · Domaine public — https://commons.wikimedia.org/wiki/File:Pterocarya_rhoifolia_SZ150.png
+- Pêcher — Allagash Brewing · CC BY — https://commons.wikimedia.org/wiki/File:Peaches_at_Applecrest_Farm_Orchards_-_20108462909.jpg
+- Rhododendron — Marcus334 · CC BY — https://commons.wikimedia.org/wiki/File:Rhododendron_arboreum_subsp._nilagiricum_(1).jpg
+- Robinier hispide — Eoghanacht at English Wikipedia · Domaine public — https://commons.wikimedia.org/wiki/File:Robinia-hispida1.jpg
+- Santal bleu — Daderot · CC0 1.0 — https://commons.wikimedia.org/wiki/File:Pteroceltis_tatarinowii_-_Morris_Arboretum_-_DSC00350.JPG
+- Sapin d'Algérie — karimhaddad · CC BY — https://commons.wikimedia.org/wiki/File:Abies_numidica,_Jebel_Babor,_S%C3%A9tif,_Algeria_1.jpg
+- Sapin de Cilicie — Elie plus · CC BY — https://commons.wikimedia.org/wiki/File:Abies_cilicica.JPG
+- Sapin de Santa Lucia — Silversyrpher (very busy at the moment) from Scotland, UK · CC BY — https://commons.wikimedia.org/wiki/File:Abies_bracteata_03_Bottcher%27s_Gap.jpg
+- Sapin Douglas (P. menziesii var. glauca) — Dave Powell, USDA Forest Service · CC BY — https://commons.wikimedia.org/wiki/File:Pseudotsuga_glauca_treeUSDA.jpg
+- Sapin subalpin — Walter Siegmund · CC BY — https://commons.wikimedia.org/wiki/File:Abies_lasiocarpa_26008.JPG
+- Saule de Hooker — Gordon Leppig & Andrea J. Pickart · Domaine public — https://commons.wikimedia.org/wiki/File:Salixhookeriana.jpg
+- Saule pruineux — Wikimedia Commons · Domaine public — https://commons.wikimedia.org/wiki/File:Salix_daphnoides_Bra62.png
+- Savonnier (K. bipinnata) — אבישי טייכר · CC BY — https://commons.wikimedia.org/wiki/File:PikiWiki_Israel_5534_koelreuteria_bippnata.jpg
+- Sophora flavescens — Wikimedia Commons · Domaine public — https://commons.wikimedia.org/wiki/File:Sophora_flavescens.jpg
+- Sorbier (S. meliosmifolia) — David Short · CC BY — https://commons.wikimedia.org/wiki/File:Sorbus_meliosmifolia.jpg
+- Sorbier (S. ulleungensis) — Daderot · CC0 1.0 — https://commons.wikimedia.org/wiki/File:Sorbus_ulleungensis_-_Savill_Garden_-_Windsor_Great_Park,_England_-_DSC06344.jpg
+- Sorbier (S. vilmorinii) — Jean-Pol GRANDMONT · CC BY — https://commons.wikimedia.org/wiki/File:Sorbus_vilmorinii_JPG1a.jpg
+- Styrax (S. hemsleyanus) — M.S. del., J.N.Fitch lith. · Domaine public — https://commons.wikimedia.org/wiki/File:Styrax_hemsleyanus_136-8339.jpg
+- Sumac fustet — LIght Dim · CC0 1.0 — https://commons.wikimedia.org/wiki/File:%D0%A1%D0%BA%D1%83%D0%BC%D0%BF%D0%B8%D1%8F_%D0%BA%D0%BE%D0%B6%D0%B5%D0%B2%D0%B5%D0%BD%D0%BD%D0%B0%D1%8F_European_smoketree_(Cotinus_coggygria).jpg
+- Sumac vinaigrier — The original uploader was Muggwort17 at English Wikipedia . · Domaine public — https://commons.wikimedia.org/wiki/File:Rhty_002_lhp.jpg
+- Tamaris à quatre étamines — Snezana Trifunovic, user:Tsnena · Domaine public — https://commons.wikimedia.org/wiki/File:Tamarix_tetrandra.jpg
+- Thuya de Chine — yeowatzup at Flickr · CC BY — https://commons.wikimedia.org/wiki/File:Platycladus_orientalis_Simatai.jpg
+- Thuya géant — abdallahh from Montréal, Canada · CC BY — https://commons.wikimedia.org/wiki/File:Thuja_plicata_Vancouver.jpg
+- Tilleul (T. chinensis) — Organisme public, publication avec licence Creative Commons, sens large. · Domaine public — https://commons.wikimedia.org/wiki/File:T_chinensis.jpg
+- Tilleul (T. oliveri) — Jean-Pol GRANDMONT · CC BY — https://commons.wikimedia.org/wiki/File:Tilia_oliveri_JPG1Fe.jpg
+- Troène des haies — No machine-readable author provided. MPF assumed (based on copyright claims). · CC BY — https://commons.wikimedia.org/wiki/File:Ligustrum_ovalifolium.jpg
+- Tupélo (N. aquatica) — Paul Bolstad, University of Minnesota · CC BY — https://commons.wikimedia.org/wiki/File:Nyssa_aquatica_tree.jpg
+- Tupélo (N. sinensis) — Daderot · Domaine public — https://commons.wikimedia.org/wiki/File:Nyssa_sinensis_-_Kunming_Botanical_Garden_-_DSC03162.JPG
+- Viorne tin — Giuseppe Frizzi · Domaine public — https://commons.wikimedia.org/wiki/File:Dettaglio_-_Caprifoliaceae_Viburnum_tinus_Lin._Erbario_Frizzi_Perugia_n._1221.jpg
+- Virgilier jaune — Ulf Eliasson · CC BY — https://commons.wikimedia.org/wiki/File:Cladrastis_kentukea_1b_UME.jpg
+- Épicéa d'Orient — Karduelis · Domaine public — https://commons.wikimedia.org/wiki/File:Do%C4%9Fu_ladini-1.jpg
+- Épicéa de Brewer — Picea_breweriana_Canyon_Creek_Lakes_1.jpg : Tom Hilton derivative work: MPF · CC BY — https://commons.wikimedia.org/wiki/File:Picea_breweriana_Canyon_Creek_Lakes_2.jpg
+- Épicéa de Schrenk — Lukas on Flickr · CC BY — https://commons.wikimedia.org/wiki/File:Picea_schrenkiana_forest.jpg
+- Épicéa de Serbie — mikepirie · CC BY — https://commons.wikimedia.org/wiki/File:Picea_omorika,_Zaovine,_Serbia_1.jpg
+- Épicéa de Sibérie — Zigalga.jpg : Pesotsky derivative work: MPF · CC BY — https://commons.wikimedia.org/wiki/File:Picea_obovata_Zigalga.jpg
+- Érable de Pennsylvanie — Jason Hollinger · CC BY — https://commons.wikimedia.org/wiki/File:Stiped_Maple_(4750636617).jpg
+- Érable des Balkans — Me · Domaine public — https://commons.wikimedia.org/wiki/File:Acer_heidrechii_ssp_heidrechii_R0019776.JPG
+- Érable à grandes feuilles — Angilbas at English Wikipedia · Domaine public — https://commons.wikimedia.org/wiki/File:Acer_macrophyllum_1199.jpg
+- Érable à sucre — No machine-readable author provided. MPF assumed (based on copyright claims). · CC BY — https://commons.wikimedia.org/wiki/File:Acer_saccharum_foliage.jpg
+
+## iNaturalist (158 photos)
+
+- Alangium (A. chinense) — (c) Toby Y, some rights reserved (CC BY), uploaded by Toby Y · CC BY — https://www.inaturalist.org/photos/143802659
+- Alnus formosana — (c) Cheng-Te Hsu, some rights reserved (CC BY), uploaded by Cheng-Te Hsu · CC BY — https://www.inaturalist.org/photos/21782727
+- Amandier de Chine — (c) manuel m. v., some rights reserved (CC BY) · CC BY — https://www.inaturalist.org/photos/93582104
+- Amélanchier à feuilles d'aulne — (c) Sam Kieschnick, some rights reserved (CC BY), uploaded by Sam Kieschnick · CC BY — https://www.inaturalist.org/photos/41709199
+- Angélique épineuse — (c) Melissa McMasters, some rights reserved (CC BY) · CC BY — https://www.inaturalist.org/photos/83873382
+- Araucaria du Chili — (c) Francisco E. Fonturbel, some rights reserved (CC BY), uploaded by Francisco E. Fonturbel · CC BY — https://www.inaturalist.org/photos/16303515
+- Arbre aux cloches d'argent — (c) Michael J. Papay, some rights reserved (CC BY), uploaded by Michael J. Papay · CC BY — https://www.inaturalist.org/photos/265449483
+- Argousier faux-nerprun — (c) Нурхайдарова Татьяна, some rights reserved (CC BY), uploaded by Нурхайдарова Татьяна · CC BY — https://www.inaturalist.org/photos/73725868
+- Armeniaca vulgaris — (c) etw, some rights reserved (CC BY) · CC BY — https://www.inaturalist.org/photos/83151983
+- Aronie — (c) John Baur, some rights reserved (CC BY), uploaded by John Baur · CC BY — https://www.inaturalist.org/photos/51468204
+- Aubépine (C. aprica) — (c) Kristály Cravens-Liszak, some rights reserved (CC BY), uploaded by Kristály Cravens-Liszak · CC BY — https://www.inaturalist.org/photos/284271709
+- Aubépine (C. media) — (c) Daniel Cahen, some rights reserved (CC BY), uploaded by Daniel Cahen · CC BY — https://www.inaturalist.org/photos/26243184
+- Aubépine (C. mordenensis) — no rights reserved, uploaded by Marc-Aurèle Vallée · CC0 1.0 — https://www.inaturalist.org/photos/510942515
+- Aulne (A. serrulata) — (c) Homer Edward Price, some rights reserved (CC BY) · CC BY — https://www.inaturalist.org/photos/2261216
+- Bischofia (B. javanica) — no rights reserved, uploaded by 葉子 · CC0 1.0 — https://www.inaturalist.org/photos/499869913
+- Bouleau de Mongolie — (c) Repina Tatyana, some rights reserved (CC BY), uploaded by Repina Tatyana · CC BY — https://www.inaturalist.org/photos/39091897
+- Bourgène — (c) Daniel Cahen, some rights reserved (CC BY), uploaded by Daniel Cahen · CC BY — https://www.inaturalist.org/photos/288489110
+- Buddleia de David — no rights reserved, uploaded by Stephen James McWilliam · CC0 1.0 — https://www.inaturalist.org/photos/65533607
+- Cabrillet (E. dicksonii) — no rights reserved, uploaded by 葉子 · CC0 1.0 — https://www.inaturalist.org/photos/60475471
+- Caryer cordiforme — (c) Sandy Wolkenberg, some rights reserved (CC BY), uploaded by Sandy Wolkenberg · CC BY — https://www.inaturalist.org/photos/61854798
+- Catalpa de Chine — (c) Marco Mussita, some rights reserved (CC BY), uploaded by Marco Mussita · CC BY — https://www.inaturalist.org/photos/311156000
+- Cerisier du Japon — no rights reserved, uploaded by Jenny Christianson · CC0 1.0 — https://www.inaturalist.org/photos/30084777
+- Cerisier noir — (c) Nicholas A. Tonelli, some rights reserved (CC BY) · CC BY — https://www.inaturalist.org/photos/74554055
+- Charme de Caroline — (c) alfanoar, some rights reserved (CC BY), uploaded by alfanoar · CC BY — https://www.inaturalist.org/photos/7579822
+- Chimonanthe (C. praecox) — (c) Marco Mussita, some rights reserved (CC BY), uploaded by Marco Mussita · CC BY — https://www.inaturalist.org/photos/168476121
+- Chitalpa — (c) Wendy Cutler, some rights reserved (CC BY) · CC BY — https://www.inaturalist.org/photos/783106
+- Châtaignier Chinois — no rights reserved, uploaded by Ken Kneidel · CC0 1.0 — https://www.inaturalist.org/photos/11379193
+- Châtaignier d'Amérique — (c) Bob MacInnes, some rights reserved (CC BY) · CC BY — https://www.inaturalist.org/photos/2121
+- Chêne (Q. alnifolia) — (c) Martin Scheuch, some rights reserved (CC BY), uploaded by Martin Scheuch · CC BY — https://www.inaturalist.org/photos/226070581
+- Chêne (Q. dentata) — (c) Kim, Hyun-tae, some rights reserved (CC BY), uploaded by Kim, Hyun-tae · CC BY — https://www.inaturalist.org/photos/4366806
+- Chêne (Q. phillyreoides) — (c) Joseph Aubert, some rights reserved (CC BY), uploaded by Joseph Aubert · CC BY — https://www.inaturalist.org/photos/598107700
+- Chêne (S. mukorossi) — no rights reserved, uploaded by 葉子 · CC0 1.0 — https://www.inaturalist.org/photos/107712768
+- Chêne bicolore — (c) Kristine Paulus, some rights reserved (CC BY) · CC BY — https://www.inaturalist.org/photos/2253580
+- Chêne de Mongolie — (c) Tatyana Petrenko, some rights reserved (CC BY), uploaded by Tatyana Petrenko · CC BY — https://www.inaturalist.org/photos/332248394
+- Chêne des marais — (c) Sandy Wolkenberg, some rights reserved (CC BY), uploaded by Sandy Wolkenberg · CC BY — https://www.inaturalist.org/photos/23431353
+- Chêne faginé — (c) Duarte Frade, some rights reserved (CC BY), uploaded by Duarte Frade · CC BY — https://www.inaturalist.org/photos/461869897
+- Chêne jaune — (c) Bruce Kirchoff, some rights reserved (CC BY) · CC BY — https://www.inaturalist.org/photos/13988560
+- Chêne zéen — (c) Karim Haddad, some rights reserved (CC BY), uploaded by Karim Haddad · CC BY — https://www.inaturalist.org/photos/57018656
+- Chêne à feuilles de bambou — (c) Junichi Mandai, some rights reserved (CC BY), uploaded by Junichi Mandai · CC BY — https://www.inaturalist.org/photos/68590199
+- Chêne à feuilles de saule — (c) Katja Schulz, some rights reserved (CC BY) · CC BY — https://www.inaturalist.org/photos/149585804
+- Cocotier du Chili — (c) Matt Berger, some rights reserved (CC BY), uploaded by Matt Berger · CC BY — https://www.inaturalist.org/photos/57883764
+- Cognassier de Provence — no rights reserved, uploaded by flamelily · CC0 1.0 — https://www.inaturalist.org/photos/336907233
+- Cornouiller (C. hongkongensis) — (c) Aaron Liston, some rights reserved (CC BY), uploaded by Aaron Liston · CC BY — https://www.inaturalist.org/photos/9553024
+- Cornouiller du Japon — (c) Σ64, some rights reserved (CC BY) · CC BY — https://www.inaturalist.org/photos/69066485
+- Cornouiller sanguin — (c) Jason Grant, some rights reserved (CC BY), uploaded by Jason Grant · CC BY — https://www.inaturalist.org/photos/4629978
+- Cryptomère — (c) Marco Mussita, some rights reserved (CC BY), uploaded by Marco Mussita · CC BY — https://www.inaturalist.org/photos/55946261
+- Cudranier — (c) Cheng-Tao Lin, some rights reserved (CC BY), uploaded by Cheng-Tao Lin · CC BY — https://www.inaturalist.org/photos/21764728
+- Cunninghamia (C. lanceolata) — (c) Forest and Kim Starr, some rights reserved (CC BY) · CC BY — https://www.inaturalist.org/photos/101775898
+- Cyprès (H. macrocarpa) — (c) Shaun Swanepoel, some rights reserved (CC BY), uploaded by Shaun Swanepoel · CC BY — https://www.inaturalist.org/photos/15492941
+- Cyprès commun — (c) Manuel Schwarz, some rights reserved (CC BY), uploaded by Manuel Schwarz · CC BY — https://www.inaturalist.org/photos/111962570
+- Cyprès de Lawson — (c) John Rusk, some rights reserved (CC BY) · CC BY — https://www.inaturalist.org/photos/73842966
+- Cytise aubour — (c) Daniel Cahen, some rights reserved (CC BY), uploaded by Daniel Cahen · CC BY — https://www.inaturalist.org/photos/129203110
+- Daradèu — no rights reserved, uploaded by Peter de Lange · CC0 1.0 — https://www.inaturalist.org/photos/2152688
+- Erable (A. diabolicum) — (c) Marco Mussita, some rights reserved (CC BY), uploaded by Marco Mussita · CC BY — https://www.inaturalist.org/photos/378528001
+- Erable (A. maximowiczianum) — (c) Daniel Cahen, some rights reserved (CC BY), uploaded by Daniel Cahen · CC BY — https://www.inaturalist.org/photos/142702939
+- Erable (A. oblongum) — (c) Ramnarayan K, some rights reserved (CC BY), uploaded by Ramnarayan K · CC BY — https://www.inaturalist.org/photos/189213940
+- Erable (A. triflorum) — (c) Andrew Conboy, some rights reserved (CC BY), uploaded by Andrew Conboy · CC BY — https://www.inaturalist.org/photos/224889290
+- Ficus (F. palmata) — (c) Siddarth Machado, some rights reserved (CC BY), uploaded by Siddarth Machado · CC BY — https://www.inaturalist.org/photos/71737513
+- Figuier caque — (c) Marco Mussita, some rights reserved (CC BY), uploaded by Marco Mussita · CC BY — https://www.inaturalist.org/photos/25692449
+- Figuier pleureur — no rights reserved, uploaded by 葉子 · CC0 1.0 — https://www.inaturalist.org/photos/68686046
+- Filaire à feuille large — (c) Drepanostoma, some rights reserved (CC BY), uploaded by Drepanostoma · CC BY — https://www.inaturalist.org/photos/5418011
+- Fontanesia (F. fortunei) — (c) Ljaž, some rights reserved (CC BY), uploaded by Ljaž · CC BY — https://www.inaturalist.org/photos/133380998
+- Frêne (F. chinensis) — (c) Repina Tatyana, some rights reserved (CC BY), uploaded by Repina Tatyana · CC BY — https://www.inaturalist.org/photos/112303466
+- Frêne velouté — (c) Forest & Kim Starr, some rights reserved (CC BY) · CC BY — https://www.inaturalist.org/photos/1159223
+- Févier du Japon — (c) Andrew Conboy, some rights reserved (CC BY), uploaded by Andrew Conboy · CC BY — https://www.inaturalist.org/photos/198335112
+- Genévrier (J. pfitzeriana) — (c) Juan Carlos Caicedo Hernández, some rights reserved (CC BY), uploaded by Juan Carlos Caicedo Hernández · CC BY — https://www.inaturalist.org/photos/13241054
+- Genêt ananas — (c) Roland Godon, some rights reserved (CC BY), uploaded by Roland Godon · CC BY — https://www.inaturalist.org/photos/523586508
+- Hêtre (F. taurica) — (c) Igor Balashov, some rights reserved (CC BY), uploaded by Igor Balashov · CC BY — https://www.inaturalist.org/photos/220237785
+- Hêtre bleu du Japon — (c) Σ64, some rights reserved (CC BY) · CC BY — https://www.inaturalist.org/photos/11757322
+- If du Japon — (c) Dmitry Kulakov, some rights reserved (CC BY), uploaded by Dmitry Kulakov · CC BY — https://www.inaturalist.org/photos/55959799
+- Laurier des Iroquois — (c) Katja Schulz, some rights reserved (CC BY) · CC BY — https://www.inaturalist.org/photos/89683060
+- Laurier du Portugal — no rights reserved, uploaded by José Luis Camaño · CC0 1.0 — https://www.inaturalist.org/photos/149836472
+- Maackie de l’Amur — no rights reserved, uploaded by Viola Alekseeva · CC0 1.0 — https://www.inaturalist.org/photos/143333725
+- Magnolia (M. brooklynensis) — (c) Col Ford and Natasha de Vere, some rights reserved (CC BY) · CC BY — https://www.inaturalist.org/photos/38026423
+- Magnolia (M. officinalis) — (c) Wendy Cutler, some rights reserved (CC BY) · CC BY — https://www.inaturalist.org/photos/1539311
+- Magnolia de Delavay — (c) Stephen Thorpe, some rights reserved (CC BY), uploaded by Stephen Thorpe · CC BY — https://www.inaturalist.org/photos/84809113
+- Magnolia Yulan — (c) Marco Mussita, some rights reserved (CC BY), uploaded by Marco Mussita · CC BY — https://www.inaturalist.org/photos/63357957
+- Magnolia à fleurs de lis — (c) m. m. v., some rights reserved (CC BY) · CC BY — https://www.inaturalist.org/photos/628831937
+- Muscadier de Californie — (c) Ken-ichi Ueda, some rights reserved (CC BY) · CC BY — https://www.inaturalist.org/photos/29182
+- Mélèze (L. marschlinsii) — (c) S. Rae, some rights reserved (CC BY) · CC BY — https://www.inaturalist.org/photos/10838354
+- Mélèze du Japon — (c) Marco Mussita, some rights reserved (CC BY), uploaded by Marco Mussita · CC BY — https://www.inaturalist.org/photos/8658087
+- Mûrier rouge — (c) Clay, some rights reserved (CC BY), uploaded by Clay · CC BY — https://www.inaturalist.org/photos/45773216
+- Nerprun purgatif — (c) Robert Flogaus-Faust, some rights reserved (CC BY) · CC BY — https://www.inaturalist.org/photos/341888418
+- Noisetier de Lambert — (c) Manuel M. V., some rights reserved (CC BY) · CC BY — https://www.inaturalist.org/photos/1137603
+- Noyer du Japon — (c) Marco Mussita, some rights reserved (CC BY), uploaded by Marco Mussita · CC BY — https://www.inaturalist.org/photos/8692647
+- Orme d'Amérique — no rights reserved, uploaded by Étienne Lacroix-Carignan · CC0 1.0 — https://www.inaturalist.org/photos/276869050
+- Orme de Sibérie (Z. sinica) — (c) Andrew Conboy, some rights reserved (CC BY), uploaded by Andrew Conboy · CC BY — https://www.inaturalist.org/photos/230253191
+- Orme nain — (c) Steve Matson, some rights reserved (CC BY), uploaded by Steve Matson · CC BY — https://www.inaturalist.org/photos/164092406
+- Osier rouge — (c) Davide Puddu, some rights reserved (CC BY), uploaded by Davide Puddu · CC BY — https://www.inaturalist.org/photos/41453904
+- Ostryer de Virginie — (c) Melissa McMasters, some rights reserved (CC BY) · CC BY — https://www.inaturalist.org/photos/4046101
+- Oxycèdre — (c) Stanislav Krejčík, some rights reserved (CC BY) · CC BY — https://www.inaturalist.org/photos/529229
+- Paliure épine-du-Christ — no rights reserved, uploaded by Paul Braun · CC0 1.0 — https://www.inaturalist.org/photos/8785746
+- Palmier (S. minor) — (c) Larry D. Moore, some rights reserved (CC BY) · CC BY — https://www.inaturalist.org/photos/407909479
+- Palmier bleu du Mexique — (c) Adam J. Searcy, some rights reserved (CC BY), uploaded by Adam J. Searcy · CC BY — https://www.inaturalist.org/photos/90567457
+- Palmier jupon — no rights reserved, uploaded by Noel · CC0 1.0 — https://www.inaturalist.org/photos/5926747
+- Palmier nain — (c) Duarte Frade, some rights reserved (CC BY), uploaded by Duarte Frade · CC BY — https://www.inaturalist.org/photos/146556483
+- Parasol chinois — no rights reserved, uploaded by 葉子 · CC0 1.0 — https://www.inaturalist.org/photos/316346924
+- Peuplier deltoïde — (c) Sandy Wolkenberg, some rights reserved (CC BY), uploaded by Sandy Wolkenberg · CC BY — https://www.inaturalist.org/photos/39325100
+- Phoenis canariensis — (c) Jesús Cabrera, some rights reserved (CC BY) · CC BY — https://www.inaturalist.org/photos/102456013
+- Pin (P. sabiniana) — no rights reserved, uploaded by David A. Krause · CC0 1.0 — https://www.inaturalist.org/photos/14269153
+- Pin cembra — (c) Wolfgang Jauch, some rights reserved (CC BY), uploaded by Wolfgang Jauch · CC BY — https://www.inaturalist.org/photos/200991868
+- Pin de Bosnie — (c) Nicolás Lavandero, some rights reserved (CC BY), uploaded by Nicolás Lavandero · CC BY — https://www.inaturalist.org/photos/527204067
+- Pin de l'Himalaya — (c) Robin Abraham, some rights reserved (CC BY) · CC BY — https://www.inaturalist.org/photos/8553356
+- Pin de Monterey — (c) Forest and Kim Starr, some rights reserved (CC BY) · CC BY — https://www.inaturalist.org/photos/118305054
+- Pin Douglas — no rights reserved, uploaded by Ellyne Geurts · CC0 1.0 — https://www.inaturalist.org/photos/159545535
+- Pin maritime — (c) Duarte Frade, some rights reserved (CC BY), uploaded by Duarte Frade · CC BY — https://www.inaturalist.org/photos/59790777
+- Pin mugo — (c) jthorngren, some rights reserved (CC BY), uploaded by jthorngren · CC BY — https://www.inaturalist.org/photos/175004544
+- Pin rouge de Chine — (c) Shang Ning, some rights reserved (CC BY) · CC BY — https://www.inaturalist.org/photos/8464390
+- Pin Weymouth — (c) Forest and Kim Starr, some rights reserved (CC BY) · CC BY — https://www.inaturalist.org/photos/638440764
+- Pin Wollemi — no rights reserved, uploaded by Andra Waagmeester · CC0 1.0 — https://www.inaturalist.org/photos/30403985
+- Pin à queue de vache — (c) Cheng-Te Hsu, some rights reserved (CC BY), uploaded by Cheng-Te Hsu · CC BY — https://www.inaturalist.org/photos/22125621
+- Pin à une feuille — (c) Matt Berger, some rights reserved (CC BY), uploaded by Matt Berger · CC BY — https://www.inaturalist.org/photos/219823350
+- Plaqueminier (D. rhombifolia) — no rights reserved, uploaded by 葉子 · CC0 1.0 — https://www.inaturalist.org/photos/31410152
+- Poirier à feuilles de saule — no rights reserved, uploaded by Piermario Maculan · CC0 1.0 — https://www.inaturalist.org/photos/189109633
+- Poirier à fruits (P. ussuriensis) — (c) Carrie Seltzer, some rights reserved (CC BY), uploaded by Carrie Seltzer · CC BY — https://www.inaturalist.org/photos/4111716
+- Poivre sansho — (c) WATANABE Hitoshi 渡辺仁, some rights reserved (CC BY), uploaded by WATANABE Hitoshi 渡辺仁 · CC BY — https://www.inaturalist.org/photos/453506130
+- Poivrier (Z. simulans) — no rights reserved, uploaded by 葉子 · CC0 1.0 — https://www.inaturalist.org/photos/62662560
+- Poivrier du Timut — no rights reserved, uploaded by 葉子 · CC0 1.0 — https://www.inaturalist.org/photos/599785046
+- Poliothyrsis — (c) Andrew Conboy, some rights reserved (CC BY), uploaded by Andrew Conboy · CC BY — https://www.inaturalist.org/photos/215552230
+- Pomme de Corée — (c) Forest and Kim Starr, some rights reserved (CC BY) · CC BY — https://www.inaturalist.org/photos/170120684
+- Pommier de l'Hubei — no rights reserved, uploaded by Daniel Atha · CC0 1.0 — https://www.inaturalist.org/photos/17372391
+- Pommier de Sibérie — (c) Вячеслав Юсупов, some rights reserved (CC BY), uploaded by Вячеслав Юсупов · CC BY — https://www.inaturalist.org/photos/48074742
+- Pommier à fleurs (M. floribunda) — (c) Muki Haklay, some rights reserved (CC BY), uploaded by Muki Haklay · CC BY — https://www.inaturalist.org/photos/125768479
+- Pommier à fleurs (M. robusta) — (c) Jane Charlen, some rights reserved (CC BY), uploaded by Jane Charlen · CC BY — https://www.inaturalist.org/photos/488672099
+- Populus canadensis — (c) Andre Hosper, some rights reserved (CC BY), uploaded by Andre Hosper · CC BY — https://www.inaturalist.org/photos/90983244
+- Pruche de l'Ouest — (c) Lyrae, some rights reserved (CC BY), uploaded by Lyrae · CC BY — https://www.inaturalist.org/photos/245834485
+- Pruche du Canada — (c) Ian Manning, some rights reserved (CC BY), uploaded by Ian Manning · CC BY — https://www.inaturalist.org/photos/8541909
+- Prunier européen — (c) Barry Walter, some rights reserved (CC BY), uploaded by Barry Walter · CC BY — https://www.inaturalist.org/photos/31217474
+- Pterostyrax (P. hispida) — (c) Lera Miles, some rights reserved (CC BY), uploaded by Lera Miles · CC BY — https://www.inaturalist.org/photos/138726156
+- Pêcher sauvage — (c) Yi CHEN, some rights reserved (CC BY), uploaded by Yi CHEN · CC BY — https://www.inaturalist.org/photos/208719889
+- Robinier visqueux — (c) Saskia, some rights reserved (CC BY), uploaded by Saskia · CC BY — https://www.inaturalist.org/photos/301552038
+- Sapin géant — (c) Dave Powell, USDA Forest Service, United States, some rights reserved (CC BY) · CC BY — https://www.inaturalist.org/photos/1484576
+- Saule coyote — (c) Mary K. Hanson, some rights reserved (CC BY), uploaded by Mary K. Hanson · CC BY — https://www.inaturalist.org/photos/73840879
+- Saule fragile — (c) Георгий Виноградов (Georgy Vinogradov), some rights reserved (CC BY), uploaded by Георгий Виноградов (Georgy Vinogra… · CC BY — https://www.inaturalist.org/photos/33589887
+- Saule à feuilles de romarin — (c) Eugene Popov, some rights reserved (CC BY), uploaded by Eugene Popov · CC BY — https://www.inaturalist.org/photos/77409679
+- Sorbier (S. randaiensis) — (c) Lin Scott, some rights reserved (CC BY), uploaded by Lin Scott · CC BY — https://www.inaturalist.org/photos/18806401
+- Sorbier du Cachemire — (c) Wendy Cutler, some rights reserved (CC BY) · CC BY — https://www.inaturalist.org/photos/1871277
+- Styphnolobium microphylla ''Hilsop'' — no rights reserved, uploaded by Jason Leduc · CC0 1.0 — https://www.inaturalist.org/photos/462121096
+- Styrax du Japon — (c) Marco Mussita, some rights reserved (CC BY), uploaded by Marco Mussita · CC BY — https://www.inaturalist.org/photos/90557099
+- Thuya occidental — (c) botanygirl, some rights reserved (CC BY), uploaded by botanygirl · CC BY — https://www.inaturalist.org/photos/408237
+- Tilleul (T. mandshurica) — (c) Nina Filippova, some rights reserved (CC BY), uploaded by Nina Filippova · CC BY — https://www.inaturalist.org/photos/153461732
+- Troène commun — (c) Petr Harant, some rights reserved (CC BY), uploaded by Petr Harant · CC BY — https://www.inaturalist.org/photos/291303580
+- Troène de Chine — (c) James H. Miller, USDA Forest Service, Bugwood.org, some rights reserved (CC BY) · CC BY — https://www.inaturalist.org/photos/79702703
+- Troène du Japon — (c) Ashwin Srinivasan, some rights reserved (CC BY), uploaded by Ashwin Srinivasan · CC BY — https://www.inaturalist.org/photos/20571536
+- Épicéa bleu — (c) Lyrae, some rights reserved (CC BY), uploaded by Lyrae · CC BY — https://www.inaturalist.org/photos/242866027
+- Épicéa de Chine — (c) rduta on Flickr, some rights reserved (CC BY) · CC BY — https://www.inaturalist.org/photos/8733185
+- Épicéa de Sitka — (c) Aaron Liston, some rights reserved (CC BY), uploaded by Aaron Liston · CC BY — https://www.inaturalist.org/photos/190510962
+- Épinette d'Engelmann — (c) Sam Beaumont, some rights reserved (CC BY), uploaded by Sam Beaumont · CC BY — https://www.inaturalist.org/photos/236261704
+- Épinette noire — (c) Superior National Forest, some rights reserved (CC BY) · CC BY — https://www.inaturalist.org/photos/188262344
+- Érable de Crète — (c) Naturalista, some rights reserved (CC BY), uploaded by Naturalista · CC BY — https://www.inaturalist.org/photos/335734595
+- Érable du Japon — (c) Marco Mussita, some rights reserved (CC BY), uploaded by Marco Mussita · CC BY — https://www.inaturalist.org/photos/8881655
+- Érable du père David — (c) Clive Freedman, some rights reserved (CC BY), uploaded by Clive Freedman · CC BY — https://www.inaturalist.org/photos/487442497
+- Érable jaspé de rouge — (c) Marco Mussita, some rights reserved (CC BY), uploaded by Marco Mussita · CC BY — https://www.inaturalist.org/photos/82249897
+- Érable palmé — (c) Katja Schulz, some rights reserved (CC BY) · CC BY — https://www.inaturalist.org/photos/5641007
+- Érable rufinerve — (c) Yoshihiro Tokue, some rights reserved (CC BY), uploaded by Yoshihiro Tokue · CC BY — https://www.inaturalist.org/photos/48261297
+- Érable trident — no rights reserved, uploaded by 葉子 · CC0 1.0 — https://www.inaturalist.org/photos/43793696
+- Érable à feuilles de charme — (c) Marco Mussita, some rights reserved (CC BY), uploaded by Marco Mussita · CC BY — https://www.inaturalist.org/photos/38855256
+- Ñire — (c) cstobie, some rights reserved (CC BY), uploaded by cstobie · CC BY — https://www.inaturalist.org/photos/18467856

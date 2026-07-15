@@ -47,7 +47,7 @@ from build_dataset import (
     is_unknown_species,
     pick_vernacular_from_redirects,
 )
-from build_dataset import _photo_manifest_entries
+from build_dataset import _photo_manifest_entries, _render_credits_md
 from essence_pdf import encode_raw_to_webp
 from species_photos_cascade import (
     FallbackPhoto,
@@ -2260,6 +2260,81 @@ class EncodeRawToWebpTest(unittest.TestCase):
 
     def test_garbage_returns_none(self):
         self.assertIsNone(encode_raw_to_webp(b"not an image", cap=800, quality=78))
+
+
+class RenderCreditsMdTest(unittest.TestCase):
+    """Rendu Markdown PURE de CREDITS.md : sections, tri, stats, fallback nom."""
+
+    def _manifest(self):
+        return {
+            "meta": {
+                "licenses": {
+                    "odbl-1.0": {"name": "Open Database License v1.0",
+                                 "url": "https://odbl.example/1-0/"},
+                    "cc0": {"name": "CC0 1.0", "url": "https://cc0.example/"},
+                    "cc-by": {"name": "CC BY", "url": "https://ccby.example/"},
+                },
+                "sources": {
+                    "paris": {"name": "Ville de Paris — Guide des essences 2024",
+                              "authors": "J.E. Michaut, B. Morlon, B. Serres"},
+                    "wikimedia-commons": {"name": "Wikimedia Commons",
+                                          "authors": ""},
+                    "inaturalist": {"name": "iNaturalist", "authors": ""},
+                },
+            },
+            "photos": {
+                # Paris : 1 principale + 1 détail (bloc collectif, compté = 2).
+                "0": [
+                    {"f": "0-0.webp", "r": "p", "src": "paris",
+                     "lic": "odbl-1.0", "by": "Ville de Paris", "u": "http://p/0"},
+                    {"f": "0-1.webp", "r": "d", "src": "paris",
+                     "lic": "odbl-1.0", "by": "Ville de Paris", "u": "http://p/0"},
+                ],
+                # Wikimedia : nom résolu via name_by_sk.
+                "5": [
+                    {"f": "5-0.webp", "r": "p", "src": "wikimedia-commons",
+                     "lic": "cc0", "by": "葉子", "u": "http://commons/5"},
+                ],
+                # iNaturalist : sk sans nom → fallback binôme injecté par appelant.
+                "9": [
+                    {"f": "9-0.webp", "r": "p", "src": "inaturalist",
+                     "lic": "cc-by", "by": "Jane Doe", "u": "http://inat/9"},
+                ],
+            },
+        }
+
+    def test_sections_stats_and_tri(self):
+        names = {0: "Platane commun", 5: "Aulne glutineux", 9: "Tilia sp."}
+        md = _render_credits_md(self._manifest(), names)
+        # Stats calculées (3 espèces, 4 photos).
+        self.assertIn("3 espèces illustrées · 4 photos de référence.", md)
+        # En-tête + avertissement.
+        self.assertTrue(md.startswith("# Crédits photos\n"))
+        self.assertIn("ne pas éditer à la main", md)
+        # Bloc collectif Paris : compte + auteurs + licence nom+url.
+        self.assertIn(
+            "## Ville de Paris — Guide des essences 2024 (2 photos)", md)
+        self.assertIn("J.E. Michaut, B. Morlon, B. Serres", md)
+        self.assertIn(
+            "[Open Database License v1.0](https://odbl.example/1-0/)", md)
+        # Sections ligne-par-ligne.
+        self.assertIn("## Wikimedia Commons (1 photos)", md)
+        self.assertIn(
+            "- Aulne glutineux — 葉子 · CC0 1.0 — http://commons/5", md)
+        self.assertIn("## iNaturalist (1 photos)", md)
+        self.assertIn(
+            "- Tilia sp. — Jane Doe · CC BY — http://inat/9", md)
+        # Terminaison par newline, ordre Paris < Wikimedia < iNaturalist.
+        self.assertTrue(md.endswith("\n"))
+        self.assertLess(md.index("## Ville de Paris"),
+                        md.index("## Wikimedia Commons"))
+        self.assertLess(md.index("## Wikimedia Commons"),
+                        md.index("## iNaturalist"))
+
+    def test_fallback_nom_sk_inconnu(self):
+        # sk absent de name_by_sk → fallback `sk N` (ne casse pas le rendu).
+        md = _render_credits_md(self._manifest(), {})
+        self.assertIn("- sk 5 — 葉子 · CC0 1.0 — http://commons/5", md)
 
 
 if __name__ == "__main__":

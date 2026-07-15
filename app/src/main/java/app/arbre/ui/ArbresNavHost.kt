@@ -29,6 +29,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import app.arbre.data.rememberOnboardingStore
 import app.arbre.ui.about.AboutScreen
+import app.arbre.ui.about.PhotoCreditsScreen
 import app.arbre.ui.arboretum.ArboretumScreen
 import app.arbre.ui.badges.BadgesScreen
 import app.arbre.ui.genre.GenreActions
@@ -143,7 +144,13 @@ fun ArbresNavHost() {
                 )
             }
             composable(Routes.ABOUT) {
-                AboutScreen(onBack = { nav.popBackStack() })
+                AboutScreen(
+                    onBack = { nav.popBackStack() },
+                    onPhotoCreditsClick = { nav.navigate(Routes.PHOTO_CREDITS) },
+                )
+            }
+            composable(Routes.PHOTO_CREDITS) {
+                PhotoCreditsScreen(onBack = { nav.popBackStack() })
             }
             composable(Routes.BADGES) {
                 BadgesScreen(onBack = { nav.popBackStack() })

@@ -22,13 +22,15 @@ import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import app.arbre.data.CataloguePhotos
 import app.arbre.data.SpeciesEntry
-import java.io.File
 
 /**
  * Card carrée affichant une entrée du Catalogue : numéro Pokédex (ou rang),
- * photo 1re capture (ou silhouette « ? »), nom commun (ou « ??? »), binôme
- * latin italique en sous-titre (si `nv` a enrichi).
+ * photo de référence de l'espèce si elle existe (`photos.referencePath`,
+ * asset WebP — même visuel que le hero de la fiche), sinon photo 1re capture,
+ * sinon silhouette « ? » ; nom commun (ou « ??? »), binôme latin italique
+ * en sous-titre (si `nv` a enrichi).
  *
  * Réutilisé par :
  * - `ArboretumScreen.CatalogueView` : grille 3 colonnes, partition
@@ -44,7 +46,7 @@ import java.io.File
 fun CatalogueCell(
     displayLabel: String,
     entry: SpeciesEntry,
-    photoFile: File?,
+    photos: CataloguePhotos,
     discovered: Boolean,
     onClick: (() -> Unit)?,
     count: Int? = null,
@@ -78,9 +80,20 @@ fun CatalogueCell(
                     .clip(RoundedCornerShape(8.dp)),
                 contentAlignment = Alignment.Center,
             ) {
-                if (photoFile != null) {
+                // Garde anti-spoiler : la photo de référence n'est rendue que
+                // découverte, quoi que passe l'appelant — une espèce non
+                // capturée reste silhouette (décision produit, cf. ROADMAP
+                // Herbier ; les cellules « ??? » deviennent tappables en S12).
+                val referencePath = photos.referencePath.takeIf { discovered }
+                if (referencePath != null) {
+                    AssetImage(
+                        assetPath = referencePath,
+                        contentDescription = null,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                } else if (photos.captureFile != null) {
                     PhotoThumbnail(
-                        photoFile = photoFile,
+                        photoFile = photos.captureFile,
                         sampleSize = 4,
                         modifier = Modifier.fillMaxSize(),
                     )

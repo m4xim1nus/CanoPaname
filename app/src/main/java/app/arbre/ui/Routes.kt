@@ -27,6 +27,7 @@ object Routes {
     // les hybrides type « x Cupressocyparis »).
     const val GENRE = "genre/{genre}"
     const val ABOUT = "about"
+    const val PHOTO_CREDITS = "photo_credits"
 
     fun species(speciesIndex: Int, celebrate: Boolean = false): String =
         "species/$speciesIndex?celebrate=$celebrate"

@@ -41,6 +41,12 @@ fun rememberSpeciesInfoRepository(): SpeciesInfoRepository {
 }
 
 @Composable
+fun rememberSpeciesPhotoRepository(): SpeciesPhotoRepository {
+    val ctx = LocalContext.current
+    return remember(ctx) { ctx.app().speciesPhotoRepository }
+}
+
+@Composable
 fun rememberRemarquableInfoRepository(): RemarquableInfoRepository {
     val ctx = LocalContext.current
     return remember(ctx) { ctx.app().remarquableInfoRepository }
@@ -105,6 +111,7 @@ fun Context.captureRepository(): CaptureRepository = app().captureRepository
 fun Context.speciesIndex(): SpeciesIndex = app().speciesIndex
 fun Context.datasetStats(): DatasetStats = app().datasetStats
 fun Context.speciesInfoRepository(): SpeciesInfoRepository = app().speciesInfoRepository
+fun Context.speciesPhotoRepository(): SpeciesPhotoRepository = app().speciesPhotoRepository
 fun Context.remarquableInfoRepository(): RemarquableInfoRepository = app().remarquableInfoRepository
 fun Context.genreInfoRepository(): GenreInfoRepository = app().genreInfoRepository
 fun Context.arrSpeciesIndex(): ArrSpeciesIndex = app().arrSpeciesIndex

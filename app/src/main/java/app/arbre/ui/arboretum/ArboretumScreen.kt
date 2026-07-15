@@ -44,14 +44,17 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.unit.dp
 import app.arbre.data.Capture
+import app.arbre.data.CataloguePhotos
 import app.arbre.data.GenreInfoRepository
 import app.arbre.data.SpeciesEntry
 import app.arbre.data.SpeciesIndex
+import app.arbre.data.SpeciesPhotoRepository
 import app.arbre.data.rememberArbreRepository
 import app.arbre.data.rememberCaptureRepository
 import app.arbre.data.rememberDatasetStats
 import app.arbre.data.rememberGenreInfoRepository
 import app.arbre.data.rememberSpeciesIndex
+import app.arbre.data.rememberSpeciesPhotoRepository
 import app.arbre.data.resolvedFile
 import app.arbre.R
 import app.arbre.ui.common.CatalogueCell
@@ -287,6 +290,7 @@ private fun FrequenceView(
     val firstPhotoBySk: Map<Int, File> = remember(speciesGroups, ctx) {
         speciesGroups.associate { it.entry.index to it.captures.first().resolvedFile(ctx) }
     }
+    val photoRepo = rememberSpeciesPhotoRepository()
     val ordered = remember(speciesIndex) {
         speciesIndex.entries()
             .filter { it.isActive }
@@ -305,7 +309,7 @@ private fun FrequenceView(
             CatalogueCell(
                 displayLabel = "#%03d".format(entry.pokedexNumber!!),
                 entry = entry,
-                photoFile = photoFile,
+                photos = cellPhotos(photoRepo, entry.index, discovered, photoFile),
                 discovered = discovered,
                 onClick = if (discovered) {
                     { onSpeciesClick(entry.index) }
@@ -314,6 +318,22 @@ private fun FrequenceView(
         }
     }
 }
+
+/**
+ * Vignette des cellules découvertes : photo de référence de l'espèce
+ * (même visuel que le hero de la fiche) prioritaire sur la 1re capture.
+ * Les non-découvertes gardent la silhouette « ??? » — la photo de réf.
+ * ne dévoile jamais une espèce non capturée.
+ */
+private fun cellPhotos(
+    photoRepo: SpeciesPhotoRepository,
+    sk: Int,
+    discovered: Boolean,
+    captureFile: File?,
+): CataloguePhotos = CataloguePhotos(
+    referencePath = if (discovered) photoRepo.get(sk)?.principal?.assetPath else null,
+    captureFile = captureFile,
+)
 
 /**
  * Vue Catalogue par genre : annuaire exhaustif groupé par genre. Chapitres en
@@ -342,6 +362,7 @@ private fun CatalogueView(
     val firstPhotoBySk: Map<Int, File> = remember(speciesGroups, ctx) {
         speciesGroups.associate { it.entry.index to it.captures.first().resolvedFile(ctx) }
     }
+    val photoRepo = rememberSpeciesPhotoRepository()
     // Pré-calcul des chapitres. Memoisé sur (speciesIndex, capturedSks) :
     // recompute uniquement à la capture. Le filtre `isActive` masque
     // `unknownSpecies` et zombies count=0.
@@ -389,7 +410,7 @@ private fun CatalogueView(
                 CatalogueCell(
                     displayLabel = "#%03d".format(entry.pokedexNumber!!),
                     entry = entry,
-                    photoFile = photoFile,
+                    photos = cellPhotos(photoRepo, entry.index, discovered, photoFile),
                     discovered = discovered,
                     onClick = if (discovered) {
                         { onSpeciesClick(entry.index) }

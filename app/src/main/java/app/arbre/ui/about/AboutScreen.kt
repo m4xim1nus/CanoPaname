@@ -18,6 +18,7 @@ import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.OpenInNew
 import androidx.compose.material.icons.outlined.Code
 import androidx.compose.material.icons.outlined.Description
+import androidx.compose.material.icons.outlined.PhotoLibrary
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -91,7 +92,7 @@ private val attributions = listOf(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AboutScreen(onBack: () -> Unit) {
+fun AboutScreen(onBack: () -> Unit, onPhotoCreditsClick: () -> Unit) {
     val ctx = LocalContext.current
     val openUrl: (String) -> Unit = { url ->
         runCatching {
@@ -136,6 +137,12 @@ fun AboutScreen(onBack: () -> Unit) {
                 subtitle = "NOTICE.md sur GitHub",
                 icon = Icons.Outlined.Description,
                 onClick = { openUrl(NOTICE_URL) },
+            )
+            LinkCard(
+                title = "Crédits photos",
+                subtitle = "Photos de référence des espèces, par source",
+                icon = Icons.Outlined.PhotoLibrary,
+                onClick = onPhotoCreditsClick,
             )
         }
     }

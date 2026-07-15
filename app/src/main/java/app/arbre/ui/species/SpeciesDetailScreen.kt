@@ -1,5 +1,7 @@
 package app.arbre.ui.species
 
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -47,6 +49,7 @@ import app.arbre.ui.theme.arbresColors
 import app.arbre.ui.theme.arbresMotion
 import app.arbre.data.Arbre
 import app.arbre.data.ArbreRepository
+import app.arbre.data.HeroPhotos
 import app.arbre.data.SpeciesEntry
 import app.arbre.data.SpeciesIndex
 import app.arbre.data.catalogueRank
@@ -57,10 +60,12 @@ import app.arbre.data.rememberCaptureRepository
 import app.arbre.data.rememberDatasetStats
 import app.arbre.data.rememberSpeciesIndex
 import app.arbre.data.rememberSpeciesInfoRepository
+import app.arbre.data.rememberSpeciesPhotoRepository
 import app.arbre.data.resolvedFile
 import app.arbre.ui.common.DeleteCaptureDialog
 import app.arbre.ui.common.PhotoGallery
 import app.arbre.ui.common.PhotoLightbox
+import app.arbre.ui.common.ReferencePhotoLightbox
 import app.arbre.ui.common.ShowOnMapButton
 import app.arbre.ui.common.WikipediaBlock
 import kotlinx.coroutines.flow.map
@@ -85,6 +90,7 @@ fun SpeciesDetailScreen(
     val captureRepo = rememberCaptureRepository()
     val speciesInfoRepo = rememberSpeciesInfoRepository()
     val datasetStats = rememberDatasetStats()
+    val photoRepo = rememberSpeciesPhotoRepository()
 
     val entry = speciesIndexRepo.get(speciesIndex)
     if (entry == null) {
@@ -129,6 +135,16 @@ fun SpeciesDetailScreen(
     val scope = rememberCoroutineScope()
     val photoFiles = captures.map { it.resolvedFile(ctx) }
 
+    // Photos de référence embarquées (S9/S10) : hero mosaïque + lightbox dédiée.
+    // `null` → hero texte (espèce non illustrée).
+    val refPhotos = remember(speciesIndex) { photoRepo.get(speciesIndex) }
+    val refLicenseName = refPhotos?.let { photoRepo.licenseFor(it.license)?.name }
+    val heroPhotos = refPhotos?.let { HeroPhotos(it, refLicenseName) }
+    var refLightboxIndex by remember(speciesIndex) { mutableStateOf<Int?>(null) }
+    val openRefSource: (String) -> Unit = { url ->
+        runCatching { ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) }
+    }
+
     // `catalogueRank` retourne `null` pour les `unknownSpecies` — pas de `#`
     // dans l'eyebrow du hero (cohérent avec la section dédiée Arboretum sans
     // numéro). Alimente l'IdentityBlock (le rang ne vit plus en topbar).
@@ -153,7 +169,17 @@ fun SpeciesDetailScreen(
                 item { CelebrationHero(entry) }
             }
 
-            item { IdentityBlock(entry, arbreSample, rank, catalogueTotal) }
+            item {
+                SpeciesHero(
+                    entry = entry,
+                    sample = arbreSample,
+                    catalogueRank = rank,
+                    catalogueTotal = catalogueTotal,
+                    hero = heroPhotos,
+                    onPhotoClick = { refLightboxIndex = it },
+                    onOpenSource = openRefSource,
+                )
+            }
 
             if (photoFiles.isNotEmpty()) {
                 item {
@@ -230,6 +256,13 @@ fun SpeciesDetailScreen(
             onJumpToMapAt = { idx ->
                 captures.getOrNull(idx)?.arbreId?.let(onShowArbreOnMap)
             },
+        )
+        ReferencePhotoLightbox(
+            photos = refPhotos?.all ?: emptyList(),
+            licenseName = refLicenseName,
+            selectedIndex = refLightboxIndex,
+            onDismiss = { refLightboxIndex = null },
+            onOpenSource = openRefSource,
         )
 
         pendingDeleteIndex?.let { idx ->
@@ -340,48 +373,6 @@ private fun CelebrationHero(entry: SpeciesEntry) {
                     style = MaterialTheme.typography.bodyMedium,
                     color = arbresColors.ecorce,
                     modifier = Modifier.graphicsLayer { alpha = labelAlpha },
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun IdentityBlock(
-    entry: SpeciesEntry,
-    sample: Arbre?,
-    catalogueRank: Int?,
-    catalogueTotal: Int,
-) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.primaryContainer,
-        ),
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
-        ) {
-            if (catalogueRank != null) {
-                // Eyebrow : rang 1-based partagé avec `ArboretumScreen.CatalogueView`.
-                Text(
-                    "#$catalogueRank / $catalogueTotal",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.75f),
-                )
-            }
-            Text(
-                entry.displayNomCommun,
-                style = MaterialTheme.typography.titleLarge,
-            )
-            // Sous-titre binôme italique : seulement quand le titre vient de
-            // `nv` ou `nomCommun` (sinon le titre EST le binôme, redondance).
-            if (entry.nv != null || entry.nomCommun != null || sample?.nomCommun != null) {
-                Text(
-                    entry.displayName,
-                    style = MaterialTheme.typography.bodyMedium.copy(fontStyle = FontStyle.Italic),
-                    color = MaterialTheme.colorScheme.onPrimaryContainer,
                 )
             }
         }
