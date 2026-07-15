@@ -47,11 +47,8 @@ import app.arbre.ui.theme.arbresColors
 import app.arbre.ui.theme.arbresMotion
 import app.arbre.data.Arbre
 import app.arbre.data.ArbreRepository
-import app.arbre.data.ArrCount
 import app.arbre.data.SpeciesEntry
 import app.arbre.data.SpeciesIndex
-import app.arbre.data.SpeciesInfoRepository
-import app.arbre.data.SpeciesStats
 import app.arbre.data.catalogueRank
 import app.arbre.data.label
 import app.arbre.data.parseArrKey
@@ -61,18 +58,11 @@ import app.arbre.data.rememberDatasetStats
 import app.arbre.data.rememberSpeciesIndex
 import app.arbre.data.rememberSpeciesInfoRepository
 import app.arbre.data.resolvedFile
-import app.arbre.ui.common.ARetenirBlock
-import app.arbre.ui.common.AttributesBlock
 import app.arbre.ui.common.DeleteCaptureDialog
-import app.arbre.ui.common.EssenceParisBlock
 import app.arbre.ui.common.PhotoGallery
 import app.arbre.ui.common.PhotoLightbox
-import app.arbre.ui.common.SeasonalityCalendar
-import app.arbre.ui.common.ServicesEcoBlock
 import app.arbre.ui.common.ShowOnMapButton
 import app.arbre.ui.common.WikipediaBlock
-import java.text.NumberFormat
-import java.util.Locale
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import androidx.compose.runtime.rememberCoroutineScope
@@ -139,11 +129,9 @@ fun SpeciesDetailScreen(
     val scope = rememberCoroutineScope()
     val photoFiles = captures.map { it.resolvedFile(ctx) }
 
-    // Cycle Catalogue : `displayNomCommun` consomme le `nv` quand l'asset le
-    // porte, sinon retombe sur `nomCommun` (ex. via `arbreSample`).
-    val title = entry.displayNomCommun
     // `catalogueRank` retourne `null` pour les `unknownSpecies` — pas de `#`
-    // côté topbar (cohérent avec la section dédiée Arboretum sans numéro).
+    // dans l'eyebrow du hero (cohérent avec la section dédiée Arboretum sans
+    // numéro). Alimente l'IdentityBlock (le rang ne vit plus en topbar).
     val rank = remember(speciesIndex, speciesIndexRepo, speciesInfoRepo) {
         catalogueRank(speciesIndex, speciesIndexRepo, speciesInfoRepo)
     }
@@ -152,14 +140,7 @@ fun SpeciesDetailScreen(
     // avec ArboretumScreen + ProfileScreen.
     val catalogueTotal = datasetStats.totalEspecesIdentifiees
     Scaffold(
-        topBar = {
-            SpeciesDetailTopBar(
-                title = title,
-                catalogueRank = rank,
-                catalogueTotal = catalogueTotal,
-                onBack = onBack,
-            )
-        },
+        topBar = { SpeciesDetailTopBar(onBack = onBack) },
     ) { padding ->
         LazyColumn(
             modifier = Modifier
@@ -172,20 +153,7 @@ fun SpeciesDetailScreen(
                 item { CelebrationHero(entry) }
             }
 
-            item { IdentityBlock(entry, arbreSample) }
-
-            info?.attributes?.let { attrs ->
-                item { AttributesBlock(attrs) }
-                if (attrs.floraison != null || attrs.fructification != null) {
-                    item { SeasonalityCalendar(attrs.floraison, attrs.fructification) }
-                }
-                if (attrs.atouts.isNotEmpty() || attrs.limites.isNotEmpty()) {
-                    item { ARetenirBlock(attrs.atouts, attrs.limites) }
-                }
-                attrs.services?.let { services ->
-                    item { ServicesEcoBlock(services) }
-                }
-            }
+            item { IdentityBlock(entry, arbreSample, rank, catalogueTotal) }
 
             if (photoFiles.isNotEmpty()) {
                 item {
@@ -197,21 +165,45 @@ fun SpeciesDetailScreen(
                 }
             }
 
+            info?.attributes?.let { attrs ->
+                item { SpeciesIdGrid(attrs) }
+                if (attrs.identDescriptions != null ||
+                    attrs.floraison != null ||
+                    attrs.fructification != null
+                ) {
+                    item {
+                        ReconnaitreBlock(
+                            attrs.identDescriptions,
+                            attrs.floraison,
+                            attrs.fructification,
+                        )
+                    }
+                }
+                if (attrs.atouts.isNotEmpty() || attrs.limites.isNotEmpty()) {
+                    item { ForcesFaiblessesBlock(attrs.atouts, attrs.limites) }
+                }
+                attrs.services?.let { services ->
+                    item { RoleEnVilleBlock(services) }
+                }
+            }
+
+            info?.let { speciesInfo ->
+                item {
+                    AParisBlock(
+                        speciesInfo.stats,
+                        speciesInfo.attributes?.essenceParis,
+                        speciesInfo.pdfUrl,
+                    )
+                }
+            }
+
             item {
                 WikipediaBlock(
                     summary = info?.summary,
                     wikipediaTitle = info?.wikipediaTitle,
                     emptyMessage = "Pas d'info encyclopédique disponible pour cette espèce.",
+                    collapsedLines = 5,
                 )
-            }
-
-            val essenceParis = info?.attributes?.essenceParis
-            if (essenceParis != null || info?.pdfUrl != null) {
-                item { EssenceParisBlock(essenceParis, info?.pdfUrl) }
-            }
-
-            info?.stats?.let { stats ->
-                item { StatsBlock(stats) }
             }
 
             if (remarquablesEspece.isNotEmpty()) {
@@ -277,26 +269,11 @@ private suspend fun loadRemarquablesPourEspece(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun SpeciesDetailTopBar(
-    title: String,
-    catalogueRank: Int?,
-    catalogueTotal: Int,
-    onBack: () -> Unit,
-) {
+private fun SpeciesDetailTopBar(onBack: () -> Unit) {
+    // Topbar minimaliste : plus de titre ni de rang (déplacés dans le hero
+    // IdentityBlock). On ne garde que le bouton retour.
     TopAppBar(
-        title = {
-            Column {
-                Text(title)
-                if (catalogueRank != null) {
-                    // Rang 1-based partagé avec `ArboretumScreen.CatalogueView`.
-                    Text(
-                        "#$catalogueRank / $catalogueTotal",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            }
-        },
+        title = {},
         navigationIcon = {
             IconButton(onClick = onBack) {
                 Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Retour")
@@ -370,7 +347,12 @@ private fun CelebrationHero(entry: SpeciesEntry) {
 }
 
 @Composable
-private fun IdentityBlock(entry: SpeciesEntry, sample: Arbre?) {
+private fun IdentityBlock(
+    entry: SpeciesEntry,
+    sample: Arbre?,
+    catalogueRank: Int?,
+    catalogueTotal: Int,
+) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
@@ -381,6 +363,14 @@ private fun IdentityBlock(entry: SpeciesEntry, sample: Arbre?) {
             modifier = Modifier.padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
+            if (catalogueRank != null) {
+                // Eyebrow : rang 1-based partagé avec `ArboretumScreen.CatalogueView`.
+                Text(
+                    "#$catalogueRank / $catalogueTotal",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.75f),
+                )
+            }
             Text(
                 entry.displayNomCommun,
                 style = MaterialTheme.typography.titleLarge,
@@ -476,83 +466,3 @@ private fun LockedRemarquableRow(arbre: Arbre) {
         )
     }
 }
-
-@Composable
-private fun StatsBlock(stats: SpeciesStats) {
-    Card(modifier = Modifier.fillMaxWidth()) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            Text("À Paris", style = MaterialTheme.typography.titleMedium)
-            Text(
-                buildString {
-                    append(formatCount(stats.count))
-                    append(" arbres (")
-                    append(formatPercent(stats.proportion))
-                    append(" du dataset)")
-                },
-                style = MaterialTheme.typography.bodyLarge,
-            )
-            val measures = listOfNotNull(
-                stats.medianHeightM?.let { "Hauteur médiane : $it m" },
-                stats.medianCircCm?.let { "Circonférence médiane : $it cm" },
-            )
-            measures.forEach {
-                Text(it, style = MaterialTheme.typography.bodyMedium)
-            }
-            if (stats.topArrAbs.isNotEmpty()) {
-                ArrSection(
-                    title = "Plus nombreux",
-                    items = stats.topArrAbs,
-                    formatLine = { "${it.arr} (${formatCount(it.count)})" },
-                )
-            }
-            if (stats.topArrOver.isNotEmpty()) {
-                ArrSection(
-                    title = "Sur-représentés",
-                    items = stats.topArrOver,
-                    formatLine = { item ->
-                        val ratio = item.ratio?.let { formatRatio(it) } ?: ""
-                        if (ratio.isEmpty()) item.arr else "${item.arr} ($ratio)"
-                    },
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun ArrSection(
-    title: String,
-    items: List<ArrCount>,
-    formatLine: (ArrCount) -> String,
-) {
-    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-        Text(
-            title,
-            style = MaterialTheme.typography.labelLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        items.forEach { item ->
-            Text(formatLine(item), style = MaterialTheme.typography.bodyMedium)
-        }
-    }
-}
-
-private val FR_LOCALE: Locale = Locale.FRENCH
-private val FR_NUMBER: NumberFormat = NumberFormat.getInstance(FR_LOCALE)
-private val FR_PERCENT: NumberFormat = NumberFormat.getPercentInstance(FR_LOCALE).apply {
-    minimumFractionDigits = 1
-    maximumFractionDigits = 1
-}
-private val FR_RATIO: NumberFormat = NumberFormat.getInstance(FR_LOCALE).apply {
-    minimumFractionDigits = 1
-    maximumFractionDigits = 1
-}
-
-private fun formatCount(n: Int): String = FR_NUMBER.format(n)
-
-private fun formatPercent(p: Double): String = FR_PERCENT.format(p)
-
-private fun formatRatio(r: Double): String = "×${FR_RATIO.format(r)}"

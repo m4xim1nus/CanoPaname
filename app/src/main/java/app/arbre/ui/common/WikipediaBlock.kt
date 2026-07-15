@@ -16,9 +16,14 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 
 /**
@@ -28,6 +33,12 @@ import androidx.compose.ui.unit.dp
  * licence CC BY-SA. Si `summary` est blank, affiche le placeholder
  * `emptyMessage`. Le titre Wikipedia (`wikipediaTitle`) est utilisé pour
  * construire l'URL : convention `espace → underscore`.
+ *
+ * `collapsedLines` (optionnel) : quand renseigné et qu'un `summary` est affiché,
+ * le texte est tronqué à ce nombre de lignes tant qu'il déborde, avec un lien
+ * « Lire la suite » / « Réduire » pour basculer. `null` (défaut) = comportement
+ * historique intact (texte intégral, pas de troncature) — la fiche genre appelle
+ * sans ce paramètre et ne change pas. Repli sans animation (contrat device de Max).
  */
 @Composable
 fun WikipediaBlock(
@@ -36,6 +47,7 @@ fun WikipediaBlock(
     modifier: Modifier = Modifier,
     title: String = "À propos",
     emptyMessage: String = "Pas d'info encyclopédique disponible.",
+    collapsedLines: Int? = null,
 ) {
     val ctx = LocalContext.current
     Card(modifier = modifier.fillMaxWidth()) {
@@ -51,7 +63,7 @@ fun WikipediaBlock(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             } else {
-                Text(summary, style = MaterialTheme.typography.bodyMedium)
+                SummaryText(summary, collapsedLines)
                 if (!wikipediaTitle.isNullOrBlank()) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
@@ -111,6 +123,45 @@ fun WikipediaBlock(
                 }
             }
         }
+    }
+}
+
+/**
+ * Le `summary` avec troncature optionnelle : `collapsedLines` non-null → texte
+ * limité à ce nombre de lignes tant qu'il déborde, lien « Lire la suite » /
+ * « Réduire » pour basculer (repli sans animation). `null` → texte intégral.
+ */
+@Composable
+private fun SummaryText(summary: String, collapsedLines: Int?) {
+    if (collapsedLines == null) {
+        Text(summary, style = MaterialTheme.typography.bodyMedium)
+        return
+    }
+    var expanded by remember(summary) { mutableStateOf(false) }
+    var hasOverflow by remember(summary) { mutableStateOf(false) }
+    Text(
+        summary,
+        style = MaterialTheme.typography.bodyMedium,
+        maxLines = if (expanded) Int.MAX_VALUE else collapsedLines,
+        overflow = TextOverflow.Ellipsis,
+        onTextLayout = { result ->
+            if (!expanded) hasOverflow = result.hasVisualOverflow
+        },
+    )
+    if (!expanded && hasOverflow) {
+        Text(
+            "Lire la suite",
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.clickable { expanded = true },
+        )
+    } else if (expanded) {
+        Text(
+            "Réduire",
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.clickable { expanded = false },
+        )
     }
 }
 
