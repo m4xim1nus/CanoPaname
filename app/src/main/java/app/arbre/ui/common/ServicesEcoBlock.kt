@@ -52,11 +52,6 @@ private fun ServiceItem(label: String, prose: String) {
     }
 }
 
-// @Suppress : detekt UnusedPrivateMember flague les @Preview (fonctions jamais
-// appelées) et le projet tourne en maxIssues=0. Les previews S5 restées sans
-// suppress (ARetenirBlock, SeasonalityCalendar) font déjà échouer le gate ;
-// on l'ajoute ici pour ne pas aggraver via S7.
-@Suppress("UnusedPrivateMember")
 @Preview(showBackground = true)
 @Composable
 private fun ServicesEcoBlockPreview() {
