@@ -23,14 +23,14 @@ Plan complet (contexte, archi, risques) : `/home/max/.claude/plans/on-attaque-le
 | S5 | `SeasonalityCalendar` + bloc « À retenir » | UI | S2,S4 |
 | S6 | Parsing PDF : champs textuels restants (famille, hauteur, descriptions, encarts, services éco) | data | S4 |
 | S7 | Affichage champs textuels (enrichir blocs) | UI | S2,S6 |
-| S8 | Cascade attributs 584 (Wikidata→POWO→Wikipedia FR→EOL) | data | S2 |
+| ~~S8~~ | ~~Cascade attributs 584 (Wikidata→POWO→Wikipedia FR→EOL)~~ — **abandonné 2026-07-15** (sondes : rendement = famille seule ~98 %, reste indisponible ; ne justifie pas un sprint ; piste famille-seule réactivable au BACKLOG) | data | S2 |
 | S9 | Photos officielles 200 (extraction PDF → WebP) | data | S4 |
 | S10 | Cascade photos 584 (Wikidata P18→iNat, filtre licence) | data | S9 |
 | S11 | `ReferencePhotoBlock` + `SpeciesPhotoRepository` + `CREDITS.md` + écran crédits | UI | S2,S9 |
 | S12 | Fiche détail consultable non capturée (cellules « ??? » tappables) | UI | S3,S11 |
 | S13 | Hygiène & clôture item 1 (detekt, tests, `CHANGELOG`, `CLAUDE.md`, screenshots, commit assets) | clôture | tous |
 
-Ordre : slice verticale d'abord (S1→S3 prouvent le pipeline bout-en-bout), puis saisonnalité (S4→S5, le gros gain Variantes), puis le reste, puis photos, puis découverte, puis clôture. S4/S8/S10 sont les plus lourds (scindables si besoin). Rupture à acter : `build_dataset.py` cesse d'être stdlib-only (`pymupdf`/`Pillow` build-time → `tools/requirements.txt`) ; runtime app inchangé. Suivi sprint-par-sprint : `BACKLOG.md`.
+Ordre : slice verticale d'abord (S1→S3 prouvent le pipeline bout-en-bout), puis saisonnalité (S4→S5, le gros gain Variantes), puis le reste, puis photos, puis découverte, puis clôture. **S8 abandonné le 2026-07-15** (cascade attributs : sondes réseau → rendement réel = famille seule, tout le reste indisponible sur Wikidata ; ne justifie pas un sprint — cf. BACKLOG, piste famille-seule réactivable). S4/S10 restent les plus lourds (scindables si besoin). Rupture à acter : `build_dataset.py` cesse d'être stdlib-only (`pymupdf`/`Pillow` build-time → `tools/requirements.txt`) ; runtime app inchangé. Suivi sprint-par-sprint : `BACKLOG.md`.
 
 #### Items 2 et 3 (après l'item 1)
 
