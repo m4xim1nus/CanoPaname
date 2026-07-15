@@ -2184,6 +2184,23 @@ def _merge_pdf_extras(
             additions["atouts"] = extras.atouts
         if extras.limites:
             additions["limites"] = extras.limites
+        # S6 — champs textuels (scalaires + groupes imbriqués iddesc/svc).
+        if extras.fam is not None:
+            additions["fam"] = extras.fam
+        if extras.haut is not None:
+            additions["haut"] = extras.haut
+        if extras.env is not None:
+            additions["env"] = extras.env
+        if extras.croiss is not None:
+            additions["croiss"] = extras.croiss
+        if extras.long is not None:
+            additions["long"] = extras.long
+        if extras.paris is not None:
+            additions["paris"] = extras.paris
+        if extras.iddesc:
+            additions["iddesc"] = extras.iddesc
+        if extras.svc:
+            additions["svc"] = extras.svc
         if additions:
             value.setdefault("ess", {}).update(additions)
 
@@ -2220,6 +2237,7 @@ def _write_essence_extras_trace(
 
     trace: dict[str, dict] = {}
     n_flor = n_fruct = n_atouts = n_limites = n_warn = 0
+    n_fam = n_haut = n_env = n_croiss = n_long = n_iddesc = n_paris = n_svc = 0
     total_fails: list[str] = []
     for pdf_id, extras in extras_by_pdf_id.items():
         meta = meta_by_pdf_id.get(pdf_id, {})
@@ -2231,6 +2249,15 @@ def _write_essence_extras_trace(
             "fruct": extras.fruct,
             "atouts": extras.atouts,
             "limites": extras.limites,
+            # S6 — champs textuels.
+            "fam": extras.fam,
+            "haut": extras.haut,
+            "env": extras.env,
+            "croiss": extras.croiss,
+            "long": extras.long,
+            "iddesc": extras.iddesc,
+            "paris": extras.paris,
+            "svc": extras.svc,
             "warnings": extras.warnings,
             "matched": pdf_id in matched_pdf_ids,
         }
@@ -2242,6 +2269,22 @@ def _write_essence_extras_trace(
             n_atouts += 1
         if extras.limites:
             n_limites += 1
+        if extras.fam is not None:
+            n_fam += 1
+        if extras.haut is not None:
+            n_haut += 1
+        if extras.env is not None:
+            n_env += 1
+        if extras.croiss is not None:
+            n_croiss += 1
+        if extras.long is not None:
+            n_long += 1
+        if extras.iddesc:
+            n_iddesc += 1
+        if extras.paris is not None:
+            n_paris += 1
+        if extras.svc:
+            n_svc += 1
         if extras.warnings:
             n_warn += 1
         if (extras.flor is None and extras.fruct is None
@@ -2257,6 +2300,11 @@ def _write_essence_extras_trace(
     print(
         f"[pdf ] flor: {n_flor}/{n} · fruct: {n_fruct}/{n} · "
         f"atouts: {n_atouts}/{n} · limites: {n_limites}/{n} · warnings: {n_warn}"
+    )
+    print(
+        f"[pdf ] fam: {n_fam}/{n} · haut: {n_haut}/{n} · env: {n_env}/{n} · "
+        f"croiss: {n_croiss}/{n} · long: {n_long}/{n} · iddesc: {n_iddesc}/{n} · "
+        f"paris: {n_paris}/{n} · svc: {n_svc}/{n}"
     )
     for name in sorted(total_fails):
         print(f"[pdf ]   échec total : {name}")

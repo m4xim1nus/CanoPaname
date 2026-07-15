@@ -46,21 +46,34 @@ sys.path.insert(0, str(ROOT / "tools"))
 import essence_pdf  # noqa: E402
 
 MONTHS = list("JFMAMJJASOND")
-CROP_DPI = 80          # 100 déborde le budget 6 Mo à 200 fiches ; 80 reste lisible.
-CROP_JPEG_QUALITY = 60  # 70 pousse le total à ~6,1 Mo ; 60 → ~5,4 Mo, texte net.
+# S6 : 4 crops/fiche (calendars, aretenir, descriptif, paris_svc). Les deux zones
+# S6 sont de pleines colonnes (bien plus hautes que les strips S4) : sans réglage
+# le total explose (>16 Mo). dpi/qualité abaissés pour tenir le budget 6 Mo — un
+# outil de relecture, pas un asset shippé, donc lisibilité « de contrôle » suffit.
+CROP_DPI = 54           # crops S4 (calendars/aretenir).
+CROP_JPEG_QUALITY = 48
+CROP_DPI_TEXT = 32      # crops S6 (descriptif, paris_svc), zones hautes.
+CROP_JPEG_QUALITY_TEXT = 40
 
 
 # ---------------------------------------------------------------------------
 # Crops PDF → base64 (aucun réseau, cache local seulement)
 # ---------------------------------------------------------------------------
 
-def crops_for(pdf_id: str) -> dict[str, str | None]:
-    """Rend les deux zones (calendars, aretenir) du PDF en JPEG base64.
+_CROP_KEYS = ("calendars", "aretenir", "descriptif", "paris_svc")
+# Zones hautes S6 rendues à dpi/qualité réduits pour le budget.
+_CROP_DPI_BY_KEY = {"descriptif": CROP_DPI_TEXT, "paris_svc": CROP_DPI_TEXT}
+_CROP_Q_BY_KEY = {"descriptif": CROP_JPEG_QUALITY_TEXT, "paris_svc": CROP_JPEG_QUALITY_TEXT}
 
-    Valeur None si le PDF est absent du cache ou la zone introuvable. Toute
-    exception (PDF corrompu, fitz…) → dict de None, jamais de crash.
+
+def crops_for(pdf_id: str) -> dict[str, str | None]:
+    """Rend les zones de contrôle du PDF en JPEG base64.
+
+    Zones : calendars, aretenir (S4) + descriptif, paris_svc (S6). Valeur None
+    si le PDF est absent du cache ou la zone introuvable. Toute exception (PDF
+    corrompu, fitz…) → dict de None, jamais de crash.
     """
-    out: dict[str, str | None] = {"calendars": None, "aretenir": None}
+    out: dict[str, str | None] = dict.fromkeys(_CROP_KEYS)
     path = PDF_CACHE_DIR / f"{pdf_id}.pdf"
     if not path.exists():
         return out
@@ -71,11 +84,12 @@ def crops_for(pdf_id: str) -> dict[str, str | None]:
                 page = doc[pno]
                 # Léger padding pour ne pas rogner les glyphes en bordure.
                 r = essence_pdf.fitz.Rect(rect) + (-4, -4, 4, 4)
-                pix = page.get_pixmap(clip=r, dpi=CROP_DPI)
-                data = pix.tobytes("jpeg", jpg_quality=CROP_JPEG_QUALITY)
+                pix = page.get_pixmap(clip=r, dpi=_CROP_DPI_BY_KEY.get(which, CROP_DPI))
+                data = pix.tobytes(
+                    "jpeg", jpg_quality=_CROP_Q_BY_KEY.get(which, CROP_JPEG_QUALITY))
                 out[which] = base64.b64encode(data).decode("ascii")
     except Exception:  # PDF illisible, clip hors page… → placeholder.
-        return {"calendars": None, "aretenir": None}
+        return dict.fromkeys(_CROP_KEYS)
     return out
 
 
@@ -144,6 +158,16 @@ def _missing_fields(entry: dict) -> list[str]:
         miss.append("atouts")
     if not entry.get("limites"):
         miss.append("limites")
+    # Champs textuels S6.
+    for key, label in (("fam", "famille"), ("haut", "hauteur"), ("env", "envergure"),
+                       ("croiss", "croissance"), ("long", "longévité"),
+                       ("paris", "essence-Paris")):
+        if entry.get(key) is None:
+            miss.append(label)
+    if not entry.get("iddesc"):
+        miss.append("descriptions")
+    if not entry.get("svc"):
+        miss.append("services")
     return miss
 
 
@@ -252,6 +276,16 @@ h2 { margin: 34px 0 12px; font-size: 18px; border-bottom: 1px solid var(--border
   position: sticky; top: 0; background: var(--bg); padding: 8px 0; z-index: 5; border-bottom: 1px solid var(--border); }
 .controls input { padding: 6px 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 14px; min-width: 260px; }
 .controls .total { color: var(--muted); font-size: 13px; }
+.descr-cols { flex: 1 1 340px; min-width: 280px; }
+.descr-crops { flex: 0 1 300px; }
+.pills { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+.pill { background: #eef2ff; border: 1px solid #c7d2fe; color: #3730a3;
+  border-radius: 999px; padding: 2px 10px; font-size: 12.5px; }
+.kvs { margin-bottom: 8px; }
+.kv { font-size: 13px; margin-bottom: 3px; }
+.kv-l { color: var(--muted); font-weight: 600; }
+.prose { font-size: 13px; margin-bottom: 8px; }
+.prose .col-title { margin-bottom: 3px; }
 """
 
 
@@ -266,6 +300,15 @@ def render_html(trace: dict, trace_path: Path) -> str:
     n_limites = sum(1 for e in entries if e.get("limites"))
     n_matched = sum(1 for e in entries if e.get("matched"))
     n_warn = sum(1 for e in entries if e.get("warnings"))
+    # Compteurs S6.
+    n_fam = sum(1 for e in entries if e.get("fam") is not None)
+    n_haut = sum(1 for e in entries if e.get("haut") is not None)
+    n_env = sum(1 for e in entries if e.get("env") is not None)
+    n_croiss = sum(1 for e in entries if e.get("croiss") is not None)
+    n_long = sum(1 for e in entries if e.get("long") is not None)
+    n_iddesc = sum(1 for e in entries if e.get("iddesc"))
+    n_paris = sum(1 for e in entries if e.get("paris") is not None)
+    n_svc = sum(1 for e in entries if e.get("svc"))
 
     generated = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
     git_ref = git_short_hash()
@@ -302,6 +345,18 @@ def render_html(trace: dict, trace_path: Path) -> str:
     out.append(_card("Limites", f"{n_limites}/{total}", "≥ 1 puce"))
     out.append(_card("Matchées", f"{n_matched}/{total}", "retenue + species-index"))
     out.append(_card("Avec warnings", str(n_warn)))
+    out.append("</div>")
+
+    # --- Bandeau stats S6 (champs textuels) ---
+    out.append('<div class="grid">')
+    out.append(_card("Famille", f"{n_fam}/{total}"))
+    out.append(_card("Hauteur", f"{n_haut}/{total}"))
+    out.append(_card("Envergure", f"{n_env}/{total}"))
+    out.append(_card("Croissance", f"{n_croiss}/{total}"))
+    out.append(_card("Longévité", f"{n_long}/{total}"))
+    out.append(_card("Descriptions", f"{n_iddesc}/{total}", "iddesc ≥ 1 clé"))
+    out.append(_card("Essence à Paris", f"{n_paris}/{total}", "prose"))
+    out.append(_card("Services", f"{n_svc}/{total}", "≥ 1 service"))
     out.append("</div>")
 
     # --- Section triage : échecs & warnings ---
@@ -407,7 +462,70 @@ def _fiche_card(e: dict) -> str:
         + warn_html
         + cal_block
         + retenir_block
+        + _descriptif_block(e, crops)
         + '</div>'
+    )
+
+
+_IDDESC_LABELS = (("ecorce", "Écorce"), ("feuillage", "Feuillage"),
+                  ("floraison", "Floraison"), ("fructification", "Fructification"))
+_SVC_LABELS = (("climat", "Régulation du climat"), ("eau", "Gestion de l'eau"),
+               ("biodiv", "Biodiversité"))
+
+
+def _descriptif_block(e: dict, crops: dict) -> str:
+    """Bloc « Descriptif & éditorial » (S6) : champs textuels ↔ crops PDF.
+
+    Affiche fam/haut/env/croiss/long en pills, iddesc en lignes label:valeur,
+    paris en encart, svc en 3 items ; à côté, les crops des 2 zones sources.
+    Omis entièrement si la fiche n'a aucun champ S6 (ancien template).
+    """
+    has_any = (any(e.get(k) is not None for k in ("fam", "haut", "env", "croiss", "long", "paris"))
+               or e.get("iddesc") or e.get("svc"))
+    if not has_any:
+        return ""
+
+    pills = []
+    for key, label in (("fam", None), ("haut", "Hauteur"), ("env", "Envergure"),
+                       ("croiss", "Croissance"), ("long", "Longévité")):
+        val = e.get(key)
+        if val:
+            text = val if label is None else f"{label} {val}"
+            pills.append(f'<span class="pill">{html.escape(text)}</span>')
+    pills_html = f'<div class="pills">{"".join(pills)}</div>' if pills else ""
+
+    iddesc = e.get("iddesc") or {}
+    kv = []
+    for key, label in _IDDESC_LABELS:
+        if iddesc.get(key):
+            kv.append(f'<div class="kv"><span class="kv-l">{label}</span> '
+                      f'<span class="kv-v">{html.escape(iddesc[key])}</span></div>')
+    kv_html = f'<div class="kvs">{"".join(kv)}</div>' if kv else ""
+
+    paris = e.get("paris")
+    paris_html = (f'<div class="prose"><div class="col-title">L\'essence à Paris</div>'
+                  f'{html.escape(paris)}</div>') if paris else ""
+
+    svc = e.get("svc") or {}
+    svc_items = []
+    for key, label in _SVC_LABELS:
+        if svc.get(key):
+            svc_items.append(f'<div class="kv"><span class="kv-l">{label}</span> '
+                             f'<span class="kv-v">{html.escape(svc[key])}</span></div>')
+    svc_html = (f'<div class="prose"><div class="col-title">Services écosystémiques</div>'
+                f'{"".join(svc_items)}</div>') if svc_items else ""
+
+    left = pills_html + kv_html + paris_html + svc_html
+    return (
+        '<div class="compare">'
+        f'<div class="descr-cols"><div class="col-title">Descriptif &amp; éditorial extraits</div>{left}</div>'
+        '<div class="descr-crops">'
+        '<div class="col-title">Crop PDF (descriptif gauche)</div>'
+        + _img_or_placeholder(crops.get("descriptif"), "Crop descriptif")
+        + '<div class="col-title" style="margin-top:8px">Crop PDF (Paris + services)</div>'
+        + _img_or_placeholder(crops.get("paris_svc"), "Crop Paris + services")
+        + '</div>'
+        '</div>'
     )
 
 

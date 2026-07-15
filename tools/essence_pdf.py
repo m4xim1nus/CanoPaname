@@ -38,6 +38,7 @@ Debug d'une fiche :
 """
 from __future__ import annotations
 
+import re
 import sys
 import time
 import unicodedata
@@ -84,7 +85,90 @@ class EssenceExtras:
     fruct: int | None           # bitfield 12 bits, bit 0 = janvier
     atouts: list[str] = field(default_factory=list)
     limites: list[str] = field(default_factory=list)
+    # --- S6 : champs textuels du template récent (colonnes gauche/droite) ---
+    fam: str | None = None      # famille botanique (« Magnoliacées »)
+    haut: str | None = None     # hauteur chiffrée (« 10 m »)
+    env: str | None = None      # envergure du houppier (« 8 m »)
+    croiss: str | None = None   # vitesse de croissance (« Moyenne »)
+    long: str | None = None     # longévité (« Moyenne (100 à 200 ans) »)
+    iddesc: dict[str, str] = field(default_factory=dict)  # ecorce/feuillage/floraison/fructification
+    paris: str | None = None    # encart éditorial « L'essence à Paris »
+    svc: dict[str, str] = field(default_factory=dict)     # climat/eau/biodiv
     warnings: list[str] = field(default_factory=list)
+
+
+# ---------------------------------------------------------------------------
+# S6 — Constantes de parsing des champs textuels (ancrage 100 % géométrique)
+# ---------------------------------------------------------------------------
+
+# Ancres des 5 headings de niveau titre (taille > 11 pt sur le template récent),
+# repérées par `_norm` exact. Absence de « descriptif de l'essence » = template
+# ancien rasterisé → aucun champ textuel extractible (cf. les 6 fiches Tilia/
+# Fagus/Betula nigra), skip complet + warning.
+_HEADING_ANCHORS = (
+    "l'essence a paris",
+    "descriptif de l'essence",
+    "paysage et cadre de vie",
+    "sites de plantation recommandes",
+    "services ecosystemiques rendus",
+)
+_HEADING_MIN_SIZE = 11.0  # les titres sont à 12-13 pt, le corps à 9-9.7 pt.
+
+# Labels du bloc Descriptif (colonne gauche). Clé = nom de champ interne ;
+# valeur = texte du label (déjà `_norm`é, sans diacritiques). `origine`,
+# `indigenat`, `statut`, `port` sont matchés comme labels (pour BORNER
+# correctement les valeurs voisines) puis JETÉS (doublonnent l'API).
+_DESC_LABEL_TEXTS: dict[str, str] = {
+    "famille": "famille",
+    "origine": "origine",
+    "indigenat": "indigenat",
+    "statut": "statut",
+    "hauteur": "hauteur",
+    "envergure": "envergure du houppier",
+    "port": "port",
+    "croissance": "vitesse de croissance",
+    "longevite": "longevite",
+    "feuillage": "feuillage",
+    "ecorce": "ecorce",
+    "floraison": "floraison",
+    "fructification": "fructification",
+}
+# Index inverse nospace (label sans espaces → champ), pour la variante « glyphe
+# scindé » (`É`/`corce` en 2 spans → « e corce » → nospace « ecorce »).
+_DESC_FIELD_BY_NOSPACE: dict[str, str] = {
+    text.replace(" ", ""): fieldname for fieldname, text in _DESC_LABEL_TEXTS.items()
+}
+# Pour la variante « Famille » sans deux-points : matching par préfixe avec
+# espaces, labels les plus longs d'abord (évite que « port » masque un préfixe).
+_DESC_TEXTS_BY_LEN: list[tuple[str, str]] = sorted(
+    ((text, fieldname) for fieldname, text in _DESC_LABEL_TEXTS.items()),
+    key=lambda it: len(it[0]), reverse=True,
+)
+
+# Labels des 3 services écosystémiques (colonne droite basse). Le préfixe
+# biodiversité tolère la variante sans « la » (Cedrus deodara).
+_SVC_LABELS: tuple[tuple[str, str], ...] = (
+    ("regulation du climat local", "climat"),
+    ("regulation quantitative de la ressource en eau", "eau"),
+    ("interet pour la biodiversite", "biodiv"),
+    ("interet pour biodiversite", "biodiv"),
+)
+
+# Bornes de validation par champ (invariant « ne jamais inventer » : hors bornes
+# → champ omis + warning, jamais de valeur partielle). Cf. annexe S6.
+_DESC_BOUNDS: dict[str, tuple[int, int]] = {
+    "fam": (3, 30),
+    "haut": (2, 12),
+    "env": (2, 12),
+    "croiss": (3, 20),
+    "long": (3, 40),
+    "ecorce": (3, 120),
+    "feuillage": (3, 160),
+    "floraison": (3, 120),
+    "fructification": (3, 120),
+}
+_PARIS_BOUNDS = (20, 800)
+_SVC_BOUNDS = (30, 700)
 
 
 def _require_fitz() -> None:
@@ -97,7 +181,14 @@ def _require_fitz() -> None:
 
 
 def _norm(s: str) -> str:
-    """NFD + retrait des diacritiques + lower — pour matcher les ancres texte."""
+    """NFD + retrait des diacritiques + lower — pour matcher les ancres texte.
+
+    Normalise aussi les apostrophes typographiques (`’` U+2019, `ʼ` U+02BC) en
+    apostrophe ASCII : les headings du template récent (« l'essence à Paris »,
+    « descriptif de l'essence ») en contiennent une courbe. `_norm` reste 1:1
+    en longueur sur le latin précomposé (offset de tranche fiable côté S6).
+    """
+    s = s.replace("’", "'").replace("ʼ", "'")
     return "".join(
         c for c in unicodedata.normalize("NFD", s.lower())
         if unicodedata.category(c) != "Mn"
@@ -387,12 +478,257 @@ def _parse_a_retenir(doc) -> tuple[list[str], list[str], list[str]]:
     return out["atouts"], out["limites"], warnings
 
 
+# ---------------------------------------------------------------------------
+# S6 — Extraction des champs textuels (Descriptif / L'essence à Paris / Services)
+# ---------------------------------------------------------------------------
+
+def _spans_sized(page):
+    """Comme `_spans` mais yield aussi la taille de police (filtre corps/titre)."""
+    for block in page.get_text("dict")["blocks"]:
+        if block["type"] != 0:
+            continue
+        for line in block["lines"]:
+            for span in line["spans"]:
+                text = span["text"].strip()
+                if text:
+                    yield text, fitz.Rect(span["bbox"]), span["size"]
+
+
+def _find_headings(spans_sized) -> dict[str, "fitz.Rect"]:
+    """Localise les headings de niveau titre (taille > 11 pt) par `_norm` exact.
+
+    Retourne {ancre: Rect}. Ancres absentes = clé absente. « descriptif de
+    l'essence » absent → template ancien rasterisé.
+    """
+    heads: dict[str, "fitz.Rect"] = {}
+    for text, rect, size in spans_sized:
+        if size <= _HEADING_MIN_SIZE:
+            continue
+        n = _norm(text)
+        if n in _HEADING_ANCHORS and n not in heads:
+            heads[n] = rect
+    return heads
+
+
+def _clean(s: str) -> str:
+    """Collapse des espaces multiples + recollage de la ponctuation.
+
+    Corrige les artefacts de reconstruction par `" ".join` de spans (espace
+    parasite avant `, ; . : ! ? ) ] »` ou après `( [ «`).
+    """
+    s = re.sub(r"\s+", " ", s).strip()
+    s = re.sub(r"\s+([,;.:!?)\]»])", r"\1", s)
+    s = re.sub(r"([(\[«])\s+", r"\1", s)
+    return s
+
+
+def _match_desc_label(full: str) -> tuple[str | None, str | None]:
+    """Une ligne du Descriptif → (champ, valeur) si elle ouvre un label, sinon
+    (None, None) — c'est alors une continuation de la valeur courante.
+
+    Deux stratégies, robustes aux 3 variantes du corpus :
+      A. Deux-points présent (cas général, colon attaché au label ou à la
+         valeur, et « glyphe scindé » `É`/`corce`) → on compare le texte AVANT
+         le premier `:`, espaces retirés, à l'index nospace des labels.
+      B. Pas de deux-points (variante « Famille Rosacées », 11 fiches) → match
+         par préfixe avec espaces (label le plus long d'abord), borne de mot.
+    `_norm` étant 1:1 en longueur sur le latin précomposé, on peut trancher la
+    valeur par offset.
+    """
+    n = _norm(full)
+    if ":" in full:
+        left = full.split(":", 1)[0]
+        key = _norm(left).replace(" ", "")
+        fieldname = _DESC_FIELD_BY_NOSPACE.get(key)
+        if fieldname:
+            return fieldname, full.split(":", 1)[1].strip()
+        return None, None
+    for text, fieldname in _DESC_TEXTS_BY_LEN:
+        if n.startswith(text) and (len(n) == len(text) or n[len(text)] == " "):
+            return fieldname, full[len(text):].strip()
+    return None, None
+
+
+def _parse_descriptif(spans, heads) -> tuple[dict, list[str]]:
+    """Bloc « Descriptif de l'essence » (colonne gauche) → dict + warnings.
+
+    Retourne {fam, haut, env, croiss, long, iddesc:{ecorce,feuillage,floraison,
+    fructification}} (clés omises si vides). Machine à états label→valeur ancrée
+    par bbox : zone Y sous le heading Descriptif jusqu'à Paysage (fallback
+    Services), zone X à gauche de la colonne « L'essence à Paris ». Les lignes-
+    calendrier (mono-lettres J F M A … D) sont ignorées. `origine/indigenat/
+    statut/port` bornent mais sont jetés.
+    """
+    warnings: list[str] = []
+    desc = heads["descriptif de l'essence"]
+    y_end = heads.get("paysage et cadre de vie") or heads.get(
+        "services ecosystemiques rendus")
+    y1 = y_end.y0 if y_end is not None else desc.y1 + 400.0
+    ep = heads.get("l'essence a paris")
+    right_x = (ep.x0 - 15.0) if ep is not None else 285.0
+
+    items = [
+        (r.x0, r.y0, t) for t, r in spans
+        if desc.y1 <= r.y0 < y1 and r.x0 < right_x
+        and not (len(t) == 1 and t in "JFMASOND")
+    ]
+    fields: dict[str, str] = {}
+    current: str | None = None
+    for parts in _group_lines(items):
+        full = " ".join(t for _, t in parts)
+        fieldname, value = _match_desc_label(full)
+        if fieldname is not None:
+            fields[fieldname] = value or ""
+            current = fieldname
+        elif current is not None:
+            fields[current] = (fields[current] + " " + full).strip()
+
+    out: dict = {}
+    iddesc: dict[str, str] = {}
+
+    def keep(fieldname: str, key: str, extra_ok) -> None:
+        if fieldname not in fields:
+            return
+        value = _clean(fields[fieldname])
+        lo, hi = _DESC_BOUNDS[key]
+        if not (lo <= len(value) <= hi) or not extra_ok(value):
+            warnings.append(f"{key}: valeur rejetée ({len(value)} c.: {value!r:.40})")
+            return
+        if key in ("ecorce", "feuillage", "floraison", "fructification"):
+            iddesc[key] = value
+        else:
+            out[key] = value
+
+    # Pills scalaires.
+    if "hauteur" in fields:
+        fields["hauteur"] = re.split(
+            r"\s[-–]\s", _clean(fields["hauteur"]), maxsplit=1)[0].strip()
+    if "envergure" in fields:
+        fields["envergure"] = re.split(
+            r"\s[-–]\s", _clean(fields["envergure"]), maxsplit=1)[0].strip()
+    keep("famille", "fam",
+         lambda v: ":" not in v and not any(c.isdigit() for c in v) and v.count(" ") <= 1)
+    # Hauteur/envergure : « 10 m », « 8 m », mais aussi décimales « 8,5 m ».
+    keep("hauteur", "haut", lambda v: bool(re.match(r"^\d+([.,]\d+)?\s*m", v)))
+    keep("envergure", "env", lambda v: bool(re.match(r"^\d+([.,]\d+)?\s*m", v)))
+    keep("croissance", "croiss", lambda v: not any(c.isdigit() for c in v))
+    keep("longevite", "long", lambda v: True)
+    # Descriptions d'identification.
+    keep("ecorce", "ecorce", lambda v: True)
+    keep("feuillage", "feuillage", lambda v: True)
+    keep("floraison", "floraison", lambda v: True)
+    keep("fructification", "fructification", lambda v: True)
+
+    # Renommage clés scalaires internes → clés `ess`.
+    result: dict = {}
+    for internal, key in (("fam", "fam"), ("haut", "haut"), ("env", "env"),
+                          ("croiss", "croiss"), ("long", "long")):
+        if key in out:
+            result[key] = out[key]
+    if iddesc:
+        result["iddesc"] = iddesc
+    return result, warnings
+
+
+def _parse_essence_paris(spans_sized, heads) -> tuple[str | None, list[str]]:
+    """Encart « L'essence à Paris » (colonne droite haute) → prose + warnings.
+
+    Zone Y : sous le heading « L'essence à Paris » jusqu'à « Sites de plantation »
+    (fallback Services). Zone X : colonne droite. Footer crédits/attribution
+    exclu. `" ".join` des lignes + `_clean`, validation de longueur.
+    """
+    warnings: list[str] = []
+    ep = heads.get("l'essence a paris")
+    if ep is None:
+        return None, ["essence-paris: heading absent"]
+    y_end = (heads.get("sites de plantation recommandes")
+             or heads.get("services ecosystemiques rendus"))
+    y1 = y_end.y0 if y_end is not None else ep.y1 + 200.0
+    right_x = ep.x0 - 15.0
+    items = [
+        (r.x0, r.y0, t) for t, r, size in spans_sized
+        if ep.y1 <= r.y0 < y1 and r.x0 > right_x and size < 11.5
+        and not _norm(t).startswith(("credits photos", "guide des essences"))
+    ]
+    if not items:
+        return None, ["essence-paris: aucune ligne dans la zone"]
+    prose = _clean(" ".join(
+        " ".join(t for _, t in parts) for parts in _group_lines(items)))
+    lo, hi = _PARIS_BOUNDS
+    if not (lo <= len(prose) <= hi):
+        return None, [f"essence-paris: prose rejetée ({len(prose)} c.)"]
+    return prose, warnings
+
+
+def _parse_services(spans, heads, page_bottom: float) -> tuple[dict, list[str]]:
+    """Services écosystémiques (colonne droite basse) → {climat,eau,biodiv}.
+
+    Ancrage par ligne sur les 3 labels. Les scores pictos sont des **spans
+    isolés** dont le texte est un entier 1-2 chiffres (note /10, valeurs 0-10) :
+    on les écarte AU NIVEAU DU SPAN, avant regroupement en lignes. C'est le
+    discriminant sûr — vérifié sur tout le corpus (716 occurrences, toutes des
+    scores) : un nombre légitime de prose (« Plus de 35 espèces », « 150 000 € »)
+    n'est jamais un span isolé purement numérique, il vit dans un span de texte.
+    L'ancien filtre par seuil x laissait fuir les scores « 10 » (x0 ~210, au
+    milieu de la ligne de prose après tri par x). Une fois scores et footer
+    écartés, la zone ne contient plus que la prose des 3 services : toute ligne
+    non-label est rattachée au service courant.
+    """
+    warnings: list[str] = []
+    sv = heads.get("services ecosystemiques rendus")
+    if sv is None:
+        return {}, ["services: heading absent"]
+    # Tolérance de 3 pt vers le haut : sur certains layouts le 1er label
+    # (« Régulation du climat local ») chevauche la ligne de base du heading
+    # (y0 ~0.3 pt au-dessus de son y1). On exclut le heading lui-même par `_norm`.
+    items = [
+        (r.x0, r.y0, t) for t, r in spans
+        if r.y0 >= sv.y1 - 3 and r.y0 < page_bottom
+        and _norm(t) != "services ecosystemiques rendus"
+        and not _norm(t).startswith(("credits photos", "guide des essences"))
+        and not re.fullmatch(r"\d{1,2}", t)  # score picto = span isolé 1-2 chiffres
+    ]
+    acc: dict[str, list[str]] = {}
+    order: list[str] = []
+    current: str | None = None
+    for parts in _group_lines(items):
+        full = " ".join(t for _, t in parts)
+        n = _norm(full)
+        label_key = None
+        for prefix, key in _SVC_LABELS:
+            if n.startswith(prefix):
+                label_key, prefix_len = key, len(prefix)
+                break
+        if label_key is not None:
+            current = label_key
+            value = full[prefix_len:].lstrip(" :")
+            if label_key not in acc:
+                acc[label_key] = []
+                order.append(label_key)
+            acc[label_key].append(value)
+        elif current is not None:
+            acc[current].append(full)
+    out: dict = {}
+    for key in order:
+        prose = _clean(" ".join(acc[key]))
+        lo, hi = _SVC_BOUNDS
+        if lo <= len(prose) <= hi:
+            out[key] = prose
+        else:
+            warnings.append(f"svc.{key}: prose rejetée ({len(prose)} c.)")
+    return out, warnings
+
+
 def extract_extras(pdf_path: Path) -> EssenceExtras:
-    """Extrait calendriers + À RETENIR d'une fiche PDF. Nécessite pymupdf."""
+    """Extrait calendriers + À RETENIR + champs textuels d'une fiche. Nécessite pymupdf."""
     _require_fitz()
     warnings: list[str] = []
+    fam = haut = env = croiss = long = paris = None
+    iddesc: dict[str, str] = {}
+    svc: dict[str, str] = {}
     with fitz.open(pdf_path) as doc:
-        cals = _parse_calendars(doc[0])
+        page0 = doc[0]
+        cals = _parse_calendars(page0)
         flor, fwarn = cals["flor"]
         if fwarn:
             warnings.append(f"floraison: {fwarn}")
@@ -401,8 +737,33 @@ def extract_extras(pdf_path: Path) -> EssenceExtras:
             warnings.append(f"fructification: {frwarn}")
         atouts, limites, awarns = _parse_a_retenir(doc)
         warnings.extend(awarns)
+
+        # Champs textuels S6 (page 0, template récent uniquement).
+        spans_sized = list(_spans_sized(page0))
+        heads = _find_headings(spans_sized)
+        if "descriptif de l'essence" not in heads:
+            warnings.append(
+                "descriptif: ancien template (heading absent), "
+                "champs textuels non extraits")
+        else:
+            spans = [(t, r) for t, r, _ in spans_sized]
+            desc, dwarn = _parse_descriptif(spans, heads)
+            warnings.extend(dwarn)
+            fam = desc.get("fam")
+            haut = desc.get("haut")
+            env = desc.get("env")
+            croiss = desc.get("croiss")
+            long = desc.get("long")
+            iddesc = desc.get("iddesc", {})
+            paris, pwarn = _parse_essence_paris(spans_sized, heads)
+            warnings.extend(pwarn)
+            svc, swarn = _parse_services(spans, heads, page0.rect.y1)
+            warnings.extend(swarn)
+
     return EssenceExtras(
-        flor=flor, fruct=fruct, atouts=atouts, limites=limites, warnings=warnings,
+        flor=flor, fruct=fruct, atouts=atouts, limites=limites,
+        fam=fam, haut=haut, env=env, croiss=croiss, long=long,
+        iddesc=iddesc, paris=paris, svc=svc, warnings=warnings,
     )
 
 
@@ -443,6 +804,46 @@ def report_clips(doc) -> dict[str, tuple[int, "fitz.Rect"]]:
             if r.y0 >= top_y and "guide des essences" not in _norm(t):
                 rect |= r
         clips["aretenir"] = (page.number, rect)
+
+    # S6 — Descriptif (colonne gauche) & colonne droite (Paris + Services).
+    spans_sized0 = list(_spans_sized(page0))
+    heads = _find_headings(spans_sized0)
+    desc = heads.get("descriptif de l'essence")
+    if desc is not None:
+        ep = heads.get("l'essence a paris")
+        right_x = (ep.x0 - 15.0) if ep is not None else 285.0
+        y_end = heads.get("paysage et cadre de vie") or heads.get(
+            "services ecosystemiques rendus")
+        y1 = y_end.y0 if y_end is not None else desc.y1 + 400.0
+        d_rect = fitz.Rect(desc)
+        for t, r, _size in spans_sized0:
+            if desc.y1 <= r.y0 < y1 and r.x0 < right_x:
+                d_rect |= r
+        clips["descriptif"] = (0, d_rect)
+
+        # Colonne droite : encart Paris (sous son heading) + Services.
+        ps_rect = None
+        if ep is not None:
+            sites = heads.get("sites de plantation recommandes")
+            py1 = sites.y0 if sites is not None else ep.y1 + 200.0
+            ps_rect = fitz.Rect(ep)
+            for t, r, size in spans_sized0:
+                if ep.y1 <= r.y0 < py1 and r.x0 > (ep.x0 - 15.0) and size < 11.5:
+                    ps_rect |= r
+        sv = heads.get("services ecosystemiques rendus")
+        if sv is not None:
+            # Colonne de prose seulement (x >= 200) : on écarte les scores pictos
+            # de la colonne gauche qui élargiraient inutilement le crop.
+            sv_rect = None
+            for t, r, _size in spans_sized0:
+                if (r.y0 >= sv.y1 - 3 and r.x0 >= 200
+                        and not _norm(t).startswith(("credits photos",
+                                                     "guide des essences"))):
+                    sv_rect = fitz.Rect(r) if sv_rect is None else (sv_rect | r)
+            if sv_rect is not None:
+                ps_rect = sv_rect if ps_rect is None else (ps_rect | sv_rect)
+        if ps_rect is not None:
+            clips["paris_svc"] = (0, ps_rect)
 
     return clips
 
@@ -524,6 +925,20 @@ def _dump(target: str) -> None:
         print(f"  {label} ({len(items)}):")
         for it in items:
             print(f"    • {it}")
+    print(f"  fam    {extras.fam!r}")
+    print(f"  haut   {extras.haut!r}")
+    print(f"  env    {extras.env!r}")
+    print(f"  croiss {extras.croiss!r}")
+    print(f"  long   {extras.long!r}")
+    print("  iddesc :")
+    for k in ("ecorce", "feuillage", "floraison", "fructification"):
+        if k in extras.iddesc:
+            print(f"    {k}: {extras.iddesc[k]}")
+    print(f"  paris  {extras.paris!r}")
+    print("  svc :")
+    for k in ("climat", "eau", "biodiv"):
+        if k in extras.svc:
+            print(f"    {k}: {extras.svc[k]}")
     if extras.warnings:
         print("  warnings :")
         for w in extras.warnings:
