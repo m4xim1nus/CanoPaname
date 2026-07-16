@@ -26,10 +26,13 @@ from essence_pdf import (
     _PH_PLACEHOLDER_DHASHES,
     _bits_from_flags,
     _chains,
+    _clean,
     _dhash,
     _extract_bullets,
+    _group_lines_x1,
     _hamming,
     _is_placeholder_dhash,
+    _join_paragraph_lines,
     _validate_bullets,
     select_photos,
 )
@@ -1396,6 +1399,107 @@ class ValidateBulletsTest(unittest.TestCase):
         self.assertIsNotNone(warn)
 
 
+class CleanOrdinalsTest(unittest.TestCase):
+    """Ordinaux en exposant : l'exposant est un span PDF séparé, le join insère
+    un espace parasite. `_clean` recolle « N e/er/ère/re » (borne de mot en fin)."""
+
+    def test_ordinal_siecle(self):
+        self.assertEqual(_clean("Dès le 12 e siècle"), "Dès le 12e siècle")
+
+    def test_ordinal_arrondissement(self):
+        # « (14 e) » (arrondissement) → « (14e) ». _clean recolle aussi les
+        # parenthèses ; l'ordinal doit passer malgré la « ) » qui suit.
+        self.assertEqual(_clean("au Parc Montsouris (14 e)"),
+                         "au Parc Montsouris (14e)")
+
+    def test_ordinal_premier(self):
+        self.assertEqual(_clean("le 1 er arbre"), "le 1er arbre")
+
+    def test_no_recollage_euros(self):
+        # « 3 euros » ne doit PAS devenir « 3euros » (pas de borne après « e »).
+        self.assertEqual(_clean("coûte 3 euros"), "coûte 3 euros")
+
+    def test_no_recollage_especes(self):
+        self.assertEqual(_clean("plus de 5 espèces"), "plus de 5 espèces")
+
+
+class GroupLinesX1Test(unittest.TestCase):
+    """Regroupement en lignes avec bord droit (x1 max) pour la détection de fin
+    de paragraphe."""
+
+    def test_single_line_two_spans(self):
+        items = [(10.0, 100.0, 50.0, "Bonjour"),
+                 (55.0, 100.5, 120.0, "monde")]
+        self.assertEqual(_group_lines_x1(items), [("Bonjour monde", 120.0)])
+
+    def test_two_lines_keep_max_x1(self):
+        items = [(10.0, 100.0, 300.0, "premiere ligne"),
+                 (10.0, 112.0, 140.0, "fin")]
+        self.assertEqual(
+            _group_lines_x1(items),
+            [("premiere ligne", 300.0), ("fin", 140.0)],
+        )
+
+
+class JoinParagraphLinesTest(unittest.TestCase):
+    """Recollage géométrique : point inséré UNIQUEMENT aux fins de paragraphe
+    (ligne précédente en retrait sous la marge justifiée), jamais aux césures
+    intra-phrase."""
+
+    def test_point_at_paragraph_boundary(self):
+        # Ligne 0 wrappée (touche la marge 300), ligne 1 courte = fin de para →
+        # point avant la ligne 2 qui démarre en majuscule.
+        lines = [("premier paragraphe wrappe", 300.0),
+                 ("fin du premier", 120.0),
+                 ("Second paragraphe ici", 300.0)]
+        self.assertEqual(
+            _join_paragraph_lines(lines),
+            "premier paragraphe wrappe fin du premier. Second paragraphe ici",
+        )
+
+    def test_no_point_on_intra_phrase_cesure(self):
+        # Ligne 0 touche la marge (300) = wrappée intra-phrase : pas de point
+        # même si la ligne 1 démarre par un nom propre en majuscule.
+        lines = [("il passe par la place de la", 300.0),
+                 ("Concorde puis rentre", 250.0)]
+        self.assertEqual(
+            _join_paragraph_lines(lines),
+            "il passe par la place de la Concorde puis rentre",
+        )
+
+    def test_no_double_point_when_already_punctuated(self):
+        # Fin de paragraphe déjà ponctuée → simple espace, pas de point ajouté.
+        lines = [("Fin de la phrase.", 120.0),
+                 ("Nouvelle phrase ici", 300.0)]
+        self.assertEqual(
+            _join_paragraph_lines(lines),
+            "Fin de la phrase. Nouvelle phrase ici",
+        )
+
+    def test_no_point_when_next_lowercase(self):
+        # Fin de paragraphe non ponctuée mais suite en minuscule → pas de point.
+        lines = [("premier bloc de texte", 300.0),
+                 ("fin courte", 120.0),
+                 ("suite en minuscule", 300.0)]
+        self.assertEqual(
+            _join_paragraph_lines(lines),
+            "premier bloc de texte fin courte suite en minuscule",
+        )
+
+    def test_ginkgo_runon_full_pipeline(self):
+        # Cas Ginkgo réel : deux paragraphes fusionnés sans point, réparés par
+        # _join_paragraph_lines puis nettoyés par _clean (recollage ponctuation).
+        lines = [("plantés isolés dans les", 300.0),
+                 ("parcs", 90.0),
+                 ("Essence rare à Paris, elle", 300.0),
+                 ("est utilisée en alignement.", 200.0)]
+        self.assertEqual(
+            _clean(_join_paragraph_lines(lines)),
+            "plantés isolés dans les parcs. Essence rare à Paris, "
+            "elle est utilisée en alignement.",
+        )
+
+
 def _img(xref, bbox, width, height, nbytes, colvar=1000.0):
     """Fabrique une entrée d'inventaire synthétique (dims/octets NATIFS, bbox pt).
 
@@ -1894,6 +1998,20 @@ class TestEssenceOverrides(unittest.TestCase):
         self.assertTrue(essence_pdf.merge_override(extras, self._override()))
         self.assertEqual(extras.fam, "Extraite")        # intouché
         self.assertEqual(extras.paris, "Très rare à Paris.")  # complété
+
+    def test_valeurs_normalisees_par_clean(self):
+        # La transcription manuelle reproduit la source rasterisée, espaces
+        # d'exposant compris : le merge applique la même normalisation
+        # `_clean` que les proses extraites, sur str, dict et listes.
+        extras = self._rasterized()
+        ov = self._override()
+        ov["paris"] = "Présent au Parc Montsouris (14 e). Rare à Paris ."
+        ov["svc"] = {"climat": "Depuis le 19 e siècle."}
+        ov["atouts"] = ["Planté dès le 1 er âge"]
+        essence_pdf.merge_override(extras, ov)
+        self.assertEqual(extras.paris, "Présent au Parc Montsouris (14e). Rare à Paris.")
+        self.assertEqual(extras.svc["climat"], "Depuis le 19e siècle.")
+        self.assertEqual(extras.atouts, ["Planté dès le 1er âge"])
 
     def test_ignore_meta_et_nom_latin(self):
         extras = self._rasterized()

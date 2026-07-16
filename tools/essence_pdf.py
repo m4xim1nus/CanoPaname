@@ -178,6 +178,13 @@ _DESC_BOUNDS: dict[str, tuple[int, int]] = {
 }
 _PARIS_BOUNDS = (20, 800)
 _SVC_BOUNDS = (30, 700)
+# Fin de paragraphe : le corps des fiches est justifié, donc toute ligne
+# wrappée touche la marge droite (déficit ≈ 0 pt) ; seule la dernière ligne
+# d'un paragraphe reste « courte ». Une ligne dont le x1 est en retrait de plus
+# de ce seuil marque une fin de paragraphe. 6 pt ≈ une largeur de caractère,
+# largement au-dessus du jitter de justification (≤ 0.2 pt observé sur le
+# corpus) et en dessous du plus petit retrait de paragraphe réel (≈ 16 pt).
+_PARA_SHORT_MIN = 6.0
 
 
 # ---------------------------------------------------------------------------
@@ -652,7 +659,68 @@ def _clean(s: str) -> str:
     s = re.sub(r"\s+", " ", s).strip()
     s = re.sub(r"\s+([,;.:!?)\]»])", r"\1", s)
     s = re.sub(r"([(\[«])\s+", r"\1", s)
+    # Ordinaux en exposant : l'exposant (« e », « er », « ère », « re ») est un
+    # span PDF séparé, le join insère un espace parasite. « 12 e » → « 12e »,
+    # « 1 er » → « 1er ». Borne de mot en fin → épargne « 3 euros », « 5 espèces ».
+    s = re.sub(r"(\d+) (ère|er|re|e)\b", r"\1\2", s)
     return s
+
+
+def _group_lines_x1(
+    items: list[tuple[float, float, float, str]],
+) -> list[tuple[str, float]]:
+    """Comme `_group_lines` mais renvoie aussi le bord droit (x1 max) de chaque
+    ligne, pour détecter les fins de paragraphe par le déficit de justification.
+
+    `items` = (x0, y0, x1, texte). Retourne [(texte_ligne, x1)] en ordre de
+    lecture (y croissant), chaque ligne recomposée par ordre de x.
+    """
+    lines: list[list] = []
+    for x0, y0, x1, t in sorted(items, key=lambda it: it[1]):
+        if lines and abs(lines[-1][0] - y0) < 3:
+            lines[-1][1].append((x0, x1, t))
+        else:
+            lines.append([y0, [(x0, x1, t)]])
+    out: list[tuple[str, float]] = []
+    for _, parts in lines:
+        parts.sort()
+        text = " ".join(t for _, _, t in parts)
+        right = max(x1 for _, x1, _ in parts)
+        out.append((text, right))
+    return out
+
+
+def _join_paragraph_lines(lines: list[tuple[str, float]]) -> str:
+    """Recolle des lignes de prose justifiée en réparant les run-on.
+
+    Certaines fiches enchaînent deux paragraphes sans point final : la source
+    ne matérialise pas la coupure (cas Ginkgo « …dans les parcs / Essence rare
+    à Paris… »). Le corps des fiches est justifié — toute ligne wrappée touche
+    la marge droite, seule la dernière ligne d'un paragraphe reste en retrait.
+    On n'insère donc un point qu'aux **frontières de paragraphe** (ligne
+    précédente en retrait de plus de `_PARA_SHORT_MIN` sous la marge), et
+    seulement si elle finit sur un caractère de mot (ni ponctuation ni
+    terminale) ET que la suivante démarre par une majuscule. Les lignes wrappées
+    intra-paragraphe se joignent toujours par un simple espace — jamais de point
+    (épargne les césures « …la place de la / Concorde »).
+
+    `lines` = [(texte, x1)] en ordre de lecture.
+    """
+    lines = [(t.strip(), x1) for t, x1 in lines if t.strip()]
+    if not lines:
+        return ""
+    margin = max(x1 for _, x1 in lines)
+    out = lines[0][0]
+    for i in range(1, len(lines)):
+        prev_text = lines[i - 1][0]
+        prev_x1 = lines[i - 1][1]
+        text = lines[i][0]
+        para_end = (margin - prev_x1) > _PARA_SHORT_MIN
+        if para_end and prev_text[-1].isalnum() and text[0].isupper():
+            out += ". " + text
+        else:
+            out += " " + text
+    return out
 
 
 def _match_desc_label(full: str) -> tuple[str | None, str | None]:
@@ -779,14 +847,13 @@ def _parse_essence_paris(spans_sized, heads) -> tuple[str | None, list[str]]:
     y1 = y_end.y0 if y_end is not None else ep.y1 + 200.0
     right_x = ep.x0 - 15.0
     items = [
-        (r.x0, r.y0, t) for t, r, size in spans_sized
+        (r.x0, r.y0, r.x1, t) for t, r, size in spans_sized
         if ep.y1 <= r.y0 < y1 and r.x0 > right_x and size < 11.5
         and not _norm(t).startswith(("credits photos", "guide des essences"))
     ]
     if not items:
         return None, ["essence-paris: aucune ligne dans la zone"]
-    prose = _clean(" ".join(
-        " ".join(t for _, t in parts) for parts in _group_lines(items)))
+    prose = _clean(_join_paragraph_lines(_group_lines_x1(items)))
     lo, hi = _PARIS_BOUNDS
     if not (lo <= len(prose) <= hi):
         return None, [f"essence-paris: prose rejetée ({len(prose)} c.)"]
@@ -815,17 +882,19 @@ def _parse_services(spans, heads, page_bottom: float) -> tuple[dict, list[str]]:
     # (« Régulation du climat local ») chevauche la ligne de base du heading
     # (y0 ~0.3 pt au-dessus de son y1). On exclut le heading lui-même par `_norm`.
     items = [
-        (r.x0, r.y0, t) for t, r in spans
+        (r.x0, r.y0, r.x1, t) for t, r in spans
         if r.y0 >= sv.y1 - 3 and r.y0 < page_bottom
         and _norm(t) != "services ecosystemiques rendus"
         and not _norm(t).startswith(("credits photos", "guide des essences"))
         and not re.fullmatch(r"\d{1,2}", t)  # score picto = span isolé 1-2 chiffres
     ]
-    acc: dict[str, list[str]] = {}
+    # On conserve le bord droit (x1) de chaque ligne pour repérer les fins de
+    # paragraphe au join. Retirer le préfixe du label n'affecte pas le x1 (bord
+    # droit), donc la détection reste valide.
+    acc: dict[str, list[tuple[str, float]]] = {}
     order: list[str] = []
     current: str | None = None
-    for parts in _group_lines(items):
-        full = " ".join(t for _, t in parts)
+    for full, x1 in _group_lines_x1(items):
         n = _norm(full)
         label_key = None
         for prefix, key in _SVC_LABELS:
@@ -838,12 +907,12 @@ def _parse_services(spans, heads, page_bottom: float) -> tuple[dict, list[str]]:
             if label_key not in acc:
                 acc[label_key] = []
                 order.append(label_key)
-            acc[label_key].append(value)
+            acc[label_key].append((value, x1))
         elif current is not None:
-            acc[current].append(full)
+            acc[current].append((full, x1))
     out: dict = {}
     for key in order:
-        prose = _clean(" ".join(acc[key]))
+        prose = _clean(_join_paragraph_lines(acc[key]))
         lo, hi = _SVC_BOUNDS
         if lo <= len(prose) <= hi:
             out[key] = prose
@@ -1485,19 +1554,22 @@ def merge_override(extras: EssenceExtras, override: dict) -> bool:
     filled_text = False       # champs descriptif / paris / svc
     filled_aretenir = False   # atouts / limites
 
+    # Les valeurs transcrites reproduisent fidèlement la source rasterisée
+    # (dont les espaces d'exposant « 19 e ») : même normalisation `_clean`
+    # que les proses extraites.
     for key in ("fam", "haut", "env", "croiss", "long", "paris"):
         if override.get(key) is not None and getattr(extras, key) is None:
-            setattr(extras, key, override[key])
+            setattr(extras, key, _clean(override[key]))
             filled_text = True
     for key in ("iddesc", "svc"):
         if override.get(key) and not getattr(extras, key):
-            setattr(extras, key, dict(override[key]))
+            setattr(extras, key, {k: _clean(v) for k, v in override[key].items()})
             filled_text = True
     if override.get("atouts") and not extras.atouts:
-        extras.atouts = list(override["atouts"])
+        extras.atouts = [_clean(x) for x in override["atouts"]]
         filled_aretenir = True
     if override.get("limites") and not extras.limites:
-        extras.limites = list(override["limites"])
+        extras.limites = [_clean(x) for x in override["limites"]]
         filled_aretenir = True
 
     if not (filled_text or filled_aretenir):
