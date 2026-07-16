@@ -58,6 +58,7 @@ import app.arbre.data.parseArrKey
 import app.arbre.data.rememberArbreRepository
 import app.arbre.data.rememberCaptureRepository
 import app.arbre.data.rememberDatasetStats
+import app.arbre.data.rememberGenreInfoRepository
 import app.arbre.data.rememberSpeciesIndex
 import app.arbre.data.rememberSpeciesInfoRepository
 import app.arbre.data.rememberSpeciesPhotoRepository
@@ -89,6 +90,7 @@ fun SpeciesDetailScreen(
     val arbreRepo = rememberArbreRepository()
     val captureRepo = rememberCaptureRepository()
     val speciesInfoRepo = rememberSpeciesInfoRepository()
+    val genreInfoRepo = rememberGenreInfoRepository()
     val datasetStats = rememberDatasetStats()
     val photoRepo = rememberSpeciesPhotoRepository()
 
@@ -224,12 +226,33 @@ fun SpeciesDetailScreen(
             }
 
             item {
-                WikipediaBlock(
-                    summary = info?.summary,
-                    wikipediaTitle = info?.wikipediaTitle,
-                    emptyMessage = "Pas d'info encyclopédique disponible pour cette espèce.",
-                    collapsedLines = 5,
-                )
+                // Espèces sans page Wikipedia dédiée (~32 % des identifiées, surtout
+                // hybrides/cultivars/sous-espèces) : repli sur le résumé du GENRE,
+                // étiqueté explicitement pour ne pas faire passer le texte du genre
+                // pour celui de l'espèce. Le lien « Lire sur Wikipedia » et
+                // l'attribution du bloc pointent alors l'article du genre.
+                val genreFallback = remember(entry.genre, info?.summary) {
+                    if (info?.summary.isNullOrBlank()) {
+                        genreInfoRepo.get(entry.genre)?.takeIf { !it.summary.isNullOrBlank() }
+                    } else {
+                        null
+                    }
+                }
+                if (genreFallback != null) {
+                    WikipediaBlock(
+                        summary = genreFallback.summary,
+                        wikipediaTitle = genreFallback.wikipediaTitle,
+                        title = "À propos du genre ${genreFallback.nomFr ?: entry.genre}",
+                        collapsedLines = 5,
+                    )
+                } else {
+                    WikipediaBlock(
+                        summary = info?.summary,
+                        wikipediaTitle = info?.wikipediaTitle,
+                        emptyMessage = "Pas d'info encyclopédique disponible pour cette espèce.",
+                        collapsedLines = 5,
+                    )
+                }
             }
 
             if (remarquablesEspece.isNotEmpty()) {
