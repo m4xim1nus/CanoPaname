@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -55,11 +56,13 @@ import app.arbre.data.SpeciesEntry
 import app.arbre.data.rememberCaptureRepository
 import app.arbre.data.rememberDatasetStats
 import app.arbre.data.rememberOnboardingStore
+import app.arbre.data.rememberSpeciesIndex
 import app.arbre.data.rememberSplashTipsRepository
 import app.arbre.ui.common.rememberFrameMillis
 import app.arbre.ui.common.rememberFramePingPong
 import app.arbre.ui.common.rememberFrameProgress
 import app.arbre.ui.theme.ArbresMotion
+import app.arbre.ui.theme.arbresColors
 import app.arbre.ui.theme.arbresMotion
 import java.text.NumberFormat
 import java.util.Locale
@@ -68,6 +71,9 @@ import kotlin.math.sin
 
 /** Période de rotation du mini-platane « filtrage en cours » du [QuickFilterBanner]. */
 private const val SPIN_PERIOD_MS = 1400L
+
+/** Crème des textes secondaires et mini-platanes sur le fond vert des splashes. */
+private val SplashCream = Color(0xFFF5F1E6)
 
 /** Bandeau retour + label espèce, affiché en mode `MAP_FILTERED` à la place
  *  des FABs Profil/Arboretum/Remarquables.
@@ -287,23 +293,114 @@ internal fun SplashScaffold(content: @Composable ColumnScope.(introDone: Boolean
         }
         // Posée après la Column pour que les platanes passent au-dessus
         // du hero (z-order).
-        MiniArbreCrown(motion = motion, cream = Color(0xFFF5F1E6))
+        MiniArbreCrown(motion = motion, cream = SplashCream)
+    }
+}
+
+/** Durée de la séquence de révélation du voile de célébration — c'est aussi le
+ *  plancher de lecture côté `ArbresNavHost` (source unique, le plancher suit). */
+internal const val CAPTURE_CELEBRATION_SEQUENCE_MS = 2200L
+
+/** Instant du tic haptique, calé sur l'apparition du nom vernaculaire (climax).
+ *  Consommé par `ArbresNavHost` (l'haptique vit dans la coroutine du voile,
+ *  annulée avec elle au skip — un tic pendant le fadeOut serait du bruit). */
+internal const val CAPTURE_CELEBRATION_HAPTIC_MS = 950L
+
+/**
+ * Voile de transition « 1re capture d'espèce » : couvre la bascule validation
+ * photo → fiche espèce pour ne jamais repasser visuellement par la carte, ET
+ * porte le climax de célébration (kicker → nom vernaculaire → binôme latin) —
+ * la fiche en dessous reste ainsi la fiche normale, sans bloc « succès ».
+ * Rendu par `ArbresNavHost` AU-DESSUS du NavHost (piloté par
+ * `MapHost.captureTransitionSk`), levé synchroniquement au retour de l'intent
+ * caméra, éteint une fois la fiche RESUMED et le plancher
+ * [CAPTURE_CELEBRATION_SEQUENCE_MS] écoulé (skippable au tap, cf. NavHost —
+ * qui tire aussi le tic haptique à [CAPTURE_CELEBRATION_HAPTIC_MS]).
+ * Séquence et scaffold sont frame-clock — vivants même à échelle d'animation
+ * système 0.
+ */
+@Composable
+internal fun CaptureTransitionSplash(speciesIndex: Int) {
+    val entry = rememberSpeciesIndex().get(speciesIndex)
+    SplashScaffold {
+        if (entry != null) CelebrationReveal(entry)
     }
 }
 
 /**
- * Voile de transition « 1re capture d'espèce » : couvre la bascule validation
- * photo → fiche espèce pour ne jamais repasser visuellement par la carte.
- * Rendu par `ArbresNavHost` AU-DESSUS du NavHost (piloté par
- * `MapHost.captureTransitionSk`), levé synchroniquement au retour de l'intent
- * caméra, éteint quand la fiche espèce a fini sa transition d'entrée.
- * Volontairement muet (pas de texte) : la révélation de l'espèce est portée
- * par le `CelebrationHero` de la fiche. Les animations du `SplashScaffold`
- * sont frame-clock — vivantes même à échelle d'animation système 0.
+ * Cascade de révélation sous le platane du voile : kicker « Nouvelle espèce »
+ * → nom vernaculaire (climax) → binôme latin → filet or, sur
+ * [CAPTURE_CELEBRATION_SEQUENCE_MS]. Une seule horloge frame-clock partagée ;
+ * alphas/translations calculés dans les `graphicsLayer` (invalide le dessin à
+ * chaque frame sans recomposer, cf. `ui/common/FrameClock.kt`). La hiérarchie
+ * typo (vernaculaire dominant, binôme italique secondaire) est celle du
+ * `SpeciesHero` : le voile parle la même langue que la fiche qu'il révèle.
  */
 @Composable
-internal fun CaptureTransitionSplash() {
-    SplashScaffold { }
+private fun ColumnScope.CelebrationReveal(entry: SpeciesEntry) {
+    val motion = MaterialTheme.arbresMotion
+    val or = MaterialTheme.arbresColors.or
+    val elapsed = rememberFrameMillis()
+    // Enveloppe temporelle easée : 0 avant startMs, 1 après endMs. À n'appeler
+    // que depuis un bloc `graphicsLayer` (lecture du State frame par frame).
+    fun window(startMs: Long, endMs: Long): Float {
+        val t = ((elapsed.value - startMs).toFloat() / (endMs - startMs)).coerceIn(0f, 1f)
+        return motion.swayEasing.transform(t)
+    }
+    Text(
+        text = "NOUVELLE ESPÈCE",
+        color = SplashCream.copy(alpha = 0.9f),
+        style = MaterialTheme.typography.labelMedium.copy(letterSpacing = 2.sp),
+        modifier = Modifier.graphicsLayer {
+            val p = window(350L, 850L)
+            alpha = p
+            translationY = (1f - p) * 10.dp.toPx()
+        },
+    )
+    Spacer(Modifier.height(12.dp))
+    Text(
+        text = entry.displayNomCommun,
+        color = Color.White,
+        style = MaterialTheme.typography.headlineSmall,
+        textAlign = TextAlign.Center,
+        modifier = Modifier
+            .padding(horizontal = 28.dp)
+            .graphicsLayer {
+                val p = window(750L, 1350L)
+                alpha = p
+                translationY = (1f - p) * 14.dp.toPx()
+                scaleX = 0.97f + p * 0.03f
+                scaleY = 0.97f + p * 0.03f
+            },
+    )
+    // Pas de doublon quand le vernaculaire est déjà retombé sur le binôme
+    // (espèce sans nom commun dans le dataset).
+    if (entry.displayNomCommun != entry.displayName) {
+        Spacer(Modifier.height(6.dp))
+        Text(
+            text = entry.displayName,
+            color = SplashCream.copy(alpha = 0.85f),
+            style = MaterialTheme.typography.titleMedium.copy(fontStyle = FontStyle.Italic),
+            textAlign = TextAlign.Center,
+            modifier = Modifier
+                .padding(horizontal = 28.dp)
+                .graphicsLayer { alpha = window(1300L, 1800L) },
+        )
+    }
+    Spacer(Modifier.height(20.dp))
+    // Filet or : la respiration finale, sobre — pas de confetti. Largeur fixe
+    // pour un layout stable, révélé par scaleX depuis le centre.
+    Box(
+        modifier = Modifier
+            .width(64.dp)
+            .height(1.5.dp)
+            .graphicsLayer {
+                val p = window(1650L, 2050L)
+                scaleX = p
+                alpha = p * 0.7f
+            }
+            .background(or),
+    )
 }
 
 /**

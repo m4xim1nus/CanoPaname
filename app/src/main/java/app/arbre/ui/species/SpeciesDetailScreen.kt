@@ -4,14 +4,11 @@ import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -19,7 +16,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
 import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -37,20 +33,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.font.FontStyle
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import app.arbre.R
-import app.arbre.ui.common.rememberFrameProgress
-import app.arbre.ui.theme.arbresColors
-import app.arbre.ui.theme.arbresMotion
 import app.arbre.data.Arbre
 import app.arbre.data.ArbreRepository
 import app.arbre.data.HeroPhotos
-import app.arbre.data.SpeciesEntry
 import app.arbre.data.SpeciesIndex
 import app.arbre.data.catalogueRank
 import app.arbre.data.label
@@ -78,7 +67,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 fun SpeciesDetailScreen(
     speciesIndex: Int,
     actions: SpeciesActions,
-    celebrate: Boolean = false,
 ) {
     val onBack = actions.onBack
     val onShowOnMap = actions.onShowOnMap
@@ -167,10 +155,6 @@ fun SpeciesDetailScreen(
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            if (celebrate) {
-                item { CelebrationHero(entry) }
-            }
-
             item {
                 SpeciesHero(
                     entry = entry,
@@ -336,70 +320,6 @@ private fun SpeciesDetailTopBar(onBack: () -> Unit) {
             }
         },
     )
-}
-
-/** Climax « 1re capture » : cascade fade+scale fond → silhouette → binomial
- *  → label, ~1.8 s. Réutilise la grammaire visuelle du splash cold-start.
- */
-@Composable
-private fun CelebrationHero(entry: SpeciesEntry) {
-    val arbresColors = MaterialTheme.arbresColors
-    val motion = MaterialTheme.arbresMotion
-    // Frame-clock (cf. `ui/common/FrameClock.kt`) : la cascade joue même échelle d'animation = 0.
-    val p by rememberFrameProgress(durationMs = motion.celebration, easing = motion.swayEasing)
-    val bgAlpha = ((p / 0.17f).coerceIn(0f, 1f)) * 0.10f
-    val silhouetteAlpha = ((p - 0.17f) / 0.33f).coerceIn(0f, 1f)
-    val silhouetteScale = 0.85f + silhouetteAlpha * 0.15f
-    val binomialAlpha = ((p - 0.5f) / 0.28f).coerceIn(0f, 1f)
-    val labelAlpha = ((p - 0.78f) / 0.22f).coerceIn(0f, 1f)
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(280.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = arbresColors.feuilleSombre.copy(alpha = bgAlpha + 0.04f),
-        ),
-    ) {
-        Box(
-            modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center,
-        ) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center,
-            ) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_arbre_canonical),
-                    contentDescription = null,
-                    tint = arbresColors.feuilleSombre,
-                    modifier = Modifier
-                        .size(120.dp)
-                        .graphicsLayer {
-                            alpha = silhouetteAlpha
-                            scaleX = silhouetteScale
-                            scaleY = silhouetteScale
-                        },
-                )
-                Spacer(Modifier.height(16.dp))
-                Text(
-                    text = entry.displayName,
-                    style = MaterialTheme.typography.titleLarge.copy(
-                        fontWeight = FontWeight.SemiBold,
-                        fontStyle = FontStyle.Italic,
-                    ),
-                    color = arbresColors.feuilleSombre,
-                    modifier = Modifier.graphicsLayer { alpha = binomialAlpha },
-                )
-                Spacer(Modifier.height(8.dp))
-                Text(
-                    text = "Nouvelle espèce dans ton Arboretum",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = arbresColors.ecorce,
-                    modifier = Modifier.graphicsLayer { alpha = labelAlpha },
-                )
-            }
-        }
-    }
 }
 
 @Composable

@@ -15,11 +15,19 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.pointer.changedToDownIgnoreConsumed
+import androidx.compose.ui.input.pointer.changedToUpIgnoreConsumed
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.navigation.NavType
@@ -34,6 +42,8 @@ import app.arbre.ui.arboretum.ArboretumScreen
 import app.arbre.ui.badges.BadgesScreen
 import app.arbre.ui.genre.GenreActions
 import app.arbre.ui.genre.GenreDetailScreen
+import app.arbre.ui.map.CAPTURE_CELEBRATION_HAPTIC_MS
+import app.arbre.ui.map.CAPTURE_CELEBRATION_SEQUENCE_MS
 import app.arbre.ui.map.CaptureTransitionSplash
 import app.arbre.ui.map.MapHost
 import app.arbre.ui.map.MapScreen
@@ -49,12 +59,12 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 
-// Voile de transition capture → fiche espèce : plancher de lecture (à échelle
-// d'animation système 0 la transition de nav snap — sans plancher le voile ne
-// serait qu'un flash vert de la durée compression + insert) et timeout filet
+// Voile de transition capture → fiche espèce : plancher de lecture = la durée
+// de la séquence de célébration jouée par le voile (source unique côté
+// MapOverlays — le plancher suit automatiquement la timeline) et timeout filet
 // (ne jamais rester coincé sous le voile si la nav n'aboutit pas — pattern
 // analogue au `finally { filteredArbresPrets = true }` du mode filtré).
-private const val CAPTURE_TRANSITION_FLOOR_MS = 600L
+private const val CAPTURE_TRANSITION_FLOOR_MS = CAPTURE_CELEBRATION_SEQUENCE_MS
 private const val CAPTURE_TRANSITION_TIMEOUT_MS = 6_000L
 
 @Composable
@@ -130,9 +140,7 @@ fun ArbresNavHost() {
                     onSpeciesClick = { sk -> nav.navigate(Routes.species(sk)) },
                     onGenreClick = { genre -> nav.navigate(Routes.genre(genre)) },
                     onRemarquableDetail = { id -> nav.navigate(Routes.remarquableDetail(id)) },
-                    onFirstSpeciesCapture = { sk ->
-                        nav.navigate(Routes.species(sk, celebrate = true))
-                    },
+                    onFirstSpeciesCapture = { sk -> nav.navigate(Routes.species(sk)) },
                 )
             }
             composable(Routes.PROFILE) {
@@ -185,14 +193,9 @@ fun ArbresNavHost() {
                 Routes.SPECIES,
                 arguments = listOf(
                     navArgument("speciesIndex") { type = NavType.IntType },
-                    navArgument("celebrate") {
-                        type = NavType.BoolType
-                        defaultValue = false
-                    },
                 ),
             ) { entry ->
                 val sk = entry.arguments?.getInt("speciesIndex") ?: return@composable
-                val celebrate = entry.arguments?.getBoolean("celebrate") ?: false
                 SpeciesDetailScreen(
                     speciesIndex = sk,
                     actions = SpeciesActions(
@@ -207,7 +210,6 @@ fun ArbresNavHost() {
                             }
                         },
                     ),
-                    celebrate = celebrate,
                 )
             }
             composable(
@@ -257,17 +259,38 @@ fun ArbresNavHost() {
         // Au-dessus du NavHost (un overlay dans MapScreen fade-rait avec lui
         // pendant la transition de nav et laisserait entrevoir la carte).
         // Levé synchroniquement par le callback TakePicture (cf.
-        // `MapHost.captureTransitionSk`), éteint quand l'entrée SPECIES a fini
-        // sa transition d'entrée (RESUMED) — plancher de lecture + timeout filet.
+        // `MapHost.captureTransitionSk`), il PORTE la séquence de célébration
+        // (cf. `CaptureTransitionSplash`) ; éteint quand l'entrée SPECIES est
+        // RESUMED ET le plancher de lecture écoulé — ou au tap (skip) dès que
+        // la fiche est prête. Timeout filet inchangé.
         val transitionSk = mapHost.captureTransitionSk
+        // Dernier sk non-null : pendant le fadeOut d'exit (300 ms) le contenu
+        // de l'AnimatedVisibility est encore composé alors que
+        // `captureTransitionSk` est déjà repassé à null — sans ça le voile
+        // perdrait son texte en plein fade.
+        var lastTransitionSk by remember { mutableStateOf(0) }
+        if (transitionSk != null) lastTransitionSk = transitionSk
+        // Fiche prête (RESUMED) : condition d'armement du skip au tap.
+        var sheetReady by remember { mutableStateOf(false) }
+        val sheetReadyState = rememberUpdatedState(sheetReady)
+        val haptic = LocalHapticFeedback.current
         LaunchedEffect(transitionSk) {
+            sheetReady = false
             if (transitionSk == null) return@LaunchedEffect
+            // Tic au climax visuel (le nom se révèle dans le voile). Vit dans
+            // la coroutine du voile : un skip avant l'échéance l'annule — pas
+            // de tic pendant le fadeOut, l'arrivée sur la fiche reste muette.
+            launch {
+                delay(CAPTURE_CELEBRATION_HAPTIC_MS)
+                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+            }
             val raisedAt = SystemClock.elapsedRealtime()
             withTimeoutOrNull(CAPTURE_TRANSITION_TIMEOUT_MS) {
                 nav.currentBackStackEntryFlow
                     .first { it.destination.route == Routes.SPECIES }
                     .lifecycle.currentStateFlow
                     .first { it.isAtLeast(Lifecycle.State.RESUMED) }
+                sheetReady = true
                 val elapsed = SystemClock.elapsedRealtime() - raisedAt
                 if (elapsed < CAPTURE_TRANSITION_FLOOR_MS) {
                     delay(CAPTURE_TRANSITION_FLOOR_MS - elapsed)
@@ -275,9 +298,9 @@ fun ArbresNavHost() {
             }
             mapHost.captureTransitionSk = null
         }
-        // Back avalé pendant le voile (fenêtre ≤ ~1,5 s en pratique, pire cas
-        // borné par le timeout) : un pop pendant la transition laisserait la
-        // fiche espèce orpheline sous le voile.
+        // Back avalé pendant le voile (fenêtre ≈ 2,5 s, pire cas borné par le
+        // timeout, porte de sortie volontaire via le skip au tap) : un pop
+        // pendant la transition laisserait la fiche orpheline sous le voile.
         BackHandler(enabled = transitionSk != null) {}
         AnimatedVisibility(
             visible = transitionSk != null,
@@ -288,18 +311,43 @@ fun ArbresNavHost() {
             exit = fadeOut(animationSpec = tween(durationMillis = MaterialTheme.arbresMotion.short)),
             modifier = Modifier
                 .fillMaxSize()
-                // Consomme tous les taps : contrairement au
+                // Mur d'input inconditionnel : contrairement au
                 // CaptureCelebrationOverlay (qui doit laisser passer les
-                // gestes carte), ici on VEUT bloquer l'écran en dessous.
+                // gestes carte), ici on VEUT bloquer l'écran en dessous —
+                // TOUS les events sont consommés, y compris multi-touch et
+                // entre deux gestes (pas de `awaitEachGesture`, qui laisse
+                // fuir les pointeurs secondaires après le up du primaire).
+                // En parallèle, un tap mono-doigt propre (down/up ≤ slop)
+                // alors que la fiche est prête skippe le plancher : poser
+                // null re-keye le LaunchedEffect ci-dessus, dont le delay
+                // (et l'haptique pas encore tirée) est annulé → dissipation
+                // immédiate.
                 .pointerInput(Unit) {
                     awaitPointerEventScope {
+                        val slop = viewConfiguration.touchSlop
+                        var tapStart: Offset? = null
                         while (true) {
-                            awaitPointerEvent().changes.forEach { it.consume() }
+                            val event = awaitPointerEvent()
+                            event.changes.forEach { it.consume() }
+                            val single = event.changes.singleOrNull()
+                            val start = tapStart
+                            when {
+                                single == null -> tapStart = null // multi-touch : pas un tap
+                                single.changedToDownIgnoreConsumed() -> tapStart = single.position
+                                start != null &&
+                                    (single.position - start).getDistance() > slop -> tapStart = null
+                                single.changedToUpIgnoreConsumed() -> {
+                                    if (start != null && sheetReadyState.value) {
+                                        mapHost.captureTransitionSk = null
+                                    }
+                                    tapStart = null
+                                }
+                            }
                         }
                     }
                 },
         ) {
-            CaptureTransitionSplash()
+            CaptureTransitionSplash(speciesIndex = lastTransitionSk)
         }
     }
 

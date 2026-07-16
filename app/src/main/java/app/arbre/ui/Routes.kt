@@ -15,9 +15,7 @@ object Routes {
     const val BADGES = "badges"
     const val REMARQUABLES = "remarquables"
     const val REMARQUABLE_DETAIL = "remarquable_detail/{arbreId}"
-    // `celebrate` en query param — compose-navigation n'autorise les
-    // optionnels qu'après `?`.
-    const val SPECIES = "species/{speciesIndex}?celebrate={celebrate}"
+    const val SPECIES = "species/{speciesIndex}"
     // Destination distincte de MAP : MapViewModel propre + caméra Paris z11
     // + entrée séparée du backstack. `speciesIndices` = set CSV de sks
     // (1 sk = filtre fiche-espèce normale ; N sks = filtre genre depuis la
@@ -29,8 +27,7 @@ object Routes {
     const val ABOUT = "about"
     const val PHOTO_CREDITS = "photo_credits"
 
-    fun species(speciesIndex: Int, celebrate: Boolean = false): String =
-        "species/$speciesIndex?celebrate=$celebrate"
+    fun species(speciesIndex: Int): String = "species/$speciesIndex"
     fun mapFiltered(speciesIndex: Int): String = mapFiltered(setOf(speciesIndex))
     fun mapFiltered(speciesIndices: Set<Int>): String =
         "map_filtered/${speciesIndices.sorted().joinToString(",")}"
