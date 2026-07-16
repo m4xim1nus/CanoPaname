@@ -12,7 +12,7 @@ Enrichissement des fiches espèces : saisonnalité (calendriers floraison/fructi
 
 Plan complet (contexte, archi, risques) : `/home/max/.claude/plans/on-attaque-le-cycle-temporal-abelson.md`. Sources chiffrées : `PROSPECTION_ARBORETUM.md`.
 
-**Décisions actées (2026-06-14)** : périmètre *tout d'un coup* (200 fiches API+PDF + cascade fallback 584) ; *cascade photos complète* embarquée WebP (officielles Ville de Paris + Wikidata P18/iNat filtre CC0/CC-BY) ; *pas de silhouettes procédurales* (identité = vraie photo, sinon placeholder + pills) ; cellule Arboretum non capturée garde « ??? » (photo de réf. seulement sur la fiche détail, désormais consultable même non capturée) ; inégalité 200/584 assumée et visible, jamais inventée.
+**Décisions actées (2026-06-14)** : périmètre *tout d'un coup* (200 fiches API+PDF + cascade fallback 584) ; *cascade photos complète* embarquée WebP (officielles Ville de Paris + Wikidata P18/iNat filtre CC0/CC-BY) ; *pas de silhouettes procédurales* (identité = vraie photo, sinon placeholder + pills) ; cellule Arboretum non capturée garde « ??? » ; inégalité 200/584 assumée et visible, jamais inventée. **Renversement (2026-07-16)** : la fiche espèce n'est **pas** consultable tant que l'espèce n'est pas capturée — cœur du game design, S12 refusé.
 
 | # | Sprint | Type | Dép. |
 |---|---|---|---|
@@ -27,7 +27,7 @@ Plan complet (contexte, archi, risques) : `/home/max/.claude/plans/on-attaque-le
 | S9 | Photos officielles 200 (extraction PDF → WebP) | data | S4 |
 | S10 | Cascade photos 584 (Wikidata P18→iNat, filtre licence) | data | S9 |
 | S11 | `ReferencePhotoBlock` + `SpeciesPhotoRepository` + `CREDITS.md` + écran crédits | UI | S2,S9 |
-| S12 | Fiche détail consultable non capturée (cellules « ??? » tappables) | UI | S3,S11 |
+| ~~S12~~ | ~~Fiche détail consultable non capturée (cellules « ??? » tappables)~~ — **refusé 2026-07-16** (renversement : fiche non consultable si non capturée, cœur du game design) | UI | S3,S11 |
 | S13 | Hygiène & clôture item 1 (detekt, tests, `CHANGELOG`, `CLAUDE.md`, screenshots, commit assets) | clôture | tous |
 
 Ordre : slice verticale d'abord (S1→S3 prouvent le pipeline bout-en-bout), puis saisonnalité (S4→S5, le gros gain Variantes), puis le reste, puis photos, puis découverte, puis clôture. **S8 abandonné le 2026-07-15** (cascade attributs : sondes réseau → rendement réel = famille seule, tout le reste indisponible sur Wikidata ; ne justifie pas un sprint — cf. BACKLOG, piste famille-seule réactivable). S4/S10 restent les plus lourds (scindables si besoin). Rupture à acter : `build_dataset.py` cesse d'être stdlib-only (`pymupdf`/`Pillow` build-time → `tools/requirements.txt`) ; runtime app inchangé. Suivi sprint-par-sprint : `BACKLOG.md`.
