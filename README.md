@@ -17,7 +17,7 @@ App Android pour partir à la chasse aux arbres remarquables de Paris, collectio
 
 ## Ce que c'est
 
-217 960 arbres parisiens géolocalisés sur une carte plein écran, 782 espèces identifiées, 204 genres, 183 arbres remarquables à dénicher. Capture par proximité (< 30 m) avec une photo prise depuis l'app. La carte se colore au fil de tes découvertes. Mode chasse ★ pour pister le remarquable le plus proche, Catalogue à 2 niveaux *Catalogue* / *Historique*, fiches genre, badges (dont familles « Familier » par genre et par arrondissement), suivi de progression sur le Profil, export ZIP. Pensé family & friends, pas de classement, pas de social.
+217 960 arbres parisiens géolocalisés sur une carte plein écran, 778 espèces identifiées, 204 genres, 183 arbres remarquables à dénicher. Capture par proximité (< 30 m) avec une photo prise depuis l'app. La carte se colore au fil de tes découvertes. Mode chasse ★ pour pister le remarquable le plus proche, Catalogue à 2 niveaux *Catalogue* / *Historique*, fiches genre, badges (dont familles « Familier » par genre et par arrondissement), suivi de progression sur le Profil, export ZIP. Pensé family & friends, pas de classement, pas de social.
 
 ## Pourquoi
 

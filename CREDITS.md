@@ -2,7 +2,7 @@
 
 _Généré par `tools/build_dataset.py` — ne pas éditer à la main._
 
-498 espèces illustrées · 776 photos de référence.
+499 espèces illustrées · 777 photos de référence.
 
 ## Ville de Paris — Guide des essences 2024 (433 photos)
 
@@ -195,7 +195,7 @@ _Généré par `tools/build_dataset.py` — ne pas éditer à la main._
 - Érable à grandes feuilles — Angilbas at English Wikipedia · Domaine public — https://commons.wikimedia.org/wiki/File:Acer_macrophyllum_1199.jpg
 - Érable à sucre — No machine-readable author provided. MPF assumed (based on copyright claims). · CC BY — https://commons.wikimedia.org/wiki/File:Acer_saccharum_foliage.jpg
 
-## iNaturalist (159 photos)
+## iNaturalist (160 photos)
 
 - Alangium (A. chinense) — (c) Toby Y, some rights reserved (CC BY), uploaded by Toby Y · CC BY — https://www.inaturalist.org/photos/143802659
 - Alnus formosana — (c) Cheng-Te Hsu, some rights reserved (CC BY), uploaded by Cheng-Te Hsu · CC BY — https://www.inaturalist.org/photos/21782727
@@ -316,6 +316,7 @@ _Généré par `tools/build_dataset.py` — ne pas éditer à la main._
 - Poirier à fruits (P. ussuriensis) — (c) Carrie Seltzer, some rights reserved (CC BY), uploaded by Carrie Seltzer · CC BY — https://www.inaturalist.org/photos/4111716
 - Poivre sansho — (c) WATANABE Hitoshi 渡辺仁, some rights reserved (CC BY), uploaded by WATANABE Hitoshi 渡辺仁 · CC BY — https://www.inaturalist.org/photos/453506130
 - Poivrier (Z. simulans) — no rights reserved, uploaded by 葉子 · CC0 1.0 — https://www.inaturalist.org/photos/62662560
+- Poivrier du Sichuan (Zanthoxylum bungeanum) — (c) Marco Mussita, some rights reserved (CC BY), uploaded by Marco Mussita · CC BY — https://www.inaturalist.org/photos/41895197
 - Poivrier du Timut — no rights reserved, uploaded by 葉子 · CC0 1.0 — https://www.inaturalist.org/photos/599785046
 - Poliothyrsis — (c) Andrew Conboy, some rights reserved (CC BY), uploaded by Andrew Conboy · CC BY — https://www.inaturalist.org/photos/215552230
 - Pomme de Corée — (c) Forest and Kim Starr, some rights reserved (CC BY) · CC BY — https://www.inaturalist.org/photos/170120684

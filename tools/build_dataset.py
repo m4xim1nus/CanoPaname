@@ -182,6 +182,15 @@ SPECIES_FIXUPS: dict[tuple[str, str], tuple[str, str]] = {
     # `Z. alatum` est l'ancien nom de `Z. armatum` (Poivrier du Timut) ; la
     # page Wikipédia FR existe sous le nom actuel, pas sous le synonyme.
     ("Zanthoxylum", "alatum"): ("Zanthoxylum", "armatum"),
+    # Résidu botanique post-Catalogue (item 3, recherche POWO/GBIF 2026-07-16).
+    # Rebinds synonymes (le nom source est un synonyme désuet du nom accepté) :
+    ("Phellodendron", "japonicum"): ("Phellodendron", "amurense"),  # syn. → cible existante
+    ("Zanthoxylum", "bungei"): ("Zanthoxylum", "bungeanum"),        # syn. Planch. → Maxim.
+    # Noms botaniquement invalides (aucun taxon accepté, cible réelle indéter-
+    # minable sans inspection terrain) → collapse conservateur en `Genre sp.` :
+    ("Crataegus", "japonicum"): ("Crataegus", "sp."),
+    ("Crataegus", "baccata"): ("Crataegus", "sp."),
+    ("Carpinus", "carpinifolia"): ("Carpinus", "sp."),
 }
 
 # Formes d'épithète signalant une espèce non identifiée (genre connu, espèce
@@ -267,6 +276,9 @@ VERNACULAR_OVERRIDES: dict[tuple[str, str], str] = {
     # Page WP FR « Zanthoxylum armatum » ne porte pas de titre vernaculaire ;
     # le nom usuel francophone est « Poivrier du Timut » (épice himalayenne).
     ("Zanthoxylum", "armatum"): "Poivrier du Timut",
+    # `Z. bungeanum` (cible du rebind `bungei → bungeanum`, item 3) = le poivrier
+    # du Sichuan. Nouveau sk canonique sans nc → override pour éviter le binôme nu.
+    ("Zanthoxylum", "bungeanum"): "Poivrier du Sichuan",
     # Vitex agnus-castus = le Gattilier. Le nc CSV « Gatillier » est mal
     # orthographié et la résolution Wikidata peut mis-matcher ce binôme sur
     # `Zanthoxylum armatum` (Q6170892) → cet override fige le nv correct et

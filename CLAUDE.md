@@ -89,7 +89,7 @@ Conventions :
 - **Pas de Hilt / DI framework** au MVP. Singletons construits dans `ArbresApp` et consommés via `data/RepositoryProvider.kt` (`rememberXxx()` côté Compose, extensions `Context.xxx()` côté VMs).
 - **Licence** : MIT (cf. `LICENSE` à la racine).
 - **Pas de feature flags, pas d'A/B**. C'est une app perso.
-- **Pas de service externe au runtime.** La fiche-espèce ne fait pas exception : tout est pré-baké dans `assets/species-info.json` (texte Wikipedia FR + stats Paris) à build-time par `tools/build_dataset.py`. 498 des 937 espèces portent une photo de référence embarquée (`assets/species-photos/` + manifest `species-photos.json`, officielles Ville de Paris + cascade Wikimedia Commons/iNaturalist CC0/PD/CC-BY, cuites à build-time) illustrant le hero de la fiche espèce ; les crédits par image sont générés dans `CREDITS.md` par le build. Toujours aucun appel réseau au runtime.
+- **Pas de service externe au runtime.** La fiche-espèce ne fait pas exception : tout est pré-baké dans `assets/species-info.json` (texte Wikipedia FR + stats Paris) à build-time par `tools/build_dataset.py`. 499 des 938 espèces portent une photo de référence embarquée (`assets/species-photos/` + manifest `species-photos.json`, officielles Ville de Paris + cascade Wikimedia Commons/iNaturalist CC0/PD/CC-BY, cuites à build-time) illustrant le hero de la fiche espèce ; les crédits par image sont générés dans `CREDITS.md` par le build. Toujours aucun appel réseau au runtime.
 
 ## Workflow & docs
 
