@@ -45,8 +45,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -276,6 +278,7 @@ fun HuntPanel(
     modifier: Modifier = Modifier,
 ) {
     val radar = remember { HuntRadarState() }
+    val haptic = LocalHapticFeedback.current
     LaunchedEffect(remarquables, capturedIds) { radar.run(remarquables, capturedIds) }
     val readout = radar.readout
     // Dérivé du readout affiché : ne change qu'au commit → position stable
@@ -350,7 +353,11 @@ fun HuntPanel(
             // ✕ au même endroit que le FAB ★ (bas-gauche) : on tape au même
             // pixel pour entrer et sortir du mode.
             IconButton(
-                onClick = onClose,
+                onClick = {
+                    // Tic light aligné sur le geste « j'annule » (cf. annulation capture).
+                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                    onClose()
+                },
                 modifier = Modifier.align(Alignment.BottomStart).padding(start = 10.dp, bottom = 6.dp),
             ) {
                 Icon(Icons.Outlined.Close, contentDescription = "Fermer la chasse")
