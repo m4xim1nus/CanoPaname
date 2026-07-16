@@ -267,6 +267,13 @@ VERNACULAR_OVERRIDES: dict[tuple[str, str], str] = {
     # Page WP FR « Zanthoxylum armatum » ne porte pas de titre vernaculaire ;
     # le nom usuel francophone est « Poivrier du Timut » (épice himalayenne).
     ("Zanthoxylum", "armatum"): "Poivrier du Timut",
+    # Vitex agnus-castus = le Gattilier. Le nc CSV « Gatillier » est mal
+    # orthographié et la résolution Wikidata peut mis-matcher ce binôme sur
+    # `Zanthoxylum armatum` (Q6170892) → cet override fige le nv correct et
+    # déterministe (l'override genre `Vitex → Gattilier` ne couvre pas le nv
+    # d'espèce, capté plus tôt dans la cascade). Voir la dette « résolution
+    # Wikidata multi-QID » au BACKLOG pour la cause racine du mis-match summary.
+    ("Vitex", "agnus-castus"): "Gattilier",
 }
 
 

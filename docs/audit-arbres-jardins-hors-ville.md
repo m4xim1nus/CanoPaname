@@ -12,7 +12,7 @@
 
 ## 1. Le problème
 
-Le dataset (`arbres-paris.geojson`, 217 264 arbres, construit depuis le CSV OpenData « les-arbres ») couvre uniquement le patrimoine **géré par la Ville de Paris** : essentiellement des arbres de voirie (rues, quais, contre-allées). Les arbres situés **à l'intérieur** des grands jardins gérés par d'autres entités publiques sont absents ; seuls leurs périmètres apparaissent, via les arbres des rues qui les bordent.
+Le dataset (`arbres-paris.geojson`, 217 960 arbres, construit depuis le CSV OpenData « les-arbres ») couvre uniquement le patrimoine **géré par la Ville de Paris** : essentiellement des arbres de voirie (rues, quais, contre-allées). Les arbres situés **à l'intérieur** des grands jardins gérés par d'autres entités publiques sont absents ; seuls leurs périmètres apparaissent, via les arbres des rues qui les bordent.
 
 Une bounding box large autour de ces jardins remonte 200-700 arbres et donne une fausse impression de couverture — ce sont les arbres de voirie périphériques. Avec une bounding box resserrée sur l'intérieur strict :
 

@@ -2,7 +2,7 @@
 
 _Généré par `tools/build_dataset.py` — ne pas éditer à la main._
 
-497 espèces illustrées · 775 photos de référence.
+498 espèces illustrées · 776 photos de référence.
 
 ## Ville de Paris — Guide des essences 2024 (433 photos)
 
@@ -14,7 +14,6 @@ _Généré par `tools/build_dataset.py` — ne pas éditer à la main._
 - Aliboufier — איתן פרמן · CC BY — https://commons.wikimedia.org/wiki/File:Styrax_officinalis.jpg
 - Amélanchier de Lamarck — Udo Schröter · CC BY — https://commons.wikimedia.org/wiki/File:Busch_Jakobsberg.jpg
 - Amélanchier glabre — Robert H. Mohlenbrock · Domaine public — https://commons.wikimedia.org/wiki/File:Amelanchier_laevis.jpg
-- Andromède — Ruff tuff cream puff · CC0 1.0 — https://commons.wikimedia.org/wiki/File:Enkianthus_chinensis.jpg
 - Arbre à miel — Chhe ( talk ) · Domaine public — https://commons.wikimedia.org/wiki/File:TetradiumDaniellii.jpg
 - Arbre à savon — gbno · CC0 1.0 — https://commons.wikimedia.org/wiki/File:Gymnocladus_chinensis,_Hangzhou,_Zhejiang,_China_4.jpg
 - Asiminier trilobé — Scott Bauer, USDA · Domaine public — https://commons.wikimedia.org/wiki/File:Asimina_triloba3.jpg
@@ -81,6 +80,7 @@ _Généré par `tools/build_dataset.py` — ne pas éditer à la main._
 - Cyprès du Japon — Σ64 · CC BY — https://commons.wikimedia.org/wiki/File:Chamaecyparis_obtusa_01.jpg
 - Cèdre blanc de Californie — The original uploader was Geographer at English Wikipedia . · CC BY — https://commons.wikimedia.org/wiki/File:Incensecedar_sanjacintomts.JPG
 - Céphalotaxe de Fortune — Daderot · Domaine public — https://commons.wikimedia.org/wiki/File:Cephalotaxus_fortunei,_Arnold_Arboretum_-_IMG_6021.JPG
+- Enkianthus chinensis — Ruff tuff cream puff · CC0 1.0 — https://commons.wikimedia.org/wiki/File:Enkianthus_chinensis.jpg
 - Epicéa (P. smithiana) — Forestowlet · CC0 1.0 — https://commons.wikimedia.org/wiki/File:Picea_smithiana_007.jpg
 - Erable (A. hyrcanum) — Daderot · CC0 1.0 — https://commons.wikimedia.org/wiki/File:Acer_hyrcanum_-_Hillier_Gardens_-_Romsey,_Hampshire,_England_-_DSC04299.jpg
 - Erable (A. sieboldianum) — pakku · CC BY — https://commons.wikimedia.org/wiki/File:%E8%94%B5%E7%8E%8B%E3%81%AE%E5%BD%A9_Acer_sieboldianum,_Kamihozawa,_Yamagata,_Japan.jpg
@@ -195,7 +195,7 @@ _Généré par `tools/build_dataset.py` — ne pas éditer à la main._
 - Érable à grandes feuilles — Angilbas at English Wikipedia · Domaine public — https://commons.wikimedia.org/wiki/File:Acer_macrophyllum_1199.jpg
 - Érable à sucre — No machine-readable author provided. MPF assumed (based on copyright claims). · CC BY — https://commons.wikimedia.org/wiki/File:Acer_saccharum_foliage.jpg
 
-## iNaturalist (158 photos)
+## iNaturalist (159 photos)
 
 - Alangium (A. chinense) — (c) Toby Y, some rights reserved (CC BY), uploaded by Toby Y · CC BY — https://www.inaturalist.org/photos/143802659
 - Alnus formosana — (c) Cheng-Te Hsu, some rights reserved (CC BY), uploaded by Cheng-Te Hsu · CC BY — https://www.inaturalist.org/photos/21782727
@@ -262,6 +262,7 @@ _Généré par `tools/build_dataset.py` — ne pas éditer à la main._
 - Frêne (F. chinensis) — (c) Repina Tatyana, some rights reserved (CC BY), uploaded by Repina Tatyana · CC BY — https://www.inaturalist.org/photos/112303466
 - Frêne velouté — (c) Forest & Kim Starr, some rights reserved (CC BY) · CC BY — https://www.inaturalist.org/photos/1159223
 - Févier du Japon — (c) Andrew Conboy, some rights reserved (CC BY), uploaded by Andrew Conboy · CC BY — https://www.inaturalist.org/photos/198335112
+- Gattilier — (c) Kerstin Reifenrath, some rights reserved (CC BY), uploaded by Kerstin Reifenrath · CC BY — https://www.inaturalist.org/photos/588048637
 - Genévrier (J. pfitzeriana) — (c) Juan Carlos Caicedo Hernández, some rights reserved (CC BY), uploaded by Juan Carlos Caicedo Hernández · CC BY — https://www.inaturalist.org/photos/13241054
 - Genêt ananas — (c) Roland Godon, some rights reserved (CC BY), uploaded by Roland Godon · CC BY — https://www.inaturalist.org/photos/523586508
 - Hêtre (F. taurica) — (c) Igor Balashov, some rights reserved (CC BY), uploaded by Igor Balashov · CC BY — https://www.inaturalist.org/photos/220237785
@@ -275,6 +276,7 @@ _Généré par `tools/build_dataset.py` — ne pas éditer à la main._
 - Magnolia de Delavay — (c) Stephen Thorpe, some rights reserved (CC BY), uploaded by Stephen Thorpe · CC BY — https://www.inaturalist.org/photos/84809113
 - Magnolia Yulan — (c) Marco Mussita, some rights reserved (CC BY), uploaded by Marco Mussita · CC BY — https://www.inaturalist.org/photos/63357957
 - Magnolia à fleurs de lis — (c) m. m. v., some rights reserved (CC BY) · CC BY — https://www.inaturalist.org/photos/628831937
+- Malus robusta — (c) Jane Charlen, some rights reserved (CC BY), uploaded by Jane Charlen · CC BY — https://www.inaturalist.org/photos/488672099
 - Muscadier de Californie — (c) Ken-ichi Ueda, some rights reserved (CC BY) · CC BY — https://www.inaturalist.org/photos/29182
 - Mélèze (L. marschlinsii) — (c) S. Rae, some rights reserved (CC BY) · CC BY — https://www.inaturalist.org/photos/10838354
 - Mélèze du Japon — (c) Marco Mussita, some rights reserved (CC BY), uploaded by Marco Mussita · CC BY — https://www.inaturalist.org/photos/8658087
@@ -320,7 +322,6 @@ _Généré par `tools/build_dataset.py` — ne pas éditer à la main._
 - Pommier de l'Hubei — no rights reserved, uploaded by Daniel Atha · CC0 1.0 — https://www.inaturalist.org/photos/17372391
 - Pommier de Sibérie — (c) Вячеслав Юсупов, some rights reserved (CC BY), uploaded by Вячеслав Юсупов · CC BY — https://www.inaturalist.org/photos/48074742
 - Pommier à fleurs (M. floribunda) — (c) Muki Haklay, some rights reserved (CC BY), uploaded by Muki Haklay · CC BY — https://www.inaturalist.org/photos/125768479
-- Pommier à fleurs (M. robusta) — (c) Jane Charlen, some rights reserved (CC BY), uploaded by Jane Charlen · CC BY — https://www.inaturalist.org/photos/488672099
 - Populus canadensis — (c) Andre Hosper, some rights reserved (CC BY), uploaded by Andre Hosper · CC BY — https://www.inaturalist.org/photos/90983244
 - Pruche de l'Ouest — (c) Lyrae, some rights reserved (CC BY), uploaded by Lyrae · CC BY — https://www.inaturalist.org/photos/245834485
 - Pruche du Canada — (c) Ian Manning, some rights reserved (CC BY), uploaded by Ian Manning · CC BY — https://www.inaturalist.org/photos/8541909
