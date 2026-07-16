@@ -276,7 +276,6 @@ _Généré par `tools/build_dataset.py` — ne pas éditer à la main._
 - Magnolia de Delavay — (c) Stephen Thorpe, some rights reserved (CC BY), uploaded by Stephen Thorpe · CC BY — https://www.inaturalist.org/photos/84809113
 - Magnolia Yulan — (c) Marco Mussita, some rights reserved (CC BY), uploaded by Marco Mussita · CC BY — https://www.inaturalist.org/photos/63357957
 - Magnolia à fleurs de lis — (c) m. m. v., some rights reserved (CC BY) · CC BY — https://www.inaturalist.org/photos/628831937
-- Malus robusta — (c) Jane Charlen, some rights reserved (CC BY), uploaded by Jane Charlen · CC BY — https://www.inaturalist.org/photos/488672099
 - Muscadier de Californie — (c) Ken-ichi Ueda, some rights reserved (CC BY) · CC BY — https://www.inaturalist.org/photos/29182
 - Mélèze (L. marschlinsii) — (c) S. Rae, some rights reserved (CC BY) · CC BY — https://www.inaturalist.org/photos/10838354
 - Mélèze du Japon — (c) Marco Mussita, some rights reserved (CC BY), uploaded by Marco Mussita · CC BY — https://www.inaturalist.org/photos/8658087
@@ -323,6 +322,7 @@ _Généré par `tools/build_dataset.py` — ne pas éditer à la main._
 - Pommier de l'Hubei — no rights reserved, uploaded by Daniel Atha · CC0 1.0 — https://www.inaturalist.org/photos/17372391
 - Pommier de Sibérie — (c) Вячеслав Юсупов, some rights reserved (CC BY), uploaded by Вячеслав Юсупов · CC BY — https://www.inaturalist.org/photos/48074742
 - Pommier à fleurs (M. floribunda) — (c) Muki Haklay, some rights reserved (CC BY), uploaded by Muki Haklay · CC BY — https://www.inaturalist.org/photos/125768479
+- Pommier à fleurs (M. robusta) — (c) Jane Charlen, some rights reserved (CC BY), uploaded by Jane Charlen · CC BY — https://www.inaturalist.org/photos/488672099
 - Populus canadensis — (c) Andre Hosper, some rights reserved (CC BY), uploaded by Andre Hosper · CC BY — https://www.inaturalist.org/photos/90983244
 - Pruche de l'Ouest — (c) Lyrae, some rights reserved (CC BY), uploaded by Lyrae · CC BY — https://www.inaturalist.org/photos/245834485
 - Pruche du Canada — (c) Ian Manning, some rights reserved (CC BY), uploaded by Ian Manning · CC BY — https://www.inaturalist.org/photos/8541909

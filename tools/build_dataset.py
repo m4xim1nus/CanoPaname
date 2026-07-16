@@ -286,6 +286,22 @@ VERNACULAR_OVERRIDES: dict[tuple[str, str], str] = {
     # d'espèce, capté plus tôt dans la cascade). Voir la dette « résolution
     # Wikidata multi-QID » au BACKLOG pour la cause racine du mis-match summary.
     ("Vitex", "agnus-castus"): "Gattilier",
+    # --- Régressions / cohérence refresh OpenData 2026-07-16 -------------------
+    # Le CSV `libellefrancais` a perdu des diacritiques et des noms FR à ce
+    # refresh. Un override court-circuite la cascade construct (qui ré-abrège
+    # via `nc`) ET l'auto-désambiguation (qui suffixerait en genre complet
+    # « (Crataegus …) »). On restaure donc la chaîne pré-refresh telle quelle,
+    # forme abrégée « (I. épithète) » identique à la fratrie déjà correcte.
+    # « Aubépine » régressé en « Aubepine » (accent perdu au refresh) :
+    ("Crataegus", "persimilis"): "Aubépine (C. persimilis)",
+    # Cohérence diacritiques : nc CSV « Aubepine » sans accent (pré-existant) —
+    # tous les Crataegus s'affichent « Aubépine ».
+    ("Crataegus", "rotundifolia var. aboriginum"): "Aubépine (C. rotundifolia var. aboriginum)",
+    ("Crataegus", "champlainensis"): "Aubépine (C. champlainensis)",
+    # `Malus × robusta` : `libellefrancais` devenu tout vide au refresh → la
+    # cascade retombait sur le binôme nu « Malus robusta ». Restaure « Pommier
+    # à fleurs », qualifié « (M. robusta) » comme les autres pommiers d'ornement.
+    ("Malus", "x robusta"): "Pommier à fleurs (M. robusta)",
 }
 
 
@@ -1837,7 +1853,11 @@ def strip_html(s: str | None) -> str | None:
 
 
 def _fetch_remarquables_page(offset: int, limit: int) -> dict:
-    params = urllib.parse.urlencode({"limit": limit, "offset": offset})
+    # `order_by` obligatoire : sans tri stable, l'ordre peut bouger entre les
+    # deux requêtes de pagination → un record vu deux fois, un autre sauté
+    # (doublon + arbre perdu constatés au refresh 2026-07-16).
+    params = urllib.parse.urlencode(
+        {"limit": limit, "offset": offset, "order_by": "arbres_idbase"})
     url = f"{REMARQUABLES_URL}?{params}"
     req = urllib.request.Request(url, headers={"User-Agent": WIKI_USER_AGENT})
     with urllib.request.urlopen(req, timeout=30) as resp:
@@ -1866,6 +1886,7 @@ def fetch_remarquables() -> list[dict]:
     REMARQUABLES_CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
     records: list[dict] = []
+    seen_idbase: set[int] = set()
     offset = 0
     total: int | None = None
     print(f"[rmq ] fetch arbresremarquablesparis (cache: {REMARQUABLES_CACHE_DIR.relative_to(ROOT)})")
@@ -1882,6 +1903,11 @@ def fetch_remarquables() -> list[dict]:
             idbase = _record_idbase(rec)
             if idbase is None:
                 continue
+            # Garde-fou pagination : jamais deux records pour le même idbase.
+            if idbase in seen_idbase:
+                print(f"[rmq ] doublon pagination ignoré (idbase {idbase})")
+                continue
+            seen_idbase.add(idbase)
             cache_path = REMARQUABLES_CACHE_DIR / f"{idbase}.json"
             if cache_path.exists():
                 with cache_path.open("r", encoding="utf-8") as f:
