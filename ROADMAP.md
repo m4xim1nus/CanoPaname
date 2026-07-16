@@ -4,41 +4,7 @@ App perso, pas de calendrier engageant. Single-player, stockage local strict —
 
 ## Cycle en cours
 
-### Herbier
-
-Enrichissement des fiches espèces : saisonnalité (calendriers floraison/fructification), attributs, photos de référence. Pressenti avant Variantes — dépendance assumée : le calendrier de floraison alimentera la suggestion d'état « en fleur » de Variantes. Détails et chiffres dans `PROSPECTION_ARBORETUM.md`, items `[→Herbier]` du BACKLOG.
-
-#### Item 1 — Upgrade Arboretum (le gros morceau, éclaté en 13 sprints)
-
-Plan complet (contexte, archi, risques) : `/home/max/.claude/plans/on-attaque-le-cycle-temporal-abelson.md`. Sources chiffrées : `PROSPECTION_ARBORETUM.md`.
-
-**Décisions actées (2026-06-14)** : périmètre *tout d'un coup* (200 fiches API+PDF + cascade fallback 584) ; *cascade photos complète* embarquée WebP (officielles Ville de Paris + Wikidata P18/iNat filtre CC0/CC-BY) ; *pas de silhouettes procédurales* (identité = vraie photo, sinon placeholder + pills) ; cellule Arboretum non capturée garde « ??? » ; inégalité 200/584 assumée et visible, jamais inventée. **Renversement (2026-07-16)** : la fiche espèce n'est **pas** consultable tant que l'espèce n'est pas capturée — cœur du game design, S12 refusé.
-
-| # | Sprint | Type | Dép. |
-|---|---|---|---|
-| S1 | Champs API fiches-essences (200) → `species-info.json` | data | — |
-| S2 | Étendre `SpeciesInfo` (Kotlin, champs nullable) + parsing + tests | binding | S1 |
-| S3 | `AttributesBlock` (pills) sur la fiche espèce | UI | S2 |
-| S4 | Parsing PDF : calendriers floraison/fructification + « À retenir » | data | S1 |
-| S5 | `SeasonalityCalendar` + bloc « À retenir » | UI | S2,S4 |
-| S6 | Parsing PDF : champs textuels restants (famille, hauteur, descriptions, encarts, services éco) | data | S4 |
-| S7 | Affichage champs textuels (enrichir blocs) | UI | S2,S6 |
-| ~~S8~~ | ~~Cascade attributs 584 (Wikidata→POWO→Wikipedia FR→EOL)~~ — **abandonné 2026-07-15** (sondes : rendement = famille seule ~98 %, reste indisponible ; ne justifie pas un sprint ; piste famille-seule réactivable au BACKLOG) | data | S2 |
-| S9 | Photos officielles 200 (extraction PDF → WebP) | data | S4 |
-| S10 | Cascade photos 584 (Wikidata P18→iNat, filtre licence) | data | S9 |
-| S11 | `ReferencePhotoBlock` + `SpeciesPhotoRepository` + `CREDITS.md` + écran crédits | UI | S2,S9 |
-| ~~S12~~ | ~~Fiche détail consultable non capturée (cellules « ??? » tappables)~~ — **refusé 2026-07-16** (renversement : fiche non consultable si non capturée, cœur du game design) | UI | S3,S11 |
-| S13 | Hygiène & clôture item 1 (detekt, tests, `CHANGELOG`, `CLAUDE.md`, screenshots, commit assets) | clôture | tous |
-
-Ordre : slice verticale d'abord (S1→S3 prouvent le pipeline bout-en-bout), puis saisonnalité (S4→S5, le gros gain Variantes), puis le reste, puis photos, puis découverte, puis clôture. **S8 abandonné le 2026-07-15** (cascade attributs : sondes réseau → rendement réel = famille seule, tout le reste indisponible sur Wikidata ; ne justifie pas un sprint — cf. BACKLOG, piste famille-seule réactivable). S4/S10 restent les plus lourds (scindables si besoin). Rupture à acter : `build_dataset.py` cesse d'être stdlib-only (`pymupdf`/`Pillow` build-time → `tools/requirements.txt`) ; runtime app inchangé. Suivi sprint-par-sprint : `BACKLOG.md`.
-
-#### Items 2 et 3 (après l'item 1)
-
-2. **Texte fallback pour les fiches espèces sans Wikipedia** — audit : 254/784 espèces identifiées (32 %) sans `summary`, ne couvrant que 7 778/204 364 arbres (3,8 %), quasi exclusivement hybrides/cultivars/sous-espèces. Fallback gratuit via `genre-info.json.summary` (texte Wikipedia du genre, déjà cuit). À trancher : lecture pondérée par arbres (sous le seuil 5 %) vs par espèce (bien au-dessus) selon la friction utilisateur ressentie.
-3. **Résidu botanique post-Catalogue** — 11 entrées avec `nv == binôme nu` et count ≤ 2 (`Ehretia macrophylla`, `Sophora flavescens`, `Betula occidentalis`, `Crataegus japonicum`…), botaniquement douteuses : réelles mais rares, ou saisies erronées. Recherche botanique pour trancher keep / rebinder.
-
-_(« fold WelcomeScreen » reste en `[creuser]` dans le BACKLOG, section « Onboarding & premier lancement », à re-discuter avant arbitrage)_
-
+_(aucun — rotation Herbier faite le 2026-07-16, le prochain cycle sera promu depuis « Prochains cycles » ; Variantes pressenti)_
 
 ## Prochains cycles
 
@@ -49,6 +15,10 @@ Refonte Arboretum « états/variants ». La colonne `season` (devenue inerte par
 Inspiration : Dave the Diver / Pokédex enrichi. Re-capture du même arbre dans un état nouveau = upgrade visible de l'élément Arboretum, sans inflation artificielle. Migration `MIGRATION_4_5`, backup `schemaVersion = 3`. Badges variantes émergent naturellement. Items détaillés dans `BACKLOG.md`.
 
 ## Cycles livrés post-1.0
+
+### Herbier — `1.6.0` (2026-07-16)
+
+Enrichissement des fiches espèces : attributs (« carte d'identité »), calendriers floraison/fructification, photos de référence embarquées. Item 1 (Upgrade Arboretum) éclaté en 13 sprints : S1-S7 + S9-S11 livrés (pipeline API+PDF fiches-essences, cascade photos WebP officielles Ville de Paris + Wikimedia/iNaturalist CC0/PD/CC-BY, blocs UI + écran crédits), plus les items 2 (fallback texte genre pour les fiches sans Wikipedia) et 3 (résidu botanique) et l'absorption du refresh OpenData (217 960 arbres). Deux non-retenus : **S8 abandonné** (cascade attributs Wikidata = la famille seule, gain insuffisant pour un sprint) et **S12 refusé** (la fiche espèce n'est pas consultable tant que l'espèce n'est pas capturée — cœur du game design). Détails dans `CHANGELOG.md` `[1.6.0]`.
 
 ### Netteté — `1.5.0` (2026-06-13)
 
